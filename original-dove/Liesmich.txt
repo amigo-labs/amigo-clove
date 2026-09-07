@@ -1,0 +1,536 @@
+DDDD   OOO V  VV  EEE
+ D  D O  O V  V  EE
+ D  D O  O V  V  EEE
+ D  D O  O V  V  EE
+DDDD  OOO   VV   EEEE Version 1.10
+--------------------->
+(sprich: douf (französisch) - nicht daff (was auch immer))
+
+E-Mail:         Kauto@gmx.de
+Homepage:       http://come.to/kauto
+                http://www.kauto.de
+
+---
+Worum geht's?
+---
+DOVE ist ein 2D-Weltraum-Sidescroller-Ballerspiel.
+
+---
+Aha, und die Story?
+---
+Hier die groben Züge der DOVE-Story:
+Böse Aliens wollen alles nieder machen.... blablabla... DOVE einzige
+Rettung... blablabla... Viel Glück!
+
+---
+Braucht mein Computer etwas bestimmtes, damit ich DOVE spielen kann?
+---
+Neben Direct-X 7 (oder höher) und den Visual-Basic-6-Runtime-Dateien
+eigentlich nur ca. 40 MB HD, eine Tastatur und einen Monitor.
+
+Direct-X findet man auf der Microsoft-Homepage, auf Treiber-CDs, auf
+den CDs von aktuellen Spielen und auf den meisten Heft-CDs.
+
+Visual-Basic-6-Runtime-Dateien kann man auch auf der Microsoft-HP 
+finden... (wer weiß wo?) Alternativen sind 
+http://www.freeware-archiv.de, http://www.kauto.de und CDs von
+PC-Zeitschriften.
+
+---
+OK, und wie steuere ich DOVE?
+---
+::::::::::
+:Tastatur:
+::::::::::
+Pfeil- / Ziffernblock  | Lenken / Menupunkt wählen
+S / Leertaste          | Dauerfeuer / Bestätigen
+A                      | Beam laden / Bestätigen
+D                      | Position der angebrachten Extrawaffen wechseln
+Q / W  oder F / G      | Schiff bremsen / beschleunigen
+ESC                    | Pause / Abbrechen / Programm beenden
+Enter                  | Bestätigen
+
+::::::::::
+:Joystick:
+::::::::::
+Steuerkreuz            | Lenken / Menupunkt wählen
+Taste 1                | Beam laden / Bestätigen
+Taste 2                | Dauerfeuer / Bestätigen
+Taste 3 und 4          | Position der angebrachten Extrawaffen wechseln
+Taste 5 bis 8          | Schiff bremsen / beschleunigen
+
+
+---
+Wie funktioniert das Waffensystem?
+---
+Die grauen Extras erweitern euer Schiff DOVE:
+
+Die grauen, runden Extras geben euch eine OPTION von max. Zweien (das
+sind kleine, runde, unzerstörbare Teilchen, die euer Schiff umkreisen)
+Die drei sich drehenden Bomben lassen DOVE Bomben schmeißen.
+Das viereckige, blaue Extra mit je einem Kreis in der Ecke rüstet DOVE
+kurzzeitig mit 4 Options aus, die euch gegen Schüsse immun machen.
+
+Die farbigen Extras erweitern euer Waffensystem. Wenn man die gleiche
+Farbe mehrmals hintereinander einsammelt, wird die Waffe verbessert. 
+Die Verbesserung geht nach dem Einsammeln einer anderen Farbe wieder
+verloren.
+
+      Rot       |          Grün         |        Blau
+   Streulaser   |   Reflektionsbälle    | konzentrierter Twinlaser
+
+---
+Und die Einstellungen?
+---
+Unter Options kann man den Schwierigkeitsgrad des Spiels bestimmen.
+
+
+
+::::::::::::::::::::::::::::::::::::::::::::
+Gegner schießen            Voll  [Halb]  Aus
+::::::::::::::::::::::::::::::::::::::::::::
+Hier kann man einstellen, wie oft die Gegner schießen sollen. Dies hat
+jedoch keinen Einfluss auf das Verhalten der Endgegner
+
+:::::::::::::::::::::::::::::::::::
+Kollision mit Wand         An [Aus]
+:::::::::::::::::::::::::::::::::::
+Wenn dies ausgeschaltet ist, kann man Wände problemlos berühren. Doch
+Achtung! Einige Gegner haben sich als Wände getarnt (z.B. Level 3: die
+Lampe)
+
+::::::::::::::::::::::::::::::::::
+Ausrüstungsverlust        [An] Aus
+::::::::::::::::::::::::::::::::::
+Ob man beim Tod alle Waffen verliert
+
+
+
+Durch das Auswählen wird ein Punktefaktor ermittelt. Jeder abge-
+schossene Gegner wird mit ihm multipliziert. Beispiel:
+
+Ein Gegner gibt 100 Punkte und der Punktefaktor ist gleich 1,25.
+100 x 1,25 = 125 Punkte!
+
+Wenn der Punktefaktor höher als 1 ist, wird der "Hard Mode" aktiviert.
+Hierdurch können Levels gespeichert/erspielt werden :-)
+
+
+---
+Kannst du mir paar Tipps geben?
+---
+1. Man sollte DOVE zur jeder Zeit perfekt steuern können. Falls es 
+   nicht möglich ist, gleichzeitig mit den Pfeiltasten nach Rechts-Oben
+   zu fliegen und mit "s" zu schießen, sollte man mit den Nummerntasten
+   steuern.
+
+2. Der voll aufgeladene Beam geht auch durch Wände und kann so Gegner
+   auf der anderen Seite einer Wand treffen.
+
+3. Die meisten Gegner verfolgen ein bestimmtes Muster. Präge es dir ein
+   und trickse den Feind aus.
+
+4. Manchmal ist es besser den Gegnern nur auszuweichen als ihn um jeden
+   Preis vernichten zu wollen.
+
+5. Überprüfe, welche Waffe an welcher Stelle am Besten ist.
+
+6. Man sollte nicht gleich aufgeben, wenn eine schwere Stelle kommt.
+   Manche Stellen kann man (angeblich) erst beim 2. Mal schaffen.
+
+7. Der Beam (egal welche Stärke) neutralisiert die Schüsse von normalen
+   Gegnern.
+
+---
+Was is' neu?
+---
+
+1.10
+Nach 2-3 Jahren:
+Beendigungsbug entfernt (Spiel stürzt beim Beenden nicht mehr ab)
+und es insgesamt schneller gemacht. (Eventuell läuft es jetzt auf
+alten Rechner nicht mehr ruckelfrei) Musikbug entfernt. Lost Level
+von MaKo hinzugefügt. Nointro Schalter eingebaut. Xpire zu den 
+Machern hinzugefügt (Machher der Level 3 Musik, u.a.)
+
+1.03
+Spiel läuft nun auch auf 1 MB Grafikkarten.
+
+1.02
+Spiel ins Englische übersetzt; Starteinstellungen werden gespeichert;
+Speicherhinweis im letzten Bildschirm, für alle, die zu blöd waren
+die Readme gescheit zu lesen; Man kann sich auch nach Pause/Exit
+in die Highscore eintragen; Im Pausebildschirm wurde aus "Weiter/Ende"
+"Return/Exit"; Ziffernblock ist ja ein viel besseres Wort für 
+Nummerntastatur ;) Paar Rechtschreibfehler in Liesmich entfernt
+(thx MontyP) 
+
+1.01
+Letzter Endgegner schummelt nicht mehr; Fenstermodus möglich;
+F-Tasten-Funktionen verbessert; Verbesserte Hilfe von Toxeen und mir;
+
+0.59 = 1.00
+Credits korrigiert; Installationsprogramm erstellt jetzt auch Ver-
+zeichnisse; Fehler von Endgegner Level 3 beseitigt und neue Grafik
+von MaKo; Das Aussehen der Extras wurde von MaKo verbessert;
+Cursorblinken bei der Highscore-Eingabe; Hilfstexte; Song Level 5;
+Werbungs-Screen;
+
+0.58
+Die bescheuerte VB-Installroutine wurde entfernt - es wird nur noch
+meine eigene benutzt. Die Visual-Basic-6-Runtime-Dateien werden
+jetzt nicht mehr installiert - das muss jetzt manuell geschehen -
+dafür ist die gepackte Version auch 1 MB kleiner ;)
+Original Level 7 wieder hergestellt (sorry, aber das neue hat mich so
+verärgert...); Endgegner Level 7 - Bug und Highscore-Bug entfernt;
+Credits aktualisiert
+
+0.57
+"Verlangsamerungsband" modifiziert:
+Geschwindigkeit wird auf normal gestellt, wenn man vorm Tod vom Band
+zum Stillstand gezwungen wurde; ToolTip; Grafikfehler beseitigt;
+"Endgegner ist unsichtbar" - Bug entfernt; Endgegnerenergieleiste
+verlängert; Beim 2. Endgegner können nun die beiden Kanonen einzeln
+zerstört werden; Level 4 - Dateien optimiert; Level 2 verfeinert(?);
+Level 3 optimiert; Die Lampen sind keine Gegner mehr! Vogel-Endgegner
+ist nun in Level 6; Endgegner Level 7 muss nur ein- bis zweimal besiegt
+werden; Endgegner Level 3 (ja, die Grafik habe ich selber erstellt :);
+Rammgegner in Level 4 und Endgegner Level 5 von MaKo grafisch ver-
+bessert; Level 10 (?); Laserhöhenkorrektur; letzter Endgegner; Options
+wieder deutsch
+
+0.56
+Fehler beseitigt, noch ein neuer Vorhang, Level 7 wurde von MaKo neu
+designt
+
+0.55
+Ein neuer "Vorhang"; "kleines" DOVE-Logo; einen coolen neuen Fehler be-
+seitigt "Prozedur zu groß" (wie mein alter Infolehrer sprach: "Keine
+Prozedur sollte größer als zehn Zeilen sein" Naja....); Endgegner
+Level 7 
+
+0.54
+Nach stundenlanger Suche endlich gefunden: Die Midilautstärke wird
+(auf meinem Rechner) vor dem Start auf Max. gesetzt! (Das hast du davon
+Winamp - har har har :)); Abspann mit Fade-Effekt verfeinert;
+DDERR_INVALIDPARAMS - Fehler (wahrscheinlich) beseitigt
+
+0.53
+Abspann(Grafik: MAKO); ein Song von QUASIAN! (Jupi!); verbesserte
+Namenseingabe; paar Updates in der Readme; schnelleres Laden(?) und
+verbessertes Grafikmanagement; ALT+TAB-Bug(s) entfernt; DIE LAMPEN SIND
+VERSTECKTE GEGNER; Continue-Bug entfernt (an sich ein schöner Effekt: 
+Man konnte YES YA auswählen und dann nach unten drücken. Das Schiff
+ging kaputt, aber man spielt trotzdem weiter.); F-Tasten verbessert;
+Neuer Hintergrund für TUW; NEOARTS heißt nun meine neue Gruppe;
+Fade-Effekt (thx to Torsten Ackermann); Level 6 vereinfacht
+
+0.52
+Neue "Continue"-Auswahl; Trainingslevel; variable Grafikgrößen; End-
+gegner Level 2 (Idee: MaKo); Bug beseitigt (Endgegner Level 8 war
+unsichtbar); ein neuer YES YO und ein neuer NO! - Sound ;-);
+Levelbilder erneuert; HighScore-Format geändert; Options sind nun in
+Englisch (wenn ich das überhaupt Englisch nennen darf...); kleines
+Update für Level 9; Sterne fliegen jetzt auch vor Hintergrundobjekten;
+
+0.51
+Neues Level 7 - "The Unreal World" (Design & Grafik: MaKo & Kauto;
+Musik: Hürgy Hasbh)
+
+0.50
+Zusätzliche Infos in der Readme; "Endgegner von Level 4 ist unverwund-
+bar" - Bug wurde entfernt; Endgegner für Level 5; Info-Screen
+beschleunigt; Ein neuer Sound (thx @ pickel); Intro "beendet"; Level 1
+vereinfacht; Highscore wird nun im Hauptverzeichnis gespeichert;
+
+0.49
+Neue Musik von Toxeen: Level 2 und 7, Intro, Endgegner; Einstellungen
+können gespeichert werden; "Hard Mode" + Levelselect mit kleiner
+Animation; "You placed"-Screen verbessert ;) Level 8 von MaKo (Level-
+design + Grafik); Musik dieses Levels von Hürgy Hasbh
+
+0.48
+Toxeen's Name ist nun überall verzeichnet; Level Neuordnung: Level 4
+rutscht hinter Level 1 und verschiebt somit Level 2 und 3 nach 3 und 4;
+Level 5 tauschte mit Level 6; neue Musik: Intro von mir und "jump to
+tha beat" von Toxeen (Level 1 Musik); Loadingscreen überarbeitet
+Neuer Gegner von Harald_Ci
+
+0.47
+Der 2. Endgegner kann jetzt nicht mehr rückwärts angreifen %-) Alt+F4
+funktioniert; Endgegner für Level 7; neue Titelmelodie von Toxeen;
+neues Logo von mir; meine alte Endgegnermelodie wieder eingesetzt;
+neuer Hintergrund für Level 7 von MaKo
+
+0.46
+Zahlen Bug in der großen Schrift korrigiert; Neue Musik von Toxeen (
+GameOver, Endgegner); Level 7 (Grafik: Mako   Musik: Hürgy Hasbh)
+
+0.45
+Neuer 1. Endgegner (Grafik: MaKo); gelber Beam der Gegner wurde von
+MaKo grafisch verbessert; Neue Menugrafik von MaKo; Paar Bugs sind weg;
+HighScore-Darstellung (sicher) um den Faktor 100 beschleunigt; Neue
+Schrift (Grafik: MaKo) im "Get Ready"-Screen; "Circle"-Partikel; roter
+Schuss stärker;
+
+0.44
+Es gibt jetzt Endgegner von Level 1-3! Endgegner von Level 1 ist nun
+Endgegner von Level 2 und der Mittelgegner von Level 6 ist nun auch
+Endgegner vom 1. Level. Die grünen Kugeln reflektieren jetzt wieder
+richtig. Namen korrigiert. HighScore eingebaut.
+
+0.43
+Neue DOVE von MaKo; Fehler in Readme korrigiert und Pickel und Mr.D
+werden jetzt gesondert genannt (ja, bei mir kann man sich
+hocharbeiten); Musik zu Level 4 ist nur die Musik von Level 5; Zwei
+neue Musikstücke (Level 4 + Level 6) von Hürgy; Kleiner Fehler mit
+ALT+TAB wurde korrigiert; neue Sounds für die Powerups; Rumble-effekt
+auch bei Gegnern mit mehr als 499 HP; Neue Introbilder von MaKo; man
+kann DOVE nicht mehr zwei mal gleichzeitig starten (versucht's doch:-);
+der erste Part des neuen Intros wurde eingebaut
+
+0.42
+Intrografiken werden nicht mehr am Start geladen; "Loading"-bildschirm;
+Teufel von Manuel Kempf
+
+0.41
+Der "Vorhang" wurde durch zwei neue Varianten ergänzt, kommt auch nach
+dem Beenden eines Levels und zeigt nun immer das DOVE-Logo; Gegner des
+5. Levels richtig gedreht; Joystick integriert (hard work); besseres
+Speichermanagement; Brüchige Mauer im ersten Level ersetzt
+
+0.40
+Ach ja, die magische Vier! Mittelgegner und Zapfen des 6. Levels von
+MaKo grafisch verbessert; Stärke des Streulasers, bei Ausrichtung nach
+hinten, wurde modifiziert; Rumble-Effekt; Bugs entfernt; drehende
+Extras, Get Ready-Screen verändert; neuer Hintergrund des 2. Levels
+steht zur Debatte; kleiner Fehler in der Schrift ausradiert; verbes-
+serte DOVE von MaKo
+
+0.39
+Hintergrund des 2. Levels verbessert; Level 6 größtenteils fertig; ver-
+besserter, großer Rammgegner von MaKo (Level 3); Schusskraft verändert
+
+0.38
+Level 5 ohne Endgegner, neues DOVE-Logo von MaKo
+
+0.37
+Schwierigkeitsgrad hat seinen eigenen Menupunkt; Ausblenden der Titel-
+melodie; Alle GIF-Dateien in BMP geändert (gepackt weniger Speicher!);
+Mitarbeiter-Namen korrigiert; Neuer Laserstrahl des 3. Endgegner von
+Hürgy Hasbh; neue Schrift von MaKo (wurde leicht von mir verbessert);
+Neuer Hintergrund fürs 4. Level; Super-Beam verändert; Gegnerverfolg-
+ungsbug entfernt; Design für Level 5 begonnen; an der Engine rumge-
+fuscht - nix produktives Neues
+
+0.36
+Pause wieder verändert (Bug entfernt!); Luftblasen im Wasserlevel und
+paar neue Feinde
+
+0.35
+Pause verbessert (Bug entfernt?); Schwierigkeitsstufen eingebaut
+
+0.34
+Wieder paar Bugs mit ALT+TAB beseitigt. Pause verbessert. Energieleiste
+der Endgegner hinzugefügt. Schwarzer Rand bei den kleinsten der
+(Reflektions-) Bällen entfernt. Sternenhintergrund wurde durch "echte"
+Sterne ersetzt. (Per Druck auf F2/F1 kann die Funktion (de-)aktiviert
+werden)
+
+0.33
+Probs mit ALT+TAB beseitigt (falsche Grafik in den Levels 2-4, Get
+Ready u. Continue Bug). Beißer des 2. Levels durch anderen Gegner von
+MaKo ersetzt. Schleim-schießt-nicht-Bug entfernt. Ufo-Grafik von Klaus.
+Neuer Endgegner (nach 3. Level)! Rammgegner von MaKo grafisch erneuert
+
+0.32
+Die Konsole hat im JPG-Format etwas in ihrer Brillians verloren. Es
+wird nun immer eine GIF-Version benutzt. Kreise entfernt. Transparenter
+Twin-Laser ist nun als Standart gewählt. 3. Level komplett neu designt!
+Dabei Grafiken von MaKo eingebaut. Eine neue Gegnertaktik. Pause einge-
+baut. Menusteuerung mit der Nummerntastatur. Ufogegner des ersten
+Levels durch eine bessere Version von MaKo ersetzt. Der Gebrauch von
+ALT+TAB sollte zwar immer noch vermieden werden, das Spiel stürzt jetzt
+aber nicht mehr ab.
+
+0.31
+Neues Icon, grüner Schuss grafisch verbessert, Blaues Raumschiff durch
+Alien ersetzt. JPG/GIF-TO-BMP-Konverter (Wandelt beim Start jede JPG
+und GIF-Datei in BMP um und löscht die alte Datei). Konsole von MaKo
+verbessert. Transparenter Laser (experimentell - zum (De-)Aktivieren 
+F1/F2 drücken!). Streulaser schießt nun regelmäßig.
+
+0.30
+Stärke des grünen Schusses korrigiert. Neue Musik von Klaus. Engine
+verbessert. Kollisionsabfrage ein klein wenig toleranter
+
+0.29
+Feinde werden jetzt immer vor der Landschaft dargestellt, Level 4
+(Grafiken von MaKo); Warpgeschwindigkeits-Animation verbessert, Linke
+Partikel der Oberen der zwei fallenden Säulen im zweiten Level entfernt
+Mehr Hintergrundobjekte zu Level 2 von HiBri
+
+0.28
+Warpgeschwindigkeits-Animation beim Beenden des Levels, Fische des 1.
+Levels durch kleine Versionen des Endgegners ersetzt, Level 2 leicht
+schwieriger gemacht, Readme um paar Tricks erweitert. "Ich brauche
+was zu essen" durch Zlatkos "Koffer packen, verpiss dich" ersetzt.
+Kollisionsabfrage perfektioniert
+
+0.27
+Beseitigung des Mauszeigers, Level 2 wurde zu Level 3, neues Level 2
+ohne Endgegner erstellt, neue Grafiken von HiBri eingebaut, Musik
+zum 2. Level (Orange Juice Theme) von Traven entliehen - ich brauche
+immer noch einen Music-Maker!
+
+0.26
+Die Musik fängt nicht mehr bei jedem Tod von neuem an; Hintergrund-
+objekte (Grafik von HiBri); Endgegner-KI leicht modifiziert; Das
+Kompilieren der Exe-Datei dauert schon über 1 Min
+
+0.25
+Frame-skip und Schild eingebaut
+
+0.24
+Lautstärke optimiert, Musik-nach-GameOver-Bug entfernt, genauso wie ein
+Fehler in der Schiffskollisionsabfrage; Level 2 ohne Endgegner
+erstellt, Trash-Vorspann fertig; Bei beiden fehlt noch richtige Musik,
+ersatzhalber zwei Chiptunes von der genialen Lluvia entliehen;
+Von Malte Kollmann Grafik für Level 2; Verschieden Grafiken wurden von
+Manuel Kempf verbessert (gelber Schuss, Alien-Ei (ursprünglich
+Mülltonne), Extras, Konsole, Schleimgegner), "Ich habe fertig"-Sound
+ersetzt durch "Ich brauche was zu essen"
+
+0.23
+Auto entfernt und ersetzt, Endgegnersounds, "Ich habe fertig"-Qualität
+verbessert, Gameover beschleunigt, Musik verändert
+
+0.22
+Verbesserter Font (ich musste selber die Arbeit übernehmen >:-q ),
+Continue und GameOver, das gesamte Level wurde in seine (fast) 
+entgültige Form gebracht (Denkt dran, mit D kann man wechseln...)
+
+0.21
+Beam-Auflade-Animation, Yingyangfisch-Gegner (sie kommen in 
+Schwärmen ;-) ) von xenion, paar von mir neu designte Geländegrafiken,
+einen "Font" (jemand könnte den eigentlich verbessern...),
+der Schuss und die Konsole wurden von Manuel Kempf grafisch aufge-
+bessert, es gibt interaktive Objekte (ich sag' nur Mülltonne...)
+
+0.20
+Es gibt nun eine Info-Sektion. Ich hab' eine Titelmelodie erstellt und
+nach den Asteroiden am Ende erscheint (bei Tick 7000) ein ENDGEGNER!
+(Gezeichnet von Manuel Kempf)
+
+0.19
+Zwei Gegner wurden von Manuel Kempf grafisch verbessert. Es existiert
+nun ein Titelscreen. Checkpointfehler entfernt. Der Sterbevorhang geht
+schneller runter. Die extrem Nervende "can't load sample"-Message und
+die damit verbundenen Probleme sind endlich verschwunden. Aufgefallen,
+dass die Musik nach einer Weile auf die Nerven geht... (Ja, hier bist
+DU gefragt!)
+
+0.18
+Der Fehler in der Kollisionsabfrage wurde entfernt (Der Super-Beam
+trifft jetzt immer) und die Schusswahrscheinlichkeit der gegnerischen
+Schiffe wurde herabgesetzt. Neues DOVE-Schiff von Manuel Kempf!
+Bin zur Zeit ein bisschen buzy wegen den Klausuren...
+
+0.17
+Gegner können schießen, Checkpoints wurden eingeführt.
+
+0.16
+Die Waffen wurden gerechter, die Explosion wird nun überall darge-
+stellt, der Super-Beam wurde verbessert u. verstärkt u. hat nun Sound-
+untermalung.
+
+0.15
+Beide Gegner von HiBri wurden eingebaut, Konsole verbessert, Super-Beam
+Geschwindigkeitsbremse.
+
+0.10
+Konsole und zwei neue Gegner.
+
+vor 0.10
+Get Ready-Screen, Direct Draw, Asteroiden und Testlevel
+
+---
+Wat musst'e noch machen?
+---
+-Bugs entfernen (falls vorhanden ;-) 
+-Das Spiel ins Englische übersetzen
+-Hausaufgaben (na, morgen früh ;-)
+
+---
+Wer wirkte bei diesem Spiel mit?
+---
+Erst mal ich
+
+Markus 'Kauto' Madeja    Hauptprogrammierer, Koordinator, Soundmixer,
+Kauto@gmx.de             Grafiker, Musiker, Leveldesigner, Testspieler,
+                         Mädchen für alles, Vertreiber, Chef, Producer,
+                         Webmaster, der schwarze Mann ohne Geld
+
+Manuel Kempf             Pixelmagier, der all meine genialen Grafiken
+dodod@t-online.de        mehrmals verbesserte und die Qualität in
+                         (für mich) unbekannte Dimensionen trieb.
+
+Hilmar 'HiBri' Brinkmann ebenfalls ein Meister des Pixelbreis, der
+                         neue innovative Gegner erstellte, ohne die das
+                         Spiel im Grund nur aus Asteroiden bestehen
+                         würde. Des weiteren erdachte und paintete er
+                         den Vorspann.
+
+Malte 'MaKo' Kollmann    der Renderspezialist, der den nackten
+MalteKollmann@gmx.net    Polygonen leben einhauchte und den Betatestern
+                         "Oh" und "Ah"s entlocken konnte. Außerdem
+                         hatte er viele Ideen, der Großteil konnte
+                         leider (noch) nicht verwirklicht werden. Des
+                         weiteren erschuf er das LETZTE LEVEL.
+
+xenion                   er ist der Schöpfer des gefährlichen und
+                         blutrünstigen Yingyangfisches und war das
+                         Opfer meiner "Ey, teste mal DOVE"-Attaken
+
+Harald CL                er verbesserte das Sägeraumschiff von HiBri
+                         und das obwohl er nicht über's erste Level
+                         kam ;)
+
+XPiRE                    Soundtüftler, der mit seiner Musik den Amiga-
+                         style ins Spiel brachte
+
+Hürgy Hasbh              Sounddieb, der auch kleiner Grafiken ins
+                         Spiel brachte und einen Ersatz für
+                         das blaue Raumschiff erfand... (Puh)
+
+Toxeen                   professioneller Musikmaker, der (natürlich)
+http://www.toxeen.de     meine selbstgeschriebenen Stücke verbessern
+                         musste.
+
+Quasian                  ihm verdanke ich ein wirklich cooles
+http://www.quasian.com   Jazzstück
+
+jori                     er erschuf das Funkstück für TUW
+jori.kemppi@pp.inet.fi
+
+
+Kay 'MontyP' Kollmann    Freizeitübersetzer, der die englische DOVE-
+                         Version möglich machte
+
+Pickel                   er entwickelte den DOVE-Homepage-Stuff und
+www.pickels-site.de.st   führte das DOVE-Forum ein. Nebenbei entwik-
+                         kelte er neue, wahnwitzige Ideen ("Highscore")
+                         und bewertete die Fortschritte des Spiels
+
+Mr.D                     Gästebuchhacker, der meinen Counter in die
+                         Höhe trieb und anonym bleiben möchte ;-)
+
+Toombay, Mocs, Dalle,    Betatester, denen ich viele neue Fehler zu
+Jan, Andi, Mr ASS, Snix  verdanken habe (nach dem 'E' geht's nicht 
+                         weiter, nach 10 Minuten Asteroiden stürzt
+                         das Spiel ab...)
+
+
+                                                                ------
+                                                                -ENDE-
+                                                                ------

@@ -1,0 +1,145 @@
+DoveZ - The second wave
+http://www.dovez.de
+
+Entwickler: Markus Madeja's Intergenies
+http://www.intergenies.com
+
+
+
+
+Inhalt
+1	Einleitung
+2	System Voraussetzungen
+3	Gameplay
+4	Support
+5	Impressum
+
+---------------------------------------------------------
+
+1) DoveZ Einleitung
+
+Es gab eine Welt, die die Sonne zum strahlen brachte. Im Einsatz der globalen Koalition und aller Weltmächte, konnte die Erde vor der außerirdischen Invasion gerettet werden. Das Projekt 'Dove' verlief erfolgreich. Nach dem Krieg wurde das Raumschiff, dass den Weltfrieden gewahrt hatte in den Schiffshangar in Zone 4 gestellt und abgeschaltet. Die Sonne durchbrach die Wolken bis zu jenem Tag, an dem die Welt erfahren sollte, das der Krieg noch nicht vorbei war.
+Wir befinden uns im Jahre 2157. Die Wissenschaft hat Fortschritte gemacht. Aber ist sie für den Kampf gerüstet ? Die Technik hat der Menschheit den Weg in fremde Galaxin ermöglicht. Die Erde steht unter ständiger Bewachung durch Stationen in orbitalen Umlaufbahnen. 
+Die alten Sagen berichten von dem Ende der Menschheit. Trotzdem breitete sich das Gefühl von Sicherheit auf globaler Ebene aus. Während dessen wurden die Forschungsarbeiten unter Tage auf Zone 4 fortgeführt. Ein ehrgeiziger Wissenschaftler machte sich daran, zwei neue Kampfschiffe zu entwickeln. Das Projekt „D.O.V.E. Z“ (dunkel operierende Vogeleinheiten Zwei) wird über das Schicksal der Erde entscheiden und dafür sorgen, der angreifenden, unbekannten Macht ein Ende zu setzen. Es hat gerade erst begonnen...
+
+
+
+---------------------------------------------------------
+
+2) System Voraussetzungen
+
+Minimum: 
+
+- Pentium II 400 Mhz/ AMD K6-2 
+- Windows 95/98/2000/ME/XP 
+- DirectX 7 
+- 8 MB Direct 3D kompatible Grafikkarte (TNT2 / Voodoo3 class) 
+- 96 MB Ram 
+- 8 x CD-ROM-drive 
+- 150 MB freier Festplattenspeicher
+- Direct X zertifizierte Soundkarte
+
+
+
+Empfohlen: 
+
+- Pentium IV / AMD Athlon 1 Ghz 
+- 128 MB Ram 
+- 64 MB Direct 3D kompatible Grafikkarte (z.B. G-Force I) 
+- 150 MB freier Festplattenspeicher
+- Gamepad mit Force Feedback
+---------------------------------------------------------
+
+3) Gameplay
+
+
+Das Spiel ist ein Horizontalscroller. Man erweitert durch einsammeln von Extras sein Waffensystem um so immer stärker werdende Gegnerwellen zu besiegen. Das besondere an DoveZ ist der "flow". Es ist wird nicht langweilig, weil immer irgendwas "passiert". Dies geschieht nicht zuletzt durch lustige Funksprüche, die das Geschehen auflockern, das Spiel erklären oder die Story vorantreiben.
+Es existieren zwei Schiffe:
+
+
+
+- Die D-Tonator besitzt zwei Partikel, über und unter dem Schiff, die mit verschieden Waffen bestückt werden können und sich durch zwei weitere, vor und hinter dem Schiff, ergänzen lassen. Sie lassen sich per Tastendruck nach hinten drehen. Das Schiff besitzt zusätzlich eine höhere Feuerrate.
+
+
+- Die D-Phyton ist im Stande eine unzerstörbare Force einzusammeln, die sich vor oder hinter dem Schiff ankoppeln lässt und dort gegnerische Schüsse abwehrt. Sie lässt sich in drei Stufen upgraden und per Tastendruck abkoppeln. So lässt sie sich z.B. nach vorne abschießen, um sie in Feindformationen hineinzuschicken.
+
+
+
+
+
+.: Menu :.
+
+- Die Pfeiltasten hoch/runter führen durch das Menu. Die Enter-Taste dient zur Bestätigung
+- Die Bildschirmauflösung im Vollbild-Modus beträgt 800x600 und kann nicht geändert werden
+- Ein Joystick wird bei vorzeitiger Konfiguration im Betriebssystem selbstverständlich unterstützt
+- Die Steuerung kann komplett unter "Optionen" geändert werden.
+
+
+
+
+
+.: Extras, Items und Superwaffen :.
+
+
+- Beide Schiffe können eine zweite Zusatzwaffe einsammeln, die dann in Form einer Bombe oder einer Rakete für Ärger sorgt. 
+
+- Beide Schiffe können eine Supernova aktivieren. Es wird empfohlen, diese vernichtene Waffe nur im Notfall einzusetzen. Bei Aktivierung verliert man mit der D-Tonator ein Extra oder mit der D-Phyton seine "Force".
+
+
+- Der Beam ist eine aufladbare Waffe, die viel Schaden verursacht und Zusatzpunkte verteilt, wenn Gegnerketten mit einem Schuss zerstört werden. Allerdings ist man während des Aufladevorgangs nicht in der Lage zu schießen.
+
+- Der Force-Modus muss wie der Beam ebenfalls aufgeladen werden. Das Schiff heilt sich etwas und schießt doppelt so stark. Gleichzeitig gibt es für jeden abgeschossenen Gegner Zusatzpunkte.
+
+
+
+
+
+.: Levelstruktur :.
+
+Kämpfe dich durch eine Welt aus unterschiedlichen und abwechslungsreichen Szenarien. Durch 5-Ebenen Scrolling entsteht ein Eindruck von dreidimensionaler Tiefe. Insgesamt existieren ein Tutorial, 7 Level (bestehend aus je 2 Stages und einem Endboss) und eine geheime Bonus Stage.
+
+
+
+
+
+.: Multiplayer :.
+
+Im Team ist es möglich, an einem Rechner zu zweit vereint gegen den Gegner anzutreten. Die Levels sind härter, die Gegner schwieriger zu bezwingen und die Herausforderung umso größer. Beide Spieler teilen sich die maximale Anzahl der verfügbaren Leben. Teamarbeit ist gefragt!
+
+
+
+
+
+---------------------------------------------------------
+4) Support / FAQ
+
+- Generell hilft es, die neusten Treiber für das Betriebssystem und damit verbundene Hardware zu installieren. Damit lassen sich z.B. weitere Fehler hinsichtlich grafischer Darstellungen und Geschwinigkeitsprobleme lösen. 
+- Für einen flüssigen Spielverlauf sollten bei langsamen Rechnern möglichst alle Programme im Hintergrund geschlossen werden
+
+
+Frage: "Das Spiel startet nicht richtig. Ständig wird eine Fehlermeldung angezeigt"
+Antwort: Es wird eine kompatible Grafikkarte mit aktuellen Treibern und einer installierten DirectX Version vorausgesetzt. Ebenfalls kann es helfen, den 'Voodoo' Button beim Start-Up einzuschalten.
+
+
+Frage: "Bei den Zwischensequenzen verkleinert sich DOVEZ im Fullscreen und nur der Ton ist zu hören"
+Antwort: Dieser Fehler tritt mit DivX6 auf und ist ein Fehler des DivX-Codecs. Es gibt folgende Lösungsmöglichkeiten:
+a) Man spielt DoveZ im Fenster und maximiert jenes
+b) Man deinstalliert Divx6 und installiert den mitgelieferten XVid Treiber, welcher einen VOLLWERTIGEN Ersatz darstellt.
+c) Man installiert XVid und deaktivert DANACH im "Dienstprogramm zum Konfiguration des Decoders" (im Startmenü meist unter DivX zu finden) die Option "Unterstützt Decodierung allgemeiner MPEG-4-Videodateien"
+d) Man bettelt bei Divx.com nach einen Patch.
+
+
+Frage: "Die Zwischensequenzen werden nicht abgespielt"
+Antwort: Installiere die neusten Grafikkartentreiber, schalte den 32-bit Farbmodus für den Fullscreen Modus ein. Eventuell helfen die neusten xVid Treiber (www.xvid.org).
+
+
+---------------------------------------------------------
+5) Impressum
+
+Sämtliche Rechte entsprechend der vorliegenden Software, Grafik, Musik, Sound Effekte und Texte 
+sind vorbehalten und dürfen in keiner Form ohne schriftliche Genehmigung vervielfältigt, reproduziert oder verändert werden. 
+
+Markus Madeja's Intergenies distanzieren sich von etwaiigen Risiken oder Folgeschäden und übernimmt keinerlei Verantwortung für die Installation und Nutzung von DoveZ.
+
+
+© All rights reserved, 2004, 2005, 2006

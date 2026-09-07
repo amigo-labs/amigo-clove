@@ -1,0 +1,1 @@
+Dove.exe -nointro
