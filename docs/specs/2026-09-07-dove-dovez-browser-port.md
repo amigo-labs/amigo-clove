@@ -41,6 +41,7 @@ hält den Befund und den Bauplan fest.
 | Asset-Ablage | **Normale Git-Blobs** (kein LFS) |
 | Repo-Sichtbarkeit | **privat** |
 | Referenzaufnahmen | verfügbar — die Originale laufen bereits auf der Maschine |
+| Lint + Format | **oxc** — `oxlint` und `oxfmt` |
 
 ---
 
@@ -286,7 +287,8 @@ dort genau vier Funktionen: `LadeDaten` (Feldlayout), `SpielMoveEnemy`
 amigo-clove/
 ├─ package.json                  # Bun workspaces
 ├─ tsconfig.base.json            # strict, noUncheckedIndexedAccess
-├─ biome.json                    # Lint + Format
+├─ .oxlintrc.json                # Lint (oxlint)
+├─ .oxfmtrc.json                 # Format (oxfmt)
 ├─ original-dove/  original-dovez/     # unangetastet, read-only Referenz
 ├─ packages/
 │  ├─ core/       @clove/core      – mechanikfreie Bausteine, kein Pixi, kein DOM
@@ -311,7 +313,8 @@ Parser sind **im Browser lauffähig**, sodass ein Debug-Modus Originaldateien pe
 Drag & Drop laden kann. Das ist beim DoveZ-Reverse-Engineering Gold wert.
 
 **`core` getrennt von `pixi-kit`:** Die Simulation darf Pixi nie sehen. Diese
-Grenze wird per Lint-Regel erzwungen, nicht per Konvention.
+Grenze wird per Lint-Regel erzwungen, nicht per Konvention (oxlint
+`no-restricted-imports` als Override auf `sim/**`).
 
 ### Was geteilt wird — und was ausdrücklich nicht
 
@@ -551,7 +554,7 @@ Jeder hat genau ein überprüfbares Ergebnis.
 
 | # | Inhalt | Aufwand | Ergebnis |
 |---|---|---|---|
-| **M0** | Bun-Workspace, tsconfig strict, Biome, CI, gitattributes | 0,5–1 d | frischer Clone: `bun install && typecheck && test` grün |
+| **M0** | Bun-Workspace, tsconfig strict, oxlint + oxfmt, CI, gitattributes | 0,5–1 d | frischer Clone: `bun install && typecheck && lint && fmt:check && test` grün |
 | **M1** | `@clove/formats`: BMP-Decoder (1/4/8/16/24/32 bpp), `LevelDat` parse **und** serialize, Frame-Ableitung. Messung der Original-Tickrate | 2–3 d | Round-Trip byte-identisch über 12 Level; Kreuzvalidierung 145/145 grün; `TICK_MS` ist eine **gemessene** Zahl |
 | **M2** | Asset-Pipeline DOVE mit Manifest, Cache, `--check` | 2 d | ~11 MB Assets; zweiter Lauf schreibt null Bytes |
 | **M3** | ⭐ **Erstes spielbares Level.** Scope brutal geschnitten: keine Menüs, keine Musik, **eine** Waffe, kein Beam/Options/Bomben/Schild | 4–6 d | Level 1 läuft im Browser durch; aufgezeichnetes Replay reproduziert bit-identisch |
