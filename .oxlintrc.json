@@ -1,0 +1,40 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc", "import"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error"
+  },
+  "rules": {
+    "no-console": "off",
+    "typescript/no-explicit-any": "error",
+    "typescript/consistent-type-imports": "error",
+    "import/no-cycle": "error"
+  },
+  "ignorePatterns": ["original-dove/**", "original-dovez/**", "tools/**"],
+  "overrides": [
+    {
+      "files": ["packages/*/src/sim/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "pixi.js",
+                  "pixi.js/*",
+                  "@pixi/*",
+                  "@clove/pixi-kit",
+                  "@clove/pixi-kit/*"
+                ],
+                "message": "Die Simulation darf Pixi nie sehen (Determinismus-Grenze)."
+              }
+            ]
+          }
+        ],
+        "no-restricted-globals": ["error", "window", "document", "performance"]
+      }
+    }
+  ]
+}
