@@ -1,8 +1,10 @@
 # DOVE + DoveZ — All-in-One Browser-Port
 
-> Design-Spec. Stand: 2026-09-07. Status: **beschlossen, nicht begonnen.**
-> Die Formatanalyse beider Originalspiele ist abgeschlossen und in diesem
-> Dokument festgehalten; die Implementierung beginnt mit Meilenstein M0.
+> Design-Spec. Stand: 2026-09-07, fortgeschrieben 2026-09-22.
+> Status: **M0 und M1 umgesetzt.** Die Umsetzung von M1 hat einige Formatannahmen
+> dieses Dokuments korrigiert; maßgeblich ist jetzt
+> [`docs/formats/dove-level-dat.md`](../formats/dove-level-dat.md). Korrigierte
+> Stellen sind hier mit *(M1)* markiert.
 
 ## Context
 
@@ -41,6 +43,7 @@ hält den Befund und den Bauplan fest.
 | Asset-Ablage | **Normale Git-Blobs** (kein LFS) |
 | Repo-Sichtbarkeit | **privat** |
 | Referenzaufnahmen | verfügbar — die Originale laufen bereits auf der Maschine |
+| Lint + Format | **oxc** — `oxlint` und `oxfmt` |
 
 ---
 
@@ -50,9 +53,9 @@ Alle Formate sind offen — es ist **kein Cracking nötig**.
 
 | Asset | Tatsächliches Format | Port-Aufwand |
 |---|---|---|
-| `Data/Grafik/*.spr` (61, 29,8 MB) | **Unkomprimiertes Windows-BMP**, 24/8/4/1 bpp. Das Spiel konvertiert beim ersten Start ausgelieferte JPG/GIF nach BMP und benennt sie `.spr` | trivial → WebP |
-| `Data/Level0-11.dat` | **Reiner CRLF-ASCII** (VB6 `Print #`), CP1252 | trivial → JSON |
-| `Data/intro.dat` | reiner ASCII, gleiches Schema | trivial |
+| `Data/Grafik/*.spr` (60 + `METROID.dat`, 29,8 MB) | **Unkomprimiertes Windows-BMP**, 24/8/4/1 bpp. Das Spiel konvertiert beim ersten Start ausgelieferte JPG/GIF nach BMP und benennt sie `.spr` | trivial → WebP |
+| `Data/Level0-11.dat` | **Reiner CRLF-ASCII** (VB6 `Write #`), CP1252. *(M1)* Von Git beim ersten Commit auf LF normalisiert, per `scripts/originals-crlf.ts` auf CRLF zurückgeführt | trivial → JSON |
+| `Data/intro.dat` | reiner ASCII, *(M1)* **eigenes** Schema (Kopf + Rect-Records) | trivial |
 | `Data/Musik/*.xm` (19) + `s4.IT` | FastTracker II / Impulse Tracker, 3,8 MB | `libopenmpt.js` |
 | `Data/Sound/*.wav` (209 KB) | 14× **MS-ADPCM**, 6× PCM 8 bit | → PCM16 (~0,8 MB) |
 | `Data/1-5.dat` | 2880er-Zufallspermutation, **zur Laufzeit erzeugt** | nicht portieren, neu generieren |
@@ -67,10 +70,11 @@ Sektion 2: Hintergrund-Objekte   gleiches Schema
 Sektion 3: Gegner-Definitionen   siehe unten
 "*"
 Sektion 4: Bewegungs-Pattern     "Name", 2 VB-Booleans, 2 Ints,
-                                 Wegpunkte (x,y), Terminator "-1 0"
+                                 Wegpunkte (x,y), Terminator "-1 <end>"
+                                 (M1: end meist 0, in 5 Patterns nicht)
 "*"
 32000                            Levellänge in Ticks (in allen 12 Leveln identisch)
-<32000 Event-Zeilen>             eine pro Tick, überwiegend leer
+<32001 Event-Zeilen>             eine pro Tick (VB6 0 To 32000), überwiegend leer
 "backgroundN"                    Hintergrundbild
 ```
 
@@ -96,6 +100,10 @@ Weitere verifizierte Details:
   berechneten Nicht-Schwarz-Spannen stimmen in Zeile 0–30 **exakt** mit den im
   Level gespeicherten `(left,right)`-Paaren überein. Das bestätigt in einem Zug
   Colorkey, BMP-Bottom-up-Flip, Rect-Interpretation und Kanten-Inklusivität.
+  *(M1)* Über **alle** Frames gilt das nicht exakt: Nur 68,8 % der 19959
+  Konturzeilen stimmen pixelgenau, die übrigen sind breiter (meist 1 px) —
+  aber **nie** schmaler. Die gespeicherte Kontur ist ausnahmslos eine Obermenge
+  der Pixelspanne; darauf prüft jetzt die Kreuzvalidierung.
 - **Leere Konturzeilen** sind mit `left > right` kodiert (z. B. `63 49` bei
   Breite 64), nicht mit `-1`. Der Sentinel fällt aus jedem Span-Vergleich
   automatisch heraus — kein Sonderfall nötig.
@@ -113,9 +121,12 @@ Event-Tokens pro Tick:
 | `;0 <tile> <y>!` | Landschafts-Tile platzieren (Wand) |
 | `;1 <gegner> <pattern>!` | aktuellen Gegnertyp + Bewegungspattern **setzen** |
 | `;2 <art> <y>!` | Extra spawnen, `art` ∈ {−2,−1,0,1,2,3} ≙ Schild, Bombe, Option, Rot, Grün, Blau |
-| `;3 0 0!` | einmal pro Level — vermutlich Scroll-Start/Checkpoint |
+| `;3 0 0!` | *(M1)* 0–8× pro Level (40 gesamt) — vermutlich Checkpoint |
 | `;4 <obj> <y>!` | Hintergrundobjekt spawnen |
 | `<y>§` | Gegner-Spawn auf Y-Position (`§` = Byte `0xA7`) |
+
+*(M1)* Tile-, Gegner- und Objektreferenzen sind **1-basiert**; Pattern `0` und
+`−1…−7` sind eingebaute Bewegungsarten, `1…n` verweisen auf Sektion 4.
 
 Wichtige Semantik: `;1` **spawnt nicht**, es selektiert nur Typ und Pattern;
 erst `<y>§` erzeugt eine Instanz. `curEnemy`/`curPattern` sind damit Weltzustand
@@ -286,7 +297,8 @@ dort genau vier Funktionen: `LadeDaten` (Feldlayout), `SpielMoveEnemy`
 amigo-clove/
 ├─ package.json                  # Bun workspaces
 ├─ tsconfig.base.json            # strict, noUncheckedIndexedAccess
-├─ biome.json                    # Lint + Format
+├─ .oxlintrc.json                # Lint (oxlint)
+├─ .oxfmtrc.json                 # Format (oxfmt)
 ├─ original-dove/  original-dovez/     # unangetastet, read-only Referenz
 ├─ packages/
 │  ├─ core/       @clove/core      – mechanikfreie Bausteine, kein Pixi, kein DOM
@@ -311,7 +323,8 @@ Parser sind **im Browser lauffähig**, sodass ein Debug-Modus Originaldateien pe
 Drag & Drop laden kann. Das ist beim DoveZ-Reverse-Engineering Gold wert.
 
 **`core` getrennt von `pixi-kit`:** Die Simulation darf Pixi nie sehen. Diese
-Grenze wird per Lint-Regel erzwungen, nicht per Konvention.
+Grenze wird per Lint-Regel erzwungen, nicht per Konvention (oxlint
+`no-restricted-imports` als Override auf `sim/**`).
 
 ### Was geteilt wird — und was ausdrücklich nicht
 
@@ -394,11 +407,12 @@ MaxRects, `ffmpeg` als externes Binary (nicht ffmpeg.wasm — viel zu langsam be
 pausiert statt vorzuspulen, Render-Interpolation standardmäßig **aus**
 (Pixel-Exaktheit vor Glätte).
 
-**Offene Größe: die Original-Tickrate.** 32000 Ticks bei 60 Hz wären 8,9 Minuten
-pro Level — für einen Shmup unplausibel; bei 100 Hz sind es 5,3. Das ist eine
-**Messaufgabe**, keine Annahme: Original starten, Level 1 stoppen, `32000/t`
-rechnen, gegen das VB6-Timer-Intervall in der EXE gegenprüfen. Bis dahin ist
-`TICK_MS` eine einzelne Konstante.
+**Original-Tickrate** *(M1)*: **`TICK_MS = 14`** (≈ 71,4 Hz), statisch aus der
+Hauptschleife von `DOVE.exe` bestimmt — `nextT = timeGetTime + 14`, ein
+Level-Tick (`Me.F4 += 1`) pro Schleifendurchlauf. Auf Rechnern mit grobem
+Systemtimer lief das Original effektiv mit 15,6 ms. Herleitung mit Adressen:
+[`docs/measurements/tick-rate.md`](../measurements/tick-rate.md). `TICK_MS`
+bleibt eine einzelne Konstante.
 
 **Event-Stream** nicht als `Map` mit Lookup pro Tick, sondern zur Ladezeit in
 vier flache Arrays entpackt (`eventTicks`, `eventKind`, `eventA`, `eventB`) mit
@@ -513,6 +527,9 @@ Für jeden Gegner in jedem Level die `(left,right)`-Spannen aus dem *konvertiert
 Sprite* neu berechnen und gegen die im Level *gespeicherte* Kontur vergleichen.
 Ein einziger Test prüft damit gleichzeitig BMP-Decoder, Bottom-up-Flip,
 **Colorkey-Wahl**, Rect-Interpretation, Frame-Stride und WebP-Konvertierung.
+*(M1)* Weil die DOVE-Konturen nicht pixelgenau sind (siehe oben), ist die harte
+Bedingung „gespeichert ⊇ Pixel“ in allen 19959 Zeilen; der Exakt-Anteil
+(68,8 %) läuft als Metrik mit Untergrenze mit.
 145 Records × ~50 Zeilen ≈ 7000 Assertions in Sekunden. Für DoveZ dasselbe mit
 den 2587 `.r`-Dateien gegen 3232 Sprites. **Das ersetzt den Großteil des Bedarfs
 an Referenz-Screenshots.** Blockierend in CI.
@@ -551,8 +568,8 @@ Jeder hat genau ein überprüfbares Ergebnis.
 
 | # | Inhalt | Aufwand | Ergebnis |
 |---|---|---|---|
-| **M0** | Bun-Workspace, tsconfig strict, Biome, CI, gitattributes | 0,5–1 d | frischer Clone: `bun install && typecheck && test` grün |
-| **M1** | `@clove/formats`: BMP-Decoder (1/4/8/16/24/32 bpp), `LevelDat` parse **und** serialize, Frame-Ableitung. Messung der Original-Tickrate | 2–3 d | Round-Trip byte-identisch über 12 Level; Kreuzvalidierung 145/145 grün; `TICK_MS` ist eine **gemessene** Zahl |
+| **M0** | Bun-Workspace, tsconfig strict, oxlint + oxfmt, CI, gitattributes | 0,5–1 d | frischer Clone: `bun install && typecheck && lint && fmt:check && test` grün — *Stand: erledigt* |
+| **M1** | `@clove/formats`: BMP-Decoder (1/4/8/16/24/32 bpp), `LevelDat` parse **und** serialize, Frame-Ableitung. Messung der Original-Tickrate | 2–3 d | Round-Trip byte-identisch über 12 Level; Kreuzvalidierung 145/145 grün; `TICK_MS` ist eine **gemessene** Zahl — *Stand: erledigt; `TICK_MS = 14` statt gemessen aus der EXE hergeleitet, siehe `docs/measurements/tick-rate.md`* |
 | **M2** | Asset-Pipeline DOVE mit Manifest, Cache, `--check` | 2 d | ~11 MB Assets; zweiter Lauf schreibt null Bytes |
 | **M3** | ⭐ **Erstes spielbares Level.** Scope brutal geschnitten: keine Menüs, keine Musik, **eine** Waffe, kein Beam/Options/Bomben/Schild | 4–6 d | Level 1 läuft im Browser durch; aufgezeichnetes Replay reproduziert bit-identisch |
 | **M4** | DOVE feature-complete: alle Waffen + Stufen, Beam, Options, Bomben, Schild, alle 12 Level, Vorhang, Highscore, Audio, die drei Optionen, Easteregg | 1,5–2 w | von Anfang bis Ende durchspielbar; Playtest-Checkliste abgehakt |
@@ -619,12 +636,15 @@ eines Sprites werden transparent; bei palettierten Bildern keyt DirectDraw auf
 den Index; DoveZ hat 16 bpp und 32 bpp mit Müll-Alphabyte. Gegenmaßnahme ist die
 Kreuzvalidierung aus Punkt 2 der Verifikation — ein **automatisches,
 erschöpfendes Orakel** über 145 + 2587 Records. Wäre der Colorkey falsch, würden
-die Konturen nicht passen; sie passen nachweislich. `atlantis_saule2` ist ein
+die Konturen nicht passen; sie passen nachweislich (für DOVE als Obermenge,
+siehe *(M1)* oben). Palettierte DOVE-Grafiken mit auseinanderfallendem Index-
+und RGB-Keying: `Explosion.spr` (Schwarz auf Index 255) und `background5.spr`
+(kein Schwarz) — beide unkritisch bei RGB-Keying, im Test festgeschrieben. `atlantis_saule2` ist ein
 **harter Buildfehler** mit Pflicht-Override — stilles Skalieren wäre der
 klassische Fehler, der ein Sprite subtil kaputtmacht und erst im Playtest auffällt.
 
-**Kleinere Punkte:** unbekannte Original-Tickrate (als Messaufgabe in M1
-verankert, nicht als Annahme im Code versteckt); VB6-Rundungssemantik
+**Kleinere Punkte:** Original-Tickrate *(M1: aus der EXE bestimmt, 14 ms;
+Gegenprobe am Original optional)*; VB6-Rundungssemantik
 (`\`-Ganzzahldivision, `CInt` rundet banker's-style) als Kandidat notieren, falls
 Bewegungspfade sichtbar driften; Speicherquote bei ~130 MB DoveZ.
 
