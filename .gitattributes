@@ -1,0 +1,9 @@
+# Originalinstallationen sind read-only Referenz: nie Zeilenenden konvertieren,
+# nie diffen. Der Round-Trip-Test hängt an jedem einzelnen Byte.
+original-dove/** -text -diff
+original-dovez/** -text -diff
+
+*.ts text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
