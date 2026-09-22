@@ -1,8 +1,7 @@
 # DOVE + DoveZ — All-in-One Browser-Port
 
 > Design-Spec. Stand: 2026-09-07, fortgeschrieben 2026-09-22.
-> Status: **M0 und M1 umgesetzt** (bis auf die Tickrate-Messung, die das
-> laufende Original braucht). Die Umsetzung von M1 hat einige Formatannahmen
+> Status: **M0 und M1 umgesetzt.** Die Umsetzung von M1 hat einige Formatannahmen
 > dieses Dokuments korrigiert; maßgeblich ist jetzt
 > [`docs/formats/dove-level-dat.md`](../formats/dove-level-dat.md). Korrigierte
 > Stellen sind hier mit *(M1)* markiert.
@@ -408,11 +407,12 @@ MaxRects, `ffmpeg` als externes Binary (nicht ffmpeg.wasm — viel zu langsam be
 pausiert statt vorzuspulen, Render-Interpolation standardmäßig **aus**
 (Pixel-Exaktheit vor Glätte).
 
-**Offene Größe: die Original-Tickrate.** 32000 Ticks bei 60 Hz wären 8,9 Minuten
-pro Level — für einen Shmup unplausibel; bei 100 Hz sind es 5,3. Das ist eine
-**Messaufgabe**, keine Annahme: Original starten, Level 1 stoppen, `32000/t`
-rechnen, gegen das VB6-Timer-Intervall in der EXE gegenprüfen. Bis dahin ist
-`TICK_MS` eine einzelne Konstante.
+**Original-Tickrate** *(M1)*: **`TICK_MS = 14`** (≈ 71,4 Hz), statisch aus der
+Hauptschleife von `DOVE.exe` bestimmt — `nextT = timeGetTime + 14`, ein
+Level-Tick (`Me.F4 += 1`) pro Schleifendurchlauf. Auf Rechnern mit grobem
+Systemtimer lief das Original effektiv mit 15,6 ms. Herleitung mit Adressen:
+[`docs/measurements/tick-rate.md`](../measurements/tick-rate.md). `TICK_MS`
+bleibt eine einzelne Konstante.
 
 **Event-Stream** nicht als `Map` mit Lookup pro Tick, sondern zur Ladezeit in
 vier flache Arrays entpackt (`eventTicks`, `eventKind`, `eventA`, `eventB`) mit
@@ -569,7 +569,7 @@ Jeder hat genau ein überprüfbares Ergebnis.
 | # | Inhalt | Aufwand | Ergebnis |
 |---|---|---|---|
 | **M0** | Bun-Workspace, tsconfig strict, oxlint + oxfmt, CI, gitattributes | 0,5–1 d | frischer Clone: `bun install && typecheck && lint && fmt:check && test` grün — *Stand: erledigt* |
-| **M1** | `@clove/formats`: BMP-Decoder (1/4/8/16/24/32 bpp), `LevelDat` parse **und** serialize, Frame-Ableitung. Messung der Original-Tickrate | 2–3 d | Round-Trip byte-identisch über 12 Level; Kreuzvalidierung 145/145 grün; `TICK_MS` ist eine **gemessene** Zahl — *Stand: erledigt bis auf `TICK_MS`, siehe `docs/measurements/tick-rate.md`* |
+| **M1** | `@clove/formats`: BMP-Decoder (1/4/8/16/24/32 bpp), `LevelDat` parse **und** serialize, Frame-Ableitung. Messung der Original-Tickrate | 2–3 d | Round-Trip byte-identisch über 12 Level; Kreuzvalidierung 145/145 grün; `TICK_MS` ist eine **gemessene** Zahl — *Stand: erledigt; `TICK_MS = 14` statt gemessen aus der EXE hergeleitet, siehe `docs/measurements/tick-rate.md`* |
 | **M2** | Asset-Pipeline DOVE mit Manifest, Cache, `--check` | 2 d | ~11 MB Assets; zweiter Lauf schreibt null Bytes |
 | **M3** | ⭐ **Erstes spielbares Level.** Scope brutal geschnitten: keine Menüs, keine Musik, **eine** Waffe, kein Beam/Options/Bomben/Schild | 4–6 d | Level 1 läuft im Browser durch; aufgezeichnetes Replay reproduziert bit-identisch |
 | **M4** | DOVE feature-complete: alle Waffen + Stufen, Beam, Options, Bomben, Schild, alle 12 Level, Vorhang, Highscore, Audio, die drei Optionen, Easteregg | 1,5–2 w | von Anfang bis Ende durchspielbar; Playtest-Checkliste abgehakt |
@@ -643,8 +643,8 @@ und RGB-Keying: `Explosion.spr` (Schwarz auf Index 255) und `background5.spr`
 **harter Buildfehler** mit Pflicht-Override — stilles Skalieren wäre der
 klassische Fehler, der ein Sprite subtil kaputtmacht und erst im Playtest auffällt.
 
-**Kleinere Punkte:** unbekannte Original-Tickrate (als Messaufgabe in M1
-verankert, nicht als Annahme im Code versteckt); VB6-Rundungssemantik
+**Kleinere Punkte:** Original-Tickrate *(M1: aus der EXE bestimmt, 14 ms;
+Gegenprobe am Original optional)*; VB6-Rundungssemantik
 (`\`-Ganzzahldivision, `CInt` rundet banker's-style) als Kandidat notieren, falls
 Bewegungspfade sichtbar driften; Speicherquote bei ~130 MB DoveZ.
 
