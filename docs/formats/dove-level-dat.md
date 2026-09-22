@@ -9,11 +9,12 @@ Serializer). Alle Aussagen hier sind durch Tests in `packages/formats/test/`
 - Text, eine Angabe pro Zeile, CP1252. Geschrieben mit VB6 `Write #`:
   Strings in `"…"` ohne Escaping, Ganzzahlen ohne Leerzeichen,
   Booleans als `#TRUE#` / `#FALSE#`.
-- Zeilenende: Die Originalinstallation verwendet CRLF. **Die Kopie im Repo hat
-  LF**, weil Git die Dateien beim ersten Commit normalisiert hat (seit M0
-  verhindert `.gitattributes` weitere Konvertierung). Der Parser erkennt das
-  Zeilenende und der Serializer schreibt dasselbe zurück; beide Varianten sind
-  getestet.
+- Zeilenende: CRLF. Git hatte die Dateien beim ersten Commit auf LF
+  normalisiert; `scripts/originals-crlf.ts` hat das zurückgedreht (zunächst als
+  Rekonstruktion LF → CRLF, mit `verify` gegen eine echte Installation prüfbar).
+  `.gitattributes` verhindert seit M0 jede weitere Konvertierung. Der Parser
+  erkennt das Zeilenende und der Serializer schreibt dasselbe zurück; LF ist
+  zusätzlich synthetisch getestet.
 
 ## Aufbau
 

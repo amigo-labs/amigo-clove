@@ -47,6 +47,10 @@ describe("LevelDat — Struktur", () => {
     }
   });
 
+  test("alle Level haben CRLF-Zeilenenden wie die Originalinstallation", () => {
+    for (const l of all) expect(l.eol).toBe("\r\n");
+  });
+
   test("Levellänge 32000 und 32001 Event-Zeilen, die letzte leer", () => {
     for (const l of all) {
       expect(l.length).toBe(32000);

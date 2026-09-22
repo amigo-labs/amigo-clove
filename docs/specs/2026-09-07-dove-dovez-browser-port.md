@@ -55,7 +55,7 @@ Alle Formate sind offen — es ist **kein Cracking nötig**.
 | Asset | Tatsächliches Format | Port-Aufwand |
 |---|---|---|
 | `Data/Grafik/*.spr` (60 + `METROID.dat`, 29,8 MB) | **Unkomprimiertes Windows-BMP**, 24/8/4/1 bpp. Das Spiel konvertiert beim ersten Start ausgelieferte JPG/GIF nach BMP und benennt sie `.spr` | trivial → WebP |
-| `Data/Level0-11.dat` | **Reiner CRLF-ASCII** (VB6 `Write #`), CP1252. *(M1)* Im Repo durch Git auf LF normalisiert | trivial → JSON |
+| `Data/Level0-11.dat` | **Reiner CRLF-ASCII** (VB6 `Write #`), CP1252. *(M1)* Von Git beim ersten Commit auf LF normalisiert, per `scripts/originals-crlf.ts` auf CRLF zurückgeführt | trivial → JSON |
 | `Data/intro.dat` | reiner ASCII, *(M1)* **eigenes** Schema (Kopf + Rect-Records) | trivial |
 | `Data/Musik/*.xm` (19) + `s4.IT` | FastTracker II / Impulse Tracker, 3,8 MB | `libopenmpt.js` |
 | `Data/Sound/*.wav` (209 KB) | 14× **MS-ADPCM**, 6× PCM 8 bit | → PCM16 (~0,8 MB) |
