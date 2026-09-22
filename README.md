@@ -40,6 +40,15 @@ bun run test         # bun test
 | `docs/`           | Spezifikationen und Formatdokumentation      |
 
 Die Originalverzeichnisse sind **read-only Referenz** und werden nie verändert.
+`.gitattributes` schließt sie von jeder Zeilenenden-Konvertierung aus. Beim
+ersten Commit hatte Git 20 Textdateien bereits auf LF normalisiert; sie sind
+per `scripts/originals-crlf.ts reconstruct` auf CRLF zurückgeführt. Gegen eine
+echte Installation prüfen bzw. übernehmen:
+
+```sh
+bun scripts/originals-crlf.ts verify  <DOVE-Ordner> <DoveZ-Ordner>
+bun scripts/originals-crlf.ts restore <DOVE-Ordner> <DoveZ-Ordner>
+```
 
 ## Rechtliches
 
