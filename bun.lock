@@ -42,6 +42,7 @@
       "name": "@clove/game-dove",
       "version": "0.0.0",
       "dependencies": {
+        "@clove/audio": "workspace:*",
         "@clove/core": "workspace:*",
         "@clove/formats": "workspace:*",
         "@clove/pixi-kit": "workspace:*",

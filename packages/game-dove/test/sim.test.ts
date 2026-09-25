@@ -1,55 +1,17 @@
 import { describe, expect, test } from "bun:test";
 import { fxFromInt } from "@clove/core";
-import { SPAWN_KIND, type LevelAsset } from "@clove/formats";
+import { SPAWN_KIND } from "@clove/formats";
 import {
-  DEFAULT_OPTIONS,
   Input,
   SHIP_MAX_Y,
   VbRnd,
-  World,
+  type World,
   contourHit,
   divRoundHalfEven,
-  prepareLevel,
   roundHalfEven,
-  startLevel,
   step,
 } from "../src/sim";
-import { newWorld } from "./helpers";
-
-/** Minimales Level: ein Gegnertyp (20×10, 1 Frame, Tempo 2), ein Tile, frei wählbare Events. */
-function tinyLevel(events: [tick: number, kind: number, a: number, b: number][]): World {
-  const h = 10;
-  const asset: LevelAsset = {
-    version: 2,
-    background: "background2",
-    length: 100,
-    tiles: [{ name: "T", rect: [0, 0, 30, 20] }],
-    backgroundObjects: [],
-    enemies: [
-      {
-        name: "E",
-        rect: [0, 0, 20, h],
-        params: [0, 0, 20, 0, 2],
-        frameHeaders: [[0, h]],
-        contour: 0,
-      },
-    ],
-    patterns: [
-      { name: "P", flags: [false, false], values: [0, 2], waypoints: [[300, 50]], end: 0 },
-    ],
-    events: {
-      tick: events.map((e) => e[0]),
-      kind: events.map((e) => e[1]),
-      a: events.map((e) => e[2]),
-      b: events.map((e) => e[3]),
-    },
-    sidecar: { contourBytes: (h + 1) * 4 },
-    contours: Int16Array.from({ length: (h + 1) * 2 }, (_, i) => (i % 2 === 0 ? 0 : 19)),
-  };
-  const w = new World(prepareLevel(2, asset), DEFAULT_OPTIONS, 1);
-  startLevel(w);
-  return w;
-}
+import { newWorld, tinyLevel } from "./helpers";
 
 const activeEnemies = (w: World) => [...w.enemies.active.keys()].filter((i) => w.enemies.active[i]);
 

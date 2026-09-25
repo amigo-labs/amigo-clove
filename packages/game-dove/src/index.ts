@@ -8,6 +8,7 @@ import {
   type Replay,
 } from "@clove/core";
 import { TextureRegistry, createScreen } from "@clove/pixi-kit";
+import { DoveAudio } from "./audio/DoveAudio";
 import { loadLevel } from "./data/loadLevel";
 import { readInput } from "./input";
 import { Renderer } from "./render/Renderer";
@@ -47,7 +48,8 @@ function parseOptions(o: Readonly<Record<string, string>>): {
  * DOVE als `GameModule`. Stand M3: ein Level spielbar — Scrolling, Schiff,
  * Basisschuss, Gegner mit Pattern und Konturkollision, Explosionen, Punkte, HUD.
  * Steuerung wie im Original; `Esc` pausiert. URL-Optionen: `level`, `seed`,
- * `shots` (0/1/2), `walls=1`, Debug: `invincible=1`, `from=<Tick>`.
+ * `shots` (0/1/2), `walls=1`, Debug: `invincible=1`, `from=<Tick>`, Ausrüstung
+ * `colour`, `stage`, `options`, `bomb=1`, `shield=1`.
  */
 const dove: GameModule = {
   id: "dove",
@@ -62,6 +64,12 @@ const dove: GameModule = {
     const textures = new TextureRegistry(host.assets);
     const world = new World(await loadLevel(host.assets, cfg.level), cfg.sim, cfg.seed);
     startLevel(world);
+    // Debug: Ausrüstung vorgeben (colour=1…3, stage=0…2, options=0…2, bomb=1, shield=1)
+    if (options["colour"]) world.colour = Number(options["colour"]);
+    if (options["stage"]) world.stage = Number(options["stage"]);
+    if (options["options"]) world.optionCount = Number(options["options"]);
+    if (options["bomb"] === "1") world.bomb = 1;
+    if (options["shield"] === "1") world.shield = 500;
     if (cfg.from > 0) {
       // Debug: Start ab Tick `from` wie von einem Checkpoint (mit Landschafts-Vorlauf).
       world.checkpoint = cfg.from;
@@ -70,6 +78,13 @@ const dove: GameModule = {
     await textures.load(Renderer.imageIds(world));
     const renderer = new Renderer(textures, world);
     app.stage.addChild(renderer.root);
+    const audio = host.audio
+      ? await DoveAudio.create(host.audio, host.assets).catch((e: unknown) => {
+          console.warn("Audio nicht verfügbar:", e);
+          return undefined;
+        })
+      : undefined;
+    void audio?.playMusic(DoveAudio.levelMusic(cfg.level, cfg.seed));
 
     const loop = new FixedStepLoop(TICK_MS);
     const inputs: number[] = [];
@@ -81,6 +96,7 @@ const dove: GameModule = {
       const esc = host.keys.isDown("Escape");
       if (esc && !escHeld) {
         paused = !paused;
+        audio?.pause(paused);
         loop.reset(host.now());
       }
       escHeld = esc;
@@ -91,6 +107,7 @@ const dove: GameModule = {
         inputs.push(input);
         if (inputs.length % HASH_INTERVAL === 0) hashes.push(world.hash());
       }
+      audio?.update(world);
       renderer.render(paused ? "PAUSE" : world.finished ? "LEVEL GESCHAFFT!" : undefined);
     };
     app.ticker.add(frame);
@@ -108,6 +125,7 @@ const dove: GameModule = {
       }),
       dispose() {
         app.ticker.remove(frame);
+        audio?.dispose();
         renderer.destroy();
         app.destroy({ removeView: false }, { children: true });
         textures.destroy();

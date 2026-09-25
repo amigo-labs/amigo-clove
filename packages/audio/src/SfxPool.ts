@@ -1,13 +1,15 @@
 /**
  * Soundeffekte aus vorab dekodierten `AudioBuffer`n, nie `<audio>`.
  *
- * Stimmenbegrenzung (Standard 8, die älteste wird verdrängt) und eine Sperrzeit
- * pro Sound verhindern Salven — etwa wenn nach einem Catch-up mehrere Ticks
- * denselben Effekt auslösen. Die Deduplikation pro Frame macht der Aufrufer
- * (`play` einmal je Frame und Sound genügt, siehe Spec R4).
+ * Stimmenbegrenzung — 3 je Sound wie BASS im Original, 8 insgesamt, jeweils
+ * weicht die älteste — und eine optionale Sperrzeit verhindern Salven, etwa
+ * wenn nach einem Catch-up mehrere Ticks denselben Effekt auslösen. Die
+ * Deduplikation pro Frame macht der Aufrufer (Spec R4).
  */
 export interface SfxOptions {
   readonly maxVoices?: number;
+  /** Höchstens so viele gleichzeitige Stimmen je Sound (BASS: `max = 3`, älteste weicht). */
+  readonly maxPerSound?: number;
   /** Mindestabstand zwischen zwei Starts desselben Sounds in Sekunden. */
   readonly cooldown?: number;
 }
@@ -24,6 +26,7 @@ export class SfxPool {
   private voices: Voice[] = [];
   private readonly maxVoices: number;
   private readonly cooldown: number;
+  private readonly maxPerSound: number;
 
   constructor(
     private readonly context: BaseAudioContext,
@@ -31,7 +34,8 @@ export class SfxPool {
     options: SfxOptions = {},
   ) {
     this.maxVoices = options.maxVoices ?? 8;
-    this.cooldown = options.cooldown ?? 0.03;
+    this.cooldown = options.cooldown ?? 0;
+    this.maxPerSound = options.maxPerSound ?? 3;
   }
 
   async load(id: string, bytes: Uint8Array): Promise<void> {
@@ -45,8 +49,11 @@ export class SfxPool {
     return this.buffers.has(id);
   }
 
-  /** Spielt `id` ab; `pan` −1…1, `volume` 0…1. Liefert `false`, wenn unterdrückt. */
-  play(id: string, pan = 0, volume = 1): boolean {
+  /**
+   * Spielt `id` ab; `pan` −1…1, `volume` 0…1, `rate` Abspieltempo (Tonhöhe).
+   * Liefert `false`, wenn unterdrückt.
+   */
+  play(id: string, pan = 0, volume = 1, rate = 1): boolean {
     const buffer = this.buffers.get(id);
     if (!buffer || buffer.length === 0) return false;
     const now = this.context.currentTime;
@@ -55,6 +62,11 @@ export class SfxPool {
     this.lastStart.set(id, now);
 
     this.voices = this.voices.filter((v) => v.started + (v.source.buffer?.duration ?? 0) > now);
+    const same = this.voices.filter((v) => v.id === id);
+    if (same.length >= this.maxPerSound) {
+      same[0]!.source.stop();
+      this.voices.splice(this.voices.indexOf(same[0]!), 1);
+    }
     if (this.voices.length >= this.maxVoices) {
       const oldest = this.voices.shift();
       oldest?.source.stop();
@@ -62,6 +74,7 @@ export class SfxPool {
 
     const source = this.context.createBufferSource();
     source.buffer = buffer;
+    source.playbackRate.value = rate;
     const gain = this.context.createGain();
     gain.gain.value = volume;
     const panner = this.context.createStereoPanner();
@@ -70,6 +83,24 @@ export class SfxPool {
     source.start();
     this.voices.push({ id, source, started: now });
     return true;
+  }
+
+  /** Endlosschleife (z. B. der blaue Laser); liefert die Stopp-Funktion. */
+  loop(id: string, volume = 1, rate = 1): () => void {
+    const buffer = this.buffers.get(id);
+    if (!buffer || buffer.length === 0) return () => {};
+    const source = this.context.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+    source.playbackRate.value = rate;
+    const gain = this.context.createGain();
+    gain.gain.value = volume;
+    source.connect(gain).connect(this.output);
+    source.start();
+    return () => {
+      source.stop();
+      gain.disconnect();
+    };
   }
 
   stopAll(): void {
