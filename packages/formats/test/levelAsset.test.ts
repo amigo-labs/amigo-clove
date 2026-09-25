@@ -1,23 +1,20 @@
 import { describe, expect, test } from "bun:test";
+import { join } from "node:path";
 import {
+  ContourDatError,
   EventOp,
   LevelAssetError,
   SPAWN_KIND,
   buildLevelAsset,
-  decodeBmp,
-  isKeyed,
+  parseContourDat,
   parseLevelDat,
   readLevelAsset,
-  tileMaskBit,
-  type BmpImage,
   type LevelAssetJson,
 } from "../src/index";
-import { DOVE_LEVELS, doveLevelPath, doveSpritePath, readBytes } from "./fixtures";
+import { DOVE_DATA, DOVE_LEVELS, doveLevelPath, readBytes } from "./fixtures";
 
 async function load(n: number) {
-  const level = parseLevelDat(await readBytes(doveLevelPath(n)));
-  const terrain = decodeBmp(await readBytes(doveSpritePath(`landschaft${n}`)));
-  return { level, terrain };
+  return parseLevelDat(await readBytes(doveLevelPath(n)));
 }
 
 /** JSON-Round-Trip wie in der Pipeline: das Asset muss serialisierbar sein. */
@@ -27,12 +24,13 @@ function viaJson(json: LevelAssetJson): LevelAssetJson {
 
 describe.each(DOVE_LEVELS)("Level%i → Asset", (n) => {
   test("Events, Gegner, Konturen und Pattern bleiben erhalten", async () => {
-    const { level, terrain } = await load(n);
-    const { json, bin } = buildLevelAsset(level, terrain);
+    const level = await load(n);
+    const { json, bin } = buildLevelAsset(level);
     const asset = readLevelAsset(viaJson(json), bin);
 
     expect(asset.length).toBe(level.length);
     expect(asset.background).toBe(level.background);
+    expect(asset.tiles.length).toBe(level.tiles.length);
     expect(asset.patterns.length).toBe(level.patterns.length);
     expect(asset.backgroundObjects.length).toBe(level.backgroundObjects.length);
 
@@ -45,64 +43,49 @@ describe.each(DOVE_LEVELS)("Level%i → Asset", (n) => {
     });
     const { tick, kind, a, b } = asset.events;
     expect(tick.map((t, i) => [t, kind[i], a[i], b[i]])).toEqual(expected);
-    expect(tick.every((t, i) => i === 0 || (tick[i - 1] as number) <= t)).toBe(true);
 
-    // Konturen: je Frame genau h Zeilen, ohne die Off-by-one-Zeile.
+    // Konturen: je Frame alle h+1 Zeilen, wie gespeichert.
     level.enemies.forEach((e, i) => {
       const ea = asset.enemies[i]!;
-      const h = e.rect.b - e.rect.t;
+      const rows = e.rect.b - e.rect.t + 1;
       expect(ea.frameHeaders.length).toBe(e.frames.length);
       e.frames.forEach((f, k) => {
-        const start = ea.contour + k * h * 2;
-        expect([...asset.contours.subarray(start, start + h * 2)]).toEqual([
-          ...f.spans.subarray(0, h * 2),
-        ]);
+        const start = ea.contour + k * rows * 2;
+        expect([...asset.contours.subarray(start, start + rows * 2)]).toEqual([...f.spans]);
       });
     });
-    const totalRows = level.enemies.reduce(
-      (s, e) => s + e.frames.length * (e.rect.b - e.rect.t),
-      0,
-    );
-    expect(asset.contours.length).toBe(totalRows * 2);
-  });
-
-  test("Terrain-Maske ⇔ Colorkey des Atlas", async () => {
-    const { level, terrain } = await load(n);
-    const { json, bin } = buildLevelAsset(level, terrain);
-    const asset = readLevelAsset(json, bin);
-    for (const tile of asset.tiles) {
-      const [l, t] = tile.rect;
-      for (let y = 0; y < tile.mask.height; y++) {
-        for (let x = 0; x < tile.mask.width; x++) {
-          const solid = !isKeyed(terrain.rgba, (t + y) * terrain.width + l + x);
-          if (tileMaskBit(asset, tile, x, y) !== solid) {
-            throw new Error(`Level${n} '${tile.name}' (${x},${y})`);
-          }
-        }
-      }
-      expect(tileMaskBit(asset, tile, -1, 0)).toBe(false);
-      expect(tileMaskBit(asset, tile, tile.mask.width, 0)).toBe(false);
-    }
   });
 });
 
 describe("Level-Asset", () => {
-  test("Opcodes der Kommandos bleiben die aus LevelDat", () => {
+  test("Spawn-Kind kollidiert mit keinem Opcode", () => {
     expect(SPAWN_KIND).not.toBeOneOf(Object.values(EventOp));
   });
 
-  test("Tile außerhalb des Atlas ist ein Fehler", async () => {
-    const { level } = await load(1);
-    const tiny: BmpImage = { width: 4, height: 4, bitsPerPixel: 24, rgba: new Uint8Array(64) };
-    expect(() => buildLevelAsset(level, tiny)).toThrow(LevelAssetError);
-  });
-
   test("falsche Sidecar-Länge und Version werden abgelehnt", async () => {
-    const { level, terrain } = await load(0);
-    const { json, bin } = buildLevelAsset(level, terrain);
+    const { json, bin } = buildLevelAsset(await load(0));
     expect(() => readLevelAsset(json, bin.subarray(1))).toThrow(LevelAssetError);
-    expect(() => readLevelAsset({ ...json, version: 2 } as unknown as LevelAssetJson, bin)).toThrow(
+    expect(() => readLevelAsset({ ...json, version: 1 } as unknown as LevelAssetJson, bin)).toThrow(
       LevelAssetError,
     );
+  });
+});
+
+const enc = (s: string) => new TextEncoder().encode(s);
+
+describe("METROID.dat", () => {
+  test("60 Konturzeilen für den 60×60-Meteor", async () => {
+    const spans = parseContourDat(await readBytes(join(DOVE_DATA, "Grafik/METROID.dat")));
+    expect(spans.length).toBe(120);
+    expect([...spans.subarray(0, 4)]).toEqual([18, 28, 15, 30]);
+    for (let i = 0; i < 60; i++) {
+      expect(spans[i * 2]!).toBeGreaterThanOrEqual(0);
+      expect(spans[i * 2 + 1]!).toBeLessThan(60);
+    }
+  });
+
+  test("fehlender Terminator und Müll werden abgelehnt", () => {
+    expect(() => parseContourDat(enc(" 1 \r\n 2 \r\n"))).toThrow(ContourDatError);
+    expect(() => parseContourDat(enc("x\r\n"))).toThrow(ContourDatError);
   });
 });

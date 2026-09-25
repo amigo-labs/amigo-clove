@@ -9,7 +9,12 @@ import { basename, extname, join } from "node:path";
 import type { Job } from "../job";
 import { SOUND_CONVERTER_VERSION, convertSound } from "../stages/audio";
 import { IMAGE_CONVERTER_VERSION, LIBWEBP_VERSION, convertImage } from "../stages/image";
-import { LEVEL_CONVERTER_VERSION, convertLevel } from "../stages/level";
+import {
+  CONTOUR_CONVERTER_VERSION,
+  LEVEL_CONVERTER_VERSION,
+  convertContour,
+  convertLevel,
+} from "../stages/level";
 import { MUSIC_CONVERTER_VERSION, convertMusic } from "../stages/music";
 
 export const DOVE_DATA = "original-dove/Data";
@@ -83,22 +88,23 @@ export function planDove(root: string): Job[] {
   for (let n = 0; n < DOVE_LEVEL_COUNT; n++) {
     const bundle = `level${n}`;
     const dat = `${DOVE_DATA}/Level${n}.dat`;
-    const terrain = spritePath(`landschaft${n}`);
     const background = parseLevelDat(readSource(root, dat)).background.toLowerCase();
     addBundle(`feinde${n}`, bundle);
     addBundle(`landschaft${n}`, bundle);
     addBundle(background, bundle);
+    // Level 1 spawnt per Skript Meteore (metroid.spr + data/metroid).
+    if (n === 1) addBundle("metroid", bundle);
     jobs.push({
       bundles: [bundle],
-      sources: [dat, terrain],
+      sources: [dat],
       options: {},
       converterVersion: LEVEL_CONVERTER_VERSION,
       outputs: [
         { id: `level/level${n}`, kind: "level", ext: "json" },
         { id: `levelData/level${n}`, kind: "levelData", ext: "bin" },
       ],
-      run: async ([datBytes, terrainBytes]) => {
-        const { json, bin } = convertLevel(datBytes!, terrainBytes!);
+      run: async ([datBytes]) => {
+        const { json, bin } = convertLevel(datBytes!);
         return [
           {
             id: `level/level${n}`,
@@ -141,6 +147,19 @@ export function planDove(root: string): Job[] {
       },
     });
   }
+
+  // Kontur des Meteors aus Level 1 (metroid.spr), vom Level-1-Skript gespawnt.
+  const metroid = `${DOVE_DATA}/Grafik/METROID.dat`;
+  jobs.push({
+    bundles: ["level1"],
+    sources: [metroid],
+    options: {},
+    converterVersion: CONTOUR_CONVERTER_VERSION,
+    outputs: [{ id: "data/metroid", kind: "data", ext: "json" }],
+    run: async ([dat]) => [
+      { id: "data/metroid", kind: "data", ext: "json", bytes: convertContour(dat!), meta: {} },
+    ],
+  });
 
   for (const path of listFiles(root, `${DOVE_DATA}/Sound`, /\.wav$/i)) {
     const id = `sound/${idName(path)}`;

@@ -12,16 +12,15 @@ export {
   LevelAssetError,
   SPAWN_KIND,
   buildLevelAsset,
-  maskStride,
   readLevelAsset,
-  tileMaskBit,
   type EnemyAsset,
   type LevelAsset,
   type LevelAssetJson,
+  type NamedRectAsset,
   type PatternAsset,
   type RectTuple,
-  type TileAsset,
 } from "./dove/LevelAsset";
+export { ContourDatError, parseContourDat } from "./dove/ContourDat";
 export {
   EventOp,
   LevelDatError,

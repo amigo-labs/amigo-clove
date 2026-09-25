@@ -3,6 +3,24 @@
   "game": "dove",
   "entries": [
     {
+      "id": "data/metroid",
+      "bundles": [
+        "level1"
+      ],
+      "kind": "data",
+      "file": "data/metroid.76b0ca5e.json",
+      "bytes": 322,
+      "sha256": "76b0ca5ebbee5fc88de3fb87dd3fcfbd25a90b1644124c82cbc6ce4ceb1ec1be",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/METROID.dat",
+          "sha256": "6ed990f2d032bd159478c8c4adc1b7e62d758a12e73f200ba070d78d505b0c9e"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1
+    },
+    {
       "id": "image/0",
       "bundles": [
         "screens"
@@ -1165,7 +1183,8 @@
     {
       "id": "image/metroid",
       "bundles": [
-        "core"
+        "core",
+        "level1"
       ],
       "kind": "image",
       "file": "image/metroid.b745c54e.webp",
@@ -1273,21 +1292,17 @@
         "level0"
       ],
       "kind": "level",
-      "file": "level/level0.196ce39d.json",
-      "bytes": 966,
-      "sha256": "196ce39d6bf050e130b6122e3840465f9be9b17bb4fcb46a09d3960160f9a117",
+      "file": "level/level0.2f9d1b77.json",
+      "bytes": 811,
+      "sha256": "2f9d1b772feb67fd9e6a50c88d3e5cac18650cdbaa19dd72d6dbeccb5372ea18",
       "sources": [
         {
           "path": "original-dove/Data/Level0.dat",
           "sha256": "a361a331132e3751fa72c0c8d2ddf1ca94c3eb48e91b3e347020c41bf0052e5c"
-        },
-        {
-          "path": "original-dove/Data/Grafik/landschaft0.spr",
-          "sha256": "f8fd8f84f6e0c40eb7fcc976eeecf9686431e2349def8774f09a4e21f073b4e8"
         }
       ],
       "optionsHash": "4f53cda18c2baa0c",
-      "converterVersion": 1,
+      "converterVersion": 2,
       "data": "levelData/level0"
     },
     {
@@ -1296,21 +1311,17 @@
         "level1"
       ],
       "kind": "level",
-      "file": "level/level1.f41802b5.json",
-      "bytes": 13987,
-      "sha256": "f41802b56606b6bd99eaf7071492a88df8702b6279f38a6e43911ea79ed12c58",
+      "file": "level/level1.2726e03e.json",
+      "bytes": 13374,
+      "sha256": "2726e03e63956e4524d40b5f32dd46989257a5d9f6849a89dc0a6de97ad1aeb4",
       "sources": [
         {
           "path": "original-dove/Data/Level1.dat",
           "sha256": "c982788b996e9d5fadc6d326fe201168af68a253f63c765926a17af147d907d8"
-        },
-        {
-          "path": "original-dove/Data/Grafik/landschaft1.spr",
-          "sha256": "5eeefd6cd49ecb04ced0181d2eabdc73acaaa15c5859d2d4bb89f0da3f32e341"
         }
       ],
       "optionsHash": "4f53cda18c2baa0c",
-      "converterVersion": 1,
+      "converterVersion": 2,
       "data": "levelData/level1"
     },
     {
@@ -1319,21 +1330,17 @@
         "level10"
       ],
       "kind": "level",
-      "file": "level/level10.46175ec5.json",
-      "bytes": 539,
-      "sha256": "46175ec57f4cc0fafb7bca3b72fd80c018091f5b9ad6d4fbd66422028e0199f3",
+      "file": "level/level10.46a3455c.json",
+      "bytes": 525,
+      "sha256": "46a3455cda3e4d86e45615e88bad848bd699788130d830730c2e28ff652abcc9",
       "sources": [
         {
           "path": "original-dove/Data/Level10.dat",
           "sha256": "44bbff56bc89ff944e3145b13c0e7601ddaff92ed44c9df7bd907d39c647f56d"
-        },
-        {
-          "path": "original-dove/Data/Grafik/landschaft10.spr",
-          "sha256": "394a74da0b7705e7ad6d4b300e2e90bf09de6c6eec7b7589390b82c2dae0b511"
         }
       ],
       "optionsHash": "4f53cda18c2baa0c",
-      "converterVersion": 1,
+      "converterVersion": 2,
       "data": "levelData/level10"
     },
     {
@@ -1342,21 +1349,17 @@
         "level11"
       ],
       "kind": "level",
-      "file": "level/level11.d3f850b0.json",
-      "bytes": 12932,
-      "sha256": "d3f850b0ea9bd0e9605909267bd4d5931b71d486f9d909c59309d573dd050e35",
+      "file": "level/level11.c69422dc.json",
+      "bytes": 12269,
+      "sha256": "c69422dc06f35133b5f082d6a2ee616003d3bc9d5a7e5299a2d7af1cd292722b",
       "sources": [
         {
           "path": "original-dove/Data/Level11.dat",
           "sha256": "ba4b8096ec2b51b66662ee91a01d4212dcba3dc11f0524218b9920477838b3ae"
-        },
-        {
-          "path": "original-dove/Data/Grafik/landschaft11.spr",
-          "sha256": "921d79775d9561cc0ea311a986709a231f720c3d6e81401e9645e3543f7dfa62"
         }
       ],
       "optionsHash": "4f53cda18c2baa0c",
-      "converterVersion": 1,
+      "converterVersion": 2,
       "data": "levelData/level11"
     },
     {
@@ -1365,21 +1368,17 @@
         "level2"
       ],
       "kind": "level",
-      "file": "level/level2.b53096d6.json",
-      "bytes": 6764,
-      "sha256": "b53096d69a6486968f51c6567844926243c95cafc6616774146109b5e043cd75",
+      "file": "level/level2.6a310c8b.json",
+      "bytes": 6240,
+      "sha256": "6a310c8be42854d4adb8da09a152a33d3e6126aa5881fed7a8afbd6f7b602310",
       "sources": [
         {
           "path": "original-dove/Data/Level2.dat",
           "sha256": "e3d692c483e74b2ba7a7b04aac2f83284141f11ffe10817013f4d6e3793de326"
-        },
-        {
-          "path": "original-dove/Data/Grafik/landschaft2.spr",
-          "sha256": "32b00ee8e19f7f5c32ea146a13295c2bcb41d4cc5f6629a0abd01f1b238e9433"
         }
       ],
       "optionsHash": "4f53cda18c2baa0c",
-      "converterVersion": 1,
+      "converterVersion": 2,
       "data": "levelData/level2"
     },
     {
@@ -1388,21 +1387,17 @@
         "level3"
       ],
       "kind": "level",
-      "file": "level/level3.5fd3f162.json",
-      "bytes": 11683,
-      "sha256": "5fd3f1621a16efe88d004aa695c0ca7e6e70f51be14236580c94146d66655784",
+      "file": "level/level3.e2baac0b.json",
+      "bytes": 11438,
+      "sha256": "e2baac0bcf32a734ba7473ba04f68ca9d6473193f64b22504c2fcc01d2eab064",
       "sources": [
         {
           "path": "original-dove/Data/Level3.dat",
           "sha256": "d7e8c26dd3d05528d3814f4f9abd330b954462e16a090313bf27a36c536d9424"
-        },
-        {
-          "path": "original-dove/Data/Grafik/landschaft3.spr",
-          "sha256": "68b9cb02f151340054a5e7cc35e4c1fc04e0bb76c4b6dd449e5ee262371c3aaf"
         }
       ],
       "optionsHash": "4f53cda18c2baa0c",
-      "converterVersion": 1,
+      "converterVersion": 2,
       "data": "levelData/level3"
     },
     {
@@ -1411,21 +1406,17 @@
         "level4"
       ],
       "kind": "level",
-      "file": "level/level4.724294d0.json",
-      "bytes": 8529,
-      "sha256": "724294d04402f9b31002b142149f3ea104591dd7b10ce9d2b7a604d61e75dcb4",
+      "file": "level/level4.f48654bd.json",
+      "bytes": 7958,
+      "sha256": "f48654bd48234a18dfe5b1a04729e7bfda3914dc3115beae6d5a1cb9fef0c522",
       "sources": [
         {
           "path": "original-dove/Data/Level4.dat",
           "sha256": "58d1bb6639455dbf44bcb590f6a972cabaf6ea0902839e4f9472e940a49ef906"
-        },
-        {
-          "path": "original-dove/Data/Grafik/landschaft4.spr",
-          "sha256": "2659e70841273d94acdce01ad3d3a518974b6fc97c9e3665958c1a89d6e06cbb"
         }
       ],
       "optionsHash": "4f53cda18c2baa0c",
-      "converterVersion": 1,
+      "converterVersion": 2,
       "data": "levelData/level4"
     },
     {
@@ -1434,21 +1425,17 @@
         "level5"
       ],
       "kind": "level",
-      "file": "level/level5.5c9a5f7b.json",
-      "bytes": 10891,
-      "sha256": "5c9a5f7b07bd7b29c78501a7e9762ad637a90f2ff5629097ca306525b5c28298",
+      "file": "level/level5.aea1066a.json",
+      "bytes": 10505,
+      "sha256": "aea1066a39a45e133cfc45c2b691714bc0777a44e3dc880d72e0f2f20e3b4704",
       "sources": [
         {
           "path": "original-dove/Data/Level5.dat",
           "sha256": "b373e611ccab52a8e26ccf1be54e785962da510b8e1272c0c6d0fce69c58f5f4"
-        },
-        {
-          "path": "original-dove/Data/Grafik/landschaft5.spr",
-          "sha256": "141a17fe9e6070843a506ad56c277590cb4a0aa0d065dfab62346aee371b65e2"
         }
       ],
       "optionsHash": "4f53cda18c2baa0c",
-      "converterVersion": 1,
+      "converterVersion": 2,
       "data": "levelData/level5"
     },
     {
@@ -1457,21 +1444,17 @@
         "level6"
       ],
       "kind": "level",
-      "file": "level/level6.4f97d689.json",
-      "bytes": 11379,
-      "sha256": "4f97d689d5fd5030442491396e9c89c2fc1ef19c21d4e98820aaae006666f6fe",
+      "file": "level/level6.f564d6fc.json",
+      "bytes": 10620,
+      "sha256": "f564d6fc89c7eb7f77134b124d80b2a30255c7d2aabcb6d9d8b700beb3a38661",
       "sources": [
         {
           "path": "original-dove/Data/Level6.dat",
           "sha256": "2b213056aa0d3f976f267aebd228ea0447463afba0c351bb9bbef726e644f24c"
-        },
-        {
-          "path": "original-dove/Data/Grafik/landschaft6.spr",
-          "sha256": "f40704b38e4923f350796630a8d1ef92dcde5aa5b0d709ce836123446e69c289"
         }
       ],
       "optionsHash": "4f53cda18c2baa0c",
-      "converterVersion": 1,
+      "converterVersion": 2,
       "data": "levelData/level6"
     },
     {
@@ -1480,21 +1463,17 @@
         "level7"
       ],
       "kind": "level",
-      "file": "level/level7.3f5287c8.json",
-      "bytes": 12711,
-      "sha256": "3f5287c86f2b4e8b7e3520bb34d2307db58eda6230aeab3f5b65c1b443ec629a",
+      "file": "level/level7.e86f7f45.json",
+      "bytes": 11915,
+      "sha256": "e86f7f4545a4a7207670fc82a725b2240161068fbd990f9e6cca60505c71bed0",
       "sources": [
         {
           "path": "original-dove/Data/Level7.dat",
           "sha256": "da497da8a82eb73f6ae1b21bd806beda66ff3ca9197d1b7de2bae26d8fef3dca"
-        },
-        {
-          "path": "original-dove/Data/Grafik/landschaft7.spr",
-          "sha256": "87e6b15641161bb040f12dac5b0b3ad766e48162a458bfde1841b3a90226ce2c"
         }
       ],
       "optionsHash": "4f53cda18c2baa0c",
-      "converterVersion": 1,
+      "converterVersion": 2,
       "data": "levelData/level7"
     },
     {
@@ -1503,21 +1482,17 @@
         "level8"
       ],
       "kind": "level",
-      "file": "level/level8.c22553f5.json",
-      "bytes": 17600,
-      "sha256": "c22553f526260da38f301c2d8bb09b9a03333ed8d629e582ba1111699841d51e",
+      "file": "level/level8.e410e94f.json",
+      "bytes": 16978,
+      "sha256": "e410e94f5ea3bba9fef4d7cc439017a16cac3b580aecf0971e0d45c6e884e464",
       "sources": [
         {
           "path": "original-dove/Data/Level8.dat",
           "sha256": "25a57c11335bf98ef39e43dee6fca4b1b88c407bc10557b524f56ec9b68fa7e5"
-        },
-        {
-          "path": "original-dove/Data/Grafik/landschaft8.spr",
-          "sha256": "a8e1374c19770ee02a94a57da0cb1535890c7e43f4d08776f49ea264dcbf24e2"
         }
       ],
       "optionsHash": "4f53cda18c2baa0c",
-      "converterVersion": 1,
+      "converterVersion": 2,
       "data": "levelData/level8"
     },
     {
@@ -1526,21 +1501,17 @@
         "level9"
       ],
       "kind": "level",
-      "file": "level/level9.76e87f8a.json",
-      "bytes": 21626,
-      "sha256": "76e87f8a2f03c20ff6c2a24431033e50c30994d25d75dd78a040a82c8af049ad",
+      "file": "level/level9.a1171688.json",
+      "bytes": 21007,
+      "sha256": "a117168889819b753c282eae20b30aa4ebebaeb169066a2eb77af2613ae79a65",
       "sources": [
         {
           "path": "original-dove/Data/Level9.dat",
           "sha256": "28ce43840ab051b90344cdf7d195b05962ac7f6b735daccbd71f23dcf62156b6"
-        },
-        {
-          "path": "original-dove/Data/Grafik/landschaft9.spr",
-          "sha256": "45c886a39edf3e02145211d731f1a85b19ba10f9b40d04481fe82261e5277d7c"
         }
       ],
       "optionsHash": "4f53cda18c2baa0c",
-      "converterVersion": 1,
+      "converterVersion": 2,
       "data": "levelData/level9"
     },
     {
@@ -1549,21 +1520,17 @@
         "level0"
       ],
       "kind": "levelData",
-      "file": "levelData/level0.972c77e5.bin",
-      "bytes": 4999,
-      "sha256": "972c77e50f282037ca6dddd04d043faeb0e3a1b9668cd11fc0476d141ef2d22d",
+      "file": "levelData/level0.78a9d1b2.bin",
+      "bytes": 864,
+      "sha256": "78a9d1b243793c556822c6ad0601baf640af3f421daa8dc712a01c1f0c65a0ae",
       "sources": [
         {
           "path": "original-dove/Data/Level0.dat",
           "sha256": "a361a331132e3751fa72c0c8d2ddf1ca94c3eb48e91b3e347020c41bf0052e5c"
-        },
-        {
-          "path": "original-dove/Data/Grafik/landschaft0.spr",
-          "sha256": "f8fd8f84f6e0c40eb7fcc976eeecf9686431e2349def8774f09a4e21f073b4e8"
         }
       ],
       "optionsHash": "4f53cda18c2baa0c",
-      "converterVersion": 1
+      "converterVersion": 2
     },
     {
       "id": "levelData/level1",
@@ -1571,21 +1538,17 @@
         "level1"
       ],
       "kind": "levelData",
-      "file": "levelData/level1.43d2725a.bin",
-      "bytes": 8372,
-      "sha256": "43d2725ad32a394423564aeb722c765aa46615f66501f932835baa0aa7c25105",
+      "file": "levelData/level1.104fda27.bin",
+      "bytes": 5120,
+      "sha256": "104fda2727f4c350c5e585940b2daefd96dae06def0d15974790ed41b3c0e2b9",
       "sources": [
         {
           "path": "original-dove/Data/Level1.dat",
           "sha256": "c982788b996e9d5fadc6d326fe201168af68a253f63c765926a17af147d907d8"
-        },
-        {
-          "path": "original-dove/Data/Grafik/landschaft1.spr",
-          "sha256": "5eeefd6cd49ecb04ced0181d2eabdc73acaaa15c5859d2d4bb89f0da3f32e341"
         }
       ],
       "optionsHash": "4f53cda18c2baa0c",
-      "converterVersion": 1
+      "converterVersion": 2
     },
     {
       "id": "levelData/level10",
@@ -1593,21 +1556,17 @@
         "level10"
       ],
       "kind": "levelData",
-      "file": "levelData/level10.609a4a24.bin",
-      "bytes": 1992,
-      "sha256": "609a4a24af66398baf10f971e5133120bb4451e8b0435fdeb276961af63819a9",
+      "file": "levelData/level10.04961416.bin",
+      "bytes": 2012,
+      "sha256": "04961416852e5b4caae06adc1aeac4c9fe812adfd8a240d1317258fe70740d23",
       "sources": [
         {
           "path": "original-dove/Data/Level10.dat",
           "sha256": "44bbff56bc89ff944e3145b13c0e7601ddaff92ed44c9df7bd907d39c647f56d"
-        },
-        {
-          "path": "original-dove/Data/Grafik/landschaft10.spr",
-          "sha256": "394a74da0b7705e7ad6d4b300e2e90bf09de6c6eec7b7589390b82c2dae0b511"
         }
       ],
       "optionsHash": "4f53cda18c2baa0c",
-      "converterVersion": 1
+      "converterVersion": 2
     },
     {
       "id": "levelData/level11",
@@ -1615,21 +1574,17 @@
         "level11"
       ],
       "kind": "levelData",
-      "file": "levelData/level11.e5822d65.bin",
-      "bytes": 13102,
-      "sha256": "e5822d6569090db28e6ee5fef3934ad2496dca008e1d8c4cb073cfc96d45907e",
+      "file": "levelData/level11.3ada648b.bin",
+      "bytes": 3580,
+      "sha256": "3ada648b32c8a5cc3d76e17c2f5671e156a0e9785020e66999c9591fac8ef97f",
       "sources": [
         {
           "path": "original-dove/Data/Level11.dat",
           "sha256": "ba4b8096ec2b51b66662ee91a01d4212dcba3dc11f0524218b9920477838b3ae"
-        },
-        {
-          "path": "original-dove/Data/Grafik/landschaft11.spr",
-          "sha256": "921d79775d9561cc0ea311a986709a231f720c3d6e81401e9645e3543f7dfa62"
         }
       ],
       "optionsHash": "4f53cda18c2baa0c",
-      "converterVersion": 1
+      "converterVersion": 2
     },
     {
       "id": "levelData/level2",
@@ -1637,21 +1592,17 @@
         "level2"
       ],
       "kind": "levelData",
-      "file": "levelData/level2.152e337a.bin",
-      "bytes": 17961,
-      "sha256": "152e337a07a96cb465b5cc455d683f90ac108d118e1f4473cd41834579e97838",
+      "file": "levelData/level2.24cf6525.bin",
+      "bytes": 7220,
+      "sha256": "24cf6525229bde6dd99e9ed293709f3ab96f4dbb4f47e1a3d9c7c18f8565ace9",
       "sources": [
         {
           "path": "original-dove/Data/Level2.dat",
           "sha256": "e3d692c483e74b2ba7a7b04aac2f83284141f11ffe10817013f4d6e3793de326"
-        },
-        {
-          "path": "original-dove/Data/Grafik/landschaft2.spr",
-          "sha256": "32b00ee8e19f7f5c32ea146a13295c2bcb41d4cc5f6629a0abd01f1b238e9433"
         }
       ],
       "optionsHash": "4f53cda18c2baa0c",
-      "converterVersion": 1
+      "converterVersion": 2
     },
     {
       "id": "levelData/level3",
@@ -1659,21 +1610,17 @@
         "level3"
       ],
       "kind": "levelData",
-      "file": "levelData/level3.c6a8d850.bin",
-      "bytes": 10743,
-      "sha256": "c6a8d850662ddf9d6e65a22b194b56b8845cbe9442318cb501e0dbf4f5aa25fe",
+      "file": "levelData/level3.ba183616.bin",
+      "bytes": 7492,
+      "sha256": "ba18361635e5ef0b300bf31a2996512c445b4c8259f41ba32505ae6dc1b6afc9",
       "sources": [
         {
           "path": "original-dove/Data/Level3.dat",
           "sha256": "d7e8c26dd3d05528d3814f4f9abd330b954462e16a090313bf27a36c536d9424"
-        },
-        {
-          "path": "original-dove/Data/Grafik/landschaft3.spr",
-          "sha256": "68b9cb02f151340054a5e7cc35e4c1fc04e0bb76c4b6dd449e5ee262371c3aaf"
         }
       ],
       "optionsHash": "4f53cda18c2baa0c",
-      "converterVersion": 1
+      "converterVersion": 2
     },
     {
       "id": "levelData/level4",
@@ -1681,21 +1628,17 @@
         "level4"
       ],
       "kind": "levelData",
-      "file": "levelData/level4.c827a398.bin",
-      "bytes": 14622,
-      "sha256": "c827a3984cfa1fe8ac79a2b22a853fa841fcd68999d453cd27bc1d76302d6105",
+      "file": "levelData/level4.7ca0eee6.bin",
+      "bytes": 7552,
+      "sha256": "7ca0eee6cdee6806dab1b0031a78945415e27bc5d5e6d2f38caf5c788d0e5597",
       "sources": [
         {
           "path": "original-dove/Data/Level4.dat",
           "sha256": "58d1bb6639455dbf44bcb590f6a972cabaf6ea0902839e4f9472e940a49ef906"
-        },
-        {
-          "path": "original-dove/Data/Grafik/landschaft4.spr",
-          "sha256": "2659e70841273d94acdce01ad3d3a518974b6fc97c9e3665958c1a89d6e06cbb"
         }
       ],
       "optionsHash": "4f53cda18c2baa0c",
-      "converterVersion": 1
+      "converterVersion": 2
     },
     {
       "id": "levelData/level5",
@@ -1703,21 +1646,17 @@
         "level5"
       ],
       "kind": "levelData",
-      "file": "levelData/level5.c1052fdc.bin",
-      "bytes": 11632,
-      "sha256": "c1052fdcaf89e7429ec11746bec7c997fa1dc852538e6c632e826e5cd31f6685",
+      "file": "levelData/level5.de26ae35.bin",
+      "bytes": 5696,
+      "sha256": "de26ae3526fb62a53315d3aae1c80cf05e3b1e3e2f47a9a0e909952b21b65bbb",
       "sources": [
         {
           "path": "original-dove/Data/Level5.dat",
           "sha256": "b373e611ccab52a8e26ccf1be54e785962da510b8e1272c0c6d0fce69c58f5f4"
-        },
-        {
-          "path": "original-dove/Data/Grafik/landschaft5.spr",
-          "sha256": "141a17fe9e6070843a506ad56c277590cb4a0aa0d065dfab62346aee371b65e2"
         }
       ],
       "optionsHash": "4f53cda18c2baa0c",
-      "converterVersion": 1
+      "converterVersion": 2
     },
     {
       "id": "levelData/level6",
@@ -1725,21 +1664,17 @@
         "level6"
       ],
       "kind": "levelData",
-      "file": "levelData/level6.204b8876.bin",
-      "bytes": 15650,
-      "sha256": "204b8876f2e81faab1182bdfa7e8a4ec1a8ae75dfcf0c53f69313182a814497d",
+      "file": "levelData/level6.a9ae7680.bin",
+      "bytes": 6396,
+      "sha256": "a9ae76809113056c00bc2ab9f49153e67121e7dc7957d069209f26153c35bd5c",
       "sources": [
         {
           "path": "original-dove/Data/Level6.dat",
           "sha256": "2b213056aa0d3f976f267aebd228ea0447463afba0c351bb9bbef726e644f24c"
-        },
-        {
-          "path": "original-dove/Data/Grafik/landschaft6.spr",
-          "sha256": "f40704b38e4923f350796630a8d1ef92dcde5aa5b0d709ce836123446e69c289"
         }
       ],
       "optionsHash": "4f53cda18c2baa0c",
-      "converterVersion": 1
+      "converterVersion": 2
     },
     {
       "id": "levelData/level7",
@@ -1747,21 +1682,17 @@
         "level7"
       ],
       "kind": "levelData",
-      "file": "levelData/level7.82b12383.bin",
-      "bytes": 14959,
-      "sha256": "82b12383e94475d2189385df7816587744c629652a1f0d1bad3cacc916987b08",
+      "file": "levelData/level7.e72754bf.bin",
+      "bytes": 8492,
+      "sha256": "e72754bf71b830cb50a49231282e71751d333993c6158fe8cf67e39f0f09981c",
       "sources": [
         {
           "path": "original-dove/Data/Level7.dat",
           "sha256": "da497da8a82eb73f6ae1b21bd806beda66ff3ca9197d1b7de2bae26d8fef3dca"
-        },
-        {
-          "path": "original-dove/Data/Grafik/landschaft7.spr",
-          "sha256": "87e6b15641161bb040f12dac5b0b3ad766e48162a458bfde1841b3a90226ce2c"
         }
       ],
       "optionsHash": "4f53cda18c2baa0c",
-      "converterVersion": 1
+      "converterVersion": 2
     },
     {
       "id": "levelData/level8",
@@ -1769,21 +1700,17 @@
         "level8"
       ],
       "kind": "levelData",
-      "file": "levelData/level8.862507a8.bin",
-      "bytes": 22704,
-      "sha256": "862507a84a2b4664ea8a7eb4755b5c0a4798220e71a9007e8dd9f427d8981cd4",
+      "file": "levelData/level8.ee336db0.bin",
+      "bytes": 9824,
+      "sha256": "ee336db0a05f2ea37710254dadefc0328942c6f3a9795ef90cdbc3b326fbec10",
       "sources": [
         {
           "path": "original-dove/Data/Level8.dat",
           "sha256": "25a57c11335bf98ef39e43dee6fca4b1b88c407bc10557b524f56ec9b68fa7e5"
-        },
-        {
-          "path": "original-dove/Data/Grafik/landschaft8.spr",
-          "sha256": "a8e1374c19770ee02a94a57da0cb1535890c7e43f4d08776f49ea264dcbf24e2"
         }
       ],
       "optionsHash": "4f53cda18c2baa0c",
-      "converterVersion": 1
+      "converterVersion": 2
     },
     {
       "id": "levelData/level9",
@@ -1791,21 +1718,17 @@
         "level9"
       ],
       "kind": "levelData",
-      "file": "levelData/level9.c1458768.bin",
-      "bytes": 26320,
-      "sha256": "c1458768027eb123b11aa8137152830928f665599f1daa4911a84c2626ae102a",
+      "file": "levelData/level9.4428facd.bin",
+      "bytes": 16864,
+      "sha256": "4428facdc42cb3ed9441b020b2bba68b9dc737b3d3752f0d083bf283b0eb519c",
       "sources": [
         {
           "path": "original-dove/Data/Level9.dat",
           "sha256": "28ce43840ab051b90344cdf7d195b05962ac7f6b735daccbd71f23dcf62156b6"
-        },
-        {
-          "path": "original-dove/Data/Grafik/landschaft9.spr",
-          "sha256": "45c886a39edf3e02145211d731f1a85b19ba10f9b40d04481fe82261e5277d7c"
         }
       ],
       "optionsHash": "4f53cda18c2baa0c",
-      "converterVersion": 1
+      "converterVersion": 2
     },
     {
       "id": "music/credits",

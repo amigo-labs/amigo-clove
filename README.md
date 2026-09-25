@@ -9,7 +9,7 @@ Intergenies — ein gemeinsamer Launcher, zwei Spiele, mit den Original-Assets.
 Meilensteine **M0** (Workspace, Tooling, CI), **M1** (`@clove/formats`:
 BMP-Decoder, DOVE-Levelformat mit byte-identischem Round-Trip,
 Kontur-Kreuzvalidierung) und **M2** (Asset-Pipeline DOVE: WebP, PCM16,
-Level-JSON mit Konturen und Terrain-Masken, Manifest, Cache, CI-Gate) sind
+Level-JSON mit Konturen, Manifest, Cache, CI-Gate) sind
 umgesetzt. Die Original-Tickrate (14 ms) ist aus der EXE hergeleitet:
 [`docs/measurements/tick-rate.md`](docs/measurements/tick-rate.md).
 

@@ -3,6 +3,7 @@ export {
   MANIFEST_VERSION,
   type AssetKind,
   type AssetSource,
+  type DataEntry,
   type ImageEntry,
   type LevelDataEntry,
   type LevelEntry,
