@@ -10,6 +10,8 @@ const BINDINGS: readonly (readonly [number, readonly string[]])[] = [
   [Input.Fire, ["KeyS", "Space"]],
   [Input.Faster, ["KeyW", "KeyG"]],
   [Input.Slower, ["KeyQ", "KeyF"]],
+  [Input.Beam, ["KeyA"]],
+  [Input.Swap, ["KeyD"]],
 ];
 
 export function readInput(keys: KeyState): number {

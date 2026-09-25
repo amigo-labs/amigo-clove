@@ -1,5 +1,5 @@
 import { type Container, Sprite, Texture } from "pixi.js";
-import { Effect } from "../sim/step";
+import { Effect } from "../sim/actions";
 
 const MAX = 2000;
 /** Partikel je Effektart; die Mengen stammen aus der EXE (150 / 5 / 2×400 / 100). */

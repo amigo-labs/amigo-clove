@@ -40,7 +40,6 @@ export const FLAME_BOOST_STEP = 8;
 export const FLAME_BOOST_END = 31;
 
 // Basisschuss
-export const SHOT_INTERVAL = 5; // nextShot = F4 + 5, gefeuert bei nextShot < F4 → alle 6 Ticks
 export const SHOT_DX = 40;
 export const SHOT_DY = 7;
 export const SHOT_VX = 9;
@@ -119,3 +118,55 @@ export const STAR_GROUPS: readonly (readonly [number, number, number, number])[]
   [187, 250, fx(0.25), 64],
 ];
 export const STAR_COUNT = 251;
+
+// Ausrüstung (docs/measurements/dove-weapons.md)
+export const EXTRA_SCORE = 300;
+export const SHIELD_TICKS = 500;
+export const MAX_STAGE = 2;
+export const MAX_OPTIONS = 2;
+export const POD_FRONT = 80;
+export const POD_REAR = 0;
+export const COLOUR_BLUE = 1;
+export const COLOUR_GREEN = 2;
+export const COLOUR_RED = 3;
+/** Feuer-Timer-Abstände (`timer = F4 + N` → alle N+1 Ticks). */
+export const FIRE_BASE = 5;
+export const FIRE_GREEN = 4;
+export const FIRE_RED = 12;
+export const FIRE_BOMB = 12;
+export const BOMB_DAMAGE = 70;
+export const BOMB_VY = 8;
+export const BOMB_MAX_Y = 404;
+export const BOMB_BOX = { w: 8, h: 6 } as const;
+export const RED_DAMAGE = 15;
+export const RED_REAR_DAMAGE = 40;
+export const RED_SIZE = 7;
+/** Grüne Bälle je Größe: Sprite in ss.spr und Trefferbox. */
+export const GREEN_SIZES = [
+  { sx: 34, sy: 70, w: 7, h: 7 },
+  { sx: 21, sy: 70, w: 13, h: 13 },
+  { sx: 0, sy: 70, w: 21, h: 20 },
+  { sx: 50, sy: 61, w: 32, h: 31 },
+] as const;
+export const GREEN_VX = 10;
+export const GREEN_SPLIT_VY = 9;
+export const LASER_FRONT_DAMAGE = 1;
+export const LASER_REAR_DAMAGE = 2;
+export const BEAM_MAX = 200;
+export const BEAM_SPEED = 10;
+export const BEAM_BOSS_BUDGET = 1500;
+/** Beam-Arten 1–4: Sprite, Lage relativ zum Schiff, Schaden = Ladung + bonus. */
+export const BEAM_KINDS = [
+  undefined,
+  { sx: 36, sy: 183, w: 16, h: 12, dy: 6, bonus: 15 },
+  { sx: 0, sy: 183, w: 35, h: 14, dy: 5, bonus: 30 },
+  { sx: 0, sy: 168, w: 67, h: 14, dy: 5, bonus: 50 },
+  { sx: 70, sy: 136, w: 88, h: 64, dy: -20, bonus: 0 },
+] as const;
+export const FULL_BEAM_DAMAGE = 500;
+export const ABSORB_SCORE = 10;
+export const ORBITER_SIZE = 9;
+export const ORBITER_DAMAGE = 30;
+export const ORBIT_RX = 40;
+export const ORBIT_RY = 30;
+export const ORBIT_STEP = 5;

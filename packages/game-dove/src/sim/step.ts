@@ -13,7 +13,6 @@ import {
   EXPLOSION_FRAMES,
   EXTRA_ANIM_TICKS,
   EXTRA_ART,
-  EXTRA_PICKUP,
   FALLER_DROP,
   FIELD_H,
   FIREBALL_VX,
@@ -32,8 +31,6 @@ import {
   METEOR_SIZE,
   METEOR_VX,
   SCREEN_W,
-  SHAKE_POINTS,
-  SHAKE_TICKS,
   SHIP_HIT,
   SHIP_MAX_X,
   SHIP_MAX_Y,
@@ -47,19 +44,26 @@ import {
   SHIP_START_X,
   SHIP_START_Y,
   SHIP_WALL,
-  SHOT_DAMAGE,
-  SHOT_DX,
-  SHOT_DY,
-  SHOT_INTERVAL,
-  SHOT_MAX_X,
-  SHOT_SIZE,
-  SHOT_VX,
   STAR_COUNT,
   STAR_GROUPS,
   TILE_VX,
 } from "./constants";
-import { hitTest, wallHit, wallHitFx, type HitHandlers } from "./collision";
+import { hitTest, wallHit, wallHitFx } from "./collision";
+import { Sound, crashEnemy, handlers, killPlayer, sound } from "./actions";
 import { EDGE_OUTSIDE, SPAWN_KIND } from "./level";
+import {
+  beamInput,
+  fireVolley,
+  loseEquipment,
+  pickupExtra,
+  resetWeaponsOnRestart,
+  touchesExtra,
+  updateBeam,
+  updateLaser,
+  updateOrbiters,
+  updatePod,
+  updateShots,
+} from "./weapons";
 import { boxHit, divRoundHalfEven, idiv, roundHalfEven } from "./math";
 import type { World } from "./world";
 
@@ -72,10 +76,11 @@ export const Input = {
   Fire: 16,
   Faster: 32,
   Slower: 64,
+  /** `A`: Beam laden. */
+  Beam: 128,
+  /** `D`: Waffenausrichtung vorn/hinten umkehren. */
+  Swap: 256,
 } as const;
-
-/** Effekte für den Renderer (Partikel, später Sound); nicht Teil des Zustands. */
-export const Effect = { EnemyKill: 1, ShotHit: 2, PlayerDeath: 3, Crash: 4 } as const;
 
 const FX_640 = fxFromInt(SCREEN_W);
 
@@ -116,7 +121,7 @@ export function restartAtCheckpoint(w: World): void {
   w.invuln = INVULN_START;
   w.dead = 0;
   w.deathCounter = 0;
-  w.nextShot = w.checkpoint;
+  resetWeaponsOnRestart(w);
   if (w.speed < SHIP_SPEED_MIN) w.speed = SHIP_SPEED_DEFAULT;
   if (w.level.starfield) initStars(w);
 
@@ -146,6 +151,7 @@ export function startLevel(w: World): void {
   w.shownScore = 0;
   w.speed = SHIP_SPEED_DEFAULT;
   w.gauge = SHIP_SPEED_DEFAULT * 10;
+  loseEquipment(w);
   restartAtCheckpoint(w);
 }
 
@@ -270,68 +276,6 @@ function spawnBuiltinEnemy(w: World, ref: number, pattern: number, v: number): v
   w.enVY[i] = vy;
 }
 
-function spawnExplosion(w: World, x: number, y: number): void {
-  const i = w.explosions.alloc();
-  if (i < 0) return;
-  w.expX[i] = x;
-  w.expY[i] = y;
-  w.expFrame[i] = 1;
-}
-
-function effect(w: World, kind: number, x: number, y: number, bw: number, bh: number): void {
-  w.effects.push(kind, x, y, bw, bh);
-}
-
-// ---------------------------------------------------------------- Treffer
-
-function addScore(w: World, points: number): void {
-  if (w.bossMode) return;
-  w.score = Math.floor(w.score + (points * w.options.scoreFactor) / 100);
-}
-
-const handlers: HitHandlers = {
-  killEnemy(w, i) {
-    const def = w.level.enemies[w.enType[i] as number]!;
-    const x = roundHalfEven(w.enX[i] as number);
-    const y = roundHalfEven(w.enY[i] as number);
-    const points = w.enPoints[i] as number;
-    addScore(w, points);
-    if (points >= SHAKE_POINTS) w.shake = Math.max(w.shake, SHAKE_TICKS);
-    effect(w, Effect.EnemyKill, x, y, def.w, def.h);
-    spawnExplosion(w, x + idiv(def.w, 2) - 25, y + idiv(def.h, 2) - 25);
-    spawnExplosion(w, x + w.rnd.below(def.w) - 25, y + w.rnd.below(def.h) - 25);
-    w.enemies.free(i);
-  },
-  killMeteor(w, i) {
-    const x = w.metX[i] as number;
-    const y = w.metY[i] as number;
-    addScore(w, METEOR_HP);
-    effect(w, Effect.EnemyKill, x, y, METEOR_SIZE, METEOR_SIZE);
-    spawnExplosion(w, x + METEOR_SIZE / 2 - 25, y + METEOR_SIZE / 2 - 25);
-    spawnExplosion(w, x + w.rnd.below(METEOR_SIZE) - 25, y + w.rnd.below(METEOR_SIZE) - 25);
-    w.meteors.free(i);
-  },
-};
-
-/** Gegner zerschellt an einer Wand: Explosionen, keine Punkte. */
-function crashEnemy(w: World, i: number): void {
-  const def = w.level.enemies[w.enType[i] as number]!;
-  const x = roundHalfEven(w.enX[i] as number);
-  const y = roundHalfEven(w.enY[i] as number);
-  effect(w, Effect.Crash, x, y, def.w, def.h);
-  for (let k = 0; k < 3; k++) {
-    spawnExplosion(w, x + w.rnd.below(def.w) - 25, y + w.rnd.below(def.h) - 25);
-  }
-  w.enemies.free(i);
-}
-
-function killPlayer(w: World): void {
-  if (w.options.invincible) return;
-  w.dead = 1;
-  w.deathCounter = 0;
-  effect(w, Effect.PlayerDeath, w.px, w.py, 40, 22);
-}
-
 // ---------------------------------------------------------------- Events (0x43D6B0)
 
 /** Levelskripte (`Select Case Me.[0x39C]`). Liefert `true`, wenn der Tick stillsteht. */
@@ -339,7 +283,8 @@ function levelScript(w: World): boolean {
   const t = w.tick;
   const n = w.level.number;
   if (n === 1) {
-    // Warp-Intro: Hintergrundtempo ramp up, halten, ramp down.
+    // Warp-Intro: Hintergrundtempo ramp up, halten, ramp down; Triebwerk bei 50 und 329.
+    if (t === 50 || t === 329) sound(w, Sound.Antrieb, w.rnd.below(101) - 50);
     if (t >= 51 && t <= 70) w.bgSpeed = fxFromInt(t - 50);
     else if (t > 70 && t < 330) w.bgSpeed = fxFromInt(20);
     else if (t >= 330 && t <= 349) w.bgSpeed = fxFromInt(350 - t);
@@ -434,18 +379,16 @@ function keyboard(w: World, input: number): void {
     w.speed = Math.min(SHIP_SPEED_MAX, w.speed + SHIP_SPEED_STEP);
     w.flame = 4;
     w.flameTimer = FLAME_BOOST_TIMER;
+    sound(w, Sound.Antrieb, w.rnd.below(101) - 50);
   }
-  if (pressed & Input.Slower) w.speed = Math.max(SHIP_SPEED_MIN, w.speed - SHIP_SPEED_STEP);
-  if (input & Input.Fire && w.nextShot < w.tick) {
-    w.nextShot = w.tick + SHOT_INTERVAL;
-    const i = w.shots.alloc();
-    if (i >= 0) {
-      // Gespeichert als x − vx: der erste Zeichenpunkt ist X + 40 im selben Tick.
-      w.shotX[i] = w.px + SHOT_DX - SHOT_VX;
-      w.shotY[i] = w.py + SHOT_DY;
-      w.shotDamage[i] = SHOT_DAMAGE;
-    }
+  if (pressed & Input.Slower) {
+    w.speed = Math.max(SHIP_SPEED_MIN, w.speed - SHIP_SPEED_STEP);
+    sound(w, Sound.Antrieb, w.rnd.below(101) - 50);
   }
+  if (pressed & Input.Swap) w.podDir = -w.podDir;
+  const fire = (input & Input.Fire) !== 0;
+  beamInput(w, (input & Input.Beam) !== 0, fire);
+  if (fire) fireVolley(w);
 }
 
 // ---------------------------------------------------------------- Welt bewegen
@@ -484,6 +427,8 @@ function scroll(w: World): void {
     moveStars(from, to, factor);
   }
 
+  updatePod(w);
+
   for (let i = 0; i < w.extras.capacity; i++) {
     if (!w.extras.active[i]) continue;
     const x = (w.extraX[i] as number) - 1;
@@ -499,12 +444,9 @@ function scroll(w: World): void {
     const y = w.extraY[i] as number;
     if (x > SCREEN_W - 1 || x < -25 || y < -25 || y > FIELD_H) {
       w.extras.free(i);
-    } else if (
-      !w.dead &&
-      boxHit(w.px, w.py + SHIP_HIT.dy, SHIP_HIT.w, SHIP_HIT.h, x, y, EXTRA_PICKUP, EXTRA_PICKUP)
-    ) {
-      // M3: Aufnahme ohne Wirkung — Waffen, Option, Bombe, Schild folgen in M4.
+    } else if (touchesExtra(w, x, y)) {
       w.extras.free(i);
+      pickupExtra(w, w.extraArt[i] as number);
     }
   }
 
@@ -691,7 +633,7 @@ function updateEnemies(w: World): void {
         w.enY[i] = (w.enY[i] as number) + fxFromInt(FALLER_DROP);
       }
       if (wallHitFx(w, w.enX[i] as number, w.enY[i] as number, def.w, def.h)) {
-        crashEnemy(w, i);
+        crashEnemy(w, i, Sound.IceExplosion);
         continue;
       }
     }
@@ -720,26 +662,6 @@ function updateEnemies(w: World): void {
 
 // ---------------------------------------------------------------- Schüsse, Explosionen, HUD
 
-function updateShots(w: World): void {
-  for (let i = 0; i < w.shots.capacity; i++) {
-    if (!w.shots.active[i]) continue;
-    const x = (w.shotX[i] as number) + SHOT_VX;
-    w.shotX[i] = x;
-    if (x > SHOT_MAX_X) {
-      w.shots.free(i);
-      continue;
-    }
-    const y = w.shotY[i] as number;
-    const r = hitTest(w, x, y, SHOT_SIZE, SHOT_SIZE, w.shotDamage[i] as number, true, handlers);
-    if (r === 0) {
-      effect(w, Effect.ShotHit, x, y, SHOT_SIZE, SHOT_SIZE);
-      w.shots.free(i);
-    } else if (r > 0) {
-      w.shotDamage[i] = r;
-    }
-  }
-}
-
 function updateEnemyShots(w: World): void {
   for (let i = 0; i < w.eshots.capacity; i++) {
     if (!w.eshots.active[i]) continue;
@@ -755,6 +677,7 @@ function updateEnemyShots(w: World): void {
     if (
       !w.dead &&
       w.invuln === INVULN_DONE &&
+      w.shield === 0 &&
       boxHit(
         w.px,
         w.py + SHIP_SHOT_BOX.dy0,
@@ -814,6 +737,7 @@ function rollScore(w: World): void {
  * Ein Tick in der Reihenfolge des Originals (`docs/measurements/dove-player.md`).
  */
 export function step(w: World, input: number): void {
+  w.laser = 0;
   // 1. Wand-Schub (Option „Wände töten“ aus)
   if (!w.options.wallsKill && !w.dead && w.px > SHIP_MIN_X && shipWall(w, w.px, w.py)) w.px -= 1;
   // 2.–4. Position merken, Tastatur, Wand-Rücknahme
@@ -854,7 +778,10 @@ export function step(w: World, input: number): void {
   // 10.–12. Gegner, Spielerschüsse, Gegnerschüsse
   updateEnemies(w);
   updateShots(w);
+  updateLaser(w);
   updateEnemyShots(w);
+  updateOrbiters(w);
+  updateBeam(w);
   updateExplosions(w);
   // 13. HUD
   rollScore(w);
@@ -862,6 +789,7 @@ export function step(w: World, input: number): void {
   if (w.dead) {
     w.deathCounter += DEATH_STEP;
     if (w.deathCounter >= DEATH_END) {
+      if (w.options.weaponLoss) loseEquipment(w);
       w.lives--;
       if (w.lives < 0) {
         w.lives = LIVES_START;

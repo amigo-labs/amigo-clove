@@ -30,6 +30,8 @@ export interface SimOptions {
   readonly wallsKill: boolean;
   /** Punktefaktor `Me.[0x638]` in Hundertsteln; Standard 100. */
   readonly scoreFactor: number;
+  /** „Waffenverlust nach dem Tod“ (`Me.[0x642]`). Standard an. */
+  readonly weaponLoss: boolean;
   /** Debug: Spieler stirbt nie (für Durchlauftests). */
   readonly invincible: boolean;
 }
@@ -38,6 +40,7 @@ export const DEFAULT_OPTIONS: SimOptions = {
   enemyShots: 2,
   wallsKill: false,
   scoreFactor: 100,
+  weaponLoss: true,
   invincible: false,
 };
 
@@ -49,6 +52,8 @@ export class World {
   readonly rnd: VbRnd;
   /** Effekte für den Renderer als Quintupel `[art, x, y, w, h]`; nicht gehasht. */
   readonly effects: number[] = [];
+  /** Sounds als Paare `[index, parameter]`; nicht gehasht, einmal pro Frame abgespielt. */
+  readonly sounds: number[] = [];
 
   // Level-Fortschritt
   tick = 0;
@@ -76,8 +81,49 @@ export class World {
   score = 0;
   shownScore = 0;
   gauge = SHIP_SPEED_DEFAULT * 10;
-  nextShot = 0;
   prevInput = 0;
+  /** Feuer-Timer `Me.[0x12C](0…3)`: gefeuert bei `timer < F4`, dann `F4 + N`. */
+  readonly fireTimer = new Int32Array(4);
+
+  // Ausrüstung
+  /** Farbwaffe `Me.[0x540]`: 0 keine, 1 blau (Laser), 2 grün (Bälle), 3 rot (Streuung). */
+  colour = 0;
+  /** Stufe `Me.[0x544]`: 0…2. */
+  stage = 0;
+  /** Anzahl Options `Me.[0x54C]`: 0…2. */
+  optionCount = 0;
+  /** Bombe `Me.[0x550]`. */
+  bomb = 0;
+  /** Schild-Timer `Me.[0x394]`. */
+  shield = 0;
+  shieldAngle = 0;
+  orbitAngle = 0;
+  /** Waffenausrichtung `Me.[0x25C]`: 80 vorn, 0 hinten; Richtung `Me.[0x25E]`. */
+  pod = 80;
+  podDir = 1;
+  /** Blauer Laser in diesem Tick aktiv (`Me.[0x548]`). */
+  laser = 0;
+  /** Beam-Ladung `Me.[0x354]` (0…200). */
+  charge = 0;
+  /** Beam im Flug (`Me.[0x352]`): 0 keiner, 1–3 Teilbeams, 4 voller Beam. */
+  beam = 0;
+  beamX = 0;
+  beamY = 0;
+  beamDamage = 0;
+  /** Boss-Budget des vollen Beams (`Me.[0x260]`). */
+  bossBudget = 0;
+
+  // Abgeleitete Darstellung (pro Tick neu berechnet, nicht gehasht)
+  laserRows = 0;
+  readonly laserY = new Int16Array(10);
+  readonly laserFrom = new Int16Array(10);
+  readonly laserTo = new Int16Array(10);
+  /** 0 Kern, 1 Mitte, 2 Rand. */
+  readonly laserTier = new Int8Array(10);
+  orbCount = 0;
+  orbVisible = 0;
+  readonly orbX = new Int32Array(4);
+  readonly orbY = new Int32Array(4);
 
   // Landschaft (Me.58C, 100 Slots)
   readonly tiles = new Pool(100);
@@ -128,11 +174,17 @@ export class World {
   readonly metVY = new Int32Array(11);
   readonly metHP = new Int32Array(11);
 
-  // Spielerschüsse (Original: 1000 Slots; bei 1 Schuss/6 Ticks sind nie mehr als ~12 aktiv)
-  readonly shots = new Pool(64);
-  readonly shotX = new Int32Array(64);
-  readonly shotY = new Int32Array(64);
-  readonly shotDamage = new Int32Array(64);
+  // Spielerschüsse (Original: 1000 Slots; 256 reichen auch für geteilte grüne Bälle)
+  readonly shots = new Pool(256);
+  /** 0 Basis, 1 Bombe, 2 grüner Ball, 3 rote Streuung. */
+  readonly shotType = new Int8Array(256);
+  readonly shotX = new Int32Array(256);
+  readonly shotY = new Int32Array(256);
+  readonly shotVX = new Int32Array(256);
+  readonly shotVY = new Int32Array(256);
+  /** Größe grüner Bälle (p6, 0…3). */
+  readonly shotSize = new Int8Array(256);
+  readonly shotDamage = new Int32Array(256);
 
   // Gegnerschüsse (Me.5D8, 50 Slots)
   readonly eshots = new Pool(50);
@@ -182,8 +234,23 @@ export class World {
       this.score,
       this.shownScore,
       this.gauge,
-      this.nextShot,
       this.prevInput,
+      this.colour,
+      this.stage,
+      this.optionCount,
+      this.bomb,
+      this.shield,
+      this.shieldAngle,
+      this.orbitAngle,
+      this.pod,
+      this.podDir,
+      this.laser,
+      this.charge,
+      this.beam,
+      this.beamX,
+      this.beamY,
+      this.beamDamage,
+      this.bossBudget,
     );
   }
 
@@ -227,9 +294,14 @@ export class World {
       this.metVX,
       this.metVY,
       this.metHP,
+      this.fireTimer,
       this.shots.active,
+      this.shotType,
       this.shotX,
       this.shotY,
+      this.shotVX,
+      this.shotVY,
+      this.shotSize,
       this.shotDamage,
       this.eshots.active,
       this.eshotKind,

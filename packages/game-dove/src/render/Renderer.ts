@@ -1,7 +1,10 @@
 import type { TextureRegistry } from "@clove/pixi-kit";
 import { Container, Texture } from "pixi.js";
 import {
+  BEAM_KINDS,
+  BEAM_MAX,
   ESHOT,
+  GREEN_SIZES,
   EXPLOSION_SIZE,
   EXTRA_ART,
   EXTRA_SIZE,
@@ -35,6 +38,7 @@ export class Renderer {
   private readonly feinde: string;
   private readonly landschaft: string;
   private shakeSeed = 1;
+  private frameNo = 0;
 
   constructor(
     private readonly textures: TextureRegistry,
@@ -55,7 +59,10 @@ export class Renderer {
       "meteors",
       "enemies",
       "shots",
+      "laser",
       "eshots",
+      "orbiters",
+      "beam",
       "explosions",
     ]) {
       const layer = new Container();
@@ -181,9 +188,33 @@ export class Renderer {
       this.pool("enemies").put(t, roundHalfEven(w.enX[i]!), roundHalfEven(w.enY[i]!));
     }
 
-    const shotTex = this.tex("image/ss", 0, 63, 7, 7);
     for (let i = 0; i < w.shots.capacity; i++) {
-      if (w.shots.active[i]) this.pool("shots").put(shotTex, w.shotX[i]!, w.shotY[i]!);
+      if (!w.shots.active[i]) continue;
+      let t: Texture;
+      switch (w.shotType[i]) {
+        case 0:
+          t = this.tex("image/ss", 0, 63, 7, 7);
+          break;
+        case 1:
+          t = this.tex("image/ss", 0, 57, 7, 6);
+          break;
+        case 2: {
+          const g = GREEN_SIZES[w.shotSize[i]!]!;
+          t = this.tex("image/ss", g.sx, g.sy, g.w, g.h);
+          break;
+        }
+        default:
+          t = this.tex("image/ss", 0, 90, 7, 7);
+      }
+      this.pool("shots").put(t, w.shotX[i]!, w.shotY[i]!);
+    }
+    // Blauer Laser: Kern hell, Rand dunkel (Farbwerte des Originals unbekannt, geschätzt)
+    for (let k = 0; k < w.laserRows; k++) {
+      const from = w.laserFrom[k]!;
+      const len = w.laserTo[k]! - from;
+      if (len <= 0) continue;
+      const tint = [0xc8e4ff, 0x5a8cff, 0x1e3cc8][w.laserTier[k]!]!;
+      this.pool("laser").put(Texture.WHITE, from, w.laserY[k]!, tint).setSize(len, 1);
     }
     for (let i = 0; i < w.eshots.capacity; i++) {
       if (!w.eshots.active[i]) continue;
@@ -193,6 +224,14 @@ export class Renderer {
         w.eshotX[i]!,
         w.eshotY[i]!,
       );
+    }
+    if (w.orbVisible) {
+      const orb = this.tex("image/ss", 0, 48, 9, 9);
+      for (let k = 0; k < w.orbCount; k++) this.pool("orbiters").put(orb, w.orbX[k]!, w.orbY[k]!);
+    }
+    if (w.beam) {
+      const b = BEAM_KINDS[w.beam]!;
+      this.pool("beam").put(this.tex("image/ss", b.sx, b.sy, b.w, b.h), w.beamX, w.beamY);
     }
     for (let i = 0; i < w.explosions.capacity; i++) {
       if (!w.explosions.active[i]) continue;
@@ -224,6 +263,23 @@ export class Renderer {
     hud.put(this.tex("image/konsole", 0, 0, SCREEN_W, 70), 0, HUD_Y);
     const g = Math.max(0, Math.min(80, w.gauge));
     hud.put(this.tex("image/ss", g, 100, 80 - g, 26), 241 + g, 450);
+    hud.put(this.tex("image/ss", 94, 0, 6, 37), 373 + w.pod, 415);
+    if (w.optionCount >= 1) hud.put(this.tex("image/ss", 50, 20, 21, 20), 465, 425);
+    if (w.optionCount >= 2) hud.put(this.tex("image/ss", 50, 20, 21, 20), 346, 425);
+    if (w.bomb) hud.put(this.tex("image/ss", 71, 20, 21, 20), 465, 457);
+    if (w.colour > 0) {
+      const icon = ([undefined, [50, 0], [71, 0], [50, 40]] as const)[w.colour as 1 | 2 | 3];
+      for (let k = 0; k <= w.stage; k++)
+        hud.put(this.tex("image/ss", icon[0], icon[1], 21, 20), 385 + 21 * k, 457);
+    }
+    // Beam-Anzeige: Füllung RGB(c+20, 0, 0), bei voller Ladung blinkend
+    if (w.charge > 0) {
+      const full = w.charge >= BEAM_MAX;
+      const blink = full && Math.floor(this.frameNo / 5) % 2 === 0;
+      const tint = blink ? 0xff8080 : Math.min(255, w.charge + 20) << 16;
+      hud.put(Texture.WHITE, 520, 413, tint).setSize(w.charge >> 1, 10);
+    }
+    this.frameNo++;
     this.text(`Score:${w.shownScore}`, 50, 414);
     this.text(`Ships:${w.lives}`, 540, 460);
     if (overlay) this.text(overlay, Math.floor((SCREEN_W - overlay.length * GLYPH_W) / 2), 190);
