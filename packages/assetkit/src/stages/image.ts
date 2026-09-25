@@ -1,4 +1,10 @@
-import { applyColorKey, decodeBmp, paletteKeyReport } from "@clove/formats";
+import {
+  applyColorKey,
+  decodeBmp,
+  descrambleTiles,
+  paletteKeyReport,
+  parsePermutation,
+} from "@clove/formats";
 import sharp from "sharp";
 
 /** Bei jeder Änderung an der Bildstufe erhöhen — invalidiert den Cache. */
@@ -10,6 +16,8 @@ export interface ImageOptions {
   readonly effort: number;
   /** Encoder-Version gehört zum Cache-Schlüssel: anderes libwebp, andere Bytes. */
   readonly libwebp: string;
+  /** Endbild B1–B5: Kacheln entwürfeln (Permutation als dritter Parameter). */
+  readonly descramble?: boolean;
 }
 
 export const LIBWEBP_VERSION: string = sharp.versions.webp ?? "unknown";
@@ -27,9 +35,16 @@ export interface ImageResult {
  * damit die Dekodierung bytegleich zum gekeyten RGBA ist (sonst dürfte libwebp
  * sie beliebig ändern). Alpha ist ausschließlich 0 oder 255.
  */
-export async function convertImage(bmp: Uint8Array, options: ImageOptions): Promise<ImageResult> {
+export async function convertImage(
+  bmp: Uint8Array,
+  options: ImageOptions,
+  permutation?: Uint8Array,
+): Promise<ImageResult> {
   const image = decodeBmp(bmp);
-  const rgba = options.colorKeyed ? applyColorKey(image) : image.rgba;
+  let rgba = options.colorKeyed ? applyColorKey(image) : image.rgba;
+  // Endbilder B1–B5: Kacheln mit der Permutation aus Data/N.dat zurücksortieren.
+  if (permutation)
+    rgba = descrambleTiles(rgba, image.width, image.height, parsePermutation(permutation));
   const bytes = await sharp(rgba, {
     raw: { width: image.width, height: image.height, channels: 4 },
   })

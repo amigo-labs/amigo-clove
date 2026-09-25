@@ -23,8 +23,10 @@ unter `assets/dove/` ist abgeleitet und wird **nie von Hand** geändert.
 | `level` + `levelData` | `LevelN.dat` | JSON + Binär-Sidecar | 12 + 12 | 0,2 MB |
 | `data` | `Grafik/METROID.dat` | JSON | 1 | < 1 KB |
 
-Nicht konvertiert: `Data/1-5.dat` (zur Laufzeit erzeugte Zufallspermutation)
-und `intro.dat` (eigenes Schema, folgt mit dem Intro in M4).
+Nicht konvertiert: `intro.dat` (eigenes Schema, folgt mit dem Intro).
+`Data/1–5.dat` sind keine Laufzeitdaten, sondern die Kachel-Permutationen der
+verwürfelten Endbilder `B1–B5` — die Pipeline setzt die Bilder damit zusammen
+(siehe „Bilder“).
 
 ## Dateinamen und Manifest
 
@@ -75,6 +77,13 @@ Definition wie die Konturableitung). **Opak** bleiben die Vollbilder,
 die nie über etwas anderem liegen: `titel`, `intro`, `intro2`, `loading`,
 `0–10`, `Extralevel`, `B1–B5`, `background*`. Bei den meisten ist die Wahl
 ohnehin belanglos (0 % reines Schwarz).
+
+**Endbilder B1–B5** (640×450) liegen im Original kachelweise verwürfelt vor.
+`Data/N.dat` enthält 2880 `Int32` (LE), eine Permutation: Zielkachel `i` ←
+Quellkachel `p[i]`, Kacheln 10×10 px, 64 pro Zeile (`ShowOutro` `0x4A0D00`).
+Die Pipeline entwürfelt vor dem Encodieren (`descrambleTiles` in
+`@clove/formats`); `Data/N.dat` ist zweite Quelle des Jobs, der Rücktest
+entwürfelt ebenso.
 
 Palettiert mit auseinanderfallendem Index- und RGB-Keying ist nur
 `Explosion.spr` (Schwarz auf Index 255, Index 0 nicht schwarz). Der Build meldet

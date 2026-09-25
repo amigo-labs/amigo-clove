@@ -60,7 +60,7 @@ Alle Formate sind offen — es ist **kein Cracking nötig**.
 | `Data/intro.dat` | reiner ASCII, *(M1)* **eigenes** Schema (Kopf + Rect-Records) | trivial |
 | `Data/Musik/*.xm` (18) + `s4.IT` | FastTracker II / Impulse Tracker, 3,8 MB. *(M2)* 19 Module insgesamt, nicht 20 | `libopenmpt.js` |
 | `Data/Sound/*.wav` (209 KB) | *(M2)* 15× **MS-ADPCM**, 5× PCM 8 bit, alle mono; `fact`-Chunks meist veraltet | → PCM16 (*(M2)* 0,6 MB) |
-| `Data/1-5.dat` | 2880er-Zufallspermutation, **zur Laufzeit erzeugt** | nicht portieren, neu generieren |
+| `Data/1-5.dat` | 2880er-Permutation — *(M4)* nicht zur Laufzeit erzeugt, sondern der Schlüssel der kachelweise verwürfelten Endbilder `B1–B5` | Pipeline entwürfelt die Endbilder |
 
 ### Levelformat (vollständig dekodiert und verifiziert)
 
