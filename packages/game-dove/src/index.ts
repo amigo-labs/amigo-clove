@@ -76,7 +76,8 @@ const dove: GameModule = {
       restartAtCheckpoint(world);
     }
     await textures.load(Renderer.imageIds(world));
-    let renderer = new Renderer(textures, world);
+    const german = host.locale.toLowerCase().startsWith("de");
+    let renderer = new Renderer(textures, world, german);
     app.stage.addChild(renderer.root);
     const audio = host.audio
       ? await DoveAudio.create(host.audio, host.assets).catch((e: unknown) => {
@@ -108,7 +109,7 @@ const dove: GameModule = {
       await textures.load(Renderer.imageIds(next));
       renderer.destroy();
       world = next;
-      renderer = new Renderer(textures, world);
+      renderer = new Renderer(textures, world, german);
       app.stage.addChild(renderer.root);
       void audio?.playMusic(DoveAudio.levelMusic(world.level.number, cfg.seed));
       loop.reset(host.now());

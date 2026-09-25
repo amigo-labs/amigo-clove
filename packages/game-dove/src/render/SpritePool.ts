@@ -19,8 +19,11 @@ export class SpritePool {
       this.layer.addChild(s);
     }
     s.texture = texture;
+    // Wiederverwendete Sprites können vorher per setSize skaliert worden sein.
+    s.scale.set(1, 1);
     s.position.set(x, y);
     s.tint = tint;
+    s.alpha = 1;
     s.visible = true;
     this.used++;
     return s;

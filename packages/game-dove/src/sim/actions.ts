@@ -97,7 +97,8 @@ export const handlers: HitHandlers = {
   killMeteor(w, i) {
     const x = w.metX[i] as number;
     const y = w.metY[i] as number;
-    addScore(w, METEOR_HP);
+    // Meteore zählen auch im Bosskampf.
+    addScore(w, METEOR_HP, true);
     effect(w, Effect.EnemyKill, x, y, METEOR_SIZE, METEOR_SIZE);
     spawnExplosion(w, x + METEOR_SIZE / 2 - 25, y + METEOR_SIZE / 2 - 25);
     spawnExplosion(w, x + w.rnd.below(METEOR_SIZE) - 25, y + w.rnd.below(METEOR_SIZE) - 25);

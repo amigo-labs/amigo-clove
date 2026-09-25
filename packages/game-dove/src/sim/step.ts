@@ -22,11 +22,7 @@ import {
   INVULN_DONE,
   INVULN_START,
   LIVES_START,
-  METEOR_FIRST_TICK,
-  METEOR_HP,
-  METEOR_LAST_TICK,
   METEOR_SIZE,
-  METEOR_VX,
   SCREEN_W,
   SHIP_HIT,
   SHIP_MAX_X,
@@ -48,6 +44,7 @@ import { ShotKind, addEnemyShot, addEnemyShotForced, updateEnemyShots } from "./
 import { Sound, crashEnemy, handlers, killPlayer, sound } from "./actions";
 import { SPAWN_KIND, type LevelData } from "./level";
 import { BOSSES } from "./bosses";
+import { scriptAfterEvents, scriptEvents, scriptKeyboard, scriptTick } from "./scripts";
 import {
   aimEnemy,
   pathOf,
@@ -126,6 +123,11 @@ export function restartAtCheckpoint(w: World): void {
   w.bossVisible.fill(0);
   w.bossC.fill(0);
   w.bossBeamW.fill(0);
+  w.scriptC.fill(0);
+  w.scriptText = 0;
+  w.deco.clear();
+  w.bands.clear();
+  w.winds.clear();
   w.bgSpeed = BG_SPEED_DEFAULT;
   w.bgOffset = 0;
   w.shake = 0;
@@ -199,27 +201,7 @@ export function startLevel(w: World): void {
 function levelScript(w: World): boolean {
   const t = w.tick;
   const n = w.level.number;
-  if (n === 1) {
-    // Warp-Intro: Hintergrundtempo ramp up, halten, ramp down; Triebwerk bei 50 und 329.
-    if (t === 50 || t === 329) sound(w, Sound.Antrieb, w.rnd.below(101) - 50);
-    if (t >= 51 && t <= 70) w.bgSpeed = fxFromInt(t - 50);
-    else if (t > 70 && t < 330) w.bgSpeed = fxFromInt(20);
-    else if (t >= 330 && t <= 349) w.bgSpeed = fxFromInt(350 - t);
-    else if (t === 350) w.bgSpeed = BG_SPEED_DEFAULT;
-    // Meteore: ein Spawn lässt den Tick stillstehen (Rückkehr ohne F4 += 1).
-    if (t >= METEOR_FIRST_TICK && t <= METEOR_LAST_TICK) {
-      for (let i = 0; i < w.meteors.capacity; i++) {
-        if (w.meteors.active[i] || !w.rnd.greater(0.98)) continue;
-        w.meteors.active[i] = 1;
-        w.metX[i] = SCREEN_W;
-        w.metY[i] = w.rnd.below(350);
-        w.metVX[i] = METEOR_VX;
-        w.metVY[i] = w.rnd.below(3) - 1;
-        w.metHP[i] = METEOR_HP;
-        return true;
-      }
-    }
-  }
+  if (scriptEvents(w)) return true;
   if (BOSS_TICK[n] === t) {
     // Level 5 lässt den Hintergrund im Bosskampf weiterlaufen (`0x440475`).
     if (n !== 5) w.bgSpeed = 0;
@@ -238,6 +220,8 @@ function levelScript(w: World): boolean {
 
 function processEvents(w: World): void {
   if (w.bossMode) {
+    // Im Bosskampf läuft nur noch das Level-5-Skript (`0x43D876`).
+    scriptAfterEvents(w);
     w.tick++;
     return;
   }
@@ -277,6 +261,7 @@ function processEvents(w: World): void {
       // SPAWN_KIND: alleinstehende `y§` wertet das Original nie aus.
     }
   }
+  scriptAfterEvents(w);
   w.tick++;
 }
 
@@ -288,8 +273,12 @@ function shipWall(w: World, x: number, y: number): boolean {
 
 function keyboard(w: World, input: number): void {
   const pressed = input & ~w.prevInput;
+  if (w.dead) {
+    w.tilt = 0;
+    return;
+  }
+  scriptKeyboard(w);
   w.tilt = 0;
-  if (w.dead) return;
   if (input & Input.Up) {
     w.py = Math.max(SHIP_MIN_Y, w.py - w.speed);
     w.tilt = 1;
@@ -664,6 +653,7 @@ export function step(w: World, input: number): void {
   if (w.invuln < INVULN_DONE) w.invuln++;
   // 8. Scrolling
   scroll(w);
+  scriptTick(w);
   // 10.–12. Gegner, Spielerschüsse, Gegnerschüsse
   updateEnemies(w);
   if (w.bossMode && w.boss) w.boss.tick(w);
