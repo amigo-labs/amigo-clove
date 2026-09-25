@@ -69,7 +69,7 @@ export class TitleScreen implements Screen<TitleResult> {
     private readonly list: readonly HighscoreEntry[],
     initial: MenuItem = MenuItem.Play,
   ) {
-    this.g = new Gfx(env.frames, [{}, { keyed: true }, {}]);
+    this.g = new Gfx(env.frames, 3);
     this.root = this.g.root;
     this.sel = initial;
     this.shipY = CURSOR_Y0 + CURSOR_STEP * initial;

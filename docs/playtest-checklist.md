@@ -43,6 +43,10 @@ laufenden Original (Referenzaufnahme mit OBS, 60 fps).
 - [ ] **Level 6:** die Kachel bei Tick 4785 (Off-by-one des Originals).
 - [ ] **Level 7/8:** Bremsbänder (Lebensdauer geschätzt), Windzonen.
 - [ ] **Audio:** Lautstärken und Panoramen, Ausblenden vor dem Boss.
+- [ ] **Colorkey im 16-Bit-Modus:** Lief das Original in 16 Bit Farbtiefe,
+      keyte DirectDraw alles, was in RGB565 schwarz wird (r < 8, g < 4, b < 8),
+      nicht nur exaktes Schwarz. Der Port keyt exakt RGB(0,0,0) — fast
+      schwarze Ränder an Sprites (z. B. Menügrafik in titel.spr) vergleichen.
 
 ## Nicht testbar, nur dokumentieren
 

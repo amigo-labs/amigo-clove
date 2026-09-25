@@ -63,20 +63,21 @@ describe("committete DOVE-Assets", () => {
 
 describe("Colorkey-Zuordnung", () => {
   test("Sprites gekeyed, Vollbilder opak", () => {
-    for (const name of ["feinde1", "landschaft3", "ss", "konsole", "explosion", "text", "logo"]) {
-      expect(isColorKeyed(name)).toBe(true);
-    }
+    // titel und intro sind Sprite-Blätter, das Original blittet sie gekeyed.
     for (const name of [
+      "feinde1",
+      "landschaft3",
+      "ss",
+      "konsole",
+      "explosion",
+      "text",
+      "logo",
       "titel",
       "intro",
-      "intro2",
-      "loading",
-      "0",
-      "10",
-      "b3",
-      "background5",
-      "extralevel",
     ]) {
+      expect(isColorKeyed(name)).toBe(true);
+    }
+    for (const name of ["intro2", "loading", "0", "10", "b3", "background5", "extralevel"]) {
       expect(isColorKeyed(name)).toBe(false);
     }
   });
