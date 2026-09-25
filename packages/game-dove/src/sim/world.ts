@@ -32,6 +32,35 @@ export interface BossScript {
   hit(w: World, bx: number, by: number, bw: number, bh: number, damage: number): number;
 }
 
+/**
+ * Pool mit Suchhinweis wie `M78C` (`0x43BCA0`): `For i = hint To last`, erster
+ * freier Slot, danach `hint = i + 1`; beim Freigeben `If hint > i Then hint = i`
+ * (`0x4772D2`); Levelstart `hint = 0` (`0x46E973`). Kein Umbruch — ist ab dem
+ * Hinweis alles belegt, wird nichts angelegt. Levelskripte greifen auf feste
+ * Slots zu (Level 3) und rechnen mit `hint − 1` als zuletzt belegtem Slot.
+ */
+export class HintPool extends Pool {
+  hint = 0;
+  override alloc(): number {
+    for (let i = this.hint; i < this.capacity; i++) {
+      if (!this.active[i]) {
+        this.active[i] = 1;
+        this.hint = i + 1;
+        return i;
+      }
+    }
+    return -1;
+  }
+  override free(i: number): void {
+    this.active[i] = 0;
+    if (this.hint > i) this.hint = i;
+  }
+  override clear(): void {
+    this.active.fill(0);
+    this.hint = 0;
+  }
+}
+
 /** Optionen des Originals (Optionsbildschirm) und Debug-Schalter. */
 export interface SimOptions {
   /** „Gegner schießen“: 0 aus, 1 voll, 2 halb. Standard halb (Punktefaktor 1,0). */
@@ -81,6 +110,27 @@ export class World {
   halfToggle = 0;
   /** Laufende Option „Gegner schießen“ (`Me.634`); Bosse setzen sie zeitweise auf voll. */
   shotOption: number;
+
+  // Levelskripte (`docs/measurements/dove-bosses.md`, „Levelskripte“)
+  /** Zähler und gemerkte Slots der Skripte. */
+  readonly scriptC = new Int32Array(16);
+  /** Angezeigter Skripttext (Tutorial, Level 7), 0 = keiner; Texte in `scripts.ts`. */
+  scriptText = 0;
+  /** Deko-Blasen Level 3 (`Me.388`, 6 Slots): x in Q16.16, y, Alter. */
+  readonly deco = new Pool(6);
+  readonly decoX = new Int32Array(6);
+  readonly decoX0 = new Int32Array(6);
+  readonly decoY = new Int32Array(6);
+  readonly decoT = new Int32Array(6);
+  /** Bremsbänder Level 7. */
+  readonly bands = new Pool(8);
+  readonly bandX = new Int32Array(8);
+  readonly bandY = new Int32Array(8);
+  /** Windzonen Level 8 (`Me.620`, 4 Slots). */
+  readonly winds = new Pool(4);
+  readonly windX = new Int32Array(4);
+  readonly windW = new Int32Array(4);
+  readonly windS = new Int32Array(4);
 
   /** Dynamisches Pattern #100 (Boss 4): Punkte inkl. Start und Terminator x = −1. */
   readonly customPathX = new Int16Array(32);
@@ -169,13 +219,13 @@ export class World {
   readonly orbX = new Int32Array(4);
   readonly orbY = new Int32Array(4);
 
-  // Landschaft (Me.58C, 100 Slots)
-  readonly tiles = new Pool(100);
-  readonly tileType = new Int16Array(100);
-  readonly tileX = new Int32Array(100);
-  readonly tileY = new Int32Array(100);
-  readonly tileVX = new Int32Array(100);
-  readonly tileVY = new Int32Array(100);
+  // Landschaft (Me.58C, Slots 0…100, Hinweis Me.598)
+  readonly tiles = new HintPool(101);
+  readonly tileType = new Int16Array(101);
+  readonly tileX = new Int32Array(101);
+  readonly tileY = new Int32Array(101);
+  readonly tileVX = new Int32Array(101);
+  readonly tileVY = new Int32Array(101);
 
   // Hintergrundobjekte (Me.5FC, 10 Slots), x in Q16.16
   readonly objects = new Pool(10);
@@ -196,22 +246,22 @@ export class World {
   readonly extraFrame = new Int8Array(13);
   readonly extraAnim = new Int16Array(13);
 
-  // Gegner (Me.44C, 100 Slots), Position und Geschwindigkeit in Q16.16
-  readonly enemies = new Pool(100);
-  readonly enType = new Int16Array(100);
-  readonly enPattern = new Int16Array(100);
-  readonly enX = new Int32Array(100);
-  readonly enY = new Int32Array(100);
-  readonly enVX = new Int32Array(100);
-  readonly enVY = new Int32Array(100);
-  readonly enHP = new Int32Array(100);
-  readonly enPoints = new Int32Array(100);
-  readonly enFrame = new Int16Array(100);
-  readonly enAnim = new Int16Array(100);
-  readonly enWaypoint = new Int16Array(100);
-  readonly enShotTimer = new Int32Array(100);
+  // Gegner (Me.44C, Hinweis Me.458), Position und Geschwindigkeit in Q16.16
+  readonly enemies = new HintPool(101);
+  readonly enType = new Int16Array(101);
+  readonly enPattern = new Int16Array(101);
+  readonly enX = new Int32Array(101);
+  readonly enY = new Int32Array(101);
+  readonly enVX = new Int32Array(101);
+  readonly enVY = new Int32Array(101);
+  readonly enHP = new Int32Array(101);
+  readonly enPoints = new Int32Array(101);
+  readonly enFrame = new Int16Array(101);
+  readonly enAnim = new Int16Array(101);
+  readonly enWaypoint = new Int16Array(101);
+  readonly enShotTimer = new Int32Array(101);
   /** Zustandszähler der Sonderbewegungen (Schweber: Abzugszähler, Faller: Phase). */
-  readonly enAux = new Int32Array(100);
+  readonly enAux = new Int32Array(101);
 
   // Meteore (Me.214, 11 Slots)
   readonly meteors = new Pool(11);
@@ -293,6 +343,8 @@ export class World {
       this.shownScore,
       this.gauge,
       this.prevInput,
+      this.tiles.hint,
+      this.enemies.hint,
       this.colour,
       this.stage,
       this.optionCount,
@@ -316,6 +368,20 @@ export class World {
   hash(): number {
     return hashArrays([
       this.scalars(),
+      this.scriptC,
+      Int32Array.of(this.scriptText),
+      this.deco.active,
+      this.decoX,
+      this.decoX0,
+      this.decoY,
+      this.decoT,
+      this.bands.active,
+      this.bandX,
+      this.bandY,
+      this.winds.active,
+      this.windX,
+      this.windW,
+      this.windS,
       this.customPathX,
       this.customPathY,
       Int32Array.of(this.customPathLen),

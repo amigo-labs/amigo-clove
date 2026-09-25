@@ -16,6 +16,7 @@ import {
   STAR_GROUPS,
 } from "../sim/constants";
 import { roundHalfEven } from "../sim/math";
+import { BAND_SIZE, DECO_RECT, SCRIPT_TEXTS } from "../sim/scripts";
 import type { World } from "../sim/world";
 import { GLYPH_W, glyph } from "./font";
 import { Particles } from "./Particles";
@@ -42,6 +43,8 @@ export class Renderer {
   constructor(
     private readonly textures: TextureRegistry,
     private readonly world: World,
+    /** Sprache der Skripttexte: Deutsch (`Me.350` gesetzt) oder Englisch. */
+    private readonly german = true,
   ) {
     const n = world.level.number;
     this.feinde = `image/feinde${n}`;
@@ -51,6 +54,7 @@ export class Renderer {
       "background",
       "starsBack",
       "objects",
+      "deco",
       "starsFront",
       "ship",
       "extras",
@@ -58,6 +62,7 @@ export class Renderer {
       "meteors",
       "enemies",
       "boss",
+      "bands",
       "shots",
       "laser",
       "eshots",
@@ -149,6 +154,12 @@ export class Renderer {
       );
     }
 
+    for (let i = 0; i < w.deco.capacity; i++) {
+      if (!w.deco.active[i]) continue;
+      const d = this.tex("image/ss", DECO_RECT.sx, DECO_RECT.sy, DECO_RECT.w, DECO_RECT.h);
+      this.pool("deco").put(d, w.decoX[i]!, w.decoY[i]!);
+    }
+
     if (!w.dead && ((w.invuln & 1) === 0 || w.invuln === INVULN_DONE)) {
       const ship = this.pool("ship");
       ship.put(this.tex("image/ss", 10, SHIP_H * w.tilt, SHIP_W, SHIP_H), w.px, w.py);
@@ -186,6 +197,27 @@ export class Renderer {
       const e = lvl.enemies[w.enType[i]!]!;
       const t = this.tex(this.feinde, e.l, e.t + w.enFrame[i]! * e.h, e.w, e.h);
       this.pool("enemies").put(t, roundHalfEven(w.enX[i]!), roundHalfEven(w.enY[i]!));
+    }
+
+    // Bremsbänder (Level 7) und Windzonen (Level 8): Darstellung geschätzt
+    for (let i = 0; i < w.bands.capacity; i++) {
+      if (!w.bands.active[i]) continue;
+      const band = this.pool("bands").put(Texture.WHITE, w.bandX[i]!, w.bandY[i]!, 0x6688ff);
+      band.setSize(BAND_SIZE.w, BAND_SIZE.h);
+      band.alpha = 0.25;
+    }
+    for (let i = 0; i < w.winds.capacity; i++) {
+      if (!w.winds.active[i]) continue;
+      const x0 = w.windX[i]!;
+      const width = w.windW[i]!;
+      const drift = (w.tick * w.windS[i]!) % 410;
+      for (let k = 0; k < 24; k++) {
+        const x = x0 + ((k * 53) % width);
+        const y = (((k * 97 + drift) % 410) + 410) % 410;
+        const streak = this.pool("bands").put(Texture.WHITE, x, y, 0xaaccff);
+        streak.setSize(1, 6);
+        streak.alpha = 0.6;
+      }
     }
 
     // Boss: bis zu drei Teile aus dem Gegner-Atlas, dazu tödliche Strahlen (Farbe geschätzt)
@@ -295,6 +327,13 @@ export class Renderer {
     this.frameNo++;
     this.text(`Score:${w.shownScore}`, 50, 414);
     this.text(`Ships:${w.lives}`, 540, 460);
+    const script = SCRIPT_TEXTS[w.scriptText];
+    if (script) {
+      const lines = wrap(script[this.german ? 0 : 1], 76);
+      lines.forEach((line, k) =>
+        this.text(line, Math.floor((SCREEN_W - line.length * GLYPH_W) / 2), 20 + 14 * k),
+      );
+    }
     if (overlay) this.text(overlay, Math.floor((SCREEN_W - overlay.length * GLYPH_W) / 2), 190);
 
     for (const p of Object.values(this.pools)) p.end();
@@ -305,4 +344,20 @@ export class Renderer {
     this.root.destroy({ children: true });
     this.frames.clear();
   }
+}
+
+/** Zeilenumbruch an Wortgrenzen für die 8-px-Schrift. */
+function wrap(text: string, max: number): string[] {
+  const lines: string[] = [];
+  let line = "";
+  for (const word of text.split(" ")) {
+    if (line && line.length + 1 + word.length > max) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = line ? `${line} ${word}` : word;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
 }
