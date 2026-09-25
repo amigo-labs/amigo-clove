@@ -1,0 +1,18 @@
+{
+  "name": "@clove/shell",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@clove/core": "workspace:*",
+    "@clove/game-dove": "workspace:*"
+  },
+  "devDependencies": {
+    "vite": "8.3.1"
+  }
+}
