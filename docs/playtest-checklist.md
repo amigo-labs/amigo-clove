@@ -25,12 +25,24 @@ laufenden Original (Referenzaufnahme mit OBS, 60 fps).
 - Funkenpartikel: Anzahl aus der EXE, Bewegung/Farbe/Lebensdauer geschätzt.
 - Bildschirmwackeln: Dauer aus der EXE (5 Ticks), Amplitude geschätzt (±1 px).
 - Sterne 0–62 vor den Hintergrundobjekten (Reihenfolge *mittel*).
+- Laserfarben, Bremsbänder, Windzonen, Blasen (Level 3), Bossstrahlen und der
+  Beam-Blitz von Boss 7 als einfache Flächen/Streifen.
 
-## Noch nicht umgesetzt (M4)
+## Stand M4 — zusätzlich abgleichen
 
-Waffenfarben und Upgrades, Beam, Option, Bomben, Schild, Wirkung der Extras,
-Endgegner, Level 0 und 2–11 samt Levelskripten, Audio, Menüs, Highscore,
-Optionsbildschirm und Punktefaktor-Anzeige, Vorhang B1–B5, Easteregg.
+- [ ] **Waffen:** blauer Laser (Farben geschätzt), grüne Bälle teilen sich,
+      roter Fächer; Ausrichtung mit D (80 Ticks); Beam-Stufen und Ladegeräusch.
+- [ ] **Options/Schild:** Umlaufbahn 40×30, Absorbieren gezielter Kugeln.
+- [ ] **Bosse:** je Level Bewegung, Angriffe, Trefferzonen (Einzeilentest).
+      Level 8: der Kern ist nur aus der offenen rechten Seite der Hülle
+      treffbar (der Sog zieht das Schiff hinein) — prüfen, ob das Original
+      genauso zu schlagen ist. Level 7: Sieg bei der 1. Niederlage (Faktor <
+      1,1) bzw. der 2. — laut Disassembly, die Doku nannte 2./3.
+- [ ] **Level 3:** fallende Decken auf den Tile-Slots 0/8 treffen die
+      richtigen Kacheln (Slotvergabe mit Hinweis).
+- [ ] **Level 6:** die Kachel bei Tick 4785 (Off-by-one des Originals).
+- [ ] **Level 7/8:** Bremsbänder (Lebensdauer geschätzt), Windzonen.
+- [ ] **Audio:** Lautstärken und Panoramen, Ausblenden vor dem Boss.
 
 ## Nicht testbar, nur dokumentieren
 
