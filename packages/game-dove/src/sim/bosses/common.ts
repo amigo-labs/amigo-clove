@@ -1,5 +1,5 @@
 import { fxFromInt } from "@clove/core";
-import { Effect, Sound, addScore, effect, sound, spawnExplosion } from "../actions";
+import { Effect, addScore, effect, spawnExplosion } from "../actions";
 import { contourHit } from "../collision";
 import { FULL_BEAM_DAMAGE } from "../constants";
 import type { World } from "../world";
@@ -81,6 +81,48 @@ export function partContourHit(
 }
 
 /**
+ * Trefferprüfung eines Bossteils wie im Original (`0x448A3E`, `0x449350`, `0x44B44F`) —
+ * **nicht** die Gegnerschleife mit min/max über alle Zeilen, sondern genau eine Konturzeile:
+ *
+ * 1. vertikal: ey + f0 ≤ by + bh und ey + f1 ≥ by (sonst kein Treffer);
+ * 2. liegt die Oberkante der Box im Sprite (by − ey ≥ f0), zählt die Zeile by − ey;
+ * 3. sonst, liegt die Unterkante im Sprite (by + bh − ey ≤ f1), die Zeile by + bh − ey;
+ * 4. sonst (die Box überspannt das ganze Sprite) die volle Breite 0 … r − l.
+ *
+ * Treffer bei ex + links ≤ bx + bw und ex + rechts ≥ bx (inklusiv). Frame und Typ kommen aus
+ * `bossFrame`/`bossType` des Teils.
+ */
+export function bossRowHit(
+  w: World,
+  part: number,
+  bx: number,
+  by: number,
+  bw: number,
+  bh: number,
+): boolean {
+  const type = w.bossType[part] as number;
+  if (type < 0) return false;
+  const def = w.level.enemies[type]!;
+  const frame = w.bossFrame[part] as number;
+  const ex = w.bossX[part] as number;
+  const ey = w.bossY[part] as number;
+  const f0 = def.f0[frame] ?? 0;
+  const f1 = def.f1[frame] ?? 0;
+  if (!(ey + f0 <= by + bh && ey + f1 >= by)) return false;
+  let row = -1;
+  if (by - ey >= f0) row = by - ey;
+  else if (by + bh - ey <= f1) row = by + bh - ey;
+  let l = 0;
+  let r = def.w;
+  if (row >= 0 && row <= def.h) {
+    const base = def.contour + frame * (def.h + 1) * 2 + row * 2;
+    l = w.level.contours[base] as number;
+    r = w.level.contours[base + 1] as number;
+  }
+  return ex + l <= bx + bw && ex + r >= bx;
+}
+
+/**
  * Treffer am Boss: Funken, `HP −= Schaden`; Schaden 500 (voller Beam) zieht
  * stattdessen das Beam-Budget `Me.260` ab und leert es.
  */
@@ -95,8 +137,8 @@ export function damagePart(w: World, part: number, damage: number, bx: number, b
 }
 
 /**
- * Gemeinsame Trefferprüfung `0x448A3E`: Kontur von Teil 0; Treffer wird
- * absorbiert (Ergebnis 0), auch während der Explosion.
+ * Gemeinsame Trefferprüfung `0x448A3E`: Einzeilentest (`bossRowHit`) an Teil 0;
+ * Treffer wird absorbiert (Ergebnis 0), auch während der Explosion.
  */
 export function genericHit(
   w: World,
@@ -149,5 +191,4 @@ export function finishBoss(w: World, points: number, withFactor = false): void {
     else w.score += points;
   }
   w.levelDone = true;
-  sound(w, Sound.Explosion);
 }

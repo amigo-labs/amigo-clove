@@ -1,7 +1,8 @@
 import { idiv } from "../math";
 import type { BossScript, World } from "../world";
 import { damagePart, partHeight, partWidth, setPart, typeByName } from "./common";
-import { bossRowHit, killBossPart } from "./e2";
+import { bossRowHit } from "./common";
+import { killBossPart } from "./e2";
 
 // ------------------------------------------------------------------ Kosinus wie die x87-FPU
 //

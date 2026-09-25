@@ -17,6 +17,7 @@ import {
 } from "../sim/constants";
 import { roundHalfEven } from "../sim/math";
 import { BAND_SIZE, DECO_RECT, SCRIPT_TEXTS } from "../sim/scripts";
+import { E7_TEXTS, E7_WEAPON_NAMES } from "../sim/bosses/e7";
 import type { World } from "../sim/world";
 import { GLYPH_W, glyph } from "./font";
 import { Particles } from "./Particles";
@@ -327,6 +328,15 @@ export class Renderer {
     this.frameNo++;
     this.text(`Score:${w.shownScore}`, 50, 414);
     this.text(`Ships:${w.lives}`, 540, 460);
+    // Boss Level 7: Scan-Texte (bossC[7] Meldung, [8] Optionen, [9] Waffe; Position nahe am Schiff)
+    if (lvl.number === 7 && w.bossMode) {
+      const msg = E7_TEXTS[w.bossC[7]!];
+      if (msg) this.text(msg, Math.floor((SCREEN_W - msg.length * GLYPH_W) / 2), 60);
+      const tx = w.px > 300 ? w.px - 100 : w.px + 60;
+      if (w.bossC[8])
+        this.text(`${w.optionCount} Option${w.optionCount === 1 ? "" : "s"}`, tx, w.py - 4);
+      if (w.bossC[9]) this.text(E7_WEAPON_NAMES[w.bossC[2]!] ?? "", tx, w.py + 17);
+    }
     const script = SCRIPT_TEXTS[w.scriptText];
     if (script) {
       const lines = wrap(script[this.german ? 0 : 1], 76);

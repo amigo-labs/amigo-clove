@@ -3,7 +3,8 @@ import { INVULN_DONE } from "../constants";
 import { ShotKind, addEnemyShot } from "../enemyShots";
 import type { BossScript, World } from "../world";
 import { damagePart, partHeight, setPart, typeByName } from "./common";
-import { bossDeathTick, bossRowHit, bossVictory } from "./e2";
+import { bossRowHit } from "./common";
+import { bossDeathTick, bossVictory } from "./e2";
 
 /**
  * Zähler (`Me.3A0` + Offset): c0 +1C (Phase 1: Richtung y, 1 = abwärts; Phase 2: Ablaufzähler),

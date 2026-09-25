@@ -4,54 +4,12 @@ import { RECT_BULLET, RECT_MISSILE, ShotKind, addBossShot } from "../enemyShots"
 import { idiv, roundHalfEven } from "../math";
 import { sinDeg } from "../trig";
 import type { BossScript, World } from "../world";
-import { damagePart, partHeight, partWidth, setPart, typeByName } from "./common";
+import { bossRowHit, damagePart, partHeight, partWidth, setPart, typeByName } from "./common";
 
 // ------------------------------------------------------------------ gemeinsame Helfer (E2, E3, E6)
 //
 // Diese Helfer gehören eigentlich nach `common.ts`; sie liegen hier, weil die Bossdateien
 // parallel entstehen. E3 und E6 importieren sie aus dieser Datei.
-
-/**
- * Trefferprüfung eines Bossteils wie im Original (`0x448A3E`, `0x449350`, `0x44B44F`) —
- * **nicht** die Gegnerschleife mit min/max über alle Zeilen, sondern genau eine Konturzeile:
- *
- * 1. vertikal: ey + f0 ≤ by + bh und ey + f1 ≥ by (sonst kein Treffer);
- * 2. liegt die Oberkante der Box im Sprite (by − ey ≥ f0), zählt die Zeile by − ey;
- * 3. sonst, liegt die Unterkante im Sprite (by + bh − ey ≤ f1), die Zeile by + bh − ey;
- * 4. sonst (die Box überspannt das ganze Sprite) die volle Breite 0 … r − l.
- *
- * Treffer bei ex + links ≤ bx + bw und ex + rechts ≥ bx (inklusiv). Frame und Typ kommen aus
- * `bossFrame`/`bossType` des Teils.
- */
-export function bossRowHit(
-  w: World,
-  part: number,
-  bx: number,
-  by: number,
-  bw: number,
-  bh: number,
-): boolean {
-  const type = w.bossType[part] as number;
-  if (type < 0) return false;
-  const def = w.level.enemies[type]!;
-  const frame = w.bossFrame[part] as number;
-  const ex = w.bossX[part] as number;
-  const ey = w.bossY[part] as number;
-  const f0 = def.f0[frame] ?? 0;
-  const f1 = def.f1[frame] ?? 0;
-  if (!(ey + f0 <= by + bh && ey + f1 >= by)) return false;
-  let row = -1;
-  if (by - ey >= f0) row = by - ey;
-  else if (by + bh - ey <= f1) row = by + bh - ey;
-  let l = 0;
-  let r = def.w;
-  if (row >= 0 && row <= def.h) {
-    const base = def.contour + frame * (def.h + 1) * 2 + row * 2;
-    l = w.level.contours[base] as number;
-    r = w.level.contours[base + 1] as number;
-  }
-  return ex + l <= bx + bw && ex + r >= bx;
-}
 
 /**
  * Ein Teil wird zerstört (Geschütze von E2 `0x4497A5`, Fische von E3 `0x44BE89`): 150
