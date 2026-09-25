@@ -6,16 +6,13 @@ import {
   DEATH_END,
   DEATH_STEP,
   END_TICK,
-  ENEMY_AIM_SPEED,
   ENEMY_FIREBALL_TICKS,
   ENEMY_SHOT_CHANCE,
-  ESHOT,
   EXPLOSION_FRAMES,
   EXTRA_ANIM_TICKS,
   EXTRA_ART,
   FALLER_DROP,
   FIELD_H,
-  FIREBALL_VX,
   FLAME_BOOST_END,
   FLAME_BOOST_STEP,
   FLAME_BOOST_TIMER,
@@ -36,7 +33,6 @@ import {
   SHIP_MAX_Y,
   SHIP_MIN_X,
   SHIP_MIN_Y,
-  SHIP_SHOT_BOX,
   SHIP_SPEED_DEFAULT,
   SHIP_SPEED_MAX,
   SHIP_SPEED_MIN,
@@ -49,10 +45,13 @@ import {
   TILE_VX,
 } from "./constants";
 import { hitTest, wallHit, wallHitFx } from "./collision";
+import { ShotKind, addEnemyShot, addEnemyShotForced, updateEnemyShots } from "./enemyShots";
 import { Sound, crashEnemy, handlers, killPlayer, sound } from "./actions";
-import { EDGE_OUTSIDE, SPAWN_KIND } from "./level";
+import { EDGE_OUTSIDE, SPAWN_KIND, type LevelData } from "./level";
+import { BOSSES } from "./bosses";
 import {
   beamInput,
+  releaseBeam,
   fireVolley,
   loseEquipment,
   pickupExtra,
@@ -64,8 +63,8 @@ import {
   updatePod,
   updateShots,
 } from "./weapons";
-import { boxHit, divRoundHalfEven, idiv, roundHalfEven } from "./math";
-import type { World } from "./world";
+import { idiv, roundHalfEven } from "./math";
+import { World } from "./world";
 
 /** Eingabe eines Ticks als Bitmaske. */
 export const Input = {
@@ -109,7 +108,16 @@ export function restartAtCheckpoint(w: World): void {
   }
   w.tick = w.checkpoint;
   w.bossMode = false;
-  w.finished = false;
+  w.levelDone = false;
+  w.autopilot = 0;
+  w.exit = 0;
+  w.boss = undefined;
+  w.bossState = 0;
+  w.bossScored = 0;
+  w.bossType.fill(-1);
+  w.bossVisible.fill(0);
+  w.bossC.fill(0);
+  w.bossBeamW.fill(0);
   w.bgSpeed = BG_SPEED_DEFAULT;
   w.bgOffset = 0;
   w.shake = 0;
@@ -142,6 +150,28 @@ export function restartAtCheckpoint(w: World): void {
       }
     }
   }
+}
+
+/**
+ * Levelwechsel (`0x48EDAF`): Punkte, Leben, Tempo und Ausrüstung bleiben, der
+ * Checkpoint beginnt bei 0. Der Zufall läuft weiter wie im Original (global).
+ */
+export function continueInNextLevel(prev: World, level: LevelData): World {
+  const w = new World(level, prev.options, 0);
+  w.rnd.seed = prev.rnd.seed;
+  w.halfToggle = prev.halfToggle;
+  w.score = prev.score;
+  w.shownScore = prev.shownScore;
+  w.lives = prev.lives;
+  w.speed = prev.speed;
+  w.gauge = prev.gauge;
+  w.colour = prev.colour;
+  w.stage = prev.stage;
+  w.optionCount = prev.optionCount;
+  w.bomb = prev.bomb;
+  w.checkpoint = 0;
+  restartAtCheckpoint(w);
+  return w;
 }
 
 export function startLevel(w: World): void {
@@ -304,10 +334,18 @@ function levelScript(w: World): boolean {
     }
   }
   if (BOSS_TICK[n] === t) {
-    w.bgSpeed = 0;
+    // Level 5 lässt den Hintergrund im Bosskampf weiterlaufen (`0x440475`).
+    if (n !== 5) w.bgSpeed = 0;
     w.bossMode = true;
+    w.bossState = 0;
+    w.boss = BOSSES[n];
   }
-  if (END_TICK[n] === t) w.finished = true;
+  // Level ohne Boss: Tutorial 4500, Level 11 7300, Level 9 bei 8000 (Faktor < 1,1) sonst 15600.
+  const end = n === 9 ? (w.options.scoreFactor < 110 ? 8000 : 15600) : END_TICK[n];
+  if (end === t) {
+    w.levelDone = true;
+    w.invuln = 0;
+  }
   return false;
 }
 
@@ -391,6 +429,38 @@ function keyboard(w: World, input: number): void {
   if (fire) fireVolley(w);
 }
 
+/**
+ * Levelende (`0x4716CF`): geladener Beam geht los, 255 Ticks unverwundbar,
+ * 30 Ticks Pause, dann auf y = 195 steuern und mit 9 px/Tick hinausfliegen.
+ */
+function autopilotTick(w: World): void {
+  w.tilt = 0;
+  if (w.autopilot === 0) {
+    releaseBeam(w);
+    w.invuln = 0;
+  }
+  if (w.autopilot < 30) {
+    w.autopilot++;
+    return;
+  }
+  if (w.autopilot === 30) {
+    const y = w.py;
+    if (y < 195) {
+      w.py += y < 110 ? 6 : y < 170 ? 4 : y < 190 ? 2 : 1;
+      w.tilt = 2;
+    } else if (y > 195) {
+      w.py -= y > 300 ? 6 : y > 220 ? 4 : y > 200 ? 2 : 1;
+      w.tilt = 1;
+    } else {
+      sound(w, Sound.Antrieb, w.rnd.below(101) - 50);
+      w.autopilot = 31;
+    }
+    return;
+  }
+  w.px += 9;
+  if (w.px > 710) w.exit = 3;
+}
+
 // ---------------------------------------------------------------- Welt bewegen
 
 function scroll(w: World): void {
@@ -470,50 +540,6 @@ function scroll(w: World): void {
 }
 
 // ---------------------------------------------------------------- Gegner
-
-function requestShot(w: World, force: boolean): boolean {
-  if (force) return true;
-  const mode = w.options.enemyShots;
-  if (mode === 0) return false;
-  if (mode === 2) {
-    w.halfToggle ^= 1;
-    return w.halfToggle === 0;
-  }
-  return true;
-}
-
-function fireAimed(w: World, x: number, y: number): void {
-  const i = w.eshots.alloc();
-  if (i < 0) return;
-  const tx = w.px + 20;
-  const ty = w.py + 7;
-  const dx = tx - x;
-  const dy = ty - y;
-  let vx: number;
-  let vy: number;
-  if (Math.abs(dx) > Math.abs(dy)) {
-    vx = dx < 0 ? -ENEMY_AIM_SPEED : ENEMY_AIM_SPEED;
-    vy = divRoundHalfEven(dy * ENEMY_AIM_SPEED, Math.abs(dx));
-  } else {
-    vy = dy < 0 ? -ENEMY_AIM_SPEED : ENEMY_AIM_SPEED;
-    vx = dy === 0 ? 0 : divRoundHalfEven(dx * ENEMY_AIM_SPEED, Math.abs(dy));
-  }
-  w.eshotKind[i] = 1;
-  w.eshotX[i] = x - 4;
-  w.eshotY[i] = y - 4;
-  w.eshotVX[i] = vx;
-  w.eshotVY[i] = vy;
-}
-
-function fireFireball(w: World, x: number, y: number): void {
-  const i = w.eshots.alloc();
-  if (i < 0) return;
-  w.eshotKind[i] = 2;
-  w.eshotX[i] = x;
-  w.eshotY[i] = y - 7;
-  w.eshotVX[i] = FIREBALL_VX;
-  w.eshotVY[i] = 0;
-}
 
 /** Schleim (Code −1…−4): achsweise ±p4 zum Schiff, ohne Überschießen und Wand. */
 function homing(w: World, i: number): void {
@@ -615,8 +641,8 @@ function updateEnemies(w: World): void {
         if (st >= HOVER_FIRE_TICKS) {
           const fx0 = roundHalfEven(w.enX[i] as number) - 35;
           const fy = roundHalfEven(w.enY[i] as number);
-          fireFireball(w, fx0, fy);
-          fireFireball(w, fx0, fy + def.h);
+          addEnemyShotForced(w, ShotKind.Fireball, fx0, fy);
+          addEnemyShotForced(w, ShotKind.Fireball, fx0, fy + def.h);
         }
       }
       shooting = false;
@@ -639,16 +665,21 @@ function updateEnemies(w: World): void {
     }
 
     if (shooting && def.shot >= 1 && def.shot <= 3) {
-      if (w.rnd.less(ENEMY_SHOT_CHANCE[def.shot]!) && requestShot(w, false)) {
+      if (w.rnd.less(ENEMY_SHOT_CHANCE[def.shot]!)) {
         const x = roundHalfEven((w.enX[i] as number) + (fxFromInt(def.w) >> 1));
         const y = roundHalfEven((w.enY[i] as number) + fxFromInt(idiv(def.h, 2)));
-        fireAimed(w, x, y);
+        addEnemyShot(w, ShotKind.Aimed, x, y);
       }
     } else if (shooting && def.shot === 4) {
       const st = (w.enShotTimer[i] as number) + 1;
       w.enShotTimer[i] = st >= ENEMY_FIREBALL_TICKS ? 0 : st;
-      if (st >= ENEMY_FIREBALL_TICKS && requestShot(w, false)) {
-        fireFireball(w, roundHalfEven(w.enX[i] as number) - 35, roundHalfEven(w.enY[i] as number));
+      if (st >= ENEMY_FIREBALL_TICKS) {
+        addEnemyShot(
+          w,
+          ShotKind.Fireball,
+          roundHalfEven(w.enX[i] as number) - 35,
+          roundHalfEven(w.enY[i] as number),
+        );
       }
     }
 
@@ -661,39 +692,6 @@ function updateEnemies(w: World): void {
 }
 
 // ---------------------------------------------------------------- Schüsse, Explosionen, HUD
-
-function updateEnemyShots(w: World): void {
-  for (let i = 0; i < w.eshots.capacity; i++) {
-    if (!w.eshots.active[i]) continue;
-    const kind = ESHOT[w.eshotKind[i] as 1 | 2];
-    const x = (w.eshotX[i] as number) + (w.eshotVX[i] as number);
-    const y = (w.eshotY[i] as number) + (w.eshotVY[i] as number);
-    w.eshotX[i] = x;
-    w.eshotY[i] = y;
-    if (x < -kind.w || x > SCREEN_W || y < -kind.h || y > FIELD_H) {
-      w.eshots.free(i);
-      continue;
-    }
-    if (
-      !w.dead &&
-      w.invuln === INVULN_DONE &&
-      w.shield === 0 &&
-      boxHit(
-        w.px,
-        w.py + SHIP_SHOT_BOX.dy0,
-        SHIP_SHOT_BOX.w,
-        SHIP_SHOT_BOX.dy1 - SHIP_SHOT_BOX.dy0,
-        x,
-        y,
-        kind.w,
-        kind.h,
-      )
-    ) {
-      w.eshots.free(i);
-      killPlayer(w);
-    }
-  }
-}
 
 function updateExplosions(w: World): void {
   for (let i = 0; i < w.explosions.capacity; i++) {
@@ -737,14 +735,17 @@ function rollScore(w: World): void {
  * Ein Tick in der Reihenfolge des Originals (`docs/measurements/dove-player.md`).
  */
 export function step(w: World, input: number): void {
+  // Nach dem Levelende ist die Hauptschleife verlassen (`Me.690 = 3`).
+  if (w.exit !== 0) return;
   w.laser = 0;
   // 1. Wand-Schub (Option „Wände töten“ aus)
   if (!w.options.wallsKill && !w.dead && w.px > SHIP_MIN_X && shipWall(w, w.px, w.py)) w.px -= 1;
   // 2.–4. Position merken, Tastatur, Wand-Rücknahme
   w.prevX = w.px;
   w.prevY = w.py;
-  keyboard(w, input);
-  if (!w.options.wallsKill && !w.dead) {
+  if (w.levelDone && !w.dead) autopilotTick(w);
+  else keyboard(w, input);
+  if (!w.options.wallsKill && !w.dead && !w.levelDone) {
     if (shipWall(w, w.px, w.prevY)) w.px = w.prevX;
     if (shipWall(w, w.px, w.py)) w.py = w.prevY;
   }
@@ -777,6 +778,7 @@ export function step(w: World, input: number): void {
   scroll(w);
   // 10.–12. Gegner, Spielerschüsse, Gegnerschüsse
   updateEnemies(w);
+  if (w.bossMode && w.boss) w.boss.tick(w);
   updateShots(w);
   updateLaser(w);
   updateEnemyShots(w);
@@ -797,14 +799,5 @@ export function step(w: World, input: number): void {
       }
       restartAtCheckpoint(w);
     }
-  }
-  if (
-    w.bossMode &&
-    !w.finished &&
-    w.enemies.active.indexOf(1) < 0 &&
-    w.tick > (BOSS_TICK[w.level.number] ?? 0) + 200
-  ) {
-    // M3: ohne Boss gilt das Level als geschafft, sobald das Feld leer ist.
-    w.finished = true;
   }
 }
