@@ -82,6 +82,11 @@ export class World {
   /** Laufende Option „Gegner schießen“ (`Me.634`); Bosse setzen sie zeitweise auf voll. */
   shotOption: number;
 
+  /** Dynamisches Pattern #100 (Boss 4): Punkte inkl. Start und Terminator x = −1. */
+  readonly customPathX = new Int16Array(32);
+  readonly customPathY = new Int16Array(32);
+  customPathLen = 0;
+
   // Boss (`Me.3A0`): bis zu drei Teile, Zustand, Zähler
   /** Laufendes Bossskript (aus der Levelnummer, nicht gehasht). */
   boss: BossScript | undefined = undefined;
@@ -169,6 +174,8 @@ export class World {
   readonly tileType = new Int16Array(100);
   readonly tileX = new Int32Array(100);
   readonly tileY = new Int32Array(100);
+  readonly tileVX = new Int32Array(100);
+  readonly tileVY = new Int32Array(100);
 
   // Hintergrundobjekte (Me.5FC, 10 Slots), x in Q16.16
   readonly objects = new Pool(10);
@@ -185,6 +192,7 @@ export class World {
   readonly extraArt = new Int8Array(13);
   readonly extraX = new Int32Array(13);
   readonly extraY = new Int32Array(13);
+  readonly extraVX = new Int32Array(13);
   readonly extraFrame = new Int8Array(13);
   readonly extraAnim = new Int16Array(13);
 
@@ -308,6 +316,9 @@ export class World {
   hash(): number {
     return hashArrays([
       this.scalars(),
+      this.customPathX,
+      this.customPathY,
+      Int32Array.of(this.customPathLen),
       this.bossType,
       this.bossX,
       this.bossY,
@@ -324,6 +335,8 @@ export class World {
       this.tileType,
       this.tileX,
       this.tileY,
+      this.tileVX,
+      this.tileVY,
       this.objects.active,
       this.objType,
       this.objX,
@@ -334,6 +347,7 @@ export class World {
       this.extraArt,
       this.extraX,
       this.extraY,
+      this.extraVX,
       this.extraFrame,
       this.extraAnim,
       this.enemies.active,
