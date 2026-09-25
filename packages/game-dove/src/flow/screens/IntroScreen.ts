@@ -50,7 +50,7 @@ export class IntroScreen implements Screen<true> {
       ids.add(introImageId(s.sheet));
     }
     this.images = [...ids];
-    this.g = new Gfx(env.frames, [{}, { keyed: true }, {}]);
+    this.g = new Gfx(env.frames, 3);
     this.root.addChild(this.g.root);
     const layer = new Container();
     this.root.addChild(layer);

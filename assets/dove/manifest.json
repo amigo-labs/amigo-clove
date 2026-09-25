@@ -846,20 +846,20 @@
         "screens"
       ],
       "kind": "image",
-      "file": "image/intro.6ac4d592.webp",
-      "bytes": 149534,
-      "sha256": "6ac4d592b2364c380329a91c9ea5400da0956b78811b4dce24f3da62dd5a6a09",
+      "file": "image/intro.fe786b3a.webp",
+      "bytes": 160038,
+      "sha256": "fe786b3ad39183b7c27c70358c7a1b331e83ca13a02c13559762487698760be7",
       "sources": [
         {
           "path": "original-dove/Data/Grafik/intro.spr",
           "sha256": "a0356eabef4349399bb2a1172dc17d1f124fdca45e973a19d8eab39a769b7578"
         }
       ],
-      "optionsHash": "1dfdedd29226d841",
+      "optionsHash": "ad74b3896b76b80d",
       "converterVersion": 1,
       "width": 640,
       "height": 480,
-      "colorKeyed": false
+      "colorKeyed": true
     },
     {
       "id": "image/intro2",
@@ -1309,20 +1309,20 @@
         "screens"
       ],
       "kind": "image",
-      "file": "image/titel.c6566428.webp",
-      "bytes": 162750,
-      "sha256": "c65664281a4adbd8979141c788fb3db1a15009649c416412537ea07d89c50c3e",
+      "file": "image/titel.864c651c.webp",
+      "bytes": 178614,
+      "sha256": "864c651c5f5112986a6462820b5a9140963ce66a97db7be9cb2370add937100d",
       "sources": [
         {
           "path": "original-dove/Data/Grafik/titel.spr",
           "sha256": "61955f166d963ec75fa0779ebfd81f780e20375c8d350267d46d6370b036b949"
         }
       ],
-      "optionsHash": "1dfdedd29226d841",
+      "optionsHash": "ad74b3896b76b80d",
       "converterVersion": 1,
       "width": 640,
       "height": 480,
-      "colorKeyed": false
+      "colorKeyed": true
     },
     {
       "id": "level/level0",

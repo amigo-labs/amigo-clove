@@ -43,12 +43,13 @@ const SCREEN_IMAGES = [
 
 /**
  * Opak (kein Colorkey): Vollbilder, die nie über etwas anderem liegen —
- * Titel, Intro, Ladebild, Levelvorschauen `0–10`/`Extralevel`, Endbilder `B1–B5`
- * und die Level-Hintergründe. Bei den meisten davon ist die Wahl ohnehin
+ * `intro2`, Ladebild, Levelvorschauen `0–10`/`Extralevel`, Endbilder `B1–B5`
+ * und die Level-Hintergründe. `titel` und `intro` sind Sprite-Blätter und
+ * werden gekeyed geblittet (`0x4ACE54`, `0x4AD2FF`, Intro-Objekte). Bei den meisten davon ist die Wahl ohnehin
  * belanglos (0 % reines Schwarz). Alles andere wird gekeyed, wie DirectDraw
  * es beim Blitten mit Quell-Colorkey tat.
  */
-const OPAQUE = /^(titel|intro2?|loading|extralevel|\d+|b\d|background\d+)$/;
+const OPAQUE = /^(intro2|loading|extralevel|\d+|b\d|background\d+)$/;
 
 export function isColorKeyed(name: string): boolean {
   return !OPAQUE.test(name);

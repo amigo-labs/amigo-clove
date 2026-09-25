@@ -1,5 +1,5 @@
 import type { TextureRegistry } from "@clove/pixi-kit";
-import { Container, Filter, GlProgram, type Sprite, Texture, defaultFilterVert } from "pixi.js";
+import { Container, type Sprite, Texture } from "pixi.js";
 import { GLYPH_H, GLYPH_W, glyph } from "../render/font";
 import { SpritePool } from "../render/SpritePool";
 import { BIG_H, BIG_W, layoutBigText } from "./bigfont";
@@ -31,37 +31,6 @@ export class FrameCache {
 }
 
 /**
- * Quell-Colorkey wie DirectDraw im 16-Bit-Modus: alles, was in RGB565 zu
- * Schwarz wird (r < 8, g < 4, b < 8), ist durchsichtig. Für Blätter, die das
- * Asset-Build opak ablegt (`titel`, `intro`), das Original aber gekeyed blittet.
- */
-const COLOR_KEY_FRAG = `in vec2 vTextureCoord;
-out vec4 finalColor;
-uniform sampler2D uTexture;
-void main(void) {
-  vec4 c = texture(uTexture, vTextureCoord);
-  bool key = c.r < 8.0 / 255.0 && c.g < 4.0 / 255.0 && c.b < 8.0 / 255.0;
-  finalColor = key ? vec4(0.0) : c;
-}`;
-
-export function colorKeyFilter(): Filter {
-  return new Filter({
-    glProgram: GlProgram.from({
-      vertex: defaultFilterVert,
-      fragment: COLOR_KEY_FRAG,
-      name: "dove-colorkey",
-    }),
-    resources: {},
-    resolution: 1,
-  });
-}
-
-export interface LayerOptions {
-  /** Colorkey-Filter auf der Ebene (siehe `colorKeyFilter`). */
-  readonly keyed?: boolean;
-}
-
-/**
  * Zeichenfläche eines Bildschirms: Ebenen mit je einem `SpritePool`, pro Bild
  * `begin()` … Zeichenbefehle … `end()`. Positionen ganzzahlig, Texte aus
  * `text.spr` (8×12) und `text2.spr` (60×75).
@@ -69,19 +38,14 @@ export interface LayerOptions {
 export class Gfx {
   readonly root = new Container();
   private readonly pools: SpritePool[] = [];
-  private readonly filters: Filter[] = [];
 
+  /** `layers`: Anzahl der Ebenen (Zeichenreihenfolge von hinten nach vorn). */
   constructor(
     readonly frames: FrameCache,
-    layers: readonly LayerOptions[] = [{}],
+    layers = 1,
   ) {
-    for (const opt of layers) {
+    for (let i = 0; i < layers; i++) {
       const c = new Container();
-      if (opt.keyed) {
-        const f = colorKeyFilter();
-        this.filters.push(f);
-        c.filters = [f];
-      }
       this.root.addChild(c);
       this.pools.push(new SpritePool(c));
     }
@@ -136,7 +100,6 @@ export class Gfx {
 
   destroy(): void {
     this.root.destroy({ children: true });
-    for (const f of this.filters) f.destroy();
   }
 }
 
