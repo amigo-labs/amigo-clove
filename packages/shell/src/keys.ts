@@ -1,0 +1,24 @@
+import type { KeyState } from "@clove/core";
+
+/** Tastaturzustand der Shell. Fokusverlust lässt alle Tasten los. */
+export function createKeyState(target: Window): KeyState & { dispose(): void } {
+  const down = new Set<string>();
+  const onDown = (e: KeyboardEvent) => {
+    down.add(e.code);
+    if (e.code.startsWith("Arrow") || e.code === "Space") e.preventDefault();
+  };
+  const onUp = (e: KeyboardEvent) => down.delete(e.code);
+  const onBlur = () => down.clear();
+  target.addEventListener("keydown", onDown);
+  target.addEventListener("keyup", onUp);
+  target.addEventListener("blur", onBlur);
+  return {
+    isDown: (code) => down.has(code),
+    dispose() {
+      target.removeEventListener("keydown", onDown);
+      target.removeEventListener("keyup", onUp);
+      target.removeEventListener("blur", onBlur);
+      down.clear();
+    },
+  };
+}

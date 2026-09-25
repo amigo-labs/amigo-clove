@@ -1,0 +1,23 @@
+{
+  "name": "@clove/shell",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "smoke": "vite build && bun scripts/smoke.ts",
+    "browsers": "playwright-core install --with-deps chromium"
+  },
+  "dependencies": {
+    "@clove/audio": "workspace:*",
+    "@clove/core": "workspace:*",
+    "@clove/game-dove": "workspace:*"
+  },
+  "devDependencies": {
+    "playwright-core": "1.56.1",
+    "sharp": "0.35.4",
+    "vite": "8.3.1"
+  }
+}

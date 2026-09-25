@@ -1,0 +1,14 @@
+{
+  "name": "@clove/assetkit",
+  "version": "0.0.0",
+  "private": true,
+  "bin": {
+    "clove-assets": "./src/cli.ts"
+  },
+  "type": "module",
+  "dependencies": {
+    "@clove/core": "workspace:*",
+    "@clove/formats": "workspace:*",
+    "sharp": "0.35.4"
+  }
+}

@@ -11,7 +11,7 @@
     "typescript/consistent-type-imports": "error",
     "import/no-cycle": "error"
   },
-  "ignorePatterns": ["original-dove/**", "original-dovez/**", "tools/**"],
+  "ignorePatterns": ["original-dove/**", "original-dovez/**", "assets/**", "tools/**"],
   "overrides": [
     {
       "files": ["packages/*/src/sim/**"],
