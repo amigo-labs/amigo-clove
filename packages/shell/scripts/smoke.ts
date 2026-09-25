@@ -47,10 +47,12 @@ try {
   const page = await browser.newPage({ viewport: { width: 640, height: 480 } });
   page.on("pageerror", (e) => failures.push(`pageerror: ${e.message}`));
   page.on("console", (m) => {
-    if (m.type() === "error" && !m.text().includes("favicon"))
-      failures.push(`console: ${m.text()}`);
+    if (m.type() === "error") failures.push(`console: ${m.text()} (${m.location().url})`);
   });
   page.on("requestfailed", (r) => failures.push(`request: ${r.url()}`));
+  page.on("response", (r) => {
+    if (r.status() >= 400) failures.push(`HTTP ${r.status()}: ${r.url()}`);
+  });
 
   await page.goto(`http://localhost:${PORT}/#/dove?level=1&seed=1&invincible=1&from=2100`);
   await page.waitForSelector("body[data-game]", { timeout: 30_000 });
