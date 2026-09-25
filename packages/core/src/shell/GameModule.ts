@@ -14,8 +14,21 @@ export interface KeyState {
   isDown(code: string): boolean;
 }
 
+/**
+ * Audio der Shell: ein AudioContext mit getrennten Pegeln für Musik und Effekte.
+ * Fehlt, wenn ohne Ton gestartet wird (Original: „Dove - NOSOUND.bat“).
+ */
+export interface AudioHost {
+  readonly context: AudioContext;
+  readonly music: AudioNode;
+  readonly sfx: AudioNode;
+  /** URL des libopenmpt-AudioWorklets (`chiptune3.worklet.js`). */
+  readonly moduleWorkletUrl: string;
+}
+
 export interface GameHost {
   readonly canvas: HTMLCanvasElement;
+  readonly audio?: AudioHost;
   readonly assets: AssetStore;
   readonly keys: KeyState;
   readonly locale: string;

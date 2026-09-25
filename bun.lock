@@ -23,6 +23,13 @@
         "sharp": "0.35.4",
       },
     },
+    "packages/audio": {
+      "name": "@clove/audio",
+      "version": "0.0.0",
+      "dependencies": {
+        "chiptune3": "0.8.9",
+      },
+    },
     "packages/core": {
       "name": "@clove/core",
       "version": "0.0.0",
@@ -53,6 +60,7 @@
       "name": "@clove/shell",
       "version": "0.0.0",
       "dependencies": {
+        "@clove/audio": "workspace:*",
         "@clove/core": "workspace:*",
         "@clove/game-dove": "workspace:*",
       },
@@ -65,6 +73,8 @@
   },
   "packages": {
     "@clove/assetkit": ["@clove/assetkit@workspace:packages/assetkit"],
+
+    "@clove/audio": ["@clove/audio@workspace:packages/audio"],
 
     "@clove/core": ["@clove/core@workspace:packages/core"],
 
@@ -295,6 +305,8 @@
     "@xmldom/xmldom": ["@xmldom/xmldom@0.8.15", "", {}, "sha512-/5NV/vDALVFDXgLmfsy9TRCBlKwO2LNBFzpzvb9iIj+jR+eSc6DLYYvVOdivT/jm7MtU6TebYuRmzEOI7w40UA=="],
 
     "bun-types": ["bun-types@1.4.2", "", { "dependencies": { "@types/node": "*" } }, "sha512-bxV1FgK7yBIzjRe5zBozIM4Bem11ZJcCXSrjWRG3YWLt8yFDePu4cLjpebO8OvPeIE9trbyPF4fuj3Cia4Fj3w=="],
+
+    "chiptune3": ["chiptune3@0.8.9", "", {}, "sha512-RDH/1HNkxm140p/hGJFiMUFurYWVZny2dg5D6QO7iO13vcFF2kKuRraI19BOfYqz7nM///8vhQYMsVDxO49Dgg=="],
 
     "detect-libc": ["detect-libc@2.1.2", "", {}, "sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ=="],
 

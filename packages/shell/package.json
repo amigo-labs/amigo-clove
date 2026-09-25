@@ -11,6 +11,7 @@
     "browsers": "playwright-core install --with-deps chromium"
   },
   "dependencies": {
+    "@clove/audio": "workspace:*",
     "@clove/core": "workspace:*",
     "@clove/game-dove": "workspace:*"
   },
