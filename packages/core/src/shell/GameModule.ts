@@ -26,9 +26,18 @@ export interface AudioHost {
   readonly moduleWorkletUrl: string;
 }
 
+/** Dauerhafter Schlüssel/Wert-Speicher der Shell (Optionen, Freischaltungen, Highscores). */
+export interface KeyValueStore {
+  get(key: string): string | null;
+  set(key: string, value: string): void;
+}
+
 export interface GameHost {
   readonly canvas: HTMLCanvasElement;
   readonly audio?: AudioHost;
+  readonly storage: KeyValueStore;
+  /** Das Spiel ist beendet (Menü „Quit“); die Shell kehrt zum Launcher zurück. */
+  exit(): void;
   readonly assets: AssetStore;
   readonly keys: KeyState;
   readonly locale: string;

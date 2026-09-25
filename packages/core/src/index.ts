@@ -35,4 +35,11 @@ export {
   firstDivergence,
   type Replay,
 } from "./replay/Replay";
-export type { AudioHost, GameHost, GameInstance, GameModule, KeyState } from "./shell/GameModule";
+export type {
+  AudioHost,
+  GameHost,
+  GameInstance,
+  GameModule,
+  KeyState,
+  KeyValueStore,
+} from "./shell/GameModule";

@@ -1,5 +1,11 @@
 import { AudioBus } from "@clove/audio";
-import { AssetStore, type AudioHost, type GameInstance, type GameModule } from "@clove/core";
+import {
+  AssetStore,
+  type AudioHost,
+  type GameInstance,
+  type GameModule,
+  type KeyValueStore,
+} from "@clove/core";
 import { createKeyState } from "./keys";
 
 /**
@@ -21,6 +27,27 @@ let bus: AudioBus | undefined;
  * Browser halten ihn bis zur ersten Nutzergeste an; jede Taste oder jeder
  * Klick setzt ihn fort. `?nosound` startet ohne Ton.
  */
+/** localStorage mit Präfix je Spiel; ohne Speicher (privates Fenster) bleibt alles flüchtig. */
+function storageFor(game: string): KeyValueStore {
+  const memory = new Map<string, string>();
+  return {
+    get(key: string) {
+      try {
+        return localStorage.getItem(`clove:${game}:${key}`);
+      } catch {
+        return memory.get(key) ?? null;
+      }
+    },
+    set(key: string, value: string) {
+      try {
+        localStorage.setItem(`clove:${game}:${key}`, value);
+      } catch {
+        memory.set(key, value);
+      }
+    },
+  };
+}
+
 function audioHost(query: URLSearchParams): AudioHost | undefined {
   if (query.has("nosound") || typeof AudioContext === "undefined") return undefined;
   if (!bus) {
@@ -74,6 +101,10 @@ async function route(): Promise<void> {
         keys,
         locale: navigator.language,
         now: () => performance.now(),
+        storage: storageFor(path),
+        exit: () => {
+          location.hash = "#/";
+        },
         ...(audio ? { audio } : {}),
       },
       Object.fromEntries(params),
