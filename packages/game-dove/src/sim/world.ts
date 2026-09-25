@@ -1,0 +1,246 @@
+import { hashArrays } from "@clove/core";
+import { BG_SPEED_DEFAULT, LIVES_START, SHIP_SPEED_DEFAULT, STAR_COUNT } from "./constants";
+import type { LevelData } from "./level";
+import { VbRnd } from "./VbRnd";
+
+/** Slot-Pool: `active` plus Suche nach dem ersten freien Slot (wie im Original). */
+export class Pool {
+  readonly active: Uint8Array;
+  constructor(readonly capacity: number) {
+    this.active = new Uint8Array(capacity);
+  }
+  alloc(): number {
+    const i = this.active.indexOf(0);
+    if (i >= 0) this.active[i] = 1;
+    return i;
+  }
+  free(i: number): void {
+    this.active[i] = 0;
+  }
+  clear(): void {
+    this.active.fill(0);
+  }
+}
+
+/** Optionen des Originals (Optionsbildschirm) und Debug-Schalter. */
+export interface SimOptions {
+  /** „Gegner schießen“: 0 aus, 1 voll, 2 halb. Standard halb (Punktefaktor 1,0). */
+  readonly enemyShots: 0 | 1 | 2;
+  /** „Kollision mit Wand“ tötet. Standard aus. */
+  readonly wallsKill: boolean;
+  /** Punktefaktor `Me.[0x638]` in Hundertsteln; Standard 100. */
+  readonly scoreFactor: number;
+  /** Debug: Spieler stirbt nie (für Durchlauftests). */
+  readonly invincible: boolean;
+}
+
+export const DEFAULT_OPTIONS: SimOptions = {
+  enemyShots: 2,
+  wallsKill: false,
+  scoreFactor: 100,
+  invincible: false,
+};
+
+/**
+ * Der gesamte Simulationszustand. Nur Ganzzahlen und Q16.16 in Typed Arrays bzw.
+ * Zahlenfeldern — `hash()` erfasst alles, was den nächsten Tick beeinflusst.
+ */
+export class World {
+  readonly rnd: VbRnd;
+  /** Effekte für den Renderer als Quintupel `[art, x, y, w, h]`; nicht gehasht. */
+  readonly effects: number[] = [];
+
+  // Level-Fortschritt
+  tick = 0;
+  checkpoint = 0;
+  bossMode = false;
+  finished = false;
+  bgSpeed = BG_SPEED_DEFAULT;
+  bgOffset = 0;
+  shake = 0;
+  halfToggle = 0;
+
+  // Spieler
+  px = 0;
+  py = 0;
+  prevX = 0;
+  prevY = 0;
+  speed = SHIP_SPEED_DEFAULT;
+  tilt = 0;
+  flame = 1;
+  flameTimer = 0;
+  invuln = 0;
+  dead = 0;
+  deathCounter = 0;
+  lives = LIVES_START;
+  score = 0;
+  shownScore = 0;
+  gauge = SHIP_SPEED_DEFAULT * 10;
+  nextShot = 0;
+  prevInput = 0;
+
+  // Landschaft (Me.58C, 100 Slots)
+  readonly tiles = new Pool(100);
+  readonly tileType = new Int16Array(100);
+  readonly tileX = new Int32Array(100);
+  readonly tileY = new Int32Array(100);
+
+  // Hintergrundobjekte (Me.5FC, 10 Slots), x in Q16.16
+  readonly objects = new Pool(10);
+  readonly objType = new Int16Array(10);
+  readonly objX = new Int32Array(10);
+  readonly objY = new Int32Array(10);
+
+  // Sterne (nur background1), x in Q16.16
+  readonly starX = new Int32Array(STAR_COUNT);
+  readonly starY = new Int32Array(STAR_COUNT);
+
+  // Extras (Me.230, 13 Slots)
+  readonly extras = new Pool(13);
+  readonly extraArt = new Int8Array(13);
+  readonly extraX = new Int32Array(13);
+  readonly extraY = new Int32Array(13);
+  readonly extraFrame = new Int8Array(13);
+  readonly extraAnim = new Int16Array(13);
+
+  // Gegner (Me.44C, 100 Slots), Position und Geschwindigkeit in Q16.16
+  readonly enemies = new Pool(100);
+  readonly enType = new Int16Array(100);
+  readonly enPattern = new Int16Array(100);
+  readonly enX = new Int32Array(100);
+  readonly enY = new Int32Array(100);
+  readonly enVX = new Int32Array(100);
+  readonly enVY = new Int32Array(100);
+  readonly enHP = new Int32Array(100);
+  readonly enPoints = new Int32Array(100);
+  readonly enFrame = new Int16Array(100);
+  readonly enAnim = new Int16Array(100);
+  readonly enWaypoint = new Int16Array(100);
+  readonly enShotTimer = new Int32Array(100);
+  /** Zustandszähler der Sonderbewegungen (Schweber: Abzugszähler, Faller: Phase). */
+  readonly enAux = new Int32Array(100);
+
+  // Meteore (Me.214, 11 Slots)
+  readonly meteors = new Pool(11);
+  readonly metX = new Int32Array(11);
+  readonly metY = new Int32Array(11);
+  readonly metVX = new Int32Array(11);
+  readonly metVY = new Int32Array(11);
+  readonly metHP = new Int32Array(11);
+
+  // Spielerschüsse (Original: 1000 Slots; bei 1 Schuss/6 Ticks sind nie mehr als ~12 aktiv)
+  readonly shots = new Pool(64);
+  readonly shotX = new Int32Array(64);
+  readonly shotY = new Int32Array(64);
+  readonly shotDamage = new Int32Array(64);
+
+  // Gegnerschüsse (Me.5D8, 50 Slots)
+  readonly eshots = new Pool(50);
+  readonly eshotKind = new Int8Array(50);
+  readonly eshotX = new Int32Array(50);
+  readonly eshotY = new Int32Array(50);
+  readonly eshotVX = new Int32Array(50);
+  readonly eshotVY = new Int32Array(50);
+
+  // Explosionen
+  readonly explosions = new Pool(64);
+  readonly expX = new Int32Array(64);
+  readonly expY = new Int32Array(64);
+  readonly expFrame = new Int8Array(64);
+
+  constructor(
+    readonly level: LevelData,
+    readonly options: SimOptions,
+    seed: number,
+  ) {
+    this.rnd = new VbRnd(seed);
+  }
+
+  private scalars(): Int32Array {
+    return Int32Array.of(
+      this.rnd.seed,
+      this.tick,
+      this.checkpoint,
+      +this.bossMode,
+      +this.finished,
+      this.bgSpeed,
+      this.bgOffset,
+      this.shake,
+      this.halfToggle,
+      this.px,
+      this.py,
+      this.prevX,
+      this.prevY,
+      this.speed,
+      this.tilt,
+      this.flame,
+      this.flameTimer,
+      this.invuln,
+      this.dead,
+      this.deathCounter,
+      this.lives,
+      this.score,
+      this.shownScore,
+      this.gauge,
+      this.nextShot,
+      this.prevInput,
+    );
+  }
+
+  /** xxHash32 über den kompletten Zustand. */
+  hash(): number {
+    return hashArrays([
+      this.scalars(),
+      this.tiles.active,
+      this.tileType,
+      this.tileX,
+      this.tileY,
+      this.objects.active,
+      this.objType,
+      this.objX,
+      this.objY,
+      this.starX,
+      this.starY,
+      this.extras.active,
+      this.extraArt,
+      this.extraX,
+      this.extraY,
+      this.extraFrame,
+      this.extraAnim,
+      this.enemies.active,
+      this.enType,
+      this.enPattern,
+      this.enX,
+      this.enY,
+      this.enVX,
+      this.enVY,
+      this.enHP,
+      this.enPoints,
+      this.enFrame,
+      this.enAnim,
+      this.enWaypoint,
+      this.enShotTimer,
+      this.enAux,
+      this.meteors.active,
+      this.metX,
+      this.metY,
+      this.metVX,
+      this.metVY,
+      this.metHP,
+      this.shots.active,
+      this.shotX,
+      this.shotY,
+      this.shotDamage,
+      this.eshots.active,
+      this.eshotKind,
+      this.eshotX,
+      this.eshotY,
+      this.eshotVX,
+      this.eshotVY,
+      this.explosions.active,
+      this.expX,
+      this.expY,
+      this.expFrame,
+    ]);
+  }
+}
