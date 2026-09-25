@@ -13,8 +13,10 @@ import {
   CONTOUR_CONVERTER_VERSION,
   INTRO_CONVERTER_VERSION,
   LEVEL_CONVERTER_VERSION,
+  TEXT_CONVERTER_VERSION,
   convertContour,
   convertIntro,
+  convertText,
   convertLevel,
 } from "../stages/level";
 import { MUSIC_CONVERTER_VERSION, convertMusic } from "../stages/music";
@@ -182,6 +184,21 @@ export function planDove(root: string): Job[] {
       { id: "data/intro", kind: "data", ext: "json", bytes: convertIntro(dat!), meta: {} },
     ],
   });
+
+  // Readme-Texte für den Info-Bildschirm (`info` 0x490430): Liesmich (DE), Readme (EN).
+  for (const [id, file] of [
+    ["data/liesmich", "original-dove/Liesmich.txt"],
+    ["data/readme", "original-dove/Readme.txt"],
+  ] as const) {
+    jobs.push({
+      bundles: ["screens"],
+      sources: [file],
+      options: {},
+      converterVersion: TEXT_CONVERTER_VERSION,
+      outputs: [{ id, kind: "data", ext: "json" }],
+      run: async ([txt]) => [{ id, kind: "data", ext: "json", bytes: convertText(txt!), meta: {} }],
+    });
+  }
 
   for (const path of listFiles(root, `${DOVE_DATA}/Sound`, /\.wav$/i)) {
     const id = `sound/${idName(path)}`;

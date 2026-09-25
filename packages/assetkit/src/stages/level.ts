@@ -1,4 +1,10 @@
-import { buildLevelAsset, parseContourDat, parseIntroDat, parseLevelDat } from "@clove/formats";
+import {
+  buildLevelAsset,
+  decodeCp1252,
+  parseContourDat,
+  parseIntroDat,
+  parseLevelDat,
+} from "@clove/formats";
 
 /** 2: Konturen mit allen h+1 Zeilen, keine Terrain-Masken mehr (M3). */
 export const LEVEL_CONVERTER_VERSION = 2;
@@ -22,4 +28,12 @@ export const INTRO_CONVERTER_VERSION = 1;
 /** `intro.dat` → JSON (`DoveIntro`). */
 export function convertIntro(dat: Uint8Array): Uint8Array {
   return new TextEncoder().encode(`${JSON.stringify(parseIntroDat(dat))}\n`);
+}
+
+export const TEXT_CONVERTER_VERSION = 1;
+
+/** Textdatei (CP1252, CRLF) → JSON `{ text }` mit LF-Zeilenenden. */
+export function convertText(bytes: Uint8Array): Uint8Array {
+  const text = decodeCp1252(bytes).replace(/\r\n/g, "\n");
+  return new TextEncoder().encode(`${JSON.stringify({ text })}\n`);
 }
