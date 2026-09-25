@@ -1,0 +1,2592 @@
+{
+  "version": 1,
+  "game": "dove",
+  "entries": [
+    {
+      "id": "image/0",
+      "bundles": [
+        "screens"
+      ],
+      "kind": "image",
+      "file": "image/0.af419710.webp",
+      "bytes": 49504,
+      "sha256": "af419710fbc1126adf13609bbc732e89481543ff8781c31e6a18e734a759dc69",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/0.spr",
+          "sha256": "9806cfe753886d085deb25b1d1e76fb003f6346a3a28545dce4fde62675d2f0e"
+        }
+      ],
+      "optionsHash": "1dfdedd29226d841",
+      "converterVersion": 1,
+      "width": 320,
+      "height": 240,
+      "colorKeyed": false
+    },
+    {
+      "id": "image/1",
+      "bundles": [
+        "screens"
+      ],
+      "kind": "image",
+      "file": "image/1.07808d7a.webp",
+      "bytes": 54528,
+      "sha256": "07808d7ab199c87e59d41b5cfabf2f1a730577f935c91c09ac47bf4af696f43b",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/1.spr",
+          "sha256": "6c18944043ae429a17d7441978e168bc3acd58d69a39ac7542744afea5380cf2"
+        }
+      ],
+      "optionsHash": "1dfdedd29226d841",
+      "converterVersion": 1,
+      "width": 320,
+      "height": 240,
+      "colorKeyed": false
+    },
+    {
+      "id": "image/10",
+      "bundles": [
+        "screens"
+      ],
+      "kind": "image",
+      "file": "image/10.af6886a9.webp",
+      "bytes": 37718,
+      "sha256": "af6886a9aa8e158223d932c558909d31858c14c109fd8afda521d476a6fc3696",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/10.spr",
+          "sha256": "aabd690fff0418a2219c0620a7f20eb5a759bf537e871af37343b8fd710f6d55"
+        }
+      ],
+      "optionsHash": "1dfdedd29226d841",
+      "converterVersion": 1,
+      "width": 320,
+      "height": 240,
+      "colorKeyed": false
+    },
+    {
+      "id": "image/2",
+      "bundles": [
+        "screens"
+      ],
+      "kind": "image",
+      "file": "image/2.f6520fb8.webp",
+      "bytes": 89702,
+      "sha256": "f6520fb8f06a6850653e08613ac7a196cef8d0eb69baec73c4ab172a7894d8ab",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/2.spr",
+          "sha256": "c0c9a68cb44f15978d6a66c64d28a6fc1343d0bd285f96d30dc1086e54a312e7"
+        }
+      ],
+      "optionsHash": "1dfdedd29226d841",
+      "converterVersion": 1,
+      "width": 320,
+      "height": 240,
+      "colorKeyed": false
+    },
+    {
+      "id": "image/3",
+      "bundles": [
+        "screens"
+      ],
+      "kind": "image",
+      "file": "image/3.2602c8dd.webp",
+      "bytes": 71826,
+      "sha256": "2602c8dd76d25e1d334480311244d064d46835448510b091d10e74c090d1f924",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/3.spr",
+          "sha256": "ce98d7f8c800fe808607b7dbaeafc9db67774ff380073c82c73f0b5f79a93c45"
+        }
+      ],
+      "optionsHash": "1dfdedd29226d841",
+      "converterVersion": 1,
+      "width": 320,
+      "height": 240,
+      "colorKeyed": false
+    },
+    {
+      "id": "image/4",
+      "bundles": [
+        "screens"
+      ],
+      "kind": "image",
+      "file": "image/4.c9c0a6ab.webp",
+      "bytes": 67654,
+      "sha256": "c9c0a6ab764f8b825e44ec54c2325878f47f56d4f648bfcdb077f4778fce69dd",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/4.spr",
+          "sha256": "de71daeae4699e5d904d3442569720ba83073f9e951e217426aa7123b7a22b80"
+        }
+      ],
+      "optionsHash": "1dfdedd29226d841",
+      "converterVersion": 1,
+      "width": 320,
+      "height": 240,
+      "colorKeyed": false
+    },
+    {
+      "id": "image/5",
+      "bundles": [
+        "screens"
+      ],
+      "kind": "image",
+      "file": "image/5.572209b9.webp",
+      "bytes": 88254,
+      "sha256": "572209b9ff2b237efbb0392067ccf744661079b36a844b78b7387434149bfe9e",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/5.spr",
+          "sha256": "10e44f9120c14b7972673d5af13ad5d2a1528e5a31a25ed5c3129085f94510be"
+        }
+      ],
+      "optionsHash": "1dfdedd29226d841",
+      "converterVersion": 1,
+      "width": 320,
+      "height": 240,
+      "colorKeyed": false
+    },
+    {
+      "id": "image/6",
+      "bundles": [
+        "screens"
+      ],
+      "kind": "image",
+      "file": "image/6.c1b49ac5.webp",
+      "bytes": 60152,
+      "sha256": "c1b49ac563c571747c16c60a89b0330cd0473841f135636e6b2d089a61f87a6d",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/6.spr",
+          "sha256": "cc0df93c5b6dc839fc886641749c3e271021fc97999f206acb0a26179478e0c8"
+        }
+      ],
+      "optionsHash": "1dfdedd29226d841",
+      "converterVersion": 1,
+      "width": 320,
+      "height": 240,
+      "colorKeyed": false
+    },
+    {
+      "id": "image/7",
+      "bundles": [
+        "screens"
+      ],
+      "kind": "image",
+      "file": "image/7.76ee9c65.webp",
+      "bytes": 72524,
+      "sha256": "76ee9c65c423ed7fdfd6480b0c89025e6d9fd0a154ab807d4c10cfc465165d12",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/7.spr",
+          "sha256": "43887e84f9692fb6459ab1f418b3b161519eb8add822740b5eaa39110f9fd98b"
+        }
+      ],
+      "optionsHash": "1dfdedd29226d841",
+      "converterVersion": 1,
+      "width": 320,
+      "height": 240,
+      "colorKeyed": false
+    },
+    {
+      "id": "image/8",
+      "bundles": [
+        "screens"
+      ],
+      "kind": "image",
+      "file": "image/8.95f526e3.webp",
+      "bytes": 81174,
+      "sha256": "95f526e3f40f62a3bf9e715b91fe8e5b85e5eaa97e6267dd29af405649f18f80",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/8.spr",
+          "sha256": "7f0cc73afe613510130caf9c2210024dc29e98a8633f41bda382f8563610ac4a"
+        }
+      ],
+      "optionsHash": "1dfdedd29226d841",
+      "converterVersion": 1,
+      "width": 320,
+      "height": 240,
+      "colorKeyed": false
+    },
+    {
+      "id": "image/9",
+      "bundles": [
+        "screens"
+      ],
+      "kind": "image",
+      "file": "image/9.92fdef98.webp",
+      "bytes": 82806,
+      "sha256": "92fdef98504ad6321e9eb6b93540e8e4d012320412cec912c8539373304a7067",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/9.spr",
+          "sha256": "3d02fc55ad99fbe8aa4b75663671f81cf55eaeb741a2c73cee92d8946959a77d"
+        }
+      ],
+      "optionsHash": "1dfdedd29226d841",
+      "converterVersion": 1,
+      "width": 320,
+      "height": 240,
+      "colorKeyed": false
+    },
+    {
+      "id": "image/b1",
+      "bundles": [
+        "screens"
+      ],
+      "kind": "image",
+      "file": "image/b1.53c08938.webp",
+      "bytes": 236616,
+      "sha256": "53c08938ca16443da4b49dac75f91bda9f2d8476dcee10d9e04a5858d89b37a9",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/B1.spr",
+          "sha256": "b0166fab455aff4c27958c16fb1bffc326c22180abf2de4fc0ae4c5a9434fe8a"
+        }
+      ],
+      "optionsHash": "1dfdedd29226d841",
+      "converterVersion": 1,
+      "width": 640,
+      "height": 450,
+      "colorKeyed": false
+    },
+    {
+      "id": "image/b2",
+      "bundles": [
+        "screens"
+      ],
+      "kind": "image",
+      "file": "image/b2.773dc9c3.webp",
+      "bytes": 296096,
+      "sha256": "773dc9c3ea8ed133c3ccd46eb94f321eb4b3ff83ad9f3cba415fa35000d32bf2",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/B2.spr",
+          "sha256": "d9448336306a32121a95b419225384def482a6ee461559dd53fcc782cf297bda"
+        }
+      ],
+      "optionsHash": "1dfdedd29226d841",
+      "converterVersion": 1,
+      "width": 640,
+      "height": 450,
+      "colorKeyed": false
+    },
+    {
+      "id": "image/b3",
+      "bundles": [
+        "screens"
+      ],
+      "kind": "image",
+      "file": "image/b3.5311db71.webp",
+      "bytes": 209230,
+      "sha256": "5311db71d6b51e2e24a7a97d80830066bb92c7c69b72211818cb912589ebd675",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/B3.spr",
+          "sha256": "84851a2894f1d081011a9b48c7af0fbd754d32ae812ea1a7267065e373a77447"
+        }
+      ],
+      "optionsHash": "1dfdedd29226d841",
+      "converterVersion": 1,
+      "width": 640,
+      "height": 450,
+      "colorKeyed": false
+    },
+    {
+      "id": "image/b4",
+      "bundles": [
+        "screens"
+      ],
+      "kind": "image",
+      "file": "image/b4.d89d1116.webp",
+      "bytes": 282550,
+      "sha256": "d89d11164938c64db2caafd582392edb103efa7bf0981fb53be5945eba857c27",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/B4.spr",
+          "sha256": "b303d3fb7f6b05e5efa58280c5b9b99b446ffd2ef7a043ff373b4f324b6b5158"
+        }
+      ],
+      "optionsHash": "1dfdedd29226d841",
+      "converterVersion": 1,
+      "width": 640,
+      "height": 450,
+      "colorKeyed": false
+    },
+    {
+      "id": "image/b5",
+      "bundles": [
+        "screens"
+      ],
+      "kind": "image",
+      "file": "image/b5.0456fce7.webp",
+      "bytes": 254274,
+      "sha256": "0456fce7f6907aabef44d21a78c5369d1683ff9b396e14024169af4eb6db3613",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/B5.spr",
+          "sha256": "be1f1c2d2b61be3a035007d59a768aaf4ae6dd7d368b7af3bf0e9b6e6f9df256"
+        }
+      ],
+      "optionsHash": "1dfdedd29226d841",
+      "converterVersion": 1,
+      "width": 640,
+      "height": 450,
+      "colorKeyed": false
+    },
+    {
+      "id": "image/background1",
+      "bundles": [
+        "level0",
+        "level1",
+        "level10",
+        "level4",
+        "level6",
+        "level9"
+      ],
+      "kind": "image",
+      "file": "image/background1.1df6995d.webp",
+      "bytes": 5510,
+      "sha256": "1df6995d4cf885c768bafda262e71171012ac332b9ccf7d201236e93f8e64bd1",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/background1.spr",
+          "sha256": "671477d143763684275f12be469336cee5067e630454fb1816213e31b60849ad"
+        }
+      ],
+      "optionsHash": "1dfdedd29226d841",
+      "converterVersion": 1,
+      "width": 640,
+      "height": 480,
+      "colorKeyed": false
+    },
+    {
+      "id": "image/background2",
+      "bundles": [
+        "level3"
+      ],
+      "kind": "image",
+      "file": "image/background2.55d99608.webp",
+      "bytes": 235644,
+      "sha256": "55d99608d986d36ff193b2b25bb5a1d901d09a57cadd3e2c4fa1730cc3f80eaf",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/background2.spr",
+          "sha256": "a2acc68a1df3c18f6f3fbea8a0369f25216be0b4ed861af5ccf2d264930a4ecc"
+        }
+      ],
+      "optionsHash": "1dfdedd29226d841",
+      "converterVersion": 1,
+      "width": 640,
+      "height": 480,
+      "colorKeyed": false
+    },
+    {
+      "id": "image/background3",
+      "bundles": [
+        "level2"
+      ],
+      "kind": "image",
+      "file": "image/background3.4cff18ab.webp",
+      "bytes": 283496,
+      "sha256": "4cff18ab25369edce3d97c90e982dda91a01ffad77a42d95b5f30315c01bc67d",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/background3.spr",
+          "sha256": "887c821f914f6214b736e0d2764e7f83237219bb835467bf9dbe51653b509edd"
+        }
+      ],
+      "optionsHash": "1dfdedd29226d841",
+      "converterVersion": 1,
+      "width": 640,
+      "height": 480,
+      "colorKeyed": false
+    },
+    {
+      "id": "image/background4",
+      "bundles": [
+        "level5"
+      ],
+      "kind": "image",
+      "file": "image/background4.b10a3f24.webp",
+      "bytes": 92888,
+      "sha256": "b10a3f244a80291af7a1244f65491ecaf984e4e585a8d874c4d9dabd55ce90e0",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/background4.spr",
+          "sha256": "3100f2d10fed9aceef8471ffdcf88bb0c97fa15018abd91a02f2398fb8d3a99d"
+        }
+      ],
+      "optionsHash": "1dfdedd29226d841",
+      "converterVersion": 1,
+      "width": 640,
+      "height": 410,
+      "colorKeyed": false
+    },
+    {
+      "id": "image/background5",
+      "bundles": [
+        "level8"
+      ],
+      "kind": "image",
+      "file": "image/background5.e8509a92.webp",
+      "bytes": 9110,
+      "sha256": "e8509a9222f8832362a8fa71b034ccd1abeb04bd27fc041ed0d2de77ff24ec51",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/background5.spr",
+          "sha256": "d3534ddc362b72c6672f96932e6734fb8500c4c0f5d93a7e7d01133ead545d4f"
+        }
+      ],
+      "optionsHash": "1dfdedd29226d841",
+      "converterVersion": 1,
+      "width": 640,
+      "height": 410,
+      "colorKeyed": false
+    },
+    {
+      "id": "image/background6",
+      "bundles": [
+        "level7"
+      ],
+      "kind": "image",
+      "file": "image/background6.647c726d.webp",
+      "bytes": 232606,
+      "sha256": "647c726d34f8ff0eb9dc972a4430032fe45b6cf49091ab0589de1fd68c005d44",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/background6.spr",
+          "sha256": "38b6c5a2156c2a6e7c219feed0b1a6ce33f52d4f958ffc6a244eb1a8f4c10afd"
+        }
+      ],
+      "optionsHash": "1dfdedd29226d841",
+      "converterVersion": 1,
+      "width": 640,
+      "height": 410,
+      "colorKeyed": false
+    },
+    {
+      "id": "image/background7",
+      "bundles": [
+        "level11"
+      ],
+      "kind": "image",
+      "file": "image/background7.a4f254dc.webp",
+      "bytes": 104960,
+      "sha256": "a4f254dccf56987918e145aefa3ca46e8fbef00abdbd16c8efed70c0fff6c5d9",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/background7.spr",
+          "sha256": "12d2bbd204fefc1a773153ef423f1c68c83b17f4c052212369809fe4988c830a"
+        }
+      ],
+      "optionsHash": "1dfdedd29226d841",
+      "converterVersion": 1,
+      "width": 640,
+      "height": 480,
+      "colorKeyed": false
+    },
+    {
+      "id": "image/explosion",
+      "bundles": [
+        "core"
+      ],
+      "kind": "image",
+      "file": "image/explosion.482daf7c.webp",
+      "bytes": 23098,
+      "sha256": "482daf7c4008f58d3d93cba4703e6d682b046d05de80ad251129ea43ff70a436",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/Explosion.spr",
+          "sha256": "0d335cb3aa45a22a02e0eace9e2e6215e6be0a9312f4b372ee7d9e223f9f8868"
+        }
+      ],
+      "optionsHash": "ad74b3896b76b80d",
+      "converterVersion": 1,
+      "width": 400,
+      "height": 200,
+      "colorKeyed": true
+    },
+    {
+      "id": "image/extralevel",
+      "bundles": [
+        "screens"
+      ],
+      "kind": "image",
+      "file": "image/extralevel.444d1ed7.webp",
+      "bytes": 46,
+      "sha256": "444d1ed7f6d9e734ff6e92a08a3eb0a8f3e1f39ad315077db3febcddcf011443",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/Extralevel.spr",
+          "sha256": "3b4908ab384d9ebd3ef2a8c8d07ad9f3ce1a98fbe1c463261ee7ef413270b85e"
+        }
+      ],
+      "optionsHash": "1dfdedd29226d841",
+      "converterVersion": 1,
+      "width": 320,
+      "height": 240,
+      "colorKeyed": false
+    },
+    {
+      "id": "image/feinde0",
+      "bundles": [
+        "level0"
+      ],
+      "kind": "image",
+      "file": "image/feinde0.faa0f39e.webp",
+      "bytes": 1406,
+      "sha256": "faa0f39e40d0e9784305e7e637e98810eda188bc0f699b72591dc701a9208c5d",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/feinde0.spr",
+          "sha256": "70205b91ab3d58a30c3731d66e3e2c030d61aaa84eac3daa0d68fa9f63bb0327"
+        }
+      ],
+      "optionsHash": "ad74b3896b76b80d",
+      "converterVersion": 1,
+      "width": 122,
+      "height": 224,
+      "colorKeyed": true
+    },
+    {
+      "id": "image/feinde1",
+      "bundles": [
+        "level1"
+      ],
+      "kind": "image",
+      "file": "image/feinde1.df65ce38.webp",
+      "bytes": 143594,
+      "sha256": "df65ce3801e9868d640474c0749e1c5197ca57171ea89bf8daa7a1260cdd5545",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/feinde1.spr",
+          "sha256": "c3d2797f34631b0029b58cbdbbe36b2a41c4cba4e62c1a56c9a6e174ea0f65ce"
+        }
+      ],
+      "optionsHash": "ad74b3896b76b80d",
+      "converterVersion": 1,
+      "width": 482,
+      "height": 550,
+      "colorKeyed": true
+    },
+    {
+      "id": "image/feinde10",
+      "bundles": [
+        "level10"
+      ],
+      "kind": "image",
+      "file": "image/feinde10.881b2d57.webp",
+      "bytes": 68762,
+      "sha256": "881b2d5723330fdcc8829457c79b9ac8978eed1348c9382136e851c5aa208ebe",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/feinde10.spr",
+          "sha256": "ca82c21180126bf448368940f178205197cee01856efc5f0e6a7a14c9fadf5f8"
+        }
+      ],
+      "optionsHash": "ad74b3896b76b80d",
+      "converterVersion": 1,
+      "width": 377,
+      "height": 304,
+      "colorKeyed": true
+    },
+    {
+      "id": "image/feinde11",
+      "bundles": [
+        "level11"
+      ],
+      "kind": "image",
+      "file": "image/feinde11.8a47a43e.webp",
+      "bytes": 22322,
+      "sha256": "8a47a43ed2723df72dc932329e6caf9bf10248d232e0f2daee74e8f3c7d0217b",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/FEINDE11.spr",
+          "sha256": "5a83d1dcf52cedc9fb158f5bd4b604b143b3876cf230c3b96cdb467cb1c0fe3e"
+        }
+      ],
+      "optionsHash": "ad74b3896b76b80d",
+      "converterVersion": 1,
+      "width": 453,
+      "height": 458,
+      "colorKeyed": true
+    },
+    {
+      "id": "image/feinde2",
+      "bundles": [
+        "level2"
+      ],
+      "kind": "image",
+      "file": "image/feinde2.14605a63.webp",
+      "bytes": 121822,
+      "sha256": "14605a639afc686f5d167ab13db844fcd1d4d54e31375cd64d87af0db1ddadf6",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/feinde2.spr",
+          "sha256": "fc7f312fe3e27f6b7ebd0d33f415439279406030a41bd7ef279cb38432d981b1"
+        }
+      ],
+      "optionsHash": "ad74b3896b76b80d",
+      "converterVersion": 1,
+      "width": 444,
+      "height": 550,
+      "colorKeyed": true
+    },
+    {
+      "id": "image/feinde3",
+      "bundles": [
+        "level3"
+      ],
+      "kind": "image",
+      "file": "image/feinde3.ebde7414.webp",
+      "bytes": 178992,
+      "sha256": "ebde7414ef112d7aa2e4063fbb5674c876e99889b4297217e6d48cc10c29a22d",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/feinde3.spr",
+          "sha256": "9226015ba143d01d1b6f09067c46d0fa9efed3c6a7b24584d84c32af000ac074"
+        }
+      ],
+      "optionsHash": "ad74b3896b76b80d",
+      "converterVersion": 1,
+      "width": 576,
+      "height": 600,
+      "colorKeyed": true
+    },
+    {
+      "id": "image/feinde4",
+      "bundles": [
+        "level4"
+      ],
+      "kind": "image",
+      "file": "image/feinde4.78f38838.webp",
+      "bytes": 141902,
+      "sha256": "78f388382d59eb76ee90bdf1cc492ede7afbe78926066dc05cb76d88ac3f4baa",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/feinde4.spr",
+          "sha256": "ebefe973bc28fc4b856e09e6925ea16dd30683bc2ffcd24d302fa09817274880"
+        }
+      ],
+      "optionsHash": "ad74b3896b76b80d",
+      "converterVersion": 1,
+      "width": 696,
+      "height": 470,
+      "colorKeyed": true
+    },
+    {
+      "id": "image/feinde5",
+      "bundles": [
+        "level5"
+      ],
+      "kind": "image",
+      "file": "image/feinde5.259f3377.webp",
+      "bytes": 146972,
+      "sha256": "259f33779bf751ff4dfb202a4c9792c18d3515306717548151e87312bfb67f03",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/feinde5.spr",
+          "sha256": "8233df573292088eac3512ba82202794b9861d4e2663699a4fa0c9e2790d6dc1"
+        }
+      ],
+      "optionsHash": "ad74b3896b76b80d",
+      "converterVersion": 1,
+      "width": 648,
+      "height": 332,
+      "colorKeyed": true
+    },
+    {
+      "id": "image/feinde6",
+      "bundles": [
+        "level6"
+      ],
+      "kind": "image",
+      "file": "image/feinde6.f65933c7.webp",
+      "bytes": 90630,
+      "sha256": "f65933c77b458093f7a02121dd549c1d8dc66a12a180c0efe8ed2aac90c721ea",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/feinde6.spr",
+          "sha256": "185af8241ebd0aa68be613a1466db2041687912e55b0e5335ba5b59824bde752"
+        }
+      ],
+      "optionsHash": "ad74b3896b76b80d",
+      "converterVersion": 1,
+      "width": 367,
+      "height": 600,
+      "colorKeyed": true
+    },
+    {
+      "id": "image/feinde7",
+      "bundles": [
+        "level7"
+      ],
+      "kind": "image",
+      "file": "image/feinde7.473f9421.webp",
+      "bytes": 128844,
+      "sha256": "473f9421145881b884144cf0b6c2ed3769162f9ffe983968f2fe93b4a0f201e3",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/feinde7.spr",
+          "sha256": "b71a5b49a4ccd3459e5eabcd3a028e8223da8ceee24adc979f5ad533f1e80a14"
+        }
+      ],
+      "optionsHash": "ad74b3896b76b80d",
+      "converterVersion": 1,
+      "width": 468,
+      "height": 600,
+      "colorKeyed": true
+    },
+    {
+      "id": "image/feinde8",
+      "bundles": [
+        "level8"
+      ],
+      "kind": "image",
+      "file": "image/feinde8.df5d0e9a.webp",
+      "bytes": 172260,
+      "sha256": "df5d0e9a4efcf79924bb0a879f3a34ac050108468db269370809b97247df358d",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/feinde8.spr",
+          "sha256": "5c6ce0efe6afe9b704d9e92813e48e8b34dce862c3f560735ef285de89aa70bf"
+        }
+      ],
+      "optionsHash": "ad74b3896b76b80d",
+      "converterVersion": 1,
+      "width": 740,
+      "height": 458,
+      "colorKeyed": true
+    },
+    {
+      "id": "image/feinde9",
+      "bundles": [
+        "level9"
+      ],
+      "kind": "image",
+      "file": "image/feinde9.7d78aeb3.webp",
+      "bytes": 252452,
+      "sha256": "7d78aeb3e3e9c70d16c51a3d793db02785b1ca2ba41782ac44a0da0e38b51aa5",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/feinde9.spr",
+          "sha256": "220013aa9c1744162a5e30067e5b67a09f8a54168b84fe3f026ef845855e93be"
+        }
+      ],
+      "optionsHash": "ad74b3896b76b80d",
+      "converterVersion": 1,
+      "width": 800,
+      "height": 600,
+      "colorKeyed": true
+    },
+    {
+      "id": "image/intro",
+      "bundles": [
+        "screens"
+      ],
+      "kind": "image",
+      "file": "image/intro.6ac4d592.webp",
+      "bytes": 149534,
+      "sha256": "6ac4d592b2364c380329a91c9ea5400da0956b78811b4dce24f3da62dd5a6a09",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/intro.spr",
+          "sha256": "a0356eabef4349399bb2a1172dc17d1f124fdca45e973a19d8eab39a769b7578"
+        }
+      ],
+      "optionsHash": "1dfdedd29226d841",
+      "converterVersion": 1,
+      "width": 640,
+      "height": 480,
+      "colorKeyed": false
+    },
+    {
+      "id": "image/intro2",
+      "bundles": [
+        "screens"
+      ],
+      "kind": "image",
+      "file": "image/intro2.7aff0aad.webp",
+      "bytes": 274492,
+      "sha256": "7aff0aad8df9b183ec18fe0433cee1e3502157596178d93c92fbc860d2f22a80",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/intro2.spr",
+          "sha256": "38d64a8be70ac24a3e502563f812e61a00b0e67cf3f067520ae2e55fd0d6ae66"
+        }
+      ],
+      "optionsHash": "1dfdedd29226d841",
+      "converterVersion": 1,
+      "width": 640,
+      "height": 480,
+      "colorKeyed": false
+    },
+    {
+      "id": "image/konsole",
+      "bundles": [
+        "core"
+      ],
+      "kind": "image",
+      "file": "image/konsole.6cdbb700.webp",
+      "bytes": 16858,
+      "sha256": "6cdbb700f28b53f47819337a7d190bbd8ba8d4f158b0ede58f88b12cfd2c64fb",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/konsole.spr",
+          "sha256": "8d91d3166a3fc3972fea3dd734e8f24fb190fc3b87fc069528daa25df6ace26b"
+        }
+      ],
+      "optionsHash": "ad74b3896b76b80d",
+      "converterVersion": 1,
+      "width": 640,
+      "height": 100,
+      "colorKeyed": true
+    },
+    {
+      "id": "image/landschaft0",
+      "bundles": [
+        "level0"
+      ],
+      "kind": "image",
+      "file": "image/landschaft0.c612e38f.webp",
+      "bytes": 8138,
+      "sha256": "c612e38fab0804b35deaf3cd05b635ed2e6d953d0c3a2fd2a27e6bda425ade82",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/landschaft0.spr",
+          "sha256": "f8fd8f84f6e0c40eb7fcc976eeecf9686431e2349def8774f09a4e21f073b4e8"
+        }
+      ],
+      "optionsHash": "ad74b3896b76b80d",
+      "converterVersion": 1,
+      "width": 260,
+      "height": 197,
+      "colorKeyed": true
+    },
+    {
+      "id": "image/landschaft1",
+      "bundles": [
+        "level1"
+      ],
+      "kind": "image",
+      "file": "image/landschaft1.1c86b045.webp",
+      "bytes": 110438,
+      "sha256": "1c86b04592f0c95e02edc23a97310d3b06845a4fe36aec5aedb7abf92c9f0333",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/landschaft1.spr",
+          "sha256": "5eeefd6cd49ecb04ced0181d2eabdc73acaaa15c5859d2d4bb89f0da3f32e341"
+        }
+      ],
+      "optionsHash": "ad74b3896b76b80d",
+      "converterVersion": 1,
+      "width": 647,
+      "height": 249,
+      "colorKeyed": true
+    },
+    {
+      "id": "image/landschaft10",
+      "bundles": [
+        "level10"
+      ],
+      "kind": "image",
+      "file": "image/landschaft10.86be52bd.webp",
+      "bytes": 34,
+      "sha256": "86be52bdb7547413cafb3ed175a806a798c65de98b40849e0b974c47d187de65",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/landschaft10.spr",
+          "sha256": "394a74da0b7705e7ad6d4b300e2e90bf09de6c6eec7b7589390b82c2dae0b511"
+        }
+      ],
+      "optionsHash": "ad74b3896b76b80d",
+      "converterVersion": 1,
+      "width": 1,
+      "height": 1,
+      "colorKeyed": true
+    },
+    {
+      "id": "image/landschaft11",
+      "bundles": [
+        "level11"
+      ],
+      "kind": "image",
+      "file": "image/landschaft11.68ed51d4.webp",
+      "bytes": 21334,
+      "sha256": "68ed51d4fd44fde8ead0bf512e456b7aa1258abed8c5277eab3e2b078c387a65",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/landschaft11.spr",
+          "sha256": "921d79775d9561cc0ea311a986709a231f720c3d6e81401e9645e3543f7dfa62"
+        }
+      ],
+      "optionsHash": "ad74b3896b76b80d",
+      "converterVersion": 1,
+      "width": 800,
+      "height": 600,
+      "colorKeyed": true
+    },
+    {
+      "id": "image/landschaft2",
+      "bundles": [
+        "level2"
+      ],
+      "kind": "image",
+      "file": "image/landschaft2.fc881c3e.webp",
+      "bytes": 179886,
+      "sha256": "fc881c3e3ef9f141ee21570aefbbb1581c6981091c889a34e689d018396b6510",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/landschaft2.spr",
+          "sha256": "32b00ee8e19f7f5c32ea146a13295c2bcb41d4cc5f6629a0abd01f1b238e9433"
+        }
+      ],
+      "optionsHash": "ad74b3896b76b80d",
+      "converterVersion": 1,
+      "width": 552,
+      "height": 472,
+      "colorKeyed": true
+    },
+    {
+      "id": "image/landschaft3",
+      "bundles": [
+        "level3"
+      ],
+      "kind": "image",
+      "file": "image/landschaft3.d60c82ef.webp",
+      "bytes": 230198,
+      "sha256": "d60c82efd8b60227db4bb3f0b48a3d4cc51e13c652874beea53ce9ec19d54bc9",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/landschaft3.spr",
+          "sha256": "68b9cb02f151340054a5e7cc35e4c1fc04e0bb76c4b6dd449e5ee262371c3aaf"
+        }
+      ],
+      "optionsHash": "ad74b3896b76b80d",
+      "converterVersion": 1,
+      "width": 590,
+      "height": 574,
+      "colorKeyed": true
+    },
+    {
+      "id": "image/landschaft4",
+      "bundles": [
+        "level4"
+      ],
+      "kind": "image",
+      "file": "image/landschaft4.4c91473b.webp",
+      "bytes": 10132,
+      "sha256": "4c91473b53e1a867d332c22ed2fcbc15e633cfc48b320626fac27fd497bbd692",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/landschaft4.spr",
+          "sha256": "2659e70841273d94acdce01ad3d3a518974b6fc97c9e3665958c1a89d6e06cbb"
+        }
+      ],
+      "optionsHash": "ad74b3896b76b80d",
+      "converterVersion": 1,
+      "width": 293,
+      "height": 223,
+      "colorKeyed": true
+    },
+    {
+      "id": "image/landschaft5",
+      "bundles": [
+        "level5"
+      ],
+      "kind": "image",
+      "file": "image/landschaft5.47a263d7.webp",
+      "bytes": 35554,
+      "sha256": "47a263d7da0145f7cb6de1d2d9d0da2f4991800fcd8ec025f4624b8e1ee58871",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/landschaft5.spr",
+          "sha256": "141a17fe9e6070843a506ad56c277590cb4a0aa0d065dfab62346aee371b65e2"
+        }
+      ],
+      "optionsHash": "ad74b3896b76b80d",
+      "converterVersion": 1,
+      "width": 556,
+      "height": 284,
+      "colorKeyed": true
+    },
+    {
+      "id": "image/landschaft6",
+      "bundles": [
+        "level6"
+      ],
+      "kind": "image",
+      "file": "image/landschaft6.867a6dee.webp",
+      "bytes": 9442,
+      "sha256": "867a6deeb24bd8ae3a78fc5864eec630d5b026e9d27149d5b920f083533b5ed9",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/landschaft6.spr",
+          "sha256": "f40704b38e4923f350796630a8d1ef92dcde5aa5b0d709ce836123446e69c289"
+        }
+      ],
+      "optionsHash": "ad74b3896b76b80d",
+      "converterVersion": 1,
+      "width": 256,
+      "height": 361,
+      "colorKeyed": true
+    },
+    {
+      "id": "image/landschaft7",
+      "bundles": [
+        "level7"
+      ],
+      "kind": "image",
+      "file": "image/landschaft7.ee49a0ff.webp",
+      "bytes": 98438,
+      "sha256": "ee49a0ffad46b98a3b13b754155285f7b765a99564cceea8e1591620295eab8a",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/landschaft7.spr",
+          "sha256": "87e6b15641161bb040f12dac5b0b3ad766e48162a458bfde1841b3a90226ce2c"
+        }
+      ],
+      "optionsHash": "ad74b3896b76b80d",
+      "converterVersion": 1,
+      "width": 393,
+      "height": 350,
+      "colorKeyed": true
+    },
+    {
+      "id": "image/landschaft8",
+      "bundles": [
+        "level8"
+      ],
+      "kind": "image",
+      "file": "image/landschaft8.3cda2a15.webp",
+      "bytes": 141554,
+      "sha256": "3cda2a15ffe55fa28183add4107a7a94601ea5a246088890dc86de495972e6d6",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/landschaft8.spr",
+          "sha256": "a8e1374c19770ee02a94a57da0cb1535890c7e43f4d08776f49ea264dcbf24e2"
+        }
+      ],
+      "optionsHash": "ad74b3896b76b80d",
+      "converterVersion": 1,
+      "width": 701,
+      "height": 385,
+      "colorKeyed": true
+    },
+    {
+      "id": "image/landschaft9",
+      "bundles": [
+        "level9"
+      ],
+      "kind": "image",
+      "file": "image/landschaft9.a42bb387.webp",
+      "bytes": 173410,
+      "sha256": "a42bb38769ea4ef9a96332934346466fd66e3dcd38aeb168263365693e3331bf",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/landschaft9.spr",
+          "sha256": "45c886a39edf3e02145211d731f1a85b19ba10f9b40d04481fe82261e5277d7c"
+        }
+      ],
+      "optionsHash": "ad74b3896b76b80d",
+      "converterVersion": 1,
+      "width": 472,
+      "height": 372,
+      "colorKeyed": true
+    },
+    {
+      "id": "image/loading",
+      "bundles": [
+        "screens"
+      ],
+      "kind": "image",
+      "file": "image/loading.696e457d.webp",
+      "bytes": 174954,
+      "sha256": "696e457de0012fa7464c45c2da60e88f98d7904ca4036267f4b1dac6195b3f74",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/loading.spr",
+          "sha256": "fc63fdcbc4fd97dfa7053c83be15a2eea90c4ba00a9465de92a3b8cb1af04f51"
+        }
+      ],
+      "optionsHash": "1dfdedd29226d841",
+      "converterVersion": 1,
+      "width": 640,
+      "height": 480,
+      "colorKeyed": false
+    },
+    {
+      "id": "image/logo",
+      "bundles": [
+        "screens"
+      ],
+      "kind": "image",
+      "file": "image/logo.a763e8e6.webp",
+      "bytes": 115798,
+      "sha256": "a763e8e62db9e039d49e6c8768581296e0b763ca1ffabdebfd1ebc6c5346187a",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/logo.spr",
+          "sha256": "d78f5d13db57a5e7d3a4309d98758d679fb76168b551905fce010fed2c7289cc"
+        }
+      ],
+      "optionsHash": "ad74b3896b76b80d",
+      "converterVersion": 1,
+      "width": 940,
+      "height": 600,
+      "colorKeyed": true
+    },
+    {
+      "id": "image/logo2",
+      "bundles": [
+        "screens"
+      ],
+      "kind": "image",
+      "file": "image/logo2.fc2ba463.webp",
+      "bytes": 14820,
+      "sha256": "fc2ba463cb8bcfa13dd52c91358b067f73d800759d7d38db4c9c35adee200163",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/logo2.spr",
+          "sha256": "0806ab19f8a47444a5653a85226d43925e99f8ae802af044f86741a008626dd6"
+        }
+      ],
+      "optionsHash": "ad74b3896b76b80d",
+      "converterVersion": 1,
+      "width": 236,
+      "height": 100,
+      "colorKeyed": true
+    },
+    {
+      "id": "image/metroid",
+      "bundles": [
+        "core"
+      ],
+      "kind": "image",
+      "file": "image/metroid.b745c54e.webp",
+      "bytes": 2588,
+      "sha256": "b745c54eb7cb7f0ad9521491ba0629983b371b22b103bc1551b47b487c3180e1",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/metroid.spr",
+          "sha256": "53f488efa0e203a40a4f23fee4bd0d00443c652ce8d4de80524014b7faf997dc"
+        }
+      ],
+      "optionsHash": "ad74b3896b76b80d",
+      "converterVersion": 1,
+      "width": 60,
+      "height": 60,
+      "colorKeyed": true
+    },
+    {
+      "id": "image/ss",
+      "bundles": [
+        "core"
+      ],
+      "kind": "image",
+      "file": "image/ss.31197438.webp",
+      "bytes": 48972,
+      "sha256": "31197438482e3a2d9c65ea343ae841d631b2354b13d4797c3fba78710ffbdf2f",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/ss.spr",
+          "sha256": "9bc911c32d50eb4791751c5fbc4eac7773a28a0914907b48f9d6eb9fc6354201"
+        }
+      ],
+      "optionsHash": "ad74b3896b76b80d",
+      "converterVersion": 1,
+      "width": 350,
+      "height": 200,
+      "colorKeyed": true
+    },
+    {
+      "id": "image/text",
+      "bundles": [
+        "core"
+      ],
+      "kind": "image",
+      "file": "image/text.697571db.webp",
+      "bytes": 962,
+      "sha256": "697571dbeaa1c467c4599fc84b4bb8896ef523c7fc2baefd0bb2eaf2c1c697ac",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/text.spr",
+          "sha256": "14e276cc3cac95cf171f8f5ddb6be00d80c36a451893011ee6a96b4f8b0a1464"
+        }
+      ],
+      "optionsHash": "ad74b3896b76b80d",
+      "converterVersion": 1,
+      "width": 248,
+      "height": 36,
+      "colorKeyed": true
+    },
+    {
+      "id": "image/text2",
+      "bundles": [
+        "core"
+      ],
+      "kind": "image",
+      "file": "image/text2.e88e6382.webp",
+      "bytes": 66422,
+      "sha256": "e88e638241b468b5fbdc417f123de9837bea81ed2197420ab6a88c1c3f93fd95",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/text2.spr",
+          "sha256": "181b360034911f743d00ea420dd55d6f77cc2e7197fe9798ea498aba5c38c7b1"
+        }
+      ],
+      "optionsHash": "ad74b3896b76b80d",
+      "converterVersion": 1,
+      "width": 300,
+      "height": 600,
+      "colorKeyed": true
+    },
+    {
+      "id": "image/titel",
+      "bundles": [
+        "screens"
+      ],
+      "kind": "image",
+      "file": "image/titel.c6566428.webp",
+      "bytes": 162750,
+      "sha256": "c65664281a4adbd8979141c788fb3db1a15009649c416412537ea07d89c50c3e",
+      "sources": [
+        {
+          "path": "original-dove/Data/Grafik/titel.spr",
+          "sha256": "61955f166d963ec75fa0779ebfd81f780e20375c8d350267d46d6370b036b949"
+        }
+      ],
+      "optionsHash": "1dfdedd29226d841",
+      "converterVersion": 1,
+      "width": 640,
+      "height": 480,
+      "colorKeyed": false
+    },
+    {
+      "id": "level/level0",
+      "bundles": [
+        "level0"
+      ],
+      "kind": "level",
+      "file": "level/level0.196ce39d.json",
+      "bytes": 966,
+      "sha256": "196ce39d6bf050e130b6122e3840465f9be9b17bb4fcb46a09d3960160f9a117",
+      "sources": [
+        {
+          "path": "original-dove/Data/Level0.dat",
+          "sha256": "a361a331132e3751fa72c0c8d2ddf1ca94c3eb48e91b3e347020c41bf0052e5c"
+        },
+        {
+          "path": "original-dove/Data/Grafik/landschaft0.spr",
+          "sha256": "f8fd8f84f6e0c40eb7fcc976eeecf9686431e2349def8774f09a4e21f073b4e8"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "data": "levelData/level0"
+    },
+    {
+      "id": "level/level1",
+      "bundles": [
+        "level1"
+      ],
+      "kind": "level",
+      "file": "level/level1.f41802b5.json",
+      "bytes": 13987,
+      "sha256": "f41802b56606b6bd99eaf7071492a88df8702b6279f38a6e43911ea79ed12c58",
+      "sources": [
+        {
+          "path": "original-dove/Data/Level1.dat",
+          "sha256": "c982788b996e9d5fadc6d326fe201168af68a253f63c765926a17af147d907d8"
+        },
+        {
+          "path": "original-dove/Data/Grafik/landschaft1.spr",
+          "sha256": "5eeefd6cd49ecb04ced0181d2eabdc73acaaa15c5859d2d4bb89f0da3f32e341"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "data": "levelData/level1"
+    },
+    {
+      "id": "level/level10",
+      "bundles": [
+        "level10"
+      ],
+      "kind": "level",
+      "file": "level/level10.46175ec5.json",
+      "bytes": 539,
+      "sha256": "46175ec57f4cc0fafb7bca3b72fd80c018091f5b9ad6d4fbd66422028e0199f3",
+      "sources": [
+        {
+          "path": "original-dove/Data/Level10.dat",
+          "sha256": "44bbff56bc89ff944e3145b13c0e7601ddaff92ed44c9df7bd907d39c647f56d"
+        },
+        {
+          "path": "original-dove/Data/Grafik/landschaft10.spr",
+          "sha256": "394a74da0b7705e7ad6d4b300e2e90bf09de6c6eec7b7589390b82c2dae0b511"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "data": "levelData/level10"
+    },
+    {
+      "id": "level/level11",
+      "bundles": [
+        "level11"
+      ],
+      "kind": "level",
+      "file": "level/level11.d3f850b0.json",
+      "bytes": 12932,
+      "sha256": "d3f850b0ea9bd0e9605909267bd4d5931b71d486f9d909c59309d573dd050e35",
+      "sources": [
+        {
+          "path": "original-dove/Data/Level11.dat",
+          "sha256": "ba4b8096ec2b51b66662ee91a01d4212dcba3dc11f0524218b9920477838b3ae"
+        },
+        {
+          "path": "original-dove/Data/Grafik/landschaft11.spr",
+          "sha256": "921d79775d9561cc0ea311a986709a231f720c3d6e81401e9645e3543f7dfa62"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "data": "levelData/level11"
+    },
+    {
+      "id": "level/level2",
+      "bundles": [
+        "level2"
+      ],
+      "kind": "level",
+      "file": "level/level2.b53096d6.json",
+      "bytes": 6764,
+      "sha256": "b53096d69a6486968f51c6567844926243c95cafc6616774146109b5e043cd75",
+      "sources": [
+        {
+          "path": "original-dove/Data/Level2.dat",
+          "sha256": "e3d692c483e74b2ba7a7b04aac2f83284141f11ffe10817013f4d6e3793de326"
+        },
+        {
+          "path": "original-dove/Data/Grafik/landschaft2.spr",
+          "sha256": "32b00ee8e19f7f5c32ea146a13295c2bcb41d4cc5f6629a0abd01f1b238e9433"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "data": "levelData/level2"
+    },
+    {
+      "id": "level/level3",
+      "bundles": [
+        "level3"
+      ],
+      "kind": "level",
+      "file": "level/level3.5fd3f162.json",
+      "bytes": 11683,
+      "sha256": "5fd3f1621a16efe88d004aa695c0ca7e6e70f51be14236580c94146d66655784",
+      "sources": [
+        {
+          "path": "original-dove/Data/Level3.dat",
+          "sha256": "d7e8c26dd3d05528d3814f4f9abd330b954462e16a090313bf27a36c536d9424"
+        },
+        {
+          "path": "original-dove/Data/Grafik/landschaft3.spr",
+          "sha256": "68b9cb02f151340054a5e7cc35e4c1fc04e0bb76c4b6dd449e5ee262371c3aaf"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "data": "levelData/level3"
+    },
+    {
+      "id": "level/level4",
+      "bundles": [
+        "level4"
+      ],
+      "kind": "level",
+      "file": "level/level4.724294d0.json",
+      "bytes": 8529,
+      "sha256": "724294d04402f9b31002b142149f3ea104591dd7b10ce9d2b7a604d61e75dcb4",
+      "sources": [
+        {
+          "path": "original-dove/Data/Level4.dat",
+          "sha256": "58d1bb6639455dbf44bcb590f6a972cabaf6ea0902839e4f9472e940a49ef906"
+        },
+        {
+          "path": "original-dove/Data/Grafik/landschaft4.spr",
+          "sha256": "2659e70841273d94acdce01ad3d3a518974b6fc97c9e3665958c1a89d6e06cbb"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "data": "levelData/level4"
+    },
+    {
+      "id": "level/level5",
+      "bundles": [
+        "level5"
+      ],
+      "kind": "level",
+      "file": "level/level5.5c9a5f7b.json",
+      "bytes": 10891,
+      "sha256": "5c9a5f7b07bd7b29c78501a7e9762ad637a90f2ff5629097ca306525b5c28298",
+      "sources": [
+        {
+          "path": "original-dove/Data/Level5.dat",
+          "sha256": "b373e611ccab52a8e26ccf1be54e785962da510b8e1272c0c6d0fce69c58f5f4"
+        },
+        {
+          "path": "original-dove/Data/Grafik/landschaft5.spr",
+          "sha256": "141a17fe9e6070843a506ad56c277590cb4a0aa0d065dfab62346aee371b65e2"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "data": "levelData/level5"
+    },
+    {
+      "id": "level/level6",
+      "bundles": [
+        "level6"
+      ],
+      "kind": "level",
+      "file": "level/level6.4f97d689.json",
+      "bytes": 11379,
+      "sha256": "4f97d689d5fd5030442491396e9c89c2fc1ef19c21d4e98820aaae006666f6fe",
+      "sources": [
+        {
+          "path": "original-dove/Data/Level6.dat",
+          "sha256": "2b213056aa0d3f976f267aebd228ea0447463afba0c351bb9bbef726e644f24c"
+        },
+        {
+          "path": "original-dove/Data/Grafik/landschaft6.spr",
+          "sha256": "f40704b38e4923f350796630a8d1ef92dcde5aa5b0d709ce836123446e69c289"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "data": "levelData/level6"
+    },
+    {
+      "id": "level/level7",
+      "bundles": [
+        "level7"
+      ],
+      "kind": "level",
+      "file": "level/level7.3f5287c8.json",
+      "bytes": 12711,
+      "sha256": "3f5287c86f2b4e8b7e3520bb34d2307db58eda6230aeab3f5b65c1b443ec629a",
+      "sources": [
+        {
+          "path": "original-dove/Data/Level7.dat",
+          "sha256": "da497da8a82eb73f6ae1b21bd806beda66ff3ca9197d1b7de2bae26d8fef3dca"
+        },
+        {
+          "path": "original-dove/Data/Grafik/landschaft7.spr",
+          "sha256": "87e6b15641161bb040f12dac5b0b3ad766e48162a458bfde1841b3a90226ce2c"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "data": "levelData/level7"
+    },
+    {
+      "id": "level/level8",
+      "bundles": [
+        "level8"
+      ],
+      "kind": "level",
+      "file": "level/level8.c22553f5.json",
+      "bytes": 17600,
+      "sha256": "c22553f526260da38f301c2d8bb09b9a03333ed8d629e582ba1111699841d51e",
+      "sources": [
+        {
+          "path": "original-dove/Data/Level8.dat",
+          "sha256": "25a57c11335bf98ef39e43dee6fca4b1b88c407bc10557b524f56ec9b68fa7e5"
+        },
+        {
+          "path": "original-dove/Data/Grafik/landschaft8.spr",
+          "sha256": "a8e1374c19770ee02a94a57da0cb1535890c7e43f4d08776f49ea264dcbf24e2"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "data": "levelData/level8"
+    },
+    {
+      "id": "level/level9",
+      "bundles": [
+        "level9"
+      ],
+      "kind": "level",
+      "file": "level/level9.76e87f8a.json",
+      "bytes": 21626,
+      "sha256": "76e87f8a2f03c20ff6c2a24431033e50c30994d25d75dd78a040a82c8af049ad",
+      "sources": [
+        {
+          "path": "original-dove/Data/Level9.dat",
+          "sha256": "28ce43840ab051b90344cdf7d195b05962ac7f6b735daccbd71f23dcf62156b6"
+        },
+        {
+          "path": "original-dove/Data/Grafik/landschaft9.spr",
+          "sha256": "45c886a39edf3e02145211d731f1a85b19ba10f9b40d04481fe82261e5277d7c"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "data": "levelData/level9"
+    },
+    {
+      "id": "levelData/level0",
+      "bundles": [
+        "level0"
+      ],
+      "kind": "levelData",
+      "file": "levelData/level0.972c77e5.bin",
+      "bytes": 4999,
+      "sha256": "972c77e50f282037ca6dddd04d043faeb0e3a1b9668cd11fc0476d141ef2d22d",
+      "sources": [
+        {
+          "path": "original-dove/Data/Level0.dat",
+          "sha256": "a361a331132e3751fa72c0c8d2ddf1ca94c3eb48e91b3e347020c41bf0052e5c"
+        },
+        {
+          "path": "original-dove/Data/Grafik/landschaft0.spr",
+          "sha256": "f8fd8f84f6e0c40eb7fcc976eeecf9686431e2349def8774f09a4e21f073b4e8"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1
+    },
+    {
+      "id": "levelData/level1",
+      "bundles": [
+        "level1"
+      ],
+      "kind": "levelData",
+      "file": "levelData/level1.43d2725a.bin",
+      "bytes": 8372,
+      "sha256": "43d2725ad32a394423564aeb722c765aa46615f66501f932835baa0aa7c25105",
+      "sources": [
+        {
+          "path": "original-dove/Data/Level1.dat",
+          "sha256": "c982788b996e9d5fadc6d326fe201168af68a253f63c765926a17af147d907d8"
+        },
+        {
+          "path": "original-dove/Data/Grafik/landschaft1.spr",
+          "sha256": "5eeefd6cd49ecb04ced0181d2eabdc73acaaa15c5859d2d4bb89f0da3f32e341"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1
+    },
+    {
+      "id": "levelData/level10",
+      "bundles": [
+        "level10"
+      ],
+      "kind": "levelData",
+      "file": "levelData/level10.609a4a24.bin",
+      "bytes": 1992,
+      "sha256": "609a4a24af66398baf10f971e5133120bb4451e8b0435fdeb276961af63819a9",
+      "sources": [
+        {
+          "path": "original-dove/Data/Level10.dat",
+          "sha256": "44bbff56bc89ff944e3145b13c0e7601ddaff92ed44c9df7bd907d39c647f56d"
+        },
+        {
+          "path": "original-dove/Data/Grafik/landschaft10.spr",
+          "sha256": "394a74da0b7705e7ad6d4b300e2e90bf09de6c6eec7b7589390b82c2dae0b511"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1
+    },
+    {
+      "id": "levelData/level11",
+      "bundles": [
+        "level11"
+      ],
+      "kind": "levelData",
+      "file": "levelData/level11.e5822d65.bin",
+      "bytes": 13102,
+      "sha256": "e5822d6569090db28e6ee5fef3934ad2496dca008e1d8c4cb073cfc96d45907e",
+      "sources": [
+        {
+          "path": "original-dove/Data/Level11.dat",
+          "sha256": "ba4b8096ec2b51b66662ee91a01d4212dcba3dc11f0524218b9920477838b3ae"
+        },
+        {
+          "path": "original-dove/Data/Grafik/landschaft11.spr",
+          "sha256": "921d79775d9561cc0ea311a986709a231f720c3d6e81401e9645e3543f7dfa62"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1
+    },
+    {
+      "id": "levelData/level2",
+      "bundles": [
+        "level2"
+      ],
+      "kind": "levelData",
+      "file": "levelData/level2.152e337a.bin",
+      "bytes": 17961,
+      "sha256": "152e337a07a96cb465b5cc455d683f90ac108d118e1f4473cd41834579e97838",
+      "sources": [
+        {
+          "path": "original-dove/Data/Level2.dat",
+          "sha256": "e3d692c483e74b2ba7a7b04aac2f83284141f11ffe10817013f4d6e3793de326"
+        },
+        {
+          "path": "original-dove/Data/Grafik/landschaft2.spr",
+          "sha256": "32b00ee8e19f7f5c32ea146a13295c2bcb41d4cc5f6629a0abd01f1b238e9433"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1
+    },
+    {
+      "id": "levelData/level3",
+      "bundles": [
+        "level3"
+      ],
+      "kind": "levelData",
+      "file": "levelData/level3.c6a8d850.bin",
+      "bytes": 10743,
+      "sha256": "c6a8d850662ddf9d6e65a22b194b56b8845cbe9442318cb501e0dbf4f5aa25fe",
+      "sources": [
+        {
+          "path": "original-dove/Data/Level3.dat",
+          "sha256": "d7e8c26dd3d05528d3814f4f9abd330b954462e16a090313bf27a36c536d9424"
+        },
+        {
+          "path": "original-dove/Data/Grafik/landschaft3.spr",
+          "sha256": "68b9cb02f151340054a5e7cc35e4c1fc04e0bb76c4b6dd449e5ee262371c3aaf"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1
+    },
+    {
+      "id": "levelData/level4",
+      "bundles": [
+        "level4"
+      ],
+      "kind": "levelData",
+      "file": "levelData/level4.c827a398.bin",
+      "bytes": 14622,
+      "sha256": "c827a3984cfa1fe8ac79a2b22a853fa841fcd68999d453cd27bc1d76302d6105",
+      "sources": [
+        {
+          "path": "original-dove/Data/Level4.dat",
+          "sha256": "58d1bb6639455dbf44bcb590f6a972cabaf6ea0902839e4f9472e940a49ef906"
+        },
+        {
+          "path": "original-dove/Data/Grafik/landschaft4.spr",
+          "sha256": "2659e70841273d94acdce01ad3d3a518974b6fc97c9e3665958c1a89d6e06cbb"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1
+    },
+    {
+      "id": "levelData/level5",
+      "bundles": [
+        "level5"
+      ],
+      "kind": "levelData",
+      "file": "levelData/level5.c1052fdc.bin",
+      "bytes": 11632,
+      "sha256": "c1052fdcaf89e7429ec11746bec7c997fa1dc852538e6c632e826e5cd31f6685",
+      "sources": [
+        {
+          "path": "original-dove/Data/Level5.dat",
+          "sha256": "b373e611ccab52a8e26ccf1be54e785962da510b8e1272c0c6d0fce69c58f5f4"
+        },
+        {
+          "path": "original-dove/Data/Grafik/landschaft5.spr",
+          "sha256": "141a17fe9e6070843a506ad56c277590cb4a0aa0d065dfab62346aee371b65e2"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1
+    },
+    {
+      "id": "levelData/level6",
+      "bundles": [
+        "level6"
+      ],
+      "kind": "levelData",
+      "file": "levelData/level6.204b8876.bin",
+      "bytes": 15650,
+      "sha256": "204b8876f2e81faab1182bdfa7e8a4ec1a8ae75dfcf0c53f69313182a814497d",
+      "sources": [
+        {
+          "path": "original-dove/Data/Level6.dat",
+          "sha256": "2b213056aa0d3f976f267aebd228ea0447463afba0c351bb9bbef726e644f24c"
+        },
+        {
+          "path": "original-dove/Data/Grafik/landschaft6.spr",
+          "sha256": "f40704b38e4923f350796630a8d1ef92dcde5aa5b0d709ce836123446e69c289"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1
+    },
+    {
+      "id": "levelData/level7",
+      "bundles": [
+        "level7"
+      ],
+      "kind": "levelData",
+      "file": "levelData/level7.82b12383.bin",
+      "bytes": 14959,
+      "sha256": "82b12383e94475d2189385df7816587744c629652a1f0d1bad3cacc916987b08",
+      "sources": [
+        {
+          "path": "original-dove/Data/Level7.dat",
+          "sha256": "da497da8a82eb73f6ae1b21bd806beda66ff3ca9197d1b7de2bae26d8fef3dca"
+        },
+        {
+          "path": "original-dove/Data/Grafik/landschaft7.spr",
+          "sha256": "87e6b15641161bb040f12dac5b0b3ad766e48162a458bfde1841b3a90226ce2c"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1
+    },
+    {
+      "id": "levelData/level8",
+      "bundles": [
+        "level8"
+      ],
+      "kind": "levelData",
+      "file": "levelData/level8.862507a8.bin",
+      "bytes": 22704,
+      "sha256": "862507a84a2b4664ea8a7eb4755b5c0a4798220e71a9007e8dd9f427d8981cd4",
+      "sources": [
+        {
+          "path": "original-dove/Data/Level8.dat",
+          "sha256": "25a57c11335bf98ef39e43dee6fca4b1b88c407bc10557b524f56ec9b68fa7e5"
+        },
+        {
+          "path": "original-dove/Data/Grafik/landschaft8.spr",
+          "sha256": "a8e1374c19770ee02a94a57da0cb1535890c7e43f4d08776f49ea264dcbf24e2"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1
+    },
+    {
+      "id": "levelData/level9",
+      "bundles": [
+        "level9"
+      ],
+      "kind": "levelData",
+      "file": "levelData/level9.c1458768.bin",
+      "bytes": 26320,
+      "sha256": "c1458768027eb123b11aa8137152830928f665599f1daa4911a84c2626ae102a",
+      "sources": [
+        {
+          "path": "original-dove/Data/Level9.dat",
+          "sha256": "28ce43840ab051b90344cdf7d195b05962ac7f6b735daccbd71f23dcf62156b6"
+        },
+        {
+          "path": "original-dove/Data/Grafik/landschaft9.spr",
+          "sha256": "45c886a39edf3e02145211d731f1a85b19ba10f9b40d04481fe82261e5277d7c"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1
+    },
+    {
+      "id": "music/credits",
+      "bundles": [
+        "music"
+      ],
+      "kind": "music",
+      "file": "music/credits.75c0a669.xm",
+      "bytes": 128499,
+      "sha256": "75c0a669589f38d7ff92bbffff0ad4fd9a4e3d5479a637443aafc4b2d73afd67",
+      "sources": [
+        {
+          "path": "original-dove/Data/Musik/credits.XM",
+          "sha256": "75c0a669589f38d7ff92bbffff0ad4fd9a4e3d5479a637443aafc4b2d73afd67"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "format": "xm"
+    },
+    {
+      "id": "music/end1",
+      "bundles": [
+        "music"
+      ],
+      "kind": "music",
+      "file": "music/end1.33c7e866.xm",
+      "bytes": 213385,
+      "sha256": "33c7e8663e0f012a02df3bcf5051ae16b85da2ede6c31ced560d7f502788e140",
+      "sources": [
+        {
+          "path": "original-dove/Data/Musik/end1.xm",
+          "sha256": "33c7e8663e0f012a02df3bcf5051ae16b85da2ede6c31ced560d7f502788e140"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "format": "xm"
+    },
+    {
+      "id": "music/end2",
+      "bundles": [
+        "music"
+      ],
+      "kind": "music",
+      "file": "music/end2.c4634e36.xm",
+      "bytes": 135338,
+      "sha256": "c4634e362e959d954ed13a9d38a810f9a3710d09ff5899fe90965f8fc4f65c84",
+      "sources": [
+        {
+          "path": "original-dove/Data/Musik/END2.XM",
+          "sha256": "c4634e362e959d954ed13a9d38a810f9a3710d09ff5899fe90965f8fc4f65c84"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "format": "xm"
+    },
+    {
+      "id": "music/gameover",
+      "bundles": [
+        "music"
+      ],
+      "kind": "music",
+      "file": "music/gameover.8aaf54dd.xm",
+      "bytes": 77626,
+      "sha256": "8aaf54dd684309192edd67236fcec2b9d3e9efec3e83d2c83ef8122af65bfc78",
+      "sources": [
+        {
+          "path": "original-dove/Data/Musik/GameOver.xm",
+          "sha256": "8aaf54dd684309192edd67236fcec2b9d3e9efec3e83d2c83ef8122af65bfc78"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "format": "xm"
+    },
+    {
+      "id": "music/highscore",
+      "bundles": [
+        "music"
+      ],
+      "kind": "music",
+      "file": "music/highscore.f0a175c7.xm",
+      "bytes": 211537,
+      "sha256": "f0a175c7a9ab86ea98223ad79c78dc9c94d1a83e2b39fecfecc4c50f15965591",
+      "sources": [
+        {
+          "path": "original-dove/Data/Musik/Highscore.xm",
+          "sha256": "f0a175c7a9ab86ea98223ad79c78dc9c94d1a83e2b39fecfecc4c50f15965591"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "format": "xm"
+    },
+    {
+      "id": "music/intro",
+      "bundles": [
+        "music"
+      ],
+      "kind": "music",
+      "file": "music/intro.a9a05a0e.xm",
+      "bytes": 192694,
+      "sha256": "a9a05a0e165a3bafe91d81e43ebd8918e72b8c9bcbf3244e8aea09fc27f878e5",
+      "sources": [
+        {
+          "path": "original-dove/Data/Musik/intro.xm",
+          "sha256": "a9a05a0e165a3bafe91d81e43ebd8918e72b8c9bcbf3244e8aea09fc27f878e5"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "format": "xm"
+    },
+    {
+      "id": "music/over",
+      "bundles": [
+        "music"
+      ],
+      "kind": "music",
+      "file": "music/over.348e505c.xm",
+      "bytes": 166277,
+      "sha256": "348e505cd45de98d4050f77583c5e495354b36de4eb57bf0919146dd76a14a32",
+      "sources": [
+        {
+          "path": "original-dove/Data/Musik/over.xm",
+          "sha256": "348e505cd45de98d4050f77583c5e495354b36de4eb57bf0919146dd76a14a32"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "format": "xm"
+    },
+    {
+      "id": "music/s0",
+      "bundles": [
+        "music"
+      ],
+      "kind": "music",
+      "file": "music/s0.b81e6a34.xm",
+      "bytes": 73412,
+      "sha256": "b81e6a34709263e6c94c8faf4a31a073c539829210b9e97f7719104d3c7d8900",
+      "sources": [
+        {
+          "path": "original-dove/Data/Musik/s0.xm",
+          "sha256": "b81e6a34709263e6c94c8faf4a31a073c539829210b9e97f7719104d3c7d8900"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "format": "xm"
+    },
+    {
+      "id": "music/s1",
+      "bundles": [
+        "music"
+      ],
+      "kind": "music",
+      "file": "music/s1.451f71f8.xm",
+      "bytes": 276959,
+      "sha256": "451f71f8ce44b17c9711758e0aae8b8bf56777ddf361daae9abf18747c022a3d",
+      "sources": [
+        {
+          "path": "original-dove/Data/Musik/s1.xm",
+          "sha256": "451f71f8ce44b17c9711758e0aae8b8bf56777ddf361daae9abf18747c022a3d"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "format": "xm"
+    },
+    {
+      "id": "music/s10",
+      "bundles": [
+        "music"
+      ],
+      "kind": "music",
+      "file": "music/s10.47b5d196.xm",
+      "bytes": 433149,
+      "sha256": "47b5d19650c3d9624111d1b8095a1d431ba182b3eaadc7135e08defcdf86a80c",
+      "sources": [
+        {
+          "path": "original-dove/Data/Musik/s10.xm",
+          "sha256": "47b5d19650c3d9624111d1b8095a1d431ba182b3eaadc7135e08defcdf86a80c"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "format": "xm"
+    },
+    {
+      "id": "music/s2",
+      "bundles": [
+        "music"
+      ],
+      "kind": "music",
+      "file": "music/s2.c33521e5.xm",
+      "bytes": 89359,
+      "sha256": "c33521e5e253cf1cff51d0da9c0304a90c3fa4c23d2690fca815dce781370355",
+      "sources": [
+        {
+          "path": "original-dove/Data/Musik/s2.xm",
+          "sha256": "c33521e5e253cf1cff51d0da9c0304a90c3fa4c23d2690fca815dce781370355"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "format": "xm"
+    },
+    {
+      "id": "music/s3",
+      "bundles": [
+        "music"
+      ],
+      "kind": "music",
+      "file": "music/s3.3e5b9cd0.xm",
+      "bytes": 115858,
+      "sha256": "3e5b9cd022c9c21e95b7e9a230903dcdbc0f432a388ec98ecbd2738af8706f74",
+      "sources": [
+        {
+          "path": "original-dove/Data/Musik/s3.xm",
+          "sha256": "3e5b9cd022c9c21e95b7e9a230903dcdbc0f432a388ec98ecbd2738af8706f74"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "format": "xm"
+    },
+    {
+      "id": "music/s4",
+      "bundles": [
+        "music"
+      ],
+      "kind": "music",
+      "file": "music/s4.20997fdb.it",
+      "bytes": 78061,
+      "sha256": "20997fdb17ac8fb04bbb092f5e74cf75e1d6707c975a3af3d021d29da1458820",
+      "sources": [
+        {
+          "path": "original-dove/Data/Musik/s4.IT",
+          "sha256": "20997fdb17ac8fb04bbb092f5e74cf75e1d6707c975a3af3d021d29da1458820"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "format": "it"
+    },
+    {
+      "id": "music/s5",
+      "bundles": [
+        "music"
+      ],
+      "kind": "music",
+      "file": "music/s5.449a2093.xm",
+      "bytes": 36205,
+      "sha256": "449a20936c2e81a4e366d153d246bc852b33e998a82c93cfd4762eda76afb207",
+      "sources": [
+        {
+          "path": "original-dove/Data/Musik/s5.xm",
+          "sha256": "449a20936c2e81a4e366d153d246bc852b33e998a82c93cfd4762eda76afb207"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "format": "xm"
+    },
+    {
+      "id": "music/s6",
+      "bundles": [
+        "music"
+      ],
+      "kind": "music",
+      "file": "music/s6.2d103225.xm",
+      "bytes": 93925,
+      "sha256": "2d103225119eb39fbd01e1177385a0d6554d818a90d08edb6baeeb7e7b57db1d",
+      "sources": [
+        {
+          "path": "original-dove/Data/Musik/s6.xm",
+          "sha256": "2d103225119eb39fbd01e1177385a0d6554d818a90d08edb6baeeb7e7b57db1d"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "format": "xm"
+    },
+    {
+      "id": "music/s7",
+      "bundles": [
+        "music"
+      ],
+      "kind": "music",
+      "file": "music/s7.61b83ce7.xm",
+      "bytes": 650040,
+      "sha256": "61b83ce70f1e9b9ee37834e413fbf0a8a16c8d15fc3605e66d077a75a678a408",
+      "sources": [
+        {
+          "path": "original-dove/Data/Musik/s7.XM",
+          "sha256": "61b83ce70f1e9b9ee37834e413fbf0a8a16c8d15fc3605e66d077a75a678a408"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "format": "xm"
+    },
+    {
+      "id": "music/s8",
+      "bundles": [
+        "music"
+      ],
+      "kind": "music",
+      "file": "music/s8.1e99ea94.xm",
+      "bytes": 91010,
+      "sha256": "1e99ea94f493b408a1c6b9b4950bc1dfbdbba22beef5ddb20a51382ad8b255b4",
+      "sources": [
+        {
+          "path": "original-dove/Data/Musik/s8.xm",
+          "sha256": "1e99ea94f493b408a1c6b9b4950bc1dfbdbba22beef5ddb20a51382ad8b255b4"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "format": "xm"
+    },
+    {
+      "id": "music/s9",
+      "bundles": [
+        "music"
+      ],
+      "kind": "music",
+      "file": "music/s9.866996f2.xm",
+      "bytes": 319175,
+      "sha256": "866996f209b4bc59427d7743b660d7192c758838f5e66ba42cf0cc98d2bfeaed",
+      "sources": [
+        {
+          "path": "original-dove/Data/Musik/s9.xm",
+          "sha256": "866996f209b4bc59427d7743b660d7192c758838f5e66ba42cf0cc98d2bfeaed"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "format": "xm"
+    },
+    {
+      "id": "music/titel",
+      "bundles": [
+        "music"
+      ],
+      "kind": "music",
+      "file": "music/titel.57a997cb.xm",
+      "bytes": 487975,
+      "sha256": "57a997cb57734619020867b34a15910ca24106605ea525c1afa15e93485a4380",
+      "sources": [
+        {
+          "path": "original-dove/Data/Musik/titel.xm",
+          "sha256": "57a997cb57734619020867b34a15910ca24106605ea525c1afa15e93485a4380"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "format": "xm"
+    },
+    {
+      "id": "sound/antrieb",
+      "bundles": [
+        "core"
+      ],
+      "kind": "sound",
+      "file": "sound/antrieb.c772679e.wav",
+      "bytes": 42548,
+      "sha256": "c772679e39fbbd9a2edf41d60c17c8c55aebe9a0c6c04023a870c0d6422d906b",
+      "sources": [
+        {
+          "path": "original-dove/Data/Sound/Antrieb.wav",
+          "sha256": "e7295859c0c5089c2f0c5fa0bde64c66db20ae3e1a4baac8efaef8ff105c1424"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 21252
+    },
+    {
+      "id": "sound/beam1",
+      "bundles": [
+        "core"
+      ],
+      "kind": "sound",
+      "file": "sound/beam1.5ae74ece.wav",
+      "bytes": 22308,
+      "sha256": "5ae74ece60fcd569d0acb0bff7e8ba29a49a1c590da14d56e4ca33994efda6eb",
+      "sources": [
+        {
+          "path": "original-dove/Data/Sound/beam1.wav",
+          "sha256": "bcd6a60928969e641e8fc7f04950693f24e1bee6948961a1e2f02bd291883e82"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 11132
+    },
+    {
+      "id": "sound/beam2",
+      "bundles": [
+        "core"
+      ],
+      "kind": "sound",
+      "file": "sound/beam2.75c47d06.wav",
+      "bytes": 24332,
+      "sha256": "75c47d06a7f4a21cb9f3be0829b182dfc0d7f2feee1823648db1b13432ad273c",
+      "sources": [
+        {
+          "path": "original-dove/Data/Sound/beam2.wav",
+          "sha256": "47441feda2f65ce74dce98b2dc02e3864077470a35db42693789a7d1841e0206"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 12144
+    },
+    {
+      "id": "sound/blue",
+      "bundles": [
+        "core"
+      ],
+      "kind": "sound",
+      "file": "sound/blue.1d306dd7.wav",
+      "bytes": 19372,
+      "sha256": "1d306dd7bfddd7bc6311fd9a7b1d717a2aa17053b0d2af772ce16023e6165d50",
+      "sources": [
+        {
+          "path": "original-dove/Data/Sound/blue.wav",
+          "sha256": "46884d805e3b36440a15a4d83dd1304fca9922bd9160c70cb9c25671957c9fac"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 9664
+    },
+    {
+      "id": "sound/charge",
+      "bundles": [
+        "core"
+      ],
+      "kind": "sound",
+      "file": "sound/charge.9e5c793a.wav",
+      "bytes": 25044,
+      "sha256": "9e5c793a615062d5f7b76e20a83ee8a498c943b42788cede570c78e558223a8d",
+      "sources": [
+        {
+          "path": "original-dove/Data/Sound/charge.wav",
+          "sha256": "2970c60d91a71a48cf5167f209843cf6014fc9f3b8ae9fca6432c61fdc16f6d7"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "sampleRate": 11025,
+      "channels": 1,
+      "frames": 12500
+    },
+    {
+      "id": "sound/domination",
+      "bundles": [
+        "core"
+      ],
+      "kind": "sound",
+      "file": "sound/domination.24d5db4c.wav",
+      "bytes": 44,
+      "sha256": "24d5db4ca2d256752cd049a330cb406196c05f4cfe8036beb309e0e4533d21de",
+      "sources": [
+        {
+          "path": "original-dove/Data/Sound/domination.wav",
+          "sha256": "c8bd248ec662e5f1c90c54c29b4217ab2c398642f7c5f43cbd9a917881063832"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 0
+    },
+    {
+      "id": "sound/end1",
+      "bundles": [
+        "core"
+      ],
+      "kind": "sound",
+      "file": "sound/end1.02a7b66e.wav",
+      "bytes": 22308,
+      "sha256": "02a7b66e88200ab3f96dfaac75727614935698b8a091fa5c6fa4444bcf3f0428",
+      "sources": [
+        {
+          "path": "original-dove/Data/Sound/End1.wav",
+          "sha256": "68646b7c373dbca77a9434045dd24def01fb51c85500a3077557ed00f565f2cd"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 11132
+    },
+    {
+      "id": "sound/end2",
+      "bundles": [
+        "core"
+      ],
+      "kind": "sound",
+      "file": "sound/end2.7082383d.wav",
+      "bytes": 60764,
+      "sha256": "7082383d9493bf7fe273287c03fcc4b98e1c73dfe6449ff4c0eee281ed1ed368",
+      "sources": [
+        {
+          "path": "original-dove/Data/Sound/End2.wav",
+          "sha256": "ce3d7bed12802a65f3a52d37731b0c05cbd28c678561a8757aa1a11dff3ad99f"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 30360
+    },
+    {
+      "id": "sound/end3",
+      "bundles": [
+        "core"
+      ],
+      "kind": "sound",
+      "file": "sound/end3.83686608.wav",
+      "bytes": 25004,
+      "sha256": "8368660879ad54344f03ba278a72d0db2892834dd4a75d1843cb3be17b1a79a9",
+      "sources": [
+        {
+          "path": "original-dove/Data/Sound/end3.wav",
+          "sha256": "15a45c1827605808aba530ec442039de68ef7cb4a9715a2384fdf6927666bf69"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 12480
+    },
+    {
+      "id": "sound/explosion",
+      "bundles": [
+        "core"
+      ],
+      "kind": "sound",
+      "file": "sound/explosion.b408b55d.wav",
+      "bytes": 32428,
+      "sha256": "b408b55dac6223adf0a503fa3903f2ddaef0bfcb83e7ae0a5132aec1b83311b2",
+      "sources": [
+        {
+          "path": "original-dove/Data/Sound/Explosion.wav",
+          "sha256": "060eee88e2303b999d5b1cadbdef93b06e5a8cb716448b1ef2ddac9b995ec555"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 16192
+    },
+    {
+      "id": "sound/fertig",
+      "bundles": [
+        "core"
+      ],
+      "kind": "sound",
+      "file": "sound/fertig.84e30c86.wav",
+      "bytes": 44044,
+      "sha256": "84e30c864fa50f5623a76cd88074429ef26274d4db292920d671323ae8b73bf8",
+      "sources": [
+        {
+          "path": "original-dove/Data/Sound/fertig.wav",
+          "sha256": "ce6b533a0c08b4b773acbbec3fd13ecf2ea3717d374e0ad391cc950aec395189"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "sampleRate": 11025,
+      "channels": 1,
+      "frames": 22000
+    },
+    {
+      "id": "sound/fertig2",
+      "bundles": [
+        "core"
+      ],
+      "kind": "sound",
+      "file": "sound/fertig2.caa11509.wav",
+      "bytes": 99220,
+      "sha256": "caa11509f54146910814da6c5faecfa77426c8b7137c93325d2141967d0a911b",
+      "sources": [
+        {
+          "path": "original-dove/Data/Sound/fertig2.wav",
+          "sha256": "06f1a08c01e3bd7f26a038534bf8c4545518ef9b6a748d1743a693c15e6afb7e"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 49588
+    },
+    {
+      "id": "sound/getready",
+      "bundles": [
+        "core"
+      ],
+      "kind": "sound",
+      "file": "sound/getready.f3e0bd9d.wav",
+      "bytes": 23044,
+      "sha256": "f3e0bd9da04787167372671841fe9b92edf591612306d35fa54554d3e495290f",
+      "sources": [
+        {
+          "path": "original-dove/Data/Sound/getready.wav",
+          "sha256": "9fcefaf2c49ae67afa1486c80bdea4bdabfd638e93a1ee4641091dd40a83eeba"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "sampleRate": 8000,
+      "channels": 1,
+      "frames": 11500
+    },
+    {
+      "id": "sound/green",
+      "bundles": [
+        "core"
+      ],
+      "kind": "sound",
+      "file": "sound/green.9c2d333c.wav",
+      "bytes": 4466,
+      "sha256": "9c2d333ca5e2b5daa5cb1b56decc9928663566042a9db5e588248db541312607",
+      "sources": [
+        {
+          "path": "original-dove/Data/Sound/green.wav",
+          "sha256": "3340d9cb6f341db0026341b03309cb5ccab1a6ea013a24998bbf41de295bb5e7"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "sampleRate": 8000,
+      "channels": 1,
+      "frames": 2211
+    },
+    {
+      "id": "sound/iceexplosion",
+      "bundles": [
+        "core"
+      ],
+      "kind": "sound",
+      "file": "sound/iceexplosion.ba83ad71.wav",
+      "bytes": 38500,
+      "sha256": "ba83ad71f3e9ae9bc72bc8824284a9470dacc75347349e5b0e8c73a89c5f9b77",
+      "sources": [
+        {
+          "path": "original-dove/Data/Sound/IceExplosion.wav",
+          "sha256": "50b547cb0369b718b78c71e9d3ddfefc6233a61edbc271503786f0352f183d18"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 19228
+    },
+    {
+      "id": "sound/jingle",
+      "bundles": [
+        "core"
+      ],
+      "kind": "sound",
+      "file": "sound/jingle.8cd6d4d0.wav",
+      "bytes": 34452,
+      "sha256": "8cd6d4d0fb5648c21519c477160359a3a89ccfdbed9dba5efecc0a42dd24bbff",
+      "sources": [
+        {
+          "path": "original-dove/Data/Sound/Jingle.wav",
+          "sha256": "2cdc5881552d9bfe1aaca8c9411b07acb61e05996bb1b9f1a59f7b817b29ad16"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 17204
+    },
+    {
+      "id": "sound/normal",
+      "bundles": [
+        "core"
+      ],
+      "kind": "sound",
+      "file": "sound/normal.cf28d873.wav",
+      "bytes": 8180,
+      "sha256": "cf28d873cf791a537daca26154415ade9394dfb11c1c60ba4ba042d043a26169",
+      "sources": [
+        {
+          "path": "original-dove/Data/Sound/Normal.wav",
+          "sha256": "e337e5655f88ce94fda6bdecd87ca4925c44650232f2e25373f3cb81366a00bd"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 4068
+    },
+    {
+      "id": "sound/red",
+      "bundles": [
+        "core"
+      ],
+      "kind": "sound",
+      "file": "sound/red.ead92a1e.wav",
+      "bytes": 11044,
+      "sha256": "ead92a1e9edadb2526ad3e449c677aa696a7f9f3da4a25584da3dc4cb752f4a1",
+      "sources": [
+        {
+          "path": "original-dove/Data/Sound/red.wav",
+          "sha256": "15c75397b797aa04fbad4c9befb9ecde34769026f15d374c2ec0c203c3b2d6ed"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "sampleRate": 8000,
+      "channels": 1,
+      "frames": 5500
+    },
+    {
+      "id": "sound/yesjo",
+      "bundles": [
+        "core"
+      ],
+      "kind": "sound",
+      "file": "sound/yesjo.2a7f883a.wav",
+      "bytes": 42548,
+      "sha256": "2a7f883a3dc40dc0f21104b7e9bb4e9aae70f30d750a812fa9d2cdc9ab9c5651",
+      "sources": [
+        {
+          "path": "original-dove/Data/Sound/yesjo.wav",
+          "sha256": "b6ae7833ea2cbd4246a04e538827bdbb1b6ce263daee936dbfe0c9b7efde2e78"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "sampleRate": 22050,
+      "channels": 1,
+      "frames": 21252
+    },
+    {
+      "id": "sound/yesjo2",
+      "bundles": [
+        "core"
+      ],
+      "kind": "sound",
+      "file": "sound/yesjo2.a2850335.wav",
+      "bytes": 18044,
+      "sha256": "a285033525c91ab9dcbcab6506647a82b532af225b044c56d43f6bb1d32b26cc",
+      "sources": [
+        {
+          "path": "original-dove/Data/Sound/Yesjo2.wav",
+          "sha256": "ebd482387fff93180f6f1564be48d6bc1840bc675460476b0d82f1e9077f1e93"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1,
+      "sampleRate": 11025,
+      "channels": 1,
+      "frames": 9000
+    }
+  ]
+}
