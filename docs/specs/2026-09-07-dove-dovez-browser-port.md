@@ -1,10 +1,11 @@
 # DOVE + DoveZ — All-in-One Browser-Port
 
-> Design-Spec. Stand: 2026-09-07, fortgeschrieben 2026-09-22.
-> Status: **M0 und M1 umgesetzt.** Die Umsetzung von M1 hat einige Formatannahmen
-> dieses Dokuments korrigiert; maßgeblich ist jetzt
-> [`docs/formats/dove-level-dat.md`](../formats/dove-level-dat.md). Korrigierte
-> Stellen sind hier mit *(M1)* markiert.
+> Design-Spec. Stand: 2026-09-07, fortgeschrieben 2026-09-25.
+> Status: **M0, M1 und M2 umgesetzt.** Die Umsetzung hat einige Annahmen dieses
+> Dokuments korrigiert; maßgeblich sind jetzt
+> [`docs/formats/dove-level-dat.md`](../formats/dove-level-dat.md) und
+> [`docs/formats/dove-assets.md`](../formats/dove-assets.md). Korrigierte
+> Stellen sind hier mit *(M1)* bzw. *(M2)* markiert.
 
 ## Context
 
@@ -56,8 +57,8 @@ Alle Formate sind offen — es ist **kein Cracking nötig**.
 | `Data/Grafik/*.spr` (60 + `METROID.dat`, 29,8 MB) | **Unkomprimiertes Windows-BMP**, 24/8/4/1 bpp. Das Spiel konvertiert beim ersten Start ausgelieferte JPG/GIF nach BMP und benennt sie `.spr` | trivial → WebP |
 | `Data/Level0-11.dat` | **Reiner CRLF-ASCII** (VB6 `Write #`), CP1252. *(M1)* Von Git beim ersten Commit auf LF normalisiert, per `scripts/originals-crlf.ts` auf CRLF zurückgeführt | trivial → JSON |
 | `Data/intro.dat` | reiner ASCII, *(M1)* **eigenes** Schema (Kopf + Rect-Records) | trivial |
-| `Data/Musik/*.xm` (19) + `s4.IT` | FastTracker II / Impulse Tracker, 3,8 MB | `libopenmpt.js` |
-| `Data/Sound/*.wav` (209 KB) | 14× **MS-ADPCM**, 6× PCM 8 bit | → PCM16 (~0,8 MB) |
+| `Data/Musik/*.xm` (18) + `s4.IT` | FastTracker II / Impulse Tracker, 3,8 MB. *(M2)* 19 Module insgesamt, nicht 20 | `libopenmpt.js` |
+| `Data/Sound/*.wav` (209 KB) | *(M2)* 15× **MS-ADPCM**, 5× PCM 8 bit, alle mono; `fact`-Chunks meist veraltet | → PCM16 (*(M2)* 0,6 MB) |
 | `Data/1-5.dat` | 2880er-Zufallspermutation, **zur Laufzeit erzeugt** | nicht portieren, neu generieren |
 
 ### Levelformat (vollständig dekodiert und verifiziert)
@@ -363,7 +364,7 @@ Ein CLI unter Bun: `assets:build`, `assets:check`, `assets:verify`,
 | XM/IT (3,8 MB) | **unverändert**, `libopenmpt.js` zur Laufzeit | Faktor 15 kleiner als Vorab-Render, nahtlose Loops nativ, Originaldateien bleiben unangetastet |
 | DoveZ-Musik (20 OGG, 61 MB) | **unverändert**, gestreamt | Vorbis ist browser-nativ; kein Grund für Generationsverlust. Streaming über `MediaElementAudioSourceNode` — `decodeAudioData` würde 61 MB zu ~600 MB PCM im RAM aufblasen |
 | DivX-AVI (14, 193 MB) | **VP9/WebM** (~25 MB) | MPEG-4 ASP spielt kein Browser |
-| Level-`.dat` | **JSON + Binär-Sidecars** | Konturen als `Int16Array`-Blob, nicht als JSON — das wären Millionen Zahlen |
+| Level-`.dat` | **JSON + Binär-Sidecars** | Konturen als `Int16Array`-Blob, nicht als JSON — das wären Millionen Zahlen. *(M2)* Layout: `docs/formats/dove-assets.md` |
 
 **Atlas-Packing: für DOVE nein, für DoveZ ja.** Das folgt aus den Daten, nicht
 aus Inkonsistenz. DOVEs Level referenzieren *absolute Pixel-Rects* in
@@ -390,7 +391,9 @@ nicht bit-identisch) und nur mit `--force-video` neu erzeugt.
 **Eine Besonderheit:** Die Pipeline *erzeugt* für DOVE etwas, das im Original
 nicht als Datei existiert — **Terrain-Kollisionsmasken**. DOVE-Tiles haben keine
 Konturdaten; die Wandkollision muss pixelweise gegen das Terrain laufen. Aus dem
-Atlas wird pro Tile eine 1-Bit-Maske nach demselben Colorkey berechnet. Das ist
+Atlas wird pro Tile eine 1-Bit-Maske nach demselben Colorkey berechnet.
+*(M2)* Ob Tile-Rects rechts/unten inklusiv sind, ist offen; die Masken decken
+das inklusive Rect ab (Obermenge), M3 beschneidet bei Bedarf. Das ist
 der einzige Ort, an dem die Pipeline spiellogik-relevante Daten erzeugt statt
 konvertiert — entsprechend prominent zu dokumentieren.
 
@@ -570,7 +573,7 @@ Jeder hat genau ein überprüfbares Ergebnis.
 |---|---|---|---|
 | **M0** | Bun-Workspace, tsconfig strict, oxlint + oxfmt, CI, gitattributes | 0,5–1 d | frischer Clone: `bun install && typecheck && lint && fmt:check && test` grün — *Stand: erledigt* |
 | **M1** | `@clove/formats`: BMP-Decoder (1/4/8/16/24/32 bpp), `LevelDat` parse **und** serialize, Frame-Ableitung. Messung der Original-Tickrate | 2–3 d | Round-Trip byte-identisch über 12 Level; Kreuzvalidierung 145/145 grün; `TICK_MS` ist eine **gemessene** Zahl — *Stand: erledigt; `TICK_MS = 14` statt gemessen aus der EXE hergeleitet, siehe `docs/measurements/tick-rate.md`* |
-| **M2** | Asset-Pipeline DOVE mit Manifest, Cache, `--check` | 2 d | ~11 MB Assets; zweiter Lauf schreibt null Bytes |
+| **M2** | Asset-Pipeline DOVE mit Manifest, Cache, `--check` | 2 d | ~11 MB Assets; zweiter Lauf schreibt null Bytes — *Stand: erledigt; 10,8 MB, siehe `docs/formats/dove-assets.md`* |
 | **M3** | ⭐ **Erstes spielbares Level.** Scope brutal geschnitten: keine Menüs, keine Musik, **eine** Waffe, kein Beam/Options/Bomben/Schild | 4–6 d | Level 1 läuft im Browser durch; aufgezeichnetes Replay reproduziert bit-identisch |
 | **M4** | DOVE feature-complete: alle Waffen + Stufen, Beam, Options, Bomben, Schild, alle 12 Level, Vorhang, Highscore, Audio, die drei Optionen, Easteregg | 1,5–2 w | von Anfang bis Ende durchspielbar; Playtest-Checkliste abgehakt |
 | **M5** | Shell echt: Menü, Routing, Settings, Gamepad, Save-Export, Cache-Bundles, Service Worker, i18n | 3–4 d | deploybare Site; DOVE aus kaltem Cache spielbar |

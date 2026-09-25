@@ -6,15 +6,18 @@ Intergenies — ein gemeinsamer Launcher, zwei Spiele, mit den Original-Assets.
 
 ## Stand
 
-Meilensteine **M0** (Workspace, Tooling, CI) und **M1** (`@clove/formats`:
+Meilensteine **M0** (Workspace, Tooling, CI), **M1** (`@clove/formats`:
 BMP-Decoder, DOVE-Levelformat mit byte-identischem Round-Trip,
-Kontur-Kreuzvalidierung) sind umgesetzt. Die Original-Tickrate (14 ms) ist aus
-der EXE hergeleitet: [`docs/measurements/tick-rate.md`](docs/measurements/tick-rate.md).
+Kontur-Kreuzvalidierung) und **M2** (Asset-Pipeline DOVE: WebP, PCM16,
+Level-JSON mit Konturen und Terrain-Masken, Manifest, Cache, CI-Gate) sind
+umgesetzt. Die Original-Tickrate (14 ms) ist aus der EXE hergeleitet:
+[`docs/measurements/tick-rate.md`](docs/measurements/tick-rate.md).
 
 - **Design-Spec:** [`docs/specs/2026-09-07-dove-dovez-browser-port.md`](docs/specs/2026-09-07-dove-dovez-browser-port.md)
   — Formatbefunde, Architektur, Asset-Pipeline, Verifikationsstrategie,
   Meilensteine und Risiken.
 - **DOVE-Levelformat:** [`docs/formats/dove-level-dat.md`](docs/formats/dove-level-dat.md)
+- **DOVE-Assets:** [`docs/formats/dove-assets.md`](docs/formats/dove-assets.md)
 
 ## Entwicklung
 
@@ -27,6 +30,11 @@ bun run typecheck    # tsc (strict, noUncheckedIndexedAccess)
 bun run lint         # oxlint
 bun run fmt          # oxfmt (schreibt), fmt:check prüft nur
 bun run test         # bun test
+
+bun run assets:build   # Originale → assets/dove/ (inkrementell)
+bun run assets:check   # CI-Gate: frischer Build ≡ committeter Baum
+bun run assets:verify  # Hashes gegen das Manifest
+bun run assets:report  # Größen je Bundle
 ```
 
 ## Verzeichnisse
@@ -36,6 +44,9 @@ bun run test         # bun test
 | `original-dove/`  | unveränderte Original-Installation DOVE 1.10 |
 | `original-dovez/` | unveränderte Original-Installation DoveZ     |
 | `packages/formats/` | `@clove/formats` — reine Parser/Serializer, ohne I/O |
+| `packages/core/`  | `@clove/core` — mechanikfreie Bausteine (bisher: Manifest-Typen) |
+| `packages/assetkit/` | `@clove/assetkit` — Asset-Pipeline (Bun, sharp) |
+| `assets/dove/`    | generierte DOVE-Assets + `manifest.json`, nie von Hand ändern |
 | `tests/`          | repo-weite Architekturtests                  |
 | `docs/`           | Spezifikationen und Formatdokumentation      |
 
