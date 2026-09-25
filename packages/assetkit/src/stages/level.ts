@@ -1,4 +1,4 @@
-import { buildLevelAsset, parseContourDat, parseLevelDat } from "@clove/formats";
+import { buildLevelAsset, parseContourDat, parseIntroDat, parseLevelDat } from "@clove/formats";
 
 /** 2: Konturen mit allen h+1 Zeilen, keine Terrain-Masken mehr (M3). */
 export const LEVEL_CONVERTER_VERSION = 2;
@@ -15,4 +15,11 @@ export const CONTOUR_CONVERTER_VERSION = 1;
 export function convertContour(dat: Uint8Array): Uint8Array {
   const spans = [...parseContourDat(dat)];
   return new TextEncoder().encode(`${JSON.stringify({ spans })}\n`);
+}
+
+export const INTRO_CONVERTER_VERSION = 1;
+
+/** `intro.dat` → JSON (`DoveIntro`). */
+export function convertIntro(dat: Uint8Array): Uint8Array {
+  return new TextEncoder().encode(`${JSON.stringify(parseIntroDat(dat))}\n`);
 }

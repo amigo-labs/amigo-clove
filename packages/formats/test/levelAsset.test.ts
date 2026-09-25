@@ -3,10 +3,12 @@ import { join } from "node:path";
 import {
   ContourDatError,
   EventOp,
+  IntroDatError,
   LevelAssetError,
   SPAWN_KIND,
   buildLevelAsset,
   parseContourDat,
+  parseIntroDat,
   parseLevelDat,
   readLevelAsset,
   type LevelAssetJson,
@@ -87,5 +89,19 @@ describe("METROID.dat", () => {
   test("fehlender Terminator und Müll werden abgelehnt", () => {
     expect(() => parseContourDat(enc(" 1 \r\n 2 \r\n"))).toThrow(ContourDatError);
     expect(() => parseContourDat(enc("x\r\n"))).toThrow(ContourDatError);
+  });
+});
+
+describe("intro.dat", () => {
+  test("verbraucht alle 780 Tokens: drei Szenen, acht leere Plätze", async () => {
+    const intro = parseIntroDat(await readBytes(join(DOVE_DATA, "intro.dat")));
+    expect(intro.scenes.length).toBe(11);
+    expect(intro.scenes.map((s) => s.duration)).toEqual([2100, 500, 300, 0, 0, 0, 0, 0, 0, 0, 0]);
+    expect(intro.scenes[0]!.rects[1]!.name).toBe("Raumschiff");
+    expect(intro.scenes[0]!.objects.length).toBe(14);
+  });
+
+  test("Abweichungen im Schema werden erkannt", () => {
+    expect(() => parseIntroDat(enc('1\r\n"a"\r\n'))).toThrow(IntroDatError);
   });
 });

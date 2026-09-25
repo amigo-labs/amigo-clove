@@ -3,6 +3,24 @@
   "game": "dove",
   "entries": [
     {
+      "id": "data/intro",
+      "bundles": [
+        "screens"
+      ],
+      "kind": "data",
+      "file": "data/intro.de7f075f.json",
+      "bytes": 8934,
+      "sha256": "de7f075f6ed2c251c214e11b1cc21eb203e0774d46438beda4f94eb32af4cbbe",
+      "sources": [
+        {
+          "path": "original-dove/Data/intro.dat",
+          "sha256": "39f502abdd30a356b380a58ad71fbda551e46408f882d7da1c08fdf24e9ae5d4"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1
+    },
+    {
       "id": "data/metroid",
       "bundles": [
         "level1"

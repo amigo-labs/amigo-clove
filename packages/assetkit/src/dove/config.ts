@@ -11,8 +11,10 @@ import { SOUND_CONVERTER_VERSION, convertSound } from "../stages/audio";
 import { IMAGE_CONVERTER_VERSION, LIBWEBP_VERSION, convertImage } from "../stages/image";
 import {
   CONTOUR_CONVERTER_VERSION,
+  INTRO_CONVERTER_VERSION,
   LEVEL_CONVERTER_VERSION,
   convertContour,
+  convertIntro,
   convertLevel,
 } from "../stages/level";
 import { MUSIC_CONVERTER_VERSION, convertMusic } from "../stages/music";
@@ -165,6 +167,18 @@ export function planDove(root: string): Job[] {
     outputs: [{ id: "data/metroid", kind: "data", ext: "json" }],
     run: async ([dat]) => [
       { id: "data/metroid", kind: "data", ext: "json", bytes: convertContour(dat!), meta: {} },
+    ],
+  });
+
+  // Story-Einleitung (PlayIntro): Szenen, Rechtecke, Keyframes.
+  jobs.push({
+    bundles: ["screens"],
+    sources: [`${DOVE_DATA}/intro.dat`],
+    options: {},
+    converterVersion: INTRO_CONVERTER_VERSION,
+    outputs: [{ id: "data/intro", kind: "data", ext: "json" }],
+    run: async ([dat]) => [
+      { id: "data/intro", kind: "data", ext: "json", bytes: convertIntro(dat!), meta: {} },
     ],
   });
 

@@ -55,3 +55,14 @@ export {
   descrambleTiles,
   parsePermutation,
 } from "./dove/Scramble";
+export {
+  INTRO_SCENES,
+  IntroDatError,
+  parseIntroDat,
+  type DoveIntro,
+  type IntroExplosion,
+  type IntroKey,
+  type IntroObject,
+  type IntroRect,
+  type IntroScene,
+} from "./dove/IntroDat";
