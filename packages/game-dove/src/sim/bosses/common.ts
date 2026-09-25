@@ -136,11 +136,18 @@ export function dyingTick(
   effect(w, Effect.ShotHit, x, y, c, d);
 }
 
-/** Einmalig Punkte und `Me.264 = True`. */
-export function finishBoss(w: World, points: number): void {
+/**
+ * Einmalig Punkte und `Me.264 = True`. Die Bosse addieren ihre Punkte direkt
+ * (`VarAdd` auf `Me.104`) — ohne Punktefaktor; nur Level 10 multipliziert
+ * (`withFactor`).
+ */
+export function finishBoss(w: World, points: number, withFactor = false): void {
   if (w.bossScored) return;
   w.bossScored = 1;
-  if (points > 0) addScore(w, points, true);
+  if (points > 0) {
+    if (withFactor) addScore(w, points, true);
+    else w.score += points;
+  }
   w.levelDone = true;
   sound(w, Sound.Explosion);
 }
