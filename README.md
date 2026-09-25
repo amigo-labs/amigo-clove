@@ -9,9 +9,14 @@ Intergenies — ein gemeinsamer Launcher, zwei Spiele, mit den Original-Assets.
 Meilensteine **M0** (Workspace, Tooling, CI), **M1** (`@clove/formats`:
 BMP-Decoder, DOVE-Levelformat mit byte-identischem Round-Trip,
 Kontur-Kreuzvalidierung), **M2** (Asset-Pipeline DOVE: WebP, PCM16,
-Level-JSON mit Konturen, Manifest, Cache, CI-Gate) und **M3** (erstes
-spielbares Level: DOVE Level 1 im Browser, Mechanik statisch aus der EXE
-bestimmt, deterministische Replays) sind umgesetzt. Die Original-Tickrate (14 ms) ist aus der EXE hergeleitet:
+Level-JSON mit Konturen, Manifest, Cache, CI-Gate), **M3** (erstes
+spielbares Level, deterministische Replays) und **M4** (DOVE vollständig:
+alle Waffen, Beam, Options, Schild, alle 12 Level mit Levelskripten, 9 Bosse,
+Soundeffekte und Musik, Menüs, Intro, Continue, Highscore, Abspann) sind
+umgesetzt. Die Mechanik ist statisch aus der EXE bestimmt
+([`docs/measurements/`](docs/measurements/)); der Abgleich am laufenden
+Original steht noch aus ([`docs/playtest-checklist.md`](docs/playtest-checklist.md)).
+Die Original-Tickrate (14 ms) ist aus der EXE hergeleitet:
 [`docs/measurements/tick-rate.md`](docs/measurements/tick-rate.md).
 
 - **Design-Spec:** [`docs/specs/2026-09-07-dove-dovez-browser-port.md`](docs/specs/2026-09-07-dove-dovez-browser-port.md)
@@ -41,10 +46,19 @@ bun run smoke          # Browser-Smoke-Test (baut den Launcher, Chromium)
 bun run --cwd packages/shell dev   # Launcher unter http://localhost:5173
 ```
 
-DOVE starten: `http://localhost:5173/#/dove?level=1`. Steuerung wie im
-Original — Pfeiltasten, `S`/Leertaste Dauerfeuer, `Q`/`W` Tempo, `Esc` Pause.
-Weitere URL-Optionen: `seed`, `shots=0|1|2`, `walls=1`, zum Testen
-`invincible=1` und `from=<Tick>`.
+DOVE starten: `http://localhost:5173/#/dove` (NEO-ARTS-Logo, Titelmenü).
+Steuerung wie im Original:
+
+- **Menüs:** Pfeiltasten, Bestätigen mit `Enter`/`S`/`A`/Leertaste, `Esc` zurück.
+- **Spiel:** Pfeiltasten, `S`/Leertaste Dauerfeuer (Bomben feuern mit),
+  `A` Beam laden (Loslassen feuert), `D` Options-Richtung umkehren,
+  `Q`/`W` Tempo, `Esc` Pause.
+
+URL-Optionen: `nosound` (ohne Ton), `nointro=1`, `seed`, `shots=0|1|2`, `walls=1`;
+direkt ins Level mit `level=<n>`, zum Testen `invincible=1`, `from=<Tick>`,
+`lives`, `score`, Ausrüstung `colour`/`stage`/`options`/`bomb=1`/`shield=1`
+und `screen=<Name>` (intro, getready, continue, highscore, outro, options,
+levelselect, info, farewell) für Sichtprüfungen einzelner Bildschirme.
 
 ## Verzeichnisse
 
