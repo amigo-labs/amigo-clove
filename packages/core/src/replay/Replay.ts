@@ -12,6 +12,8 @@ export interface Replay {
   readonly game: string;
   readonly level: string;
   readonly seed: number;
+  /** Spielspezifische Optionen, unter denen aufgezeichnet wurde. */
+  readonly options?: Readonly<Record<string, unknown>>;
   readonly ticks: number;
   /** Lauflängen: `[mask, count, mask, count, …]`. */
   readonly input: readonly number[];
