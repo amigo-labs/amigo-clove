@@ -34,11 +34,13 @@ export class ModulePlayer {
         numberOfOutputs: 1,
         outputChannelCount: [2],
       });
-      node.port.onmessage = (e: MessageEvent<{ cmd: string }>) => {
+      node.port.addEventListener("message", (e: MessageEvent<{ cmd: string }>) => {
         if (e.data.cmd === "end") this.endedHandler?.();
         if (e.data.cmd === "err") console.warn("ModulePlayer:", e.data);
-      };
-      node.port.postMessage({
+      });
+      node.port.start();
+      this.node = node;
+      this.send({
         cmd: "config",
         val: {
           repeatCount: -1,
@@ -47,7 +49,6 @@ export class ModulePlayer {
         },
       });
       node.connect(this.output);
-      this.node = node;
     });
   }
 
@@ -61,19 +62,26 @@ export class ModulePlayer {
     return player;
   }
 
+  /** Nachricht an den Worklet-Prozessor. */
+  private send(message: { cmd: string; val?: unknown }): void {
+    // MessagePort kennt kein targetOrigin — die Regel gilt nur für Window.postMessage.
+    // oxlint-disable-next-line unicorn/require-post-message-target-origin
+    this.node?.port.postMessage(message);
+  }
+
   /** Spielt ein Modul; `loop = false` spielt es einmal (z. B. Game-Over-Jingle). */
   play(module: Uint8Array, loop = true): void {
-    this.node?.port.postMessage({ cmd: "repeatCount", val: loop ? -1 : 0 });
-    this.node?.port.postMessage({ cmd: "play", val: module.slice().buffer });
+    this.send({ cmd: "repeatCount", val: loop ? -1 : 0 });
+    this.send({ cmd: "play", val: module.slice().buffer });
     this.setVolume(1);
   }
 
   stop(): void {
-    this.node?.port.postMessage({ cmd: "stop" });
+    this.send({ cmd: "stop" });
   }
 
   pause(paused: boolean): void {
-    this.node?.port.postMessage({ cmd: paused ? "pause" : "unpause" });
+    this.send({ cmd: paused ? "pause" : "unpause" });
   }
 
   setVolume(value: number): void {
