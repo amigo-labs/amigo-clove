@@ -44,3 +44,33 @@ describe("Simulation bleibt deterministisch", () => {
     expect(found).toEqual([]);
   });
 });
+
+/**
+ * `@clove/formats` und `@clove/core` laufen im Browser (Debug-Modus lädt
+ * Originaldateien per Drag & Drop, die Engine liest Manifest und Level-Assets).
+ * Dateisystem, Bun-APIs und native Encoder gehören nach `@clove/assetkit`.
+ */
+const NODE_ONLY = /\bfrom\s+["'](?:node:[^"']+|bun|sharp|fs|path|os|crypto)["']|\bBun\./;
+
+describe("isomorphe Pakete bleiben I/O-frei", () => {
+  test("das Gate erkennt Node-, Bun- und sharp-Importe", () => {
+    for (const src of [
+      'import { readFileSync } from "node:fs";',
+      'import { Glob } from "bun";',
+      'import sharp from "sharp";',
+      'import { join } from "path";',
+      "await Bun.file(p).bytes();",
+    ]) {
+      expect(NODE_ONLY.test(src)).toBe(true);
+    }
+    expect(NODE_ONLY.test('import { decodeBmp } from "./bmp/BmpDecoder";')).toBe(false);
+  });
+
+  test("packages/{formats,core}/src importieren nichts Node-Spezifisches", async () => {
+    const found: string[] = [];
+    for await (const file of new Glob("packages/{formats,core}/src/**/*.ts").scan(ROOT)) {
+      if (NODE_ONLY.test(await Bun.file(join(ROOT, file)).text())) found.push(file);
+    }
+    expect(found).toEqual([]);
+  });
+});

@@ -18,3 +18,16 @@ jobs:
       - run: bun run lint
       - run: bun run fmt:check
       - run: bun run test
+      - run: bun run assets:check
+
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      # gepinnte playwright-core-Version aus packages/shell (passende Chromium-Revision)
+      - run: bun run --cwd packages/shell browsers
+      - run: bun run smoke
