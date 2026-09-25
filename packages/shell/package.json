@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "smoke": "vite build && bun scripts/smoke.ts"
+    "smoke": "vite build && bun scripts/smoke.ts",
+    "browsers": "playwright-core install --with-deps chromium"
   },
   "dependencies": {
     "@clove/core": "workspace:*",

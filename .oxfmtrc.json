@@ -1,5 +1,12 @@
 {
   "$schema": "./node_modules/oxfmt/configuration_schema.json",
   "printWidth": 100,
-  "ignorePatterns": ["original-dove/**", "original-dovez/**", "assets/**", "bun.lock", "**/*.md"]
+  "ignorePatterns": [
+    "original-dove/**",
+    "original-dovez/**",
+    "assets/**",
+    "packages/*/test/replays/**",
+    "bun.lock",
+    "**/*.md"
+  ]
 }
