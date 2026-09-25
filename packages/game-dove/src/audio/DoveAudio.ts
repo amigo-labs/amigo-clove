@@ -82,6 +82,14 @@ export class DoveAudio {
     }
   }
 
+  /**
+   * Soundeffekt außerhalb der Simulation (Menüs, Get Ready, Continue):
+   * `name` wie in `SOUND_FILES` (z. B. "getready"), Lautstärke 0–100, Panorama −100…100.
+   */
+  effect(name: string, volume = 100, pan = 0): void {
+    this.sfx.play(`sound/${name}`, pan / 100, volume / 100);
+  }
+
   /** Einmal pro Frame nach den Simulationsticks. */
   update(world: World): void {
     this.updateMusic(world);
