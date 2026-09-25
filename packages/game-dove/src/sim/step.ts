@@ -1,4 +1,4 @@
-import { FX_ONE, fxDiv, fxFromInt, fxMul } from "@clove/core";
+import { fxFromInt, fxMul } from "@clove/core";
 import {
   BG_SPEED_DEFAULT,
   BOSS_TICK,
@@ -42,13 +42,21 @@ import {
   SHIP_WALL,
   STAR_COUNT,
   STAR_GROUPS,
-  TILE_VX,
 } from "./constants";
 import { hitTest, wallHit, wallHitFx } from "./collision";
 import { ShotKind, addEnemyShot, addEnemyShotForced, updateEnemyShots } from "./enemyShots";
 import { Sound, crashEnemy, handlers, killPlayer, sound } from "./actions";
-import { EDGE_OUTSIDE, SPAWN_KIND, type LevelData } from "./level";
+import { SPAWN_KIND, type LevelData } from "./level";
 import { BOSSES } from "./bosses";
+import {
+  aimEnemy,
+  pathOf,
+  spawnBuiltinEnemy,
+  spawnExtra,
+  spawnObject,
+  spawnPatternEnemy,
+  spawnTile,
+} from "./spawn";
 import {
   beamInput,
   releaseBeam,
@@ -183,127 +191,6 @@ export function startLevel(w: World): void {
   w.gauge = SHIP_SPEED_DEFAULT * 10;
   loseEquipment(w);
   restartAtCheckpoint(w);
-}
-
-// ---------------------------------------------------------------- Spawns
-
-function spawnTile(w: World, ref: number, y: number, x: number = SCREEN_W): void {
-  if (ref < 1 || ref > w.level.tiles.length) return;
-  const i = w.tiles.alloc();
-  if (i < 0) return;
-  w.tileType[i] = ref - 1;
-  w.tileX[i] = x;
-  w.tileY[i] = y;
-}
-
-function spawnObject(w: World, ref: number, y: number, x?: number): void {
-  if (ref < 1 || ref > w.level.objects.length) return;
-  const i = w.objects.alloc();
-  if (i < 0) return;
-  w.objType[i] = ref - 1;
-  // x = 640 + 0,5 − frac(Me.188) (`0x43C1E0`)
-  w.objX[i] = x ?? FX_640 + (FX_ONE >> 1) - (w.bgOffset & 0xffff);
-  w.objY[i] = y;
-}
-
-function spawnExtra(w: World, art: number, y: number): void {
-  if (!(art in EXTRA_ART)) return;
-  const i = w.extras.alloc();
-  if (i < 0) return;
-  w.extraArt[i] = art;
-  w.extraX[i] = SCREEN_W;
-  w.extraY[i] = y;
-  w.extraFrame[i] = 0;
-  w.extraAnim[i] = 0;
-}
-
-function allocEnemy(w: World, type: number, pattern: number): number {
-  const def = w.level.enemies[type];
-  if (!def) return -1;
-  const i = w.enemies.alloc();
-  if (i < 0) return -1;
-  w.enType[i] = type;
-  w.enPattern[i] = pattern;
-  w.enHP[i] = def.hp;
-  w.enPoints[i] = def.hp;
-  w.enFrame[i] = 0;
-  w.enAnim[i] = 0;
-  w.enWaypoint[i] = 0;
-  w.enShotTimer[i] = 0;
-  w.enAux[i] = 0;
-  w.enVX[i] = 0;
-  w.enVY[i] = 0;
-  return i;
-}
-
-/** Hauptachse mit `speed`, Nebenachse skaliert (Spawn und Wegpunktwechsel). */
-function aimEnemy(w: World, i: number, tx: number, ty: number): void {
-  const speed = w.level.enemies[w.enType[i] as number]!.speedFx;
-  const dx = fxFromInt(tx) - (w.enX[i] as number);
-  const dy = fxFromInt(ty) - (w.enY[i] as number);
-  const adx = Math.abs(dx);
-  const ady = Math.abs(dy);
-  if (adx > ady) {
-    w.enVX[i] = dx < 0 ? -speed : speed;
-    w.enVY[i] = fxMul(fxDiv(dy, adx), speed);
-  } else {
-    w.enVY[i] = dy < 0 ? -speed : speed;
-    w.enVX[i] = ady === 0 ? 0 : fxMul(fxDiv(dx, ady), speed);
-  }
-}
-
-/** `;1 T P!` mit P > 0: Pattern-Gegner (`0x43D090`). */
-function spawnPatternEnemy(w: World, ref: number, pattern: number): void {
-  const path = w.level.paths[pattern - 1];
-  if (!path) return;
-  const i = allocEnemy(w, ref - 1, pattern);
-  if (i < 0) return;
-  const def = w.level.enemies[ref - 1]!;
-  const sx = path.x[0] as number;
-  const sy = path.y[0] as number;
-  w.enX[i] = fxFromInt(sx === EDGE_OUTSIDE ? -def.w : sx);
-  w.enY[i] = fxFromInt(sy === EDGE_OUTSIDE ? -def.h : sy);
-  aimEnemy(w, i, path.x[1] as number, path.y[1] as number);
-}
-
-/** `;1 T P!` mit P ≤ 0 und gebundenem `v§` — Tabelle in `docs/measurements/dove-events.md`. */
-function spawnBuiltinEnemy(w: World, ref: number, pattern: number, v: number): void {
-  const def = w.level.enemies[ref - 1];
-  if (!def) return;
-  const code = pattern === -5 ? 0 : pattern <= -6 ? pattern + 1 : pattern;
-  const i = allocEnemy(w, ref - 1, code);
-  if (i < 0) return;
-  const s = def.speedFx;
-  const editorX = idiv(v * 64, 41);
-  let x = SCREEN_W;
-  let y = v;
-  let vx = -s;
-  let vy = 0;
-  switch (pattern) {
-    case -1:
-      x = editorX;
-      y = FIELD_H;
-      break;
-    case -2:
-      x = editorX;
-      y = -def.h;
-      break;
-    case -4:
-      x = -def.w;
-      break;
-    case -5:
-      x = -def.w;
-      vx = s;
-      break;
-    case -6:
-      vx = 0;
-      vy = -s;
-      break;
-  }
-  w.enX[i] = fxFromInt(x);
-  w.enY[i] = fxFromInt(y);
-  w.enVX[i] = vx;
-  w.enVY[i] = vy;
 }
 
 // ---------------------------------------------------------------- Events (0x43D6B0)
@@ -501,7 +388,7 @@ function scroll(w: World): void {
 
   for (let i = 0; i < w.extras.capacity; i++) {
     if (!w.extras.active[i]) continue;
-    const x = (w.extraX[i] as number) - 1;
+    const x = (w.extraX[i] as number) + (w.extraVX[i] as number);
     w.extraX[i] = x;
     const anim = (w.extraAnim[i] as number) + 1;
     if (anim >= EXTRA_ANIM_TICKS) {
@@ -532,9 +419,10 @@ function scroll(w: World): void {
   for (let i = 0; i < w.tiles.capacity; i++) {
     if (!w.tiles.active[i]) continue;
     const t = lvl.tiles[w.tileType[i] as number]!;
-    const x = (w.tileX[i] as number) + TILE_VX;
+    const x = (w.tileX[i] as number) + (w.tileVX[i] as number);
+    const y = (w.tileY[i] as number) + (w.tileVY[i] as number);
     w.tileX[i] = x;
-    const y = w.tileY[i] as number;
+    w.tileY[i] = y;
     if (x < -t.w || x > SCREEN_W || y > FIELD_H || y < -t.h) w.tiles.free(i);
   }
 }
@@ -580,7 +468,7 @@ function updateEnemies(w: World): void {
       w.enX[i] = (w.enX[i] as number) + (w.enVX[i] as number);
       w.enY[i] = (w.enY[i] as number) + (w.enVY[i] as number);
       if (pattern >= 1) {
-        const path = lvl.paths[pattern - 1]!;
+        const path = pathOf(w, pattern)!;
         const wp = (w.enWaypoint[i] as number) + 1;
         const tx = path.x[wp] as number;
         const ty = path.y[wp] as number;

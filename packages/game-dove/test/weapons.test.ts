@@ -14,6 +14,7 @@ function collect(w: World, art: number): void {
   w.extraY[i] = w.py;
   w.extraFrame[i] = 0;
   w.extraAnim[i] = 0;
+  w.extraVX[i] = -1;
   step(w, 0);
 }
 
@@ -49,6 +50,7 @@ describe("Extras", () => {
     w.extraArt[i] = 0;
     w.extraX[i] = w.px + 41 + 1; // nach dem Scrollen (−1) genau X+41: knapp daneben
     w.extraY[i] = w.py;
+    w.extraVX[i] = -1;
     step(w, 0);
     expect(w.optionCount).toBe(0);
     step(w, 0); // jetzt X+40
