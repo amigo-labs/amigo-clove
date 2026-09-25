@@ -1,11 +1,12 @@
 # DOVE + DoveZ — All-in-One Browser-Port
 
 > Design-Spec. Stand: 2026-09-07, fortgeschrieben 2026-09-25.
-> Status: **M0, M1 und M2 umgesetzt.** Die Umsetzung hat einige Annahmen dieses
+> Status: **M0 bis M3 umgesetzt.** Die Umsetzung hat einige Annahmen dieses
 > Dokuments korrigiert; maßgeblich sind jetzt
 > [`docs/formats/dove-level-dat.md`](../formats/dove-level-dat.md) und
-> [`docs/formats/dove-assets.md`](../formats/dove-assets.md). Korrigierte
-> Stellen sind hier mit *(M1)* bzw. *(M2)* markiert.
+> [`docs/formats/dove-assets.md`](../formats/dove-assets.md), für die Mechanik
+> `docs/measurements/dove-{events,player,enemies}.md`. Korrigierte Stellen sind
+> hier mit *(M1)*, *(M2)* bzw. *(M3)* markiert.
 
 ## Context
 
@@ -129,10 +130,10 @@ Event-Tokens pro Tick:
 *(M1)* Tile-, Gegner- und Objektreferenzen sind **1-basiert**; Pattern `0` und
 `−1…−7` sind eingebaute Bewegungsarten, `1…n` verweisen auf Sektion 4.
 
-Wichtige Semantik: `;1` **spawnt nicht**, es selektiert nur Typ und Pattern;
-erst `<y>§` erzeugt eine Instanz. `curEnemy`/`curPattern` sind damit Weltzustand
-und gehören in den Snapshot. Das erklärt die Zählung — 2105 `;1` gegen 3915
-Spawns, ein `;1` bedient im Schnitt zwei Spawns.
+~~Wichtige Semantik: `;1` spawnt nicht~~ *(M3, aus der EXE)*: `;1 T P!`
+**spawnt sofort**; bei P ≤ 0 liefert das erste folgende `y§` derselben Zeile die
+Y-Position. Alleinstehende `y§` wertet das Original nie aus — 2460 der 3915
+`§`-Tokens sind tote Daten (`docs/measurements/dove-events.md`).
 
 ### Spielmechanik
 
@@ -435,6 +436,11 @@ min(left)/max(right) über die überlappenden Konturzeilen gegen das x-Intervall
 der Box (inklusiv). Kein Punkt-in-Kontur. Wände: inklusives AABB gegen die
 Tile-Rechtecke. Details: `docs/measurements/dove-enemies.md`.
 
+*(M3)* Die Parameter sind aus der EXE belegt: p0 Framezahl − 1, p1
+Animationsverzögerung, p2 HP und Punkte, p3 Schusstyp, p4 Tempo
+(`docs/measurements/dove-enemies.md`). Die Regeln unten gelten weiter für
+künftige offene Felder:
+
 **Die unbelegten Gegner-Parameter** — drei Regeln:
 1. **Rohindizes verlassen nie `data/EnemyDef.ts`.** Dort stehen benannte
    Accessoren mit dokumentierter Evidenz und Konfidenz
@@ -449,10 +455,9 @@ Tile-Rechtecke. Details: `docs/measurements/dove-enemies.md`.
 
 **Rendering:** `antialias: false`, `roundPixels: true`, `scaleMode: 'nearest'`,
 feste Layerreihenfolge ohne `sortableChildren`. Bitmap-Fonts aus `text.spr` und
-`text2.spr` werden zur Buildzeit zu Pixi-BitmapFont-JSON geschnitten — niemals
-Pixi `Text` mit Canvas-Font, das wäre kein 1:1-Port. Die Rastermetrik ist noch
-zu bestimmen (248×36 könnte 31×3 Glyphen à 8×12 sein, 93 ≈ ASCII 32–126); ein
-Kontaktabzug-Tool bestätigt sie visuell.
+`text2.spr` — niemals Pixi `Text` mit Canvas-Font, das wäre kein 1:1-Port.
+*(M3)* `text.spr`: 31×3 Glyphen à 8×12, Zuordnung aus `GetLetter` (A–Z,
+Ziffern, Satzzeichen, Umlaute); geschnitten zur Laufzeit als Teiltexturen.
 
 ### Launcher-Shell
 
@@ -570,7 +575,7 @@ Jeder hat genau ein überprüfbares Ergebnis.
 | **M0** | Bun-Workspace, tsconfig strict, oxlint + oxfmt, CI, gitattributes | 0,5–1 d | frischer Clone: `bun install && typecheck && lint && fmt:check && test` grün — *Stand: erledigt* |
 | **M1** | `@clove/formats`: BMP-Decoder (1/4/8/16/24/32 bpp), `LevelDat` parse **und** serialize, Frame-Ableitung. Messung der Original-Tickrate | 2–3 d | Round-Trip byte-identisch über 12 Level; Kreuzvalidierung 145/145 grün; `TICK_MS` ist eine **gemessene** Zahl — *Stand: erledigt; `TICK_MS = 14` statt gemessen aus der EXE hergeleitet, siehe `docs/measurements/tick-rate.md`* |
 | **M2** | Asset-Pipeline DOVE mit Manifest, Cache, `--check` | 2 d | ~11 MB Assets; zweiter Lauf schreibt null Bytes — *Stand: erledigt; 10,8 MB, siehe `docs/formats/dove-assets.md`* |
-| **M3** | ⭐ **Erstes spielbares Level.** Scope brutal geschnitten: keine Menüs, keine Musik, **eine** Waffe, kein Beam/Options/Bomben/Schild | 4–6 d | Level 1 läuft im Browser durch; aufgezeichnetes Replay reproduziert bit-identisch |
+| **M3** | ⭐ **Erstes spielbares Level.** Scope brutal geschnitten: keine Menüs, keine Musik, **eine** Waffe, kein Beam/Options/Bomben/Schild | 4–6 d | Level 1 läuft im Browser durch; aufgezeichnetes Replay reproduziert bit-identisch — *Stand: erledigt; Mechanik statisch aus der EXE, zwei Referenz-Replays, Browser-Smoke-Test in CI* |
 | **M4** | DOVE feature-complete: alle Waffen + Stufen, Beam, Options, Bomben, Schild, alle 12 Level, Vorhang, Highscore, Audio, die drei Optionen, Easteregg | 1,5–2 w | von Anfang bis Ende durchspielbar; Playtest-Checkliste abgehakt |
 | **M5** | Shell echt: Menü, Routing, Settings, Gamepad, Save-Export, Cache-Bundles, Service Worker, i18n | 3–4 d | deploybare Site; DOVE aus kaltem Cache spielbar |
 | **M6** | DoveZ Container + Assets | 1 w | ~120 MB Assets; Debug-Seite rendert jedes Sprite mit überlagerter `.r`-Kontur |
