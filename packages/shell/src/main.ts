@@ -23,6 +23,7 @@ function showLauncher(): void {
 async function route(): Promise<void> {
   running?.dispose();
   running = undefined;
+  delete document.body.dataset["game"];
   errorBox.textContent = "";
   const [path = "", query = ""] = location.hash.replace(/^#\/?/, "").split("?");
   const game = GAMES[path];
@@ -42,7 +43,9 @@ async function route(): Promise<void> {
       { canvas, assets, keys, locale: navigator.language, now: () => performance.now() },
       Object.fromEntries(new URLSearchParams(query)),
     );
+    document.body.dataset["game"] = path;
   } catch (err) {
+    document.body.dataset["game"] = "error";
     console.error(err);
     errorBox.textContent = String(err instanceof Error ? (err.stack ?? err.message) : err);
   }

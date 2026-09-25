@@ -12,7 +12,7 @@ import { loadLevel } from "./data/loadLevel";
 import { readInput } from "./input";
 import { Renderer } from "./render/Renderer";
 import { TICK_MS } from "./sim/constants";
-import { step, startLevel } from "./sim/step";
+import { restartAtCheckpoint, step, startLevel } from "./sim/step";
 import { DEFAULT_OPTIONS, World, type SimOptions } from "./sim/world";
 
 export const SCREEN_WIDTH = 640;
@@ -26,12 +26,14 @@ export interface DoveInstance extends GameInstance {
 function parseOptions(o: Readonly<Record<string, string>>): {
   level: number;
   seed: number;
+  from: number;
   sim: SimOptions;
 } {
   const shots = Number(o["shots"] ?? DEFAULT_OPTIONS.enemyShots);
   return {
     level: Number(o["level"] ?? 1),
     seed: Number(o["seed"] ?? 1),
+    from: Number(o["from"] ?? 0),
     sim: {
       ...DEFAULT_OPTIONS,
       enemyShots: shots === 0 || shots === 1 || shots === 2 ? shots : DEFAULT_OPTIONS.enemyShots,
@@ -44,7 +46,8 @@ function parseOptions(o: Readonly<Record<string, string>>): {
 /**
  * DOVE als `GameModule`. Stand M3: ein Level spielbar — Scrolling, Schiff,
  * Basisschuss, Gegner mit Pattern und Konturkollision, Explosionen, Punkte, HUD.
- * Steuerung wie im Original; `Esc` pausiert.
+ * Steuerung wie im Original; `Esc` pausiert. URL-Optionen: `level`, `seed`,
+ * `shots` (0/1/2), `walls=1`, Debug: `invincible=1`, `from=<Tick>`.
  */
 const dove: GameModule = {
   id: "dove",
@@ -59,6 +62,11 @@ const dove: GameModule = {
     const textures = new TextureRegistry(host.assets);
     const world = new World(await loadLevel(host.assets, cfg.level), cfg.sim, cfg.seed);
     startLevel(world);
+    if (cfg.from > 0) {
+      // Debug: Start ab Tick `from` wie von einem Checkpoint (mit Landschafts-Vorlauf).
+      world.checkpoint = cfg.from;
+      restartAtCheckpoint(world);
+    }
     await textures.load(Renderer.imageIds(world));
     const renderer = new Renderer(textures, world);
     app.stage.addChild(renderer.root);
