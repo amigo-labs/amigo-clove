@@ -1,4 +1,5 @@
-import { AssetStore, type GameInstance, type GameModule } from "@clove/core";
+import { AudioBus } from "@clove/audio";
+import { AssetStore, type AudioHost, type GameInstance, type GameModule } from "@clove/core";
 import { createKeyState } from "./keys";
 
 /**
@@ -13,6 +14,31 @@ const screen = document.getElementById("screen") as HTMLDivElement;
 const errorBox = document.getElementById("error") as HTMLDivElement;
 const keys = createKeyState(window);
 let running: GameInstance | undefined;
+let bus: AudioBus | undefined;
+
+/**
+ * Ein AudioContext für die ganze Sitzung, erzeugt beim ersten Spielstart.
+ * Browser halten ihn bis zur ersten Nutzergeste an; jede Taste oder jeder
+ * Klick setzt ihn fort. `?nosound` startet ohne Ton.
+ */
+function audioHost(query: URLSearchParams): AudioHost | undefined {
+  if (query.has("nosound") || typeof AudioContext === "undefined") return undefined;
+  if (!bus) {
+    const b = new AudioBus(new AudioContext({ latencyHint: "interactive" }));
+    const resume = () => void b.resume();
+    window.addEventListener("keydown", resume);
+    window.addEventListener("pointerdown", resume);
+    resume();
+    bus = b;
+  }
+  const b = bus;
+  return {
+    context: b.context,
+    music: b.music,
+    sfx: b.sfx,
+    moduleWorkletUrl: `${import.meta.env.BASE_URL}vendor/chiptune3/chiptune3.worklet.js`,
+  };
+}
 
 function showLauncher(): void {
   screen.innerHTML = `<div id="launcher"><h1>amigo-clove</h1><ul>${Object.entries(GAMES)
@@ -39,9 +65,18 @@ async function route(): Promise<void> {
       fetch(u),
     );
     const module = await game.load();
+    const params = new URLSearchParams(query);
+    const audio = audioHost(params);
     running = await module.boot(
-      { canvas, assets, keys, locale: navigator.language, now: () => performance.now() },
-      Object.fromEntries(new URLSearchParams(query)),
+      {
+        canvas,
+        assets,
+        keys,
+        locale: navigator.language,
+        now: () => performance.now(),
+        ...(audio ? { audio } : {}),
+      },
+      Object.fromEntries(params),
     );
     document.body.dataset["game"] = path;
   } catch (err) {
