@@ -84,11 +84,11 @@ describe("Pipeline", () => {
     await withTemp(async (out) => {
       const opts = { root: ROOT, out, game: "dove", only: ["level1"] };
       const first = await build(jobs, opts);
-      expect(first.converted).toBe(4); // Level1-Daten, feinde1, landschaft1, background1
+      expect(first.converted).toBe(6); // Level1-Daten, Meteor-Kontur, feinde1, landschaft1, background1, metroid
       expect(first.bytesWritten).toBeGreaterThan(0);
 
       const second = await build(jobs, opts);
-      expect(second).toMatchObject({ converted: 0, reused: 4, filesWritten: 0, bytesWritten: 0 });
+      expect(second).toMatchObject({ converted: 0, reused: 6, filesWritten: 0, bytesWritten: 0 });
 
       // Ein weiterer Teilbuild ergänzt, statt level1 zu verwerfen.
       await build(jobs, { ...opts, only: ["level0"] });

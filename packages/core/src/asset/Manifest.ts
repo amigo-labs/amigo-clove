@@ -8,7 +8,7 @@
 
 export const MANIFEST_VERSION = 1;
 
-export type AssetKind = "image" | "sound" | "music" | "level" | "levelData";
+export type AssetKind = "image" | "sound" | "music" | "level" | "levelData" | "data";
 
 export interface AssetSource {
   /** Pfad relativ zum Repo-Root, z. B. `original-dove/Data/Grafik/feinde1.spr`. */
@@ -66,7 +66,18 @@ export interface LevelDataEntry extends ManifestEntryBase {
   readonly kind: "levelData";
 }
 
-export type ManifestEntry = ImageEntry | SoundEntry | MusicEntry | LevelEntry | LevelDataEntry;
+/** Sonstige Spieldaten als JSON (z. B. die Meteor-Kontur `data/metroid`). */
+export interface DataEntry extends ManifestEntryBase {
+  readonly kind: "data";
+}
+
+export type ManifestEntry =
+  | ImageEntry
+  | SoundEntry
+  | MusicEntry
+  | LevelEntry
+  | LevelDataEntry
+  | DataEntry;
 
 export interface Manifest {
   readonly version: typeof MANIFEST_VERSION;

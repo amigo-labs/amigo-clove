@@ -20,11 +20,11 @@ unter `assets/dove/` ist abgeleitet und wird **nie von Hand** geändert.
 | `image` | `Data/Grafik/*.spr` (BMP) | WebP lossless | 60 | 6,2 MB |
 | `sound` | `Data/Sound/*.wav` | PCM16-WAV, Originalabtastrate | 20 | 0,6 MB |
 | `music` | `Data/Musik/*.xm`, `s4.IT` | unverändert | 19 | 3,7 MB |
-| `level` + `levelData` | `LevelN.dat` + `landschaftN.spr` | JSON + Binär-Sidecar | 12 + 12 | 0,3 MB |
+| `level` + `levelData` | `LevelN.dat` | JSON + Binär-Sidecar | 12 + 12 | 0,2 MB |
+| `data` | `Grafik/METROID.dat` | JSON | 1 | < 1 KB |
 
-Nicht konvertiert: `Data/1-5.dat` (zur Laufzeit erzeugte Zufallspermutation),
-`intro.dat` und `Grafik/METROID.dat` (eigene Schemata, folgen mit Intro bzw.
-Easteregg in M4).
+Nicht konvertiert: `Data/1-5.dat` (zur Laufzeit erzeugte Zufallspermutation)
+und `intro.dat` (eigenes Schema, folgt mit dem Intro in M4).
 
 ## Dateinamen und Manifest
 
@@ -57,7 +57,7 @@ Bilder, und `assets:check` meldet es, bevor es unbemerkt ins Repo gerät.
 | `core` | `ss`, `konsole`, `Explosion`, `text`, `text2`, `metroid`, alle 20 Sounds |
 | `screens` | `titel`, `intro`, `intro2`, `loading`, `logo`, `logo2`, Levelvorschauen `0–10` und `Extralevel`, Vorhang `B1–B5` |
 | `music` | alle 19 Module |
-| `levelN` | `feindeN`, `landschaftN`, der im Level genannte Hintergrund, `level/levelN`, `levelData/levelN` |
+| `levelN` | `feindeN`, `landschaftN`, der im Level genannte Hintergrund, `level/levelN`, `levelData/levelN`; Level 1 zusätzlich `metroid` und `data/metroid` |
 
 `background1` gehört zu sechs Level-Bundles (0, 1, 4, 6, 9, 10), liegt aber
 nur einmal im Baum. Jede Grafik muss in `packages/assetkit/src/dove/config.ts`
@@ -71,7 +71,7 @@ Ein Test dekodiert jede erzeugte WebP und vergleicht sie **pixelgenau** mit dem
 gekeyten BMP.
 
 **Colorkey:** reines Schwarz → Alpha 0, sonst 255 (`bmp/colorKey.ts`, dieselbe
-Definition wie Konturen und Terrain-Masken). **Opak** bleiben die Vollbilder,
+Definition wie die Konturableitung). **Opak** bleiben die Vollbilder,
 die nie über etwas anderem liegen: `titel`, `intro`, `intro2`, `loading`,
 `0–10`, `Extralevel`, `B1–B5`, `background*`. Bei den meisten ist die Wahl
 ohnehin belanglos (0 % reines Schwarz).
@@ -97,48 +97,47 @@ Samples. Maßgeblich ist `data`; `fact` kürzt nur, verlängert nie.
 ## Level: JSON + Sidecar
 
 Typen und Builder: `packages/formats/src/dove/LevelAsset.ts`
-(`buildLevelAsset`, `readLevelAsset`, `tileMaskBit`).
+(`buildLevelAsset`, `readLevelAsset`), Version 2 seit M3.
 
 ### `level/levelN.*.json`
 
 ```
-version             1
+version             2
 background          z. B. "background1"
 length              32000
-tiles[]             { name, rect: [l,t,r,b], mask: { offset, width, height } }
+tiles[]             { name, rect: [l,t,r,b] }
 backgroundObjects[] { name, rect: [l,t,r,b] }
 enemies[]           { name, rect, params[5], frameHeaders[[f0,f1]…], contour }
 patterns[]          { name, flags[2], values[2], waypoints[[x,y]…], end }
-events              { tick[], kind[], a[], b[] }   parallel, nach Tick sortiert
-sidecar             { contourBytes, maskBytes }
+events              { tick[], kind[], a[], b[] }   parallel, in Dateireihenfolge
+sidecar             { contourBytes }
 ```
 
-Der Event-Stream ist schon in der Ladeform aus der Spec („Engine DOVE“): vier
-flache Arrays mit einem Cursor. `kind` ist der Opcode (`0–4`, siehe
-`EventOp`), Spawns haben `kind = -1` mit `a = y`.
+Der Event-Stream ist schon in der Ladeform: vier flache Arrays. `kind` ist der
+Opcode (`0–4`, siehe `EventOp`), `y§`-Tokens haben `kind = -1` mit `a = y`. Die
+Reihenfolge innerhalb eines Ticks bleibt erhalten, denn `;1 T P!` mit P ≤ 0
+bindet das **erste folgende** `y§` derselben Zeile
+(`docs/measurements/dove-events.md`).
 
 ### `levelData/levelN.*.bin` (little endian)
 
-1. **Gegnerkonturen**, `contourBytes` Byte: `Int16`-Paare `left, right`, je
-   Frame genau `h = b − t` Zeilen, Frames hintereinander; `enemies[i].contour`
-   ist der Index des ersten `Int16`. Die `(h+1)`-te Zeile des Originals
-   (Editor-Off-by-one) ist entfernt. Das ist die **gespeicherte** Kontur — die
-   Kollisionswahrheit des Originals, nicht die aus Pixeln berechnete.
-2. **Terrain-Masken**, `maskBytes` Byte: je Tile `ceil(w/8) · h` Byte,
-   zeilenweise, MSB = linkes Pixel, 1 = fest. `tiles[i].mask.offset` zählt ab
-   Beginn dieses Abschnitts.
+Gegnerkonturen: `Int16`-Paare `left, right`, je Frame **alle `h + 1` Zeilen**
+(`h = b − t`) wie im Original, Frames hintereinander; `enemies[i].contour` ist
+der Index des ersten `Int16`. Die letzte Zeile ragt ins nächste Frame, wird
+aber von der Kollision gelesen — `f1` zeigt in 73 von 319 Frames genau auf
+sie. Das ist die **gespeicherte** Kontur, die Kollisionswahrheit des Originals.
 
-### ⚠ Terrain-Masken sind erzeugte Spieldaten
+### Keine Terrain-Masken (Korrektur M3)
 
-DOVE-Tiles haben im Original keine Konturen; die Wandkollision lief pixelweise
-gegen das Terrain. Die Pipeline berechnet deshalb pro Tile eine 1-Bit-Maske aus
-`landschaftN.spr` nach dem Colorkey. Das ist die **einzige** Stelle, an der die
-Pipeline spiellogik-relevante Daten erzeugt statt konvertiert. Ein Test prüft
-jedes Maskenbit gegen den Colorkey des Atlas.
+M2 erzeugte pro Tile eine 1-Bit-Maske, weil die Spec eine pixelweise
+Wandkollision annahm. Die EXE-Analyse zeigt: Das Original testet Wände per
+**inklusivem AABB gegen die Tile-Rechtecke** (Breite `r − l`, Höhe `b − t`,
+RECTs rechts/unten exklusiv). Die Masken sind seit Level-Asset-Version 2
+entfernt; die Pipeline erzeugt damit keine spiellogik-relevanten Daten mehr,
+sie konvertiert nur.
 
-*Offen:* Ob Tile-Rects rechts/unten inklusiv sind, lässt sich aus den dicht
-gepackten Atlanten nicht entscheiden (Inhalt liegt in 113 von 125 Tiles auf
-Spalte `r`, aber in 92 auch auf `r + 1`). Die Maske deckt daher das
-**inklusive** Rect `(r − l + 1) × (b − t + 1)` ab — eine Obermenge, die M3 bei
-Bedarf um eine Spalte/Zeile beschneidet, sobald das Blitten gegen das Original
-geprüft ist.
+## `data/metroid` — Meteor-Kontur
+
+`Grafik/METROID.dat`: 60 Paare `left, right` (plus Terminator `0, 0`) für den
+60×60-Meteor aus `metroid.spr`, den das Level-1-Skript zwischen Tick 980 und
+1500 spawnt. JSON `{ "spans": [left, right, …] }`, Parser `parseContourDat`.

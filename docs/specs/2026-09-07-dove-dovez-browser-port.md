@@ -388,14 +388,10 @@ fehl, sobald ein Output vom Committeten abweicht — das fängt handeditierte
 Assets. Video wird vom Hash-Gate ausgenommen (Encoder sind über Buildversionen
 nicht bit-identisch) und nur mit `--force-video` neu erzeugt.
 
-**Eine Besonderheit:** Die Pipeline *erzeugt* für DOVE etwas, das im Original
-nicht als Datei existiert — **Terrain-Kollisionsmasken**. DOVE-Tiles haben keine
-Konturdaten; die Wandkollision muss pixelweise gegen das Terrain laufen. Aus dem
-Atlas wird pro Tile eine 1-Bit-Maske nach demselben Colorkey berechnet.
-*(M2)* Ob Tile-Rects rechts/unten inklusiv sind, ist offen; die Masken decken
-das inklusive Rect ab (Obermenge), M3 beschneidet bei Bedarf. Das ist
-der einzige Ort, an dem die Pipeline spiellogik-relevante Daten erzeugt statt
-konvertiert — entsprechend prominent zu dokumentieren.
+~~**Eine Besonderheit:** Terrain-Kollisionsmasken~~ *(M3)* Entfällt: Das
+Original testet Wände per inklusivem AABB gegen die Tile-Rechtecke, nicht
+pixelweise (`docs/measurements/dove-events.md`). M2 hatte Masken erzeugt, seit
+Level-Asset-Version 2 sind sie entfernt — die Pipeline konvertiert nur noch.
 
 Werkzeuge: alles TypeScript unter Bun. **Eigener BMP-Decoder** (weder sharp noch
 jimp behandeln 16 bpp und die Palettenfälle zuverlässig, und wir brauchen
@@ -433,11 +429,11 @@ Geschwindigkeiten, Beam-Ladung, Scroll-Offset. Sinus/Kosinus aus einer
 1024-Einträge-Tabelle. Das ist die Voraussetzung dafür, dass der Tick-Hash über
 Browser, Bun und Node bit-stabil ist und Replays als Regressionsnetz taugen.
 
-**Kollision** über `ContourMask` mit vorgeschalteter AABB-Breitphase.
-Schuss↔Gegner ist Punkt-in-Kontur (O(1)), Spieler↔Gegner zeilenweiser
-Span-Overlap (O(h), exakt wie im Original), Spieler↔Terrain gegen die
-vorberechneten 1-Bit-Masken mit Fensterscan (die Tiles entstehen ja
-links-nach-rechts, sind also nach x sortiert).
+**Kollision** *(M3, aus der EXE)*: ein einziger Test für Schuss↔Gegner und
+Spieler↔Gegner — vertikaler Ausschluss über die Frame-Zeilen `f0…f1`, dann
+min(left)/max(right) über die überlappenden Konturzeilen gegen das x-Intervall
+der Box (inklusiv). Kein Punkt-in-Kontur. Wände: inklusives AABB gegen die
+Tile-Rechtecke. Details: `docs/measurements/dove-enemies.md`.
 
 **Die unbelegten Gegner-Parameter** — drei Regeln:
 1. **Rohindizes verlassen nie `data/EnemyDef.ts`.** Dort stehen benannte
