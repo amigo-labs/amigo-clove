@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { ImageEntry, Manifest } from "@clove/core";
-import { applyColorKey, decodeBmp } from "@clove/formats";
+import { applyColorKey, decodeBmp, descrambleTiles, parsePermutation } from "@clove/formats";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -35,7 +35,12 @@ describe("committete DOVE-Assets", () => {
     expect(images.length).toBe(60);
     for (const e of images) {
       const bmp = decodeBmp(new Uint8Array(await readFile(join(ROOT, e.sources[0]!.path))));
-      const expected = e.colorKeyed ? applyColorKey(bmp) : bmp.rgba;
+      let expected = e.colorKeyed ? applyColorKey(bmp) : bmp.rgba;
+      const perm = e.sources[1];
+      if (perm) {
+        const p = parsePermutation(new Uint8Array(await readFile(join(ROOT, perm.path))));
+        expected = descrambleTiles(expected, bmp.width, bmp.height, p);
+      }
       const webp = await decodeWebp(new Uint8Array(await readFile(join(ASSETS, e.file))));
       expect([webp.width, webp.height]).toEqual([bmp.width, bmp.height]);
       if (Buffer.compare(webp.rgba, expected) !== 0) throw new Error(`${e.file} weicht ab`);

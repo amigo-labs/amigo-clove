@@ -47,3 +47,11 @@ export {
   type PcmAudio,
   type WavInfo,
 } from "./wav/Wav";
+export {
+  SCRAMBLE_COLS,
+  SCRAMBLE_ROWS,
+  SCRAMBLE_TILE,
+  ScrambleError,
+  descrambleTiles,
+  parsePermutation,
+} from "./dove/Scramble";

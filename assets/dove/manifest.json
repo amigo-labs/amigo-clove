@@ -257,16 +257,20 @@
         "screens"
       ],
       "kind": "image",
-      "file": "image/b1.53c08938.webp",
-      "bytes": 236616,
-      "sha256": "53c08938ca16443da4b49dac75f91bda9f2d8476dcee10d9e04a5858d89b37a9",
+      "file": "image/b1.0aeabfb3.webp",
+      "bytes": 183626,
+      "sha256": "0aeabfb39d9e164ffd8f9fab2706167687c3c3951a232cd1e57bc3ed8ca25bb6",
       "sources": [
         {
           "path": "original-dove/Data/Grafik/B1.spr",
           "sha256": "b0166fab455aff4c27958c16fb1bffc326c22180abf2de4fc0ae4c5a9434fe8a"
+        },
+        {
+          "path": "original-dove/Data/1.dat",
+          "sha256": "2e61a6e4c22ab3c3b565f98aeff770bc5bbd75105321857d1246147f789d3f47"
         }
       ],
-      "optionsHash": "1dfdedd29226d841",
+      "optionsHash": "ab9413e044b278d1",
       "converterVersion": 1,
       "width": 640,
       "height": 450,
@@ -278,16 +282,20 @@
         "screens"
       ],
       "kind": "image",
-      "file": "image/b2.773dc9c3.webp",
-      "bytes": 296096,
-      "sha256": "773dc9c3ea8ed133c3ccd46eb94f321eb4b3ff83ad9f3cba415fa35000d32bf2",
+      "file": "image/b2.de8ab370.webp",
+      "bytes": 233730,
+      "sha256": "de8ab3709cdf42bd315e41c68262a43d361c01b7eca65563ca851dc6523c31d0",
       "sources": [
         {
           "path": "original-dove/Data/Grafik/B2.spr",
           "sha256": "d9448336306a32121a95b419225384def482a6ee461559dd53fcc782cf297bda"
+        },
+        {
+          "path": "original-dove/Data/2.dat",
+          "sha256": "dcd0dcbf9cf7a2033c15f0b697274de315b8cfe6ae668f8d75a15cb8b980c5b9"
         }
       ],
-      "optionsHash": "1dfdedd29226d841",
+      "optionsHash": "ab9413e044b278d1",
       "converterVersion": 1,
       "width": 640,
       "height": 450,
@@ -299,16 +307,20 @@
         "screens"
       ],
       "kind": "image",
-      "file": "image/b3.5311db71.webp",
-      "bytes": 209230,
-      "sha256": "5311db71d6b51e2e24a7a97d80830066bb92c7c69b72211818cb912589ebd675",
+      "file": "image/b3.a5774737.webp",
+      "bytes": 159082,
+      "sha256": "a57747378634dc2ac4864de8b4873c15a126ca5803650468953f83cf07731124",
       "sources": [
         {
           "path": "original-dove/Data/Grafik/B3.spr",
           "sha256": "84851a2894f1d081011a9b48c7af0fbd754d32ae812ea1a7267065e373a77447"
+        },
+        {
+          "path": "original-dove/Data/3.dat",
+          "sha256": "38983ff676b4cb49637318f1358e4a816454bbe31e5650873d491c3d56d3f9bb"
         }
       ],
-      "optionsHash": "1dfdedd29226d841",
+      "optionsHash": "ab9413e044b278d1",
       "converterVersion": 1,
       "width": 640,
       "height": 450,
@@ -320,16 +332,20 @@
         "screens"
       ],
       "kind": "image",
-      "file": "image/b4.d89d1116.webp",
-      "bytes": 282550,
-      "sha256": "d89d11164938c64db2caafd582392edb103efa7bf0981fb53be5945eba857c27",
+      "file": "image/b4.811c478c.webp",
+      "bytes": 235850,
+      "sha256": "811c478c7b8a8ee689f54c9ed5e678ce6765acfd14c9948b878a0fc47f1f5d42",
       "sources": [
         {
           "path": "original-dove/Data/Grafik/B4.spr",
           "sha256": "b303d3fb7f6b05e5efa58280c5b9b99b446ffd2ef7a043ff373b4f324b6b5158"
+        },
+        {
+          "path": "original-dove/Data/4.dat",
+          "sha256": "75a95a199c7c96dcb4c966d4e23cc5e94b03a476baaf410e5db6cb544f7a01cd"
         }
       ],
-      "optionsHash": "1dfdedd29226d841",
+      "optionsHash": "ab9413e044b278d1",
       "converterVersion": 1,
       "width": 640,
       "height": 450,
@@ -341,16 +357,20 @@
         "screens"
       ],
       "kind": "image",
-      "file": "image/b5.0456fce7.webp",
-      "bytes": 254274,
-      "sha256": "0456fce7f6907aabef44d21a78c5369d1683ff9b396e14024169af4eb6db3613",
+      "file": "image/b5.6e7ca8b4.webp",
+      "bytes": 208456,
+      "sha256": "6e7ca8b40afd7d3030559825b06e3f7704f313c93788afe3b19ee7cef6b73d8d",
       "sources": [
         {
           "path": "original-dove/Data/Grafik/B5.spr",
           "sha256": "be1f1c2d2b61be3a035007d59a768aaf4ae6dd7d368b7af3bf0e9b6e6f9df256"
+        },
+        {
+          "path": "original-dove/Data/5.dat",
+          "sha256": "26a80bc24286f1771f5d7f053b0d701e23cba30e9a707103204ef45aabd0e5d8"
         }
       ],
-      "optionsHash": "1dfdedd29226d841",
+      "optionsHash": "ab9413e044b278d1",
       "converterVersion": 1,
       "width": 640,
       "height": 450,

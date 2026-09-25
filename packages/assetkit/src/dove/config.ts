@@ -26,7 +26,7 @@ export const WEBP_EFFORT = 6;
 /** Immer geladen: HUD, Spielerschiff, Explosionen, Fonts, Easteregg, alle SFX. */
 const CORE_IMAGES = ["ss", "konsole", "explosion", "text", "text2", "metroid"];
 
-/** Vollbilder außerhalb des Spiels: Titel, Intro, Ladebild, Logos, Levelvorschauen, Vorhang. */
+/** Vollbilder außerhalb des Spiels: Titel, Intro, Ladebild, Logos, Levelvorschauen, Endbilder. */
 const SCREEN_IMAGES = [
   "titel",
   "intro",
@@ -41,7 +41,7 @@ const SCREEN_IMAGES = [
 
 /**
  * Opak (kein Colorkey): Vollbilder, die nie über etwas anderem liegen —
- * Titel, Intro, Ladebild, Levelvorschauen `0–10`/`Extralevel`, Vorhang `B1–B5`
+ * Titel, Intro, Ladebild, Levelvorschauen `0–10`/`Extralevel`, Endbilder `B1–B5`
  * und die Level-Hintergründe. Bei den meisten davon ist die Wahl ohnehin
  * belanglos (0 % reines Schwarz). Alles andere wird gekeyed, wie DirectDraw
  * es beim Blitten mit Quell-Colorkey tat.
@@ -125,15 +125,22 @@ export function planDove(root: string): Job[] {
       throw new Error(`Grafik ${basename(path)} ist keinem Bundle zugeordnet (dove/config.ts)`);
     const id = `image/${name}`;
     const colorKeyed = isColorKeyed(name);
-    const options = { colorKeyed, effort: WEBP_EFFORT, libwebp: LIBWEBP_VERSION };
+    // B1–B5 sind verwürfelte Endbilder; Data/N.dat liefert die Kachel-Permutation.
+    const slide = /^b([1-5])$/.exec(name)?.[1];
+    const options = {
+      colorKeyed,
+      effort: WEBP_EFFORT,
+      libwebp: LIBWEBP_VERSION,
+      ...(slide ? { descramble: true } : {}),
+    };
     jobs.push({
       bundles: bundles.toSorted(),
-      sources: [path],
+      sources: slide ? [path, `${DOVE_DATA}/${slide}.dat`] : [path],
       options,
       converterVersion: IMAGE_CONVERTER_VERSION,
       outputs: [{ id, kind: "image", ext: "webp" }],
-      run: async ([bmp]) => {
-        const r = await convertImage(bmp!, options);
+      run: async ([bmp, permutation]) => {
+        const r = await convertImage(bmp!, options, permutation);
         return [
           {
             id,
