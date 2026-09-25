@@ -90,6 +90,35 @@ export function hitTest(
   on: HitHandlers,
 ): number {
   const { level } = w;
+  // Reihenfolge wie `CheckColision`: Boss, Meteore, Gegner, Wände.
+  if (w.bossMode && w.boss) {
+    const r = w.boss.hit(w, bx, by, bw, bh, damage);
+    if (r >= 0) return r;
+  }
+  if (level.meteorContour.length > 0) {
+    for (let i = 0; i < w.meteors.capacity; i++) {
+      if (!w.meteors.active[i]) continue;
+      const hit = contourHit(
+        level.meteorContour,
+        0,
+        METEOR_SIZE,
+        METEOR_SIZE,
+        0,
+        METEOR_SIZE - 1,
+        fxFromInt(w.metX[i] as number),
+        fxFromInt(w.metY[i] as number),
+        bx,
+        by,
+        bw,
+        bh,
+      );
+      if (!hit) continue;
+      const hp = (w.metHP[i] as number) - damage;
+      w.metHP[i] = hp;
+      if (hp <= 0) on.killMeteor(w, i);
+      return hp < 0 ? -hp : 0;
+    }
+  }
   for (let i = 0; i < w.enemies.capacity; i++) {
     if (!w.enemies.active[i]) continue;
     const type = level.enemies[w.enType[i] as number]!;
@@ -115,30 +144,6 @@ export function hitTest(
     w.enHP[i] = hp;
     if (hp <= 0) on.killEnemy(w, i);
     return hp < 0 ? -hp : 0;
-  }
-  if (level.meteorContour.length > 0) {
-    for (let i = 0; i < w.meteors.capacity; i++) {
-      if (!w.meteors.active[i]) continue;
-      const hit = contourHit(
-        level.meteorContour,
-        0,
-        METEOR_SIZE,
-        METEOR_SIZE,
-        0,
-        METEOR_SIZE - 1,
-        fxFromInt(w.metX[i] as number),
-        fxFromInt(w.metY[i] as number),
-        bx,
-        by,
-        bw,
-        bh,
-      );
-      if (!hit) continue;
-      const hp = (w.metHP[i] as number) - damage;
-      w.metHP[i] = hp;
-      if (hp <= 0) on.killMeteor(w, i);
-      return hp < 0 ? -hp : 0;
-    }
   }
   if (walls && wallHit(w, bx, by, bw, bh)) return 0;
   return -1;

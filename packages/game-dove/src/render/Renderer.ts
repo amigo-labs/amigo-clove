@@ -3,7 +3,6 @@ import { Container, Texture } from "pixi.js";
 import {
   BEAM_KINDS,
   BEAM_MAX,
-  ESHOT,
   GREEN_SIZES,
   EXPLOSION_SIZE,
   EXTRA_ART,
@@ -58,6 +57,7 @@ export class Renderer {
       "tiles",
       "meteors",
       "enemies",
+      "boss",
       "shots",
       "laser",
       "eshots",
@@ -188,6 +188,20 @@ export class Renderer {
       this.pool("enemies").put(t, roundHalfEven(w.enX[i]!), roundHalfEven(w.enY[i]!));
     }
 
+    // Boss: bis zu drei Teile aus dem Gegner-Atlas, dazu tödliche Strahlen (Farbe geschätzt)
+    for (let p = 0; p < 3; p++) {
+      const type = w.bossType[p]!;
+      if (type < 0 || !w.bossVisible[p]) continue;
+      const e = lvl.enemies[type]!;
+      const t = this.tex(this.feinde, e.l, e.t + w.bossFrame[p]! * e.h, e.w, e.h);
+      this.pool("boss").put(t, w.bossX[p]!, w.bossY[p]!);
+    }
+    for (let b = 0; b < 3; b++) {
+      if (w.bossBeamW[b]! <= 0) continue;
+      this.pool("boss")
+        .put(Texture.WHITE, w.bossBeamX[b]!, w.bossBeamY[b]!, 0xaaddff)
+        .setSize(w.bossBeamW[b]!, w.bossBeamH[b]!);
+    }
     for (let i = 0; i < w.shots.capacity; i++) {
       if (!w.shots.active[i]) continue;
       let t: Texture;
@@ -218,9 +232,8 @@ export class Renderer {
     }
     for (let i = 0; i < w.eshots.capacity; i++) {
       if (!w.eshots.active[i]) continue;
-      const k = ESHOT[w.eshotKind[i] as 1 | 2];
       this.pool("eshots").put(
-        this.tex("image/ss", k.sx, k.sy, k.w, k.h),
+        this.tex("image/ss", w.eshotSX[i]!, w.eshotSY[i]!, w.eshotW[i]!, w.eshotH[i]!),
         w.eshotX[i]!,
         w.eshotY[i]!,
       );

@@ -22,6 +22,16 @@ export class Pool {
   }
 }
 
+/**
+ * Ein Bossskript (`Endgegner1…10`). `tick` läuft einmal pro Tick nach den Gegnern
+ * (`DoEndgegner`), `hit` vor allen anderen Zielen in `HitTest`.
+ */
+export interface BossScript {
+  tick(w: World): void;
+  /** −1 kein Treffer, 0 absorbiert, > 0 Überschuss (der Schuss fliegt weiter). */
+  hit(w: World, bx: number, by: number, bw: number, bh: number, damage: number): number;
+}
+
 /** Optionen des Originals (Optionsbildschirm) und Debug-Schalter. */
 export interface SimOptions {
   /** „Gegner schießen“: 0 aus, 1 voll, 2 halb. Standard halb (Punktefaktor 1,0). */
@@ -59,11 +69,40 @@ export class World {
   tick = 0;
   checkpoint = 0;
   bossMode = false;
-  finished = false;
+  /** `Me.264`: Level geschafft — der Autopilot fliegt das Schiff hinaus. */
+  levelDone = false;
+  /** Autopilot-Zähler E (`0x4716CF`). */
+  autopilot = 0;
+  /** `Me.690`: 0 läuft, 3 Level beendet (Schiff hat den Bildschirm verlassen). */
+  exit = 0;
   bgSpeed = BG_SPEED_DEFAULT;
   bgOffset = 0;
   shake = 0;
   halfToggle = 0;
+  /** Laufende Option „Gegner schießen“ (`Me.634`); Bosse setzen sie zeitweise auf voll. */
+  shotOption: number;
+
+  // Boss (`Me.3A0`): bis zu drei Teile, Zustand, Zähler
+  /** Laufendes Bossskript (aus der Levelnummer, nicht gehasht). */
+  boss: BossScript | undefined = undefined;
+  bossState = 0;
+  bossScored = 0;
+  /** Gegnertyp je Teil (0-basiert, −1 = kein Teil). */
+  readonly bossType = Int16Array.of(-1, -1, -1);
+  readonly bossX = new Int32Array(3);
+  readonly bossY = new Int32Array(3);
+  readonly bossHP = new Int32Array(3);
+  readonly bossHPMax = new Int32Array(3);
+  readonly bossFrame = new Int16Array(3);
+  /** Teil sichtbar (`Me.3F8` bzw. bossabhängig). */
+  readonly bossVisible = new Uint8Array(3);
+  /** Zähler und Unterzustände (`+1C…+30` und bossspezifische Felder). */
+  readonly bossC = new Int32Array(24);
+  /** Bis zu drei tödliche Strahlen (E4, E7, E10): x, y, w, h; w = 0 aus. */
+  readonly bossBeamX = new Int32Array(3);
+  readonly bossBeamY = new Int32Array(3);
+  readonly bossBeamW = new Int32Array(3);
+  readonly bossBeamH = new Int32Array(3);
 
   // Spieler
   px = 0;
@@ -193,6 +232,11 @@ export class World {
   readonly eshotY = new Int32Array(50);
   readonly eshotVX = new Int32Array(50);
   readonly eshotVY = new Int32Array(50);
+  /** Sprite-Rechteck in ss.spr je Schuss (Bosse schießen eigene Sprites). */
+  readonly eshotSX = new Int16Array(50);
+  readonly eshotSY = new Int16Array(50);
+  readonly eshotW = new Int16Array(50);
+  readonly eshotH = new Int16Array(50);
 
   // Explosionen
   readonly explosions = new Pool(64);
@@ -206,6 +250,7 @@ export class World {
     seed: number,
   ) {
     this.rnd = new VbRnd(seed);
+    this.shotOption = options.enemyShots;
   }
 
   private scalars(): Int32Array {
@@ -214,11 +259,16 @@ export class World {
       this.tick,
       this.checkpoint,
       +this.bossMode,
-      +this.finished,
+      +this.levelDone,
+      this.autopilot,
+      this.exit,
+      this.bossState,
+      this.bossScored,
       this.bgSpeed,
       this.bgOffset,
       this.shake,
       this.halfToggle,
+      this.shotOption,
       this.px,
       this.py,
       this.prevX,
@@ -258,6 +308,18 @@ export class World {
   hash(): number {
     return hashArrays([
       this.scalars(),
+      this.bossType,
+      this.bossX,
+      this.bossY,
+      this.bossHP,
+      this.bossHPMax,
+      this.bossFrame,
+      this.bossVisible,
+      this.bossC,
+      this.bossBeamX,
+      this.bossBeamY,
+      this.bossBeamW,
+      this.bossBeamH,
       this.tiles.active,
       this.tileType,
       this.tileX,
@@ -309,6 +371,10 @@ export class World {
       this.eshotY,
       this.eshotVX,
       this.eshotVY,
+      this.eshotSX,
+      this.eshotSY,
+      this.eshotW,
+      this.eshotH,
       this.explosions.active,
       this.expX,
       this.expY,

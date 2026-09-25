@@ -14,7 +14,7 @@ import { runReplay } from "../src/replay";
 import { Input } from "../src/sim/step";
 import { level } from "../test/helpers";
 
-export const BOT_TICKS = 7200;
+export const BOT_TICKS = 12_000;
 
 /** Deterministischer Bot: Dauerfeuer, Auf/Ab-Pendeln, Vor/Zurück, gelegentlich Q/W. */
 export function botInput(t: number): number {
@@ -53,7 +53,7 @@ if (import.meta.main) {
     console.log(
       `${name}: ${replay.ticks} Ticks, ${hashes.length} Hashes, Level-Tick ${world.tick}, ` +
         `Punkte ${world.score}, Leben ${world.lives}, Checkpoint ${world.checkpoint}, ` +
-        `Boss ${world.bossMode}, geschafft ${world.finished}`,
+        `Boss ${world.bossMode}, geschafft ${world.exit === 3}`,
     );
   }
 }

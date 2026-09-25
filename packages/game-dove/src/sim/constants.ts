@@ -76,11 +76,6 @@ export const FALLER_DROP = 5;
 export const SHAKE_POINTS = 450;
 export const SHAKE_TICKS = 5;
 
-/** Gegnerschuss-Arten: Sprite in ss.spr und Größe. */
-export const ESHOT = {
-  1: { sx: 21, sy: 85, w: 7, h: 7 },
-  2: { sx: 0, sy: 136, w: 34, h: 14 },
-} as const;
 export const FIREBALL_VX = -5;
 
 // Explosion.spr: 32 Frames à 50×50, 8 pro Zeile

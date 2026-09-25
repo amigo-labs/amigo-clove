@@ -181,15 +181,17 @@ async function hashRun(seed: number): Promise<number[]> {
 }
 
 describe("Level 1", () => {
-  test("läuft mit Unverwundbarkeit bis zum Bosskampf durch und wird geschafft", async () => {
+  test("läuft mit Unverwundbarkeit bis zum Boss, besiegt ihn und fliegt hinaus", async () => {
     const w = await newWorld(1, 7, { invincible: true });
     let ticks = 0;
-    while (!w.finished && ticks < 20_000) {
+    while (w.exit !== 3 && ticks < 30_000) {
       step(w, bot(ticks));
       ticks++;
     }
     expect(w.bossMode).toBe(true);
-    expect(w.finished).toBe(true);
+    expect(w.levelDone).toBe(true);
+    expect(w.exit).toBe(3);
+    expect(w.px).toBeGreaterThan(710);
     expect(w.tick).toBeGreaterThan(6850);
     expect(w.score).toBeGreaterThan(1000);
     // Meteore ließen den Tick stillstehen: mehr Schleifendurchläufe als Level-Ticks.

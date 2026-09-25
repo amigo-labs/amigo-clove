@@ -14,7 +14,6 @@ import {
   COLOUR_BLUE,
   COLOUR_GREEN,
   COLOUR_RED,
-  ESHOT,
   EXTRA_PICKUP,
   EXTRA_SCORE,
   FIRE_BASE,
@@ -167,7 +166,8 @@ export function beamInput(w: World, beamHeld: boolean, fireHeld: boolean): void 
   if (!beamHeld || w.beam || (fireHeld && w.charge > 0)) releaseBeam(w);
 }
 
-function releaseBeam(w: World): void {
+/** `BeamAbschuss`: löst die aktuelle Ladung aus (auch beim Levelende). */
+export function releaseBeam(w: World): void {
   const c = w.charge;
   w.charge = 0;
   if (c === 0) return;
@@ -210,10 +210,9 @@ export function updateBeam(w: World): void {
   // Gezielte Kugeln (Art 1) werden neutralisiert, Feuerbälle nicht.
   for (let i = 0; i < w.eshots.capacity; i++) {
     if (!w.eshots.active[i] || w.eshotKind[i] !== 1) continue;
-    const s = ESHOT[1];
-    if (
-      boxHit(w.beamX, w.beamY, k.w, k.h, w.eshotX[i] as number, w.eshotY[i] as number, s.w, s.h)
-    ) {
+    const sw = w.eshotW[i] as number;
+    const sh = w.eshotH[i] as number;
+    if (boxHit(w.beamX, w.beamY, k.w, k.h, w.eshotX[i] as number, w.eshotY[i] as number, sw, sh)) {
       w.eshots.free(i);
       addScore(w, ABSORB_SCORE, true);
     }
@@ -429,20 +428,11 @@ function orbiter(w: World, i: number, dx: number, dy: number, absorbAll: boolean
   w.orbY[i] = y;
   for (let s = 0; s < w.eshots.capacity; s++) {
     if (!w.eshots.active[s]) continue;
-    const kind = w.eshotKind[s] as 1 | 2;
-    if (!absorbAll && kind !== 1) continue;
-    const k = ESHOT[kind];
+    if (!absorbAll && w.eshotKind[s] !== 1) continue;
+    const sw = w.eshotW[s] as number;
+    const sh = w.eshotH[s] as number;
     if (
-      boxHit(
-        x,
-        y,
-        ORBITER_SIZE,
-        ORBITER_SIZE,
-        w.eshotX[s] as number,
-        w.eshotY[s] as number,
-        k.w,
-        k.h,
-      )
+      boxHit(x, y, ORBITER_SIZE, ORBITER_SIZE, w.eshotX[s] as number, w.eshotY[s] as number, sw, sh)
     ) {
       w.eshots.free(s);
       addScore(w, ABSORB_SCORE, true);

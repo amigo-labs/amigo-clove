@@ -13,7 +13,7 @@ import { loadLevel } from "./data/loadLevel";
 import { readInput } from "./input";
 import { Renderer } from "./render/Renderer";
 import { TICK_MS } from "./sim/constants";
-import { restartAtCheckpoint, step, startLevel } from "./sim/step";
+import { continueInNextLevel, restartAtCheckpoint, step, startLevel } from "./sim/step";
 import { DEFAULT_OPTIONS, World, type SimOptions } from "./sim/world";
 
 export const SCREEN_WIDTH = 640;
@@ -62,7 +62,7 @@ const dove: GameModule = {
       height: SCREEN_HEIGHT,
     });
     const textures = new TextureRegistry(host.assets);
-    const world = new World(await loadLevel(host.assets, cfg.level), cfg.sim, cfg.seed);
+    let world = new World(await loadLevel(host.assets, cfg.level), cfg.sim, cfg.seed);
     startLevel(world);
     // Debug: Ausrüstung vorgeben (colour=1…3, stage=0…2, options=0…2, bomb=1, shield=1)
     if (options["colour"]) world.colour = Number(options["colour"]);
@@ -76,7 +76,7 @@ const dove: GameModule = {
       restartAtCheckpoint(world);
     }
     await textures.load(Renderer.imageIds(world));
-    const renderer = new Renderer(textures, world);
+    let renderer = new Renderer(textures, world);
     app.stage.addChild(renderer.root);
     const audio = host.audio
       ? await DoveAudio.create(host.audio, host.assets).catch((e: unknown) => {
@@ -91,6 +91,29 @@ const dove: GameModule = {
     const hashes: number[] = [];
     let paused = false;
     let escHeld = false;
+    /** Endmeldung nach dem letzten Level (Endbilder, Highscore, Menü folgen). */
+    let ended: string | undefined;
+    let switching = false;
+
+    /** Levelwechsel 1 → … → 10; nach 10, 11 und dem Tutorial endet der Lauf. */
+    const nextLevel = async () => {
+      const n = world.level.number;
+      if (n === 0 || n >= 10) {
+        ended = n === 0 ? "TUTORIAL BEENDET" : "GESCHAFFT! PUNKTE: " + world.score;
+        return;
+      }
+      switching = true;
+      const level = await loadLevel(host.assets, n + 1);
+      const next = continueInNextLevel(world, level);
+      await textures.load(Renderer.imageIds(next));
+      renderer.destroy();
+      world = next;
+      renderer = new Renderer(textures, world);
+      app.stage.addChild(renderer.root);
+      void audio?.playMusic(DoveAudio.levelMusic(world.level.number, cfg.seed));
+      loop.reset(host.now());
+      switching = false;
+    };
 
     const frame = () => {
       const esc = host.keys.isDown("Escape");
@@ -100,15 +123,17 @@ const dove: GameModule = {
         loop.reset(host.now());
       }
       escHeld = esc;
-      const ticks = paused || world.finished ? (loop.reset(host.now()), 0) : loop.frame(host.now());
-      for (let i = 0; i < ticks; i++) {
+      const halted = paused || switching || ended !== undefined;
+      const ticks = halted ? (loop.reset(host.now()), 0) : loop.frame(host.now());
+      for (let i = 0; i < ticks && world.exit === 0; i++) {
         const input = readInput(host.keys);
         step(world, input);
         inputs.push(input);
         if (inputs.length % HASH_INTERVAL === 0) hashes.push(world.hash());
       }
+      if (world.exit === 3 && !switching && ended === undefined) void nextLevel();
       audio?.update(world);
-      renderer.render(paused ? "PAUSE" : world.finished ? "LEVEL GESCHAFFT!" : undefined);
+      renderer.render(paused ? "PAUSE" : ended);
     };
     app.ticker.add(frame);
     app.ticker.start();
