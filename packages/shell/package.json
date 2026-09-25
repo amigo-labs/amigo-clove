@@ -6,13 +6,16 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "smoke": "vite build && bun scripts/smoke.ts"
   },
   "dependencies": {
     "@clove/core": "workspace:*",
     "@clove/game-dove": "workspace:*"
   },
   "devDependencies": {
+    "playwright-core": "1.56.1",
+    "sharp": "0.35.4",
     "vite": "8.3.1"
   }
 }

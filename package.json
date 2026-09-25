@@ -15,7 +15,8 @@
     "assets:build": "bun packages/assetkit/src/cli.ts build",
     "assets:check": "bun packages/assetkit/src/cli.ts check",
     "assets:verify": "bun packages/assetkit/src/cli.ts verify",
-    "assets:report": "bun packages/assetkit/src/cli.ts report"
+    "assets:report": "bun packages/assetkit/src/cli.ts report",
+    "smoke": "bun run --cwd packages/shell smoke"
   },
   "devDependencies": {
     "@types/bun": "^1.4.2",
