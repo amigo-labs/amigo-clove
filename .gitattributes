@@ -3,6 +3,10 @@
 original-dove/** -text -diff
 original-dovez/** -text -diff
 
+# Generierte Assets: nur über `bun run assets:build` ändern, nie von Hand.
+# Byte-genau wie erzeugt einchecken — `assets:check` vergleicht jedes Byte.
+assets/** -text -diff
+
 *.ts text eol=lf
 *.json text eol=lf
 *.md text eol=lf
