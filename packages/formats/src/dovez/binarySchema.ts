@@ -28,6 +28,31 @@ export type Field =
 
 export type Schema = readonly Field[];
 
+/**
+ * Der Zeilentyp zu einem Schema, das mit `as const satisfies Schema`
+ * deklariert ist: Zahlen für i16/i32/f32, Strings, Listen als Arrays.
+ */
+export type RowOf<S extends readonly unknown[]> = Flatten<Intersect<FieldValue<S[number]>>>;
+
+type ScalarValue<T> = T extends "str" | `fixed${number}` ? string : number;
+type FieldValue<F> = F extends { readonly name: infer N extends string; readonly type: infer T }
+  ? { readonly [K in N]: ScalarValue<T> }
+  : F extends {
+        readonly list: infer N extends string;
+        readonly of: infer S extends readonly unknown[];
+      }
+    ? { readonly [K in N]: readonly RowOf<S>[] }
+    : F extends {
+          readonly name: infer N extends string;
+          readonly of: infer S extends readonly unknown[];
+        }
+      ? { readonly [K in N]: readonly RowOf<S>[] }
+      : Record<never, never>;
+type Intersect<U> = (U extends unknown ? (u: U) => void : never) extends (i: infer I) => void
+  ? I
+  : never;
+type Flatten<T> = { readonly [K in keyof T]: T[K] };
+
 export type Value = number | string | Row[];
 export type Row = { [name: string]: Value };
 
@@ -213,7 +238,9 @@ export function writeSchema(row: Row, schema: Schema): Uint8Array {
 export interface SchemaCoverage {
   /** Bytes in Feldern mit Namen. */
   readonly named: number;
-  /** Bytes in Feldern, deren Name mit `unknown` beginnt (Lage bekannt, Bedeutung offen). */
+  /** Bytes in Feldern `unused*`: das Programm liest sie nachweislich nie. */
+  readonly unused: number;
+  /** Bytes in Feldern `unknown*`: Lage bekannt, Bedeutung offen. */
   readonly unknown: number;
   /** Bytes in Zählfeldern und Stringlängen (Struktur). */
   readonly structure: number;
@@ -226,6 +253,7 @@ export interface SchemaCoverage {
  */
 export function schemaCoverage(row: Row, schema: Schema): SchemaCoverage {
   let named = 0;
+  let unused = 0;
   let unknown = 0;
   let structure = 0;
   const walk = (r: Row, s: Schema): void => {
@@ -246,10 +274,11 @@ export function schemaCoverage(row: Row, schema: Schema): SchemaCoverage {
           size = fixedLength(f.type) ?? (f.type === "i16" ? 2 : 4);
         }
         if (f.name.startsWith("unknown")) unknown += size;
+        else if (f.name.startsWith("unused")) unused += size;
         else named += size;
       }
     }
   };
   walk(row, schema);
-  return { named, unknown, structure };
+  return { named, unused, unknown, structure };
 }

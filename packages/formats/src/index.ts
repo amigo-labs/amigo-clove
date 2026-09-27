@@ -90,3 +90,39 @@ export { AlphaMaskError, applyAlphaMask, maskName, type MaskOffset } from "./dov
 export { RadioTextError, parseRadioText, type RadioLine, type RadioTexts } from "./dovez/RadioText";
 export { PlayScriptError, parsePlayScript, type PlayStep } from "./dovez/PlayScript";
 export { dovezSlug, dovezSpriteKey } from "./dovez/slug";
+export {
+  SchemaError,
+  readSchema,
+  schemaCoverage,
+  writeSchema,
+  type Field,
+  type Row,
+  type RowOf,
+  type Schema,
+  type SchemaCoverage,
+} from "./dovez/binarySchema";
+export {
+  DOVEZ_LEVEL_MAGIC,
+  DOVEZ_LEVEL_SCHEMA,
+  DovezLevelDatError,
+  dovezLevelCoverage,
+  parseDovezLevelDat,
+  serializeDovezLevelDat,
+  type DovezAnim,
+  type DovezAnimKey,
+  type DovezAnimTrack,
+  type DovezEnemy,
+  type DovezFrame,
+  type DovezGroup,
+  type DovezLayer,
+  type DovezLevel,
+  type DovezPart,
+  type DovezRadio,
+  type DovezRoute,
+  type DovezRouteOp,
+  type DovezShot,
+  type DovezSound,
+  type DovezTimelineEntry,
+  type DovezWeapon,
+  type DovezWeaponSalvo,
+} from "./dovez/LevelDat";
