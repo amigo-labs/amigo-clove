@@ -209,8 +209,8 @@ export function updatePlayer(p: Player, input: PlayerInput, w: PlayerWorld): voi
   p.pushY = 0;
   keys(p, input, w);
   if (p.x + HIT_RIGHT > 800) p.x = 800 - HIT_RIGHT;
-  if (p.x + HIT_LEFT < 0) p.x = -HIT_LEFT;
-  if (p.y + HIT_TOP < 0) p.y = -HIT_TOP;
+  if (p.x + HIT_LEFT < 0) p.x = 0 - HIT_LEFT;
+  if (p.y + HIT_TOP < 0) p.y = 0 - HIT_TOP;
   if (p.y + HIT_BOTTOM > 550) p.y = 550 - HIT_BOTTOM;
   // Wände sperren achsenweise: zurück auf die Position zu Tickbeginn
   const hitAt = (x: number, y: number) =>
