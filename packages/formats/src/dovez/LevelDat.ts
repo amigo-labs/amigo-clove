@@ -85,50 +85,52 @@ const ENTRY: Schema = [
 ];
 
 const LAYER: Schema = [
-  { name: "unknown08", type: "f32" },
+  { name: "scrollSpeed", type: "f32" },
   { count: "entries" },
   { list: "entries", of: ENTRY },
 ];
 
-const ANIM_Y: Schema = [
+/** Nie belegt (in keinem Level), zur Laufzeit ungelesen — vermutlich Editor-Notizen. */
+const ANIM_NOTE: Schema = [
   { name: "unknown00", type: "i32" },
   { name: "unknown04", type: "i32" },
   { name: "unknownText", repeat: 5, of: [{ name: "v", type: "fixed30" }] },
 ];
 
-const ANIM_POINT: Schema = [
-  { name: "unknown00", type: "i32" },
-  { name: "unknown04", type: "i32" },
-  { name: "unknown08", type: "i32" },
-  { name: "unknown0c", type: "i32" },
-  { name: "unknown10", type: "i32" },
-  { name: "unknown14", type: "i32" },
-  { name: "unknown18", type: "i32" },
-  { name: "unknown1c", type: "i32" },
-  { name: "unknown28", type: "i32" },
-  { name: "unknown2c", type: "i32" },
-  { name: "unknown20", type: "i32" },
-  { name: "unknown30", type: "i32" },
-  { name: "unknown34", type: "i32" },
-  { name: "unknown24", type: "i16" },
-  { name: "unknown26", type: "i16" },
+/** Keyframe einer Spur; die Bewegungsart gilt für das Segment, das an diesem Key endet. */
+const ANIM_KEY: Schema = [
+  { name: "time", type: "i32" },
+  { name: "x", type: "f32" },
+  { name: "y", type: "f32" },
+  { name: "red", type: "f32" },
+  { name: "green", type: "f32" },
+  { name: "blue", type: "f32" },
+  { name: "alpha", type: "f32" },
+  { name: "rotation", type: "i32" },
+  { name: "scaleX", type: "f32" },
+  { name: "scaleY", type: "f32" },
+  { name: "frame", type: "i32" },
+  { name: "motion", type: "i32" },
+  { name: "speed", type: "f32" },
+  { name: "visible", type: "i16" },
+  { name: "additive", type: "i16" },
 ];
 
-const ANIM_PATH: Schema = [
-  { count: "points" },
-  { name: "unknown08", type: "i32" },
-  { list: "points", of: ANIM_POINT },
+const ANIM_TRACK: Schema = [
+  { count: "keys" },
+  { name: "group", type: "i32" },
+  { list: "keys", of: ANIM_KEY },
 ];
 
 const ANIM: Schema = [
-  { count: "paths" },
+  { count: "tracks" },
   { name: "name", type: "str" },
-  { name: "unknown18", type: "i32" },
-  { name: "unknown14", type: "i16" },
-  { name: "unknown16", type: "i16" },
-  { count: "ys" },
-  { list: "ys", of: ANIM_Y },
-  { list: "paths", of: ANIM_PATH },
+  { name: "duration", type: "i32" },
+  { name: "loop", type: "i16" },
+  { name: "scrollWithLayer", type: "i16" },
+  { count: "notes" },
+  { list: "notes", of: ANIM_NOTE },
+  { list: "tracks", of: ANIM_TRACK },
 ];
 
 const WEAPON_SUB: Schema = [
