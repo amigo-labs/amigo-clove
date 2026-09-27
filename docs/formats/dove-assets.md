@@ -9,8 +9,11 @@ unter `assets/dove/` ist abgeleitet und wird **nie von Hand** geändert.
 | Befehl | Wirkung |
 |---|---|
 | `bun run assets:build [--only=level1,core] [--force]` | konvertiert, was sich geändert hat; ein zweiter Lauf schreibt null Bytes |
-| `bun run assets:check` | CI-Gate: frischer Build ohne Cache in einen Temp-Ordner, byteweiser Vergleich mit dem committeten Baum |
-| `bun run assets:verify` | Größe und SHA-256 jeder Datei gegen das Manifest, keine verwaisten Dateien |
+| `bun run assets:verify` | **CI-Gate, konvertiert nichts:** Größe und SHA-256 jeder Datei gegen das Manifest, keine verwaisten Dateien; Quellhashes, Optionen, Konverterversion und Bundles jedes geplanten Jobs gegen das Manifest (`stale`) |
+| `bun run assets:check` | lokal, gründlich: frischer Build ohne Cache in einen Temp-Ordner, byteweiser Vergleich mit dem committeten Baum (Opus/Video übernommen) |
+
+Assets werden **einmal lokal** gebaut und committet; CI prüft nur Hashes (unter
+1 s für DOVE, wenige Sekunden für DoveZ) und baut nie neu.
 | `bun run assets:report` | Größen je Bundle und Asset-Art |
 
 ## Inhalt (10,8 MB)
@@ -50,7 +53,7 @@ Der Cache braucht kein eigenes Verzeichnis: Ein Job wird übersprungen, wenn
 Quellhashes, `optionsHash` und `converterVersion` im bestehenden Manifest
 übereinstimmen und die Ausgabedatei mit dem erwarteten Hash vorliegt. Die
 libwebp-Version ist Teil der Bildoptionen — ein sharp-Update invalidiert alle
-Bilder, und `assets:check` meldet es, bevor es unbemerkt ins Repo gerät.
+Bilder, und `assets:verify` meldet es („Optionen geändert“), bevor es unbemerkt ins Repo gerät.
 
 ### Bundles
 

@@ -44,8 +44,8 @@ bun run fmt          # oxfmt (schreibt), fmt:check prüft nur
 bun run test         # bun test
 
 bun run assets:build   # Originale → assets/dove/, assets/dovez/ (inkrementell; --game=…)
-bun run assets:check   # CI-Gate: frischer Build ≡ committeter Baum (Opus/Video übernommen)
-bun run assets:verify  # Hashes gegen das Manifest
+bun run assets:verify  # CI-Gate ohne Konvertierung: Dateien ≡ Manifest ≡ Quellen/Optionen
+bun run assets:check   # lokal, gründlich: frischer Build ≡ committeter Baum
 bun run assets:report  # Größen je Bundle
 bun run smoke          # Browser-Smoke-Test: Kaltstart, Shell, Offline-Start
 bun run build          # statische Site nach packages/shell/dist/

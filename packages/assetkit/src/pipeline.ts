@@ -254,8 +254,9 @@ export interface CheckResult {
 }
 
 /**
- * CI-Gate: baut vollständig und ohne Cache in einen Temp-Ordner und vergleicht
- * byteweise mit `out`. Fängt handeditierte, veraltete und fehlende Assets.
+ * Gründliche lokale Prüfung (nicht in CI): baut vollständig und ohne Cache in
+ * einen Temp-Ordner und vergleicht byteweise mit `out`. Fängt handeditierte,
+ * veraltete und fehlende Assets; `volatile`-Ausgaben werden übernommen.
  */
 export async function check(
   jobs: readonly Job[],
@@ -303,6 +304,56 @@ export async function verify(out: string): Promise<string[]> {
   }
   const keep = new Set([MANIFEST_FILE, ...manifest.entries.map((e) => e.file)]);
   for (const f of await listTree(out)) if (!keep.has(f)) problems.push(`${f}: nicht im Manifest`);
+  return problems;
+}
+
+/**
+ * Aktualität ohne Konvertierung: Passen Quellhashes, Optionen, Konverterversion
+ * und Bundles jedes geplanten Jobs zum Manifest, und hat jeder Eintrag einen
+ * Job? Zusammen mit `verify` das CI-Gate — Assets werden einmal lokal gebaut
+ * und committet, CI hasht nur.
+ */
+export async function stale(
+  jobs: readonly Job[],
+  options: { readonly root: string; readonly out: string },
+): Promise<string[]> {
+  const manifest = await readManifest(options.out);
+  if (!manifest) return [`${MANIFEST_FILE} fehlt in ${options.out}`];
+  const entries = new Map(manifest.entries.map((e) => [e.id, e]));
+  const hashes = new Map<string, string>();
+  const hashOf = async (path: string) => {
+    let h = hashes.get(path);
+    if (h === undefined) {
+      h = sha256(await readBytes(join(options.root, path)));
+      hashes.set(path, h);
+    }
+    return h;
+  };
+  const problems: string[] = [];
+  const planned = new Set<string>();
+  for (const job of jobs) {
+    const sources = await Promise.all(
+      job.sources.map(async (path) => ({ path, sha256: await hashOf(path) })),
+    );
+    const optHash = optionsHash(job.options);
+    for (const o of job.outputs) {
+      planned.add(o.id);
+      const e = entries.get(o.id);
+      const bundles = o.bundles ?? job.bundles;
+      if (!e) problems.push(`${o.id}: fehlt im Manifest`);
+      else if (JSON.stringify(e.sources) !== JSON.stringify(sources))
+        problems.push(`${o.id}: Quelle geändert`);
+      else if (e.optionsHash !== optHash) problems.push(`${o.id}: Optionen geändert`);
+      else if (e.converterVersion !== job.converterVersion)
+        problems.push(
+          `${o.id}: Konverterversion ${e.converterVersion} statt ${job.converterVersion}`,
+        );
+      else if (JSON.stringify(e.bundles) !== JSON.stringify(bundles))
+        problems.push(`${o.id}: Bundles geändert`);
+    }
+  }
+  for (const id of entries.keys())
+    if (!planned.has(id)) problems.push(`${id}: kein Job erzeugt es`);
   return problems;
 }
 

@@ -7,10 +7,10 @@ Debug-Seite `#/dovez/debug/assets`. Formatbefunde zu den Quellen:
 Cache wie bei DOVE: [`dove-assets.md`](dove-assets.md).
 
 Zum **Bauen** zusätzlich zu Bun: **ffmpeg** mit libopus und libvpx (Ubuntu
-24.04: `apt install ffmpeg`). `assets:check` braucht es nicht (siehe „Ton,
-Musik, Video“).
+24.04: `apt install ffmpeg`). CI braucht es nicht: `assets:verify` konvertiert
+nichts, und `assets:check` kodiert Opus/Video nie neu (siehe „Ton, Musik, Video“).
 
-## Inhalt (169 MB, 425 Dateien)
+## Inhalt (147 MB, 425 Dateien)
 
 | Art | Quelle | Ziel | Anzahl | Größe |
 |---|---|---|---:|---:|
@@ -19,12 +19,13 @@ Musik, Video“).
 | `data` | Funktexte D/E, `Play.txt` | JSON | 16 + 1 | < 0,1 MB |
 | `sound` | 84 Effekte (`Sound.d2p`), 159 Funksprüche (`.dfp`) | Ogg Opus 64 kbit/s bzw. 48 kbit/s mono | 243 | 4,6 MB |
 | `music` | `Data/Sound/*.ogg` | unverändert (Vorbis, gestreamt) | 20 | 61,7 MB |
-| `video` | 12 AVIs aus `Video.d2p`, `Data/Video/Intro{D,E}.avi` | WebM, VP9 CRF 34 + Opus 64 kbit/s | 14 | 42,0 MB |
+| `video` | 12 AVIs aus `Video.d2p`, `Data/Video/Intro{D,E}.avi` | WebM, VP9 CRF 44 + Opus 48 kbit/s | 14 | 19,9 MB |
 
 Die 257 MB BMP werden zu 58,3 MB Atlasseiten (Spec-Schätzung ~52 MB), die
-107 MB WAV zu 4,6 MB Opus. Die Videos liegen über der Spec-Schätzung (~25 MB):
-CRF 34 statt 40 zugunsten der Qualität bei 800×600 (Probe `SkyFight.avi`:
-6,8 MB → 1,18 MB bei CRF 34, 0,73 MB bei CRF 40).
+107 MB WAV zu 4,6 MB Opus, die 193 MB DivX-Videos zu 19,9 MB WebM (Spec ~25 MB).
+Videoprobe `SkyFight.avi` (6,8 MB): CRF 34 → 1,18 MB (SSIM 0,974), CRF 40 →
+0,71 MB (0,965), **CRF 44 → 0,52 MB (0,957)**, CRF 48 → 0,38 MB (0,949, Texturen
+verschwimmen sichtbar). CRF 44 glättet vor allem das Rauschen des DivX-Originals.
 
 ## IDs und Bundles
 
@@ -101,10 +102,11 @@ Opus-Dateien mit anderen Bytes. Beide Jobarten sind deshalb **vom Hash-Gate
 ausgenommen** (`volatile` im Job): `assets:check` übernimmt ihre Ausgaben aus
 dem committeten Baum, sofern Quelle, Optionen und Konverterversion passen, statt
 neu zu kodieren — geänderte Quellen meldet es als veraltet. Ein normaler Build
-kodiert sie nur bei Änderungen, `--force-encode` erzwingt es (~11 min, fast nur
+kodiert sie nur bei Änderungen, `--force-encode` erzwingt es (~7 min, fast nur
 Video). Die ffmpeg-Version gehört folglich nicht zum Cache-Schlüssel.
 
 ## Laufzeiten (4 Kerne)
 
-Voller Build 11 min, davon der Großteil Video; `assets:check` beider Spiele
-48 s, ohne ffmpeg; ein zweiter Build schreibt null Bytes (3 s).
+Voller Build ~7 min, davon der Großteil Video — einmalig lokal. `assets:verify`
+(CI) beider Spiele wenige Sekunden, `assets:check` 48 s, beide ohne ffmpeg;
+ein zweiter Build schreibt null Bytes (3 s).

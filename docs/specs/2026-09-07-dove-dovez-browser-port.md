@@ -390,7 +390,8 @@ der Colorkey. Kein Alpha-Bleeding, weil durchgängig `scaleMode: 'nearest'`.
 
 **Reproduzierbarkeit.** Manifest mit SHA-256 aller Quellen und Ausgaben,
 Cache-Key `sha256(input) ⊕ sha256(options) ⊕ converterVersion`, content-gehashte
-Dateinamen. `assets:check` als CI-Gate baut in einen Temp-Ordner und schlägt
+Dateinamen. *(M6: CI läuft `assets:verify`, das nur hasht — Assets werden einmal
+lokal gebaut; `assets:check` bleibt als gründliche lokale Prüfung.)* `assets:check` baut in einen Temp-Ordner und schlägt
 fehl, sobald ein Output vom Committeten abweicht — das fängt handeditierte
 Assets. Video wird vom Hash-Gate ausgenommen (Encoder sind über Buildversionen
 nicht bit-identisch) und nur mit `--force-video` neu erzeugt. *(M6)* Ebenso Opus: libopus
@@ -601,7 +602,7 @@ Jeder hat genau ein überprüfbares Ergebnis.
 | **M3** | ⭐ **Erstes spielbares Level.** Scope brutal geschnitten: keine Menüs, keine Musik, **eine** Waffe, kein Beam/Options/Bomben/Schild | 4–6 d | Level 1 läuft im Browser durch; aufgezeichnetes Replay reproduziert bit-identisch — *Stand: erledigt; Mechanik statisch aus der EXE, zwei Referenz-Replays, Browser-Smoke-Test in CI* |
 | **M4** | DOVE feature-complete: alle Waffen + Stufen, Beam, Options, Bomben, Schild, alle 12 Level, Vorhang, Highscore, Audio, die drei Optionen, Easteregg | 1,5–2 w | von Anfang bis Ende durchspielbar; Playtest-Checkliste abgehakt — *Stand: umgesetzt; Abgleich am Original (Playtest-Checkliste) offen* |
 | **M5** | Shell echt: Menü, Routing, Settings, Gamepad, Save-Export, Cache-Bundles, Service Worker, i18n | 3–4 d | deploybare Site; DOVE aus kaltem Cache spielbar — *Stand: erledigt; statischer Build mit relativen Pfaden, Smoke-Test startet DOVE kalt und nach „Spieldaten installieren“ bei beendetem Server. Offen: Ressourcenzähler für `dispose()` in Dev-Builds, Savegames in IndexedDB (DOVE braucht nur Schlüssel/Wert in `localStorage`)* |
-| **M6** | DoveZ Container + Assets | 1 w | ~120 MB Assets; Debug-Seite rendert jedes Sprite mit überlagerter `.r`-Kontur — *Stand: erledigt; 169 MB (davon Musik 62 MB unverändert, Video 42 MB), 33 Atlanten auf 44 Seiten, `#/dovez/debug/assets`, siehe `docs/formats/dovez-assets.md`* |
+| **M6** | DoveZ Container + Assets | 1 w | ~120 MB Assets; Debug-Seite rendert jedes Sprite mit überlagerter `.r`-Kontur — *Stand: erledigt; 147 MB (davon Musik 62 MB unverändert, Video 20 MB), 33 Atlanten auf 44 Seiten, `#/dovez/debug/assets`, siehe `docs/formats/dovez-assets.md`* |
 | **M7** | ⚠ **DoveZ `.dat` dekodieren** (Risikoblock) | 1–2 w | `opaque` unter 5 %; Debug-Ansicht zeichnet Routen und Schussmuster |
 | **M8** | DoveZ Engine: Parallax, beide Schiffe, Coop, Funksystem, Bosse, Video, Kampagne | 3–5 w | Kampagne durchspielbar |
 | **M9** | Politur, Performance, Barrierefreiheit, Deployment | 1 w | Release |
@@ -636,7 +637,7 @@ verschwinden nie. Da bewusst ohne LFS gearbeitet wird, sind die Gegenmaßnahmen
 Disziplin statt Technik: content-gehashte Dateinamen (ein geändertes Asset ist
 eine neue Datei, alte werden in einem bewussten Aufräum-Commit entfernt),
 eingefrorene Encoder-Optionen (Re-Encode nur mit `--force` plus Review), und
-`assets:check` als CI-Gate gegen versehentliches Neuschreiben ganzer
+`assets:verify` *(M6, vorher `assets:check`)* als CI-Gate gegen versehentliches Neuschreiben ganzer
 Asset-Bäume. **Beobachten:** Sollte die Historie unhandlich werden, sind LFS oder
 das Auslagern der Videos als Release-Attachment die naheliegenden Auswege — die
 Architektur trägt Letzteres ohne Änderung, weil Video ohnehin lazy gestreamt wird.

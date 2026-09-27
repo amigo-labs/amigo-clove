@@ -18,7 +18,9 @@ jobs:
       - run: bun run lint
       - run: bun run fmt:check
       - run: bun run test
-      - run: bun run assets:check
+      # Assets werden lokal einmal gebaut und committet; CI konvertiert nichts, sondern
+      # prüft nur Hashes (Dateien ↔ Manifest ↔ Quellen/Optionen).
+      - run: bun run assets:verify
 
   smoke:
     runs-on: ubuntu-latest

@@ -3,8 +3,8 @@
  * Asset-Pipeline. Aufruf über die Root-Skripte:
  *
  *   bun run assets:build  [--game=dove|dovez] [--only=level1,core] [--force] [--force-encode]
- *   bun run assets:check    # CI-Gate: frischer Build ≡ committeter Baum (Opus/Video übernommen)
- *   bun run assets:verify   # Hashes der Ausgaben gegen das Manifest
+ *   bun run assets:verify   # CI-Gate ohne Konvertierung: Dateien ≡ Manifest, Manifest ≡ Quellen/Optionen
+ *   bun run assets:check    # lokal, gründlich: frischer Build ≡ committeter Baum (Opus/Video übernommen)
  *   bun run assets:report   # Größen je Bundle und Art
  *
  * Ohne `--game` gelten die Befehle für beide Spiele, jeweils nach `assets/<spiel>/`.
@@ -13,7 +13,7 @@ import { join, resolve } from "node:path";
 import { planDove } from "./dove/config";
 import { planDoveZ } from "./dovez/config";
 import type { Job } from "./job";
-import { build, check, report, verify } from "./pipeline";
+import { build, check, report, stale, verify } from "./pipeline";
 
 const ROOT = join(import.meta.dir, "../../..");
 
@@ -94,12 +94,15 @@ async function runGame(args: Args, game: string): Promise<number> {
       return 1;
     }
     case "verify": {
-      const problems = await verify(out);
+      const problems = [...(await verify(out)), ...(await stale(plan(), { root: ROOT, out }))];
       if (problems.length === 0) {
-        console.log("Alle Assets passen zum Manifest.");
+        console.log("Alle Assets passen zum Manifest, das Manifest zu Quellen und Optionen.");
         return 0;
       }
       console.error(problems.join("\n"));
+      console.error(
+        "Veraltet oder verändert — `bun run assets:build` lokal ausführen und committen.",
+      );
       return 1;
     }
     case "report": {
