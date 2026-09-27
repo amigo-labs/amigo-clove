@@ -13,6 +13,7 @@ import {
   rankSuffix,
   serializeHighscores,
 } from "../src/flow/highscore";
+import { KeyEdges } from "../src/flow/input";
 import { introSpriteAt, vbRound } from "../src/flow/intro";
 import {
   type Config,
@@ -342,5 +343,22 @@ describe("Titel-Sternenfeld", () => {
     stars.tick();
     expect(stars.x[500]).toBe(639);
     expect(stars.color[500]).toBe(starColor(stars.speed[500]!));
+  });
+});
+
+describe("Tastenflanken", () => {
+  test("beim Start gehaltene Tasten lösen erst nach dem Loslassen aus", () => {
+    const down = new Set(["Enter"]);
+    const k = new KeyEdges({ isDown: (c) => down.has(c) });
+    k.sample();
+    expect(k.hit("confirm")).toBe(false);
+    expect(k.held("confirm")).toBe(true);
+    down.delete("Enter");
+    k.sample();
+    down.add("Enter");
+    k.sample();
+    expect(k.hit("confirm")).toBe(true);
+    k.sample();
+    expect(k.hit("confirm")).toBe(false);
   });
 });

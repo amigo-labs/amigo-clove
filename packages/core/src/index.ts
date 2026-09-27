@@ -2,6 +2,10 @@ export { AssetStore, type Fetch } from "./asset/AssetStore";
 export {
   MANIFEST_VERSION,
   type AssetKind,
+  type AtlasEntry,
+  type AtlasJson,
+  type AtlasSprite,
+  type BinaryEntry,
   type AssetSource,
   type DataEntry,
   type ImageEntry,
@@ -12,7 +16,17 @@ export {
   type ManifestEntryBase,
   type MusicEntry,
   type SoundEntry,
+  type VideoEntry,
 } from "./asset/Manifest";
+export {
+  LOCALES,
+  resolveLocale,
+  translator,
+  type Dictionary,
+  type Locale,
+  type LocalePreference,
+  type Translate,
+} from "./i18n/i18n";
 export { FixedStepLoop } from "./loop/FixedStepLoop";
 export {
   FX_HALF,
@@ -35,11 +49,20 @@ export {
   firstDivergence,
   type Replay,
 } from "./replay/Replay";
+export {
+  SAVE_FORMAT,
+  SAVE_VERSION,
+  createSaveFile,
+  parseSaveFile,
+  type SaveData,
+  type SaveFile,
+} from "./save/SaveFile";
 export type {
   AudioHost,
   GameHost,
   GameInstance,
   GameModule,
+  GamepadBindings,
   KeyState,
   KeyValueStore,
 } from "./shell/GameModule";

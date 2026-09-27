@@ -71,4 +71,30 @@ export class AssetStore {
   bundle(name: string): string[] {
     return this.manifest.entries.filter((e) => e.bundles.includes(name)).map((e) => e.id);
   }
+
+  /**
+   * Lädt alle Assets der Bundles vorab in den Speicher (Ladebildschirm).
+   * `onProgress(geladen, gesamt)` zählt Bytes laut Manifest, einmal zu Beginn
+   * und nach jedem fertigen Asset. Höchstens `parallel` Anfragen gleichzeitig.
+   */
+  async preload(
+    bundles: readonly string[],
+    onProgress?: (loaded: number, total: number) => void,
+    parallel = 6,
+  ): Promise<void> {
+    const ids = [...new Set(bundles.flatMap((b) => this.bundle(b)))];
+    const total = ids.reduce((sum, id) => sum + this.entry(id).bytes, 0);
+    let loaded = 0;
+    onProgress?.(0, total);
+    let next = 0;
+    const worker = async () => {
+      while (next < ids.length) {
+        const id = ids[next++] as string;
+        await this.bytes(id);
+        loaded += this.entry(id).bytes;
+        onProgress?.(loaded, total);
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(parallel, ids.length) }, worker));
+  }
 }

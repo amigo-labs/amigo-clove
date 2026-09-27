@@ -68,6 +68,22 @@ function parseDebug(o: Options): DebugStart | undefined {
 const dove: GameModule = {
   id: "dove",
   title: "DOVE",
+  // Grafik, Sounds und Menübilder; Musik und Level lädt der Ablauf bei Bedarf nach.
+  preload: ["core", "screens"],
+  // A Feuer/Bestätigen, B Beam, X Extrawaffe drehen, Y Enter (Namenseingabe),
+  // Schultertasten Tempo, Start/Back Pause bzw. zurück.
+  gamepad: {
+    0: ["Space"],
+    1: ["KeyA"],
+    2: ["KeyD"],
+    3: ["Enter"],
+    4: ["KeyQ"],
+    5: ["KeyW"],
+    6: ["KeyQ"],
+    7: ["KeyW"],
+    8: ["Escape"],
+    9: ["Escape"],
+  },
   async boot(host: GameHost, options = {}): Promise<DoveInstance> {
     const app = await createScreen({
       canvas: host.canvas,

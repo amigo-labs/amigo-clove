@@ -1,121 +1,261 @@
 import { AudioBus } from "@clove/audio";
 import {
   AssetStore,
+  resolveLocale,
+  translator,
   type AudioHost,
   type GameInstance,
   type GameModule,
-  type KeyValueStore,
+  type KeyState,
+  type Locale,
 } from "@clove/core";
+import { h } from "./dom";
+import { createPadState, startPadNavigation } from "./gamepad";
 import { createKeyState } from "./keys";
+import { registerServiceWorker } from "./offline";
+import { parseRoute } from "./router";
+import { loadSettings, saveSettings, type Settings } from "./settings";
+import { storageFor, webStorage } from "./storage";
+import { TEXTS, mb, type ShellText, type TextKey } from "./texts";
+import { launcherView } from "./views/launcher";
+import { settingsView } from "./views/settings";
 
 /**
- * Launcher (M3: minimal). Hash-Routing: `#/` Auswahl, `#/dove?level=1` startet DOVE.
- * Menü, Settings, Save-Export und Service Worker folgen in M5.
+ * Launcher. Hash-Routing: `#/` Spielauswahl, `#/settings` Einstellungen,
+ * `#/dove?level=1` startet DOVE (URL-Optionen siehe `@clove/game-dove`).
+ * Die Shell besitzt Canvas, AudioContext, Speicher, Eingabegeräte und Sprache.
  */
-const GAMES: Record<string, { title: string; load: () => Promise<GameModule> }> = {
-  dove: { title: "DOVE", load: async () => (await import("@clove/game-dove")).default },
+interface GameInfo {
+  readonly title: string;
+  readonly subtitle: TextKey;
+  /** Im Launcher startbar und offline installierbar. */
+  readonly playable: boolean;
+  /** Unterpfad einer Debug-Ansicht, im Launcher verlinkt. */
+  readonly debug?: string;
+  load(): Promise<GameModule>;
+}
+
+const GAMES: Readonly<Record<string, GameInfo>> = {
+  dove: {
+    title: "DOVE",
+    subtitle: "doveSub",
+    playable: true,
+    load: async () => (await import("@clove/game-dove")).default,
+  },
+  dovez: {
+    title: "DoveZ",
+    subtitle: "dovezSub",
+    playable: false,
+    debug: "debug/assets",
+    load: async () => (await import("@clove/game-dovez")).default,
+  },
 };
 
 const screen = document.getElementById("screen") as HTMLDivElement;
 const errorBox = document.getElementById("error") as HTMLDivElement;
-const keys = createKeyState(window);
+const keyboard = createKeyState(window);
+const storage = webStorage();
+let settings: Settings = loadSettings(storage);
+let locale: Locale = "en";
+let t: ShellText = translator(TEXTS, locale);
 let running: GameInstance | undefined;
 let bus: AudioBus | undefined;
+let view: AbortController | undefined;
+/** Zählt Routenwechsel; ein langsamer Spielstart nach einem Wechsel wird verworfen. */
+let generation = 0;
+
+function applyLocale(): void {
+  locale = resolveLocale(settings.language, navigator.languages ?? [navigator.language]);
+  t = translator(TEXTS, locale);
+  document.documentElement.lang = locale;
+}
+
+function applyVolume(): void {
+  for (const ch of ["master", "music", "sfx"] as const) bus?.setVolume(ch, settings.volume[ch]);
+}
+
+function updateSettings(patch: Partial<Settings>): void {
+  const languageChanged = patch.language !== undefined && patch.language !== settings.language;
+  settings = { ...settings, ...patch };
+  saveSettings(storage, settings);
+  applyVolume();
+  if (languageChanged) {
+    applyLocale();
+    void route().then(() => document.getElementById("language")?.focus());
+  }
+}
 
 /**
  * Ein AudioContext für die ganze Sitzung, erzeugt beim ersten Spielstart.
  * Browser halten ihn bis zur ersten Nutzergeste an; jede Taste oder jeder
  * Klick setzt ihn fort. `?nosound` startet ohne Ton.
  */
-/** localStorage mit Präfix je Spiel; ohne Speicher (privates Fenster) bleibt alles flüchtig. */
-function storageFor(game: string): KeyValueStore {
-  const memory = new Map<string, string>();
-  return {
-    get(key: string) {
-      try {
-        return localStorage.getItem(`clove:${game}:${key}`);
-      } catch {
-        return memory.get(key) ?? null;
-      }
-    },
-    set(key: string, value: string) {
-      try {
-        localStorage.setItem(`clove:${game}:${key}`, value);
-      } catch {
-        memory.set(key, value);
-      }
-    },
-  };
-}
-
-function audioHost(query: URLSearchParams): AudioHost | undefined {
-  if (query.has("nosound") || typeof AudioContext === "undefined") return undefined;
+function audioHost(params: Readonly<Record<string, string>>): AudioHost | undefined {
+  if ("nosound" in params || typeof AudioContext === "undefined") return undefined;
   if (!bus) {
     const b = new AudioBus(new AudioContext({ latencyHint: "interactive" }));
     const resume = () => void b.resume();
     window.addEventListener("keydown", resume);
     window.addEventListener("pointerdown", resume);
+    window.addEventListener("gamepadconnected", resume);
     resume();
     bus = b;
+    applyVolume();
   }
-  const b = bus;
   return {
-    context: b.context,
-    music: b.music,
-    sfx: b.sfx,
+    context: bus.context,
+    music: bus.music,
+    sfx: bus.sfx,
     moduleWorkletUrl: `${import.meta.env.BASE_URL}vendor/chiptune3/chiptune3.worklet.js`,
   };
 }
 
-function showLauncher(): void {
-  screen.innerHTML = `<div id="launcher"><h1>amigo-clove</h1><ul>${Object.entries(GAMES)
-    .map(([id, g]) => `<li><a href="#/${id}">${g.title}</a></li>`)
-    .join("")}</ul></div>`;
+/** Tastatur plus Pad; das Pad lässt sich in den Einstellungen abschalten. */
+function keysFor(module: GameModule): KeyState {
+  if (!module.gamepad || !navigator.getGamepads) return keyboard;
+  const pad = createPadState(
+    () => navigator.getGamepads(),
+    () => performance.now(),
+    module.gamepad,
+  );
+  return { isDown: (code) => keyboard.isDown(code) || (settings.gamepad && pad.isDown(code)) };
 }
 
-async function route(): Promise<void> {
-  running?.dispose();
-  running = undefined;
-  delete document.body.dataset["game"];
-  errorBox.textContent = "";
-  const [path = "", query = ""] = location.hash.replace(/^#\/?/, "").split("?");
-  const game = GAMES[path];
-  if (!game) {
-    showLauncher();
-    return;
-  }
-  screen.innerHTML = "";
-  const canvas = document.createElement("canvas");
-  screen.append(canvas);
+function showPage(page: HTMLElement, signal: AbortSignal): void {
+  screen.replaceChildren(page);
+  startPadNavigation(
+    page,
+    () => settings.gamepad,
+    () => (location.hash = "#/"),
+    signal,
+  );
+}
+
+async function startGame(
+  id: string,
+  params: Readonly<Record<string, string>>,
+  gen: number,
+): Promise<void> {
+  const game = GAMES[id];
+  if (!game) return;
+  const label = h("p", {}, t("loading", { title: game.title, loaded: "0", total: "…" }));
+  const bar = h("progress", { max: "1", value: "0" });
+  screen.replaceChildren(h("div", { id: "loading" }, label, bar));
+  document.title = `${game.title} — amigo-clove`;
   try {
-    const assets = await AssetStore.load(`${import.meta.env.BASE_URL}${path}/manifest.json`, (u) =>
+    const assets = await AssetStore.load(`${import.meta.env.BASE_URL}${id}/manifest.json`, (u) =>
       fetch(u),
     );
     const module = await game.load();
-    const params = new URLSearchParams(query);
+    await assets.preload(module.preload ?? [], (loaded, total) => {
+      label.textContent = t("loading", {
+        title: game.title,
+        loaded: mb(loaded, locale),
+        total: mb(total, locale),
+      });
+      bar.value = total ? loaded / total : 1;
+    });
+    if (gen !== generation) return;
+    const canvas = document.createElement("canvas");
+    screen.replaceChildren(canvas);
     const audio = audioHost(params);
-    running = await module.boot(
+    const instance = await module.boot(
       {
         canvas,
         assets,
-        keys,
-        locale: navigator.language,
+        keys: keysFor(module),
+        locale,
         now: () => performance.now(),
-        storage: storageFor(path),
+        storage: storageFor(storage, id),
         exit: () => {
           location.hash = "#/";
         },
         ...(audio ? { audio } : {}),
       },
-      Object.fromEntries(params),
+      params,
     );
-    document.body.dataset["game"] = path;
+    if (gen !== generation) {
+      instance.dispose();
+      return;
+    }
+    running = instance;
+    document.body.dataset["game"] = id;
   } catch (err) {
+    if (gen !== generation) return;
     document.body.dataset["game"] = "error";
     console.error(err);
+    screen.replaceChildren(
+      h(
+        "div",
+        { id: "launcher" },
+        h("p", {}, t("loadFailed", { title: game.title })),
+        h("a", { class: "button secondary", href: "#/" }, t("back")),
+      ),
+    );
     errorBox.textContent = String(err instanceof Error ? (err.stack ?? err.message) : err);
   }
 }
 
+async function route(): Promise<void> {
+  const gen = ++generation;
+  running?.dispose();
+  running = undefined;
+  view?.abort();
+  view = new AbortController();
+  delete document.body.dataset["game"];
+  errorBox.textContent = "";
+  const r = parseRoute(location.hash, new Set(Object.keys(GAMES)));
+  document.body.dataset["view"] = r.view;
+  document.title = "amigo-clove";
+  switch (r.view) {
+    case "launcher":
+      showPage(
+        launcherView(
+          t,
+          Object.entries(GAMES).map(([id, g]) => ({
+            id,
+            title: g.title,
+            subtitle: t(g.subtitle),
+            available: g.playable,
+            ...(g.debug ? { debug: g.debug } : {}),
+          })),
+        ),
+        view.signal,
+      );
+      return;
+    case "settings":
+      document.title = `${t("settings")} — amigo-clove`;
+      showPage(
+        settingsView({
+          t,
+          locale,
+          settings: () => settings,
+          update: updateSettings,
+          signal: view.signal,
+          games: Object.entries(GAMES)
+            .filter(([, g]) => g.playable)
+            .map(([id, g]) => ({ id, title: g.title })),
+        }),
+        view.signal,
+      );
+      return;
+    case "unknown":
+      showPage(
+        h(
+          "div",
+          { id: "launcher" },
+          h("p", {}, t("notFound", { path: r.path })),
+          h("a", { class: "button secondary", href: "#/" }, t("back")),
+        ),
+        view.signal,
+      );
+      return;
+    case "game":
+      await startGame(r.id, r.sub ? { ...r.params, view: r.sub } : r.params, gen);
+  }
+}
+
+applyLocale();
 window.addEventListener("hashchange", () => void route());
+void registerServiceWorker();
 void route();

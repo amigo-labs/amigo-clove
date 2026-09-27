@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>amigo-clove</title>
+    <link rel="icon" href="data:," />
     <style>
       html,
       body {
@@ -22,11 +23,111 @@
         align-items: center;
         justify-content: center;
       }
-      #launcher {
+      #launcher,
+      #settings,
+      #loading {
         padding: 2rem;
+        max-width: 40rem;
+        max-height: 100%;
+        box-sizing: border-box;
+        overflow-y: auto;
       }
-      #launcher a {
+      h1 {
         color: #fc6;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+      }
+      h2 {
+        font-size: 1rem;
+        color: #fc6;
+        margin: 1.5rem 0 0.5rem;
+      }
+      .games {
+        list-style: none;
+        padding: 0;
+        margin: 0 0 1.5rem;
+        display: grid;
+        gap: 1rem;
+      }
+      .game {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 0.25rem 1rem;
+        align-items: center;
+        padding: 1rem;
+        border: 1px solid #333;
+        border-radius: 6px;
+      }
+      .game .title {
+        font-size: 1.5rem;
+        color: #fff;
+      }
+      .game .sub,
+      .game .status,
+      .hint {
+        font-size: 0.85rem;
+        color: #999;
+      }
+      .game .button {
+        grid-row: 1 / span 2;
+        grid-column: 2;
+      }
+      .game.unavailable .title,
+      .game.unavailable .sub,
+      .game.unavailable span.button {
+        opacity: 0.5;
+      }
+      .game .debug {
+        grid-column: 1 / span 2;
+        font-size: 0.8rem;
+        color: #999;
+      }
+      .game .status[data-offline="ready"] {
+        color: #8c8;
+      }
+      .button,
+      button,
+      select {
+        display: inline-block;
+        padding: 0.4rem 1rem;
+        border: 1px solid #fc6;
+        border-radius: 4px;
+        background: #221a08;
+        color: #fc6;
+        font: inherit;
+        text-decoration: none;
+        cursor: pointer;
+      }
+      .button.secondary {
+        border-color: #666;
+        background: none;
+        color: #ccc;
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+      :focus-visible {
+        outline: 2px solid #fff;
+        outline-offset: 2px;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.75rem;
+        margin: 0.4rem 0;
+      }
+      .row > span:first-child {
+        min-width: 5rem;
+      }
+      input[type="range"] {
+        width: 12rem;
+        accent-color: #fc6;
+      }
+      progress {
+        width: 100%;
+        accent-color: #fc6;
       }
       #error {
         position: fixed;

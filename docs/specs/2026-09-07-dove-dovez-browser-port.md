@@ -196,9 +196,12 @@ Nicht im Skript und damit Bonus-Inhalt: `Level8-1 Jungle`,
 
 ### Weitere Formate
 
-- **`.r`-Dateien:** `u32 width, height, bboxLeft, bboxRight, -1, -1`, danach pro
-  Bildzeile `i32 left, right` (Span des nicht-schwarzen Bereichs, bottom-up).
-  Strukturell dieselbe Datenstruktur wie DOVEs Konturzeilen.
+- **`.r`-Dateien:** ~~`u32 width, height, bboxLeft, bboxRight, -1, -1`, danach pro
+  Bildzeile `i32 left, right` (bottom-up)~~ *(M6, korrigiert)* `i32 width, height,
+  top, bottom` (erste/letzte belegte Zeile), dann `height` Paare `left, right`
+  **oben beginnend** (leer `-1, -1`), Abschluss `-1, -1`. 2525/2546 zeilengenau
+  zu den Pixeln. Strukturell dieselbe Datenstruktur wie DOVEs Konturzeilen.
+  Details: `docs/formats/dovez-container.md`.
 - **BMP-Tiefen: 1, 8, 16, 24 und 32 bpp.** 16 bpp (RGB555) und 32 bpp (XRGB mit
   Müll-Alphabyte) brauchen eigene Decoder-Pfade.
 - **Alpha:** nur **83 Masken-Paare** (`X.bmp` + `XA.bmp`) gegenüber 3026 reinen
@@ -207,7 +210,10 @@ Nicht im Skript und damit Bonus-Inhalt: `Level8-1 Jungle`,
   ein Pflicht-Override, kein Fall für stilles Skalieren.
 - **Funktexte:** INI-artig, `[Trigger]` + `Frame; <wav>; <ms>; <Untertitel>`,
   optional ein zweiter Sprecher-Block. Section-Namen entsprechen den Funk-IDs im
-  Level-Skript.
+  Level-Skript. *(M6)* Viergruppen `Sprecher; WAV; ms; Text` über Zeilen hinweg,
+  Sprecher `Frame` oder `0`. **Aufnahmen gibt es nur auf Englisch** — D und E
+  verweisen auf dieselben `…E_*.wav`; `R.txt` (CP1251) verweist auf fehlende
+  `RU`-Dateien. Das Bundle heißt daher `voice/<level>`, nicht `voice/<lang>`.
 - **Video:** DivX 5 (`dx50`, MPEG-4 ASP) + MP3, 800×600, 3,2 Mbit/s. Kein Browser
   spielt MPEG-4 ASP — Transkodierung ist Pflicht.
 
@@ -384,10 +390,13 @@ der Colorkey. Kein Alpha-Bleeding, weil durchgängig `scaleMode: 'nearest'`.
 
 **Reproduzierbarkeit.** Manifest mit SHA-256 aller Quellen und Ausgaben,
 Cache-Key `sha256(input) ⊕ sha256(options) ⊕ converterVersion`, content-gehashte
-Dateinamen. `assets:check` als CI-Gate baut in einen Temp-Ordner und schlägt
+Dateinamen. *(M6: CI läuft `assets:verify`, das nur hasht — Assets werden einmal
+lokal gebaut; `assets:check` bleibt als gründliche lokale Prüfung.)* `assets:check` baut in einen Temp-Ordner und schlägt
 fehl, sobald ein Output vom Committeten abweicht — das fängt handeditierte
 Assets. Video wird vom Hash-Gate ausgenommen (Encoder sind über Buildversionen
-nicht bit-identisch) und nur mit `--force-video` neu erzeugt.
+nicht bit-identisch) und nur mit `--force-video` neu erzeugt. *(M6)* Ebenso Opus: libopus
+kodiert auf verschiedenen CPUs verschieden (SIMD zur Laufzeit gewählt); das Flag heißt
+`--force-encode`, siehe `docs/formats/dovez-assets.md`.
 
 ~~**Eine Besonderheit:** Terrain-Kollisionsmasken~~ *(M3)* Entfällt: Das
 Original testet Wände per inklusivem AABB gegen die Tile-Rechtecke, nicht
@@ -485,7 +494,7 @@ Server-Rewrite nötig. Beide Spiele sind getrennte Vite-Chunks per dynamischem
 | DOVE | `level{N}` | 2–6 MB |
 | DoveZ | `core` | ~10 MB |
 | DoveZ | `level/<slug>` | 2–20 MB |
-| DoveZ | `voice/<lang>` | 2–3 MB je Level |
+| DoveZ | `voice/<lang>` *(M6: `voice/<level>`, nur Englisch, 0,02–0,6 MB)* | 2–3 MB je Level |
 | DoveZ | `video/<name>` / `music` | gestreamt, nie vorgeladen |
 
 Zwei Hebel schneiden DoveZ drastisch: **nur eine Sprache laden** (die 107 MB
@@ -505,6 +514,21 @@ Datensätze mit Migrationskette, **Export/Import als JSON-Datei ist Pflicht** �
 Browser-Storage kann jederzeit gelöscht werden, und ein durchgespieltes DoveZ
 sind Stunden Arbeit. Der `Save`-Befehl aus `Play.txt` mappt 1:1 auf einen
 Schreibvorgang.
+
+*(M5)* Umsetzung: `GameModule.preload` nennt die Bundles für den
+Ladebildschirm (DOVE: `core` und `screens`, 3,5 MB; Musik und Level lädt der
+Ablauf nach), `GameModule.gamepad` die Pad-Belegung nach dem W3C-„standard“-
+Mapping (Steuerkreuz und linker Stick sind immer die Pfeiltasten; Pads ohne
+Standardmapping werden ignoriert). Der Service Worker entsteht aus
+`packages/shell/src/sw.ts` als einzeln übersetztes klassisches Skript: App-
+Dateien je Build vorab in `clove-app-<version>`, Spielassets Cache-zuerst in
+einem gemeinsamen `clove-assets-v1` (content-gehasht, also nie veraltet;
+„Spieldaten installieren“ räumt Dateien älterer Stände ab), `manifest.json`
+Netz-zuerst. Abgleich mit `ignoreVary`, weil Server wie `vite preview`
+`Vary: Origin` senden und Modul-Skripte `Origin` mitschicken. Spielstände
+liegen für DOVE als `clove:<spiel>:<schlüssel>` in `localStorage`; die
+Exportdatei (`amigo-clove-save`, Version 1, Migrationskette) definiert
+`@clove/core`.
 
 ---
 
@@ -576,9 +600,9 @@ Jeder hat genau ein überprüfbares Ergebnis.
 | **M1** | `@clove/formats`: BMP-Decoder (1/4/8/16/24/32 bpp), `LevelDat` parse **und** serialize, Frame-Ableitung. Messung der Original-Tickrate | 2–3 d | Round-Trip byte-identisch über 12 Level; Kreuzvalidierung 145/145 grün; `TICK_MS` ist eine **gemessene** Zahl — *Stand: erledigt; `TICK_MS = 14` statt gemessen aus der EXE hergeleitet, siehe `docs/measurements/tick-rate.md`* |
 | **M2** | Asset-Pipeline DOVE mit Manifest, Cache, `--check` | 2 d | ~11 MB Assets; zweiter Lauf schreibt null Bytes — *Stand: erledigt; 10,8 MB, siehe `docs/formats/dove-assets.md`* |
 | **M3** | ⭐ **Erstes spielbares Level.** Scope brutal geschnitten: keine Menüs, keine Musik, **eine** Waffe, kein Beam/Options/Bomben/Schild | 4–6 d | Level 1 läuft im Browser durch; aufgezeichnetes Replay reproduziert bit-identisch — *Stand: erledigt; Mechanik statisch aus der EXE, zwei Referenz-Replays, Browser-Smoke-Test in CI* |
-| **M4** | DOVE feature-complete: alle Waffen + Stufen, Beam, Options, Bomben, Schild, alle 12 Level, Vorhang, Highscore, Audio, die drei Optionen, Easteregg | 1,5–2 w | von Anfang bis Ende durchspielbar; Playtest-Checkliste abgehakt |
-| **M5** | Shell echt: Menü, Routing, Settings, Gamepad, Save-Export, Cache-Bundles, Service Worker, i18n | 3–4 d | deploybare Site; DOVE aus kaltem Cache spielbar |
-| **M6** | DoveZ Container + Assets | 1 w | ~120 MB Assets; Debug-Seite rendert jedes Sprite mit überlagerter `.r`-Kontur |
+| **M4** | DOVE feature-complete: alle Waffen + Stufen, Beam, Options, Bomben, Schild, alle 12 Level, Vorhang, Highscore, Audio, die drei Optionen, Easteregg | 1,5–2 w | von Anfang bis Ende durchspielbar; Playtest-Checkliste abgehakt — *Stand: umgesetzt; Abgleich am Original (Playtest-Checkliste) offen* |
+| **M5** | Shell echt: Menü, Routing, Settings, Gamepad, Save-Export, Cache-Bundles, Service Worker, i18n | 3–4 d | deploybare Site; DOVE aus kaltem Cache spielbar — *Stand: erledigt; statischer Build mit relativen Pfaden, Smoke-Test startet DOVE kalt und nach „Spieldaten installieren“ bei beendetem Server. Offen: Ressourcenzähler für `dispose()` in Dev-Builds, Savegames in IndexedDB (DOVE braucht nur Schlüssel/Wert in `localStorage`)* |
+| **M6** | DoveZ Container + Assets | 1 w | ~120 MB Assets; Debug-Seite rendert jedes Sprite mit überlagerter `.r`-Kontur — *Stand: erledigt; 147 MB (davon Musik 62 MB unverändert, Video 20 MB), 33 Atlanten auf 44 Seiten, `#/dovez/debug/assets`, siehe `docs/formats/dovez-assets.md`* |
 | **M7** | ⚠ **DoveZ `.dat` dekodieren** (Risikoblock) | 1–2 w | `opaque` unter 5 %; Debug-Ansicht zeichnet Routen und Schussmuster |
 | **M8** | DoveZ Engine: Parallax, beide Schiffe, Coop, Funksystem, Bosse, Video, Kampagne | 3–5 w | Kampagne durchspielbar |
 | **M9** | Politur, Performance, Barrierefreiheit, Deployment | 1 w | Release |
@@ -613,7 +637,7 @@ verschwinden nie. Da bewusst ohne LFS gearbeitet wird, sind die Gegenmaßnahmen
 Disziplin statt Technik: content-gehashte Dateinamen (ein geändertes Asset ist
 eine neue Datei, alte werden in einem bewussten Aufräum-Commit entfernt),
 eingefrorene Encoder-Optionen (Re-Encode nur mit `--force` plus Review), und
-`assets:check` als CI-Gate gegen versehentliches Neuschreiben ganzer
+`assets:verify` *(M6, vorher `assets:check`)* als CI-Gate gegen versehentliches Neuschreiben ganzer
 Asset-Bäume. **Beobachten:** Sollte die Historie unhandlich werden, sind LFS oder
 das Auslagern der Videos als Release-Attachment die naheliegenden Auswege — die
 Architektur trägt Letzteres ohne Änderung, weil Video ohnehin lazy gestreamt wird.
