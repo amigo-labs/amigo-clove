@@ -2,8 +2,9 @@
 
 Stand: M6. Parser in `packages/formats/src/dovez/`, geprüft von
 `packages/formats/test/dovez.test.ts` gegen **alle** Originale in
-`original-dovez/Data`. Das Level-Skript `<Level>.dat` ist Thema von M7 und
-wird bis dahin unverändert ausgeliefert.
+`original-dovez/Data`. Das Level-Skript `<Level>.dat` (M7) beschreibt
+[`dovez-level-dat.md`](dovez-level-dat.md); es wird unverändert ausgeliefert und
+im Browser geparst.
 
 ## Pakete `.dlp` / `.dfp` / `.d2p`
 
