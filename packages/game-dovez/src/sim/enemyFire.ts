@@ -174,7 +174,7 @@ export class EnemyFire {
   /** `AddGegnerS`. */
   private fire(e: Emitter, j: number, x: number, y: number, world: ShotWorld): void {
     const s = this.level.weapons[e.weapon]!.salvos[j]!;
-    const shot = this.shots.find((x) => !x.active);
+    const shot = this.shots.find((s2) => !s2.active);
     if (!shot) return;
     const [width, height] = shotSize(this.surfaces, this.level.shots[s.shotType]);
     const a = shot.actor;
