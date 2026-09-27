@@ -1,16 +1,18 @@
 import type { GameHost, GameInstance, GameModule } from "@clove/core";
 import { VIEW_HEIGHT, VIEW_WIDTH, bootAssetViewer } from "./debug/AssetViewer";
+import { bootLevelViewer } from "./debug/LevelViewer";
 
 /**
- * DoveZ als `GameModule`. Die Engine folgt ab M8; bis dahin gibt es nur die
- * Debug-Ansicht der Assets (`view=debug/assets`, Shell-Route
- * `#/dovez/debug/assets`) und einen Hinweis.
+ * DoveZ als `GameModule`. Die Engine folgt ab M8; bis dahin gibt es die
+ * Debug-Ansichten der Assets (`#/dovez/debug/assets`) und der Level-Skripte
+ * mit Routen und Schussmustern (`#/dovez/debug/level`) und einen Hinweis.
  */
 const dovez: GameModule = {
   id: "dovez",
   title: "DoveZ",
   async boot(host: GameHost, options = {}): Promise<GameInstance> {
     if (options["view"] === "debug/assets") return bootAssetViewer(host);
+    if (options["view"] === "debug/level") return bootLevelViewer(host);
     const canvas = host.canvas;
     canvas.width = VIEW_WIDTH;
     canvas.height = VIEW_HEIGHT;
@@ -28,6 +30,7 @@ const dovez: GameModule = {
       );
       ctx.fillStyle = "#999";
       ctx.fillText("#/dovez/debug/assets", 40, 90);
+      ctx.fillText("#/dovez/debug/level", 40, 110);
     }
     return { dispose() {} };
   },

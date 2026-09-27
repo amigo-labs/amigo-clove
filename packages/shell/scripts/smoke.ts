@@ -2,7 +2,7 @@
  * Browser-Smoke-Test: startet den gebauten Launcher per `vite preview` und prüft
  * in Chromium (WebGL über SwiftShader):
  * 1. DOVE startet aus kaltem Cache fehlerfrei und rendert, die DoveZ-Asset-
- *    Ansicht zeigt Sprites,
+ *    Ansicht zeigt Sprites, die Level-Ansicht zeichnet Routen und Schüsse,
  * 2. Launcher und Einstellungen (Sprachwechsel) funktionieren,
  * 3. nach „Spieldaten installieren“ startet DOVE bei beendetem Server
  *    vollständig aus dem Service-Worker-Cache.
@@ -115,6 +115,40 @@ try {
     await Bun.write(`${process.env["SMOKE_SHOTS"]}/dovez-assets-2.png`, second);
   }
   await assets.close();
+
+  // 1c. DoveZ-Level-Ansicht: Route zeichnen, zur nächsten, dann Schussmuster
+  const levelView = await browser.newPage({ viewport: { width: 800, height: 600 } });
+  watch(levelView, "dovez-level");
+  await levelView.goto(`${ORIGIN}/#/dovez/debug/level`);
+  await levelView.waitForSelector("body[data-game=dovez]", { timeout: 30_000 });
+  await levelView.waitForTimeout(1500);
+  const tap = async (key: string) => {
+    await levelView.keyboard.down(key);
+    await levelView.waitForTimeout(100);
+    await levelView.keyboard.up(key);
+    await levelView.waitForTimeout(100);
+  };
+  // Liste aus: gemessen wird nur, was die Simulation zeichnet
+  await tap("KeyD");
+  const routeA = await levelView.screenshot();
+  await tap("ArrowDown");
+  await levelView.waitForTimeout(500);
+  const routeB = await levelView.screenshot();
+  await tap("KeyM");
+  await levelView.waitForTimeout(500);
+  const shots = await levelView.screenshot();
+  const lit = await Promise.all(
+    [routeA, routeB, shots].map((png) => litShare(png, 0, 80, 800, 520)),
+  );
+  console.log(`dovez-level: ${lit.map((v) => (v * 100).toFixed(2)).join(" / ")} % gezeichnet`);
+  if (lit.some((v) => v < 0.001)) failures.push("dovez-level: keine Pfade gezeichnet");
+  if (Buffer.compare(routeA, routeB) === 0)
+    failures.push("dovez-level: Routenwechsel ohne Wirkung");
+  if (process.env["SMOKE_SHOTS"]) {
+    await Bun.write(`${process.env["SMOKE_SHOTS"]}/dovez-level-route.png`, routeA);
+    await Bun.write(`${process.env["SMOKE_SHOTS"]}/dovez-level-shots.png`, shots);
+  }
+  await levelView.close();
 
   // 2. Launcher und Einstellungen; dann Spieldaten offline installieren
   const context = await browser.newContext({ viewport: { width: 640, height: 480 } });
