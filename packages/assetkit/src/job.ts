@@ -28,7 +28,7 @@ export interface Job {
   readonly converterVersion: number;
   readonly outputs: readonly OutputSpec[];
   /**
-   * Ausgabe nicht bitgenau reproduzierbar (Video). Wird nur bei geänderten
+   * Ausgabe nicht maschinenübergreifend bitgenau (Opus, Video). Wird nur bei geänderten
    * Quellen/Optionen oder mit `forceVolatile` neu erzeugt; `assets:check`
    * übernimmt sie aus dem committeten Baum, statt sie neu zu kodieren.
    */
