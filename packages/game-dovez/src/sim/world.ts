@@ -15,6 +15,7 @@ import {
   type PlayerInput,
   type PlayerWorld,
 } from "./player";
+import { ShotLayer, firePrimary, moveShots, type ShotHost } from "./playerShots";
 import { Op, type RouteEffect } from "./route";
 import { buildSurfaces, spanHit, type SpriteSource, type Surface } from "./surfaces";
 import { VbRnd, cint, f32, vbInt } from "./vb";
@@ -69,6 +70,7 @@ export type WorldEvent =
     }
   | { readonly kind: "effect"; readonly effect: RouteEffect }
   | { readonly kind: "playerHit"; readonly player: number }
+  | { readonly kind: "spark"; readonly x: number; readonly y: number; readonly shot: number }
   | {
       readonly kind: "pickup";
       readonly player: number;
@@ -106,6 +108,8 @@ export class World {
   readonly enemies: Enemies;
   readonly fire: EnemyFire;
   readonly players: Player[];
+  /** Spielerschüsse: Ebene 0 vor den Gegnern, Ebene 1 danach. */
+  readonly playerShots = [new ShotLayer(), new ShotLayer()] as const;
   /** Gemeinsame Leben (`P[0].44`): 3 mit einem, 6 mit zwei Spielern. */
   lives: number;
   /** SetGlobal/GetGlobal der Routen (`Me.A64`). */
@@ -304,6 +308,16 @@ export class World {
     };
   }
 
+  private shotHost(): ShotHost {
+    const ew = this.makeEnemyWorld();
+    return {
+      hitEnemies: (x1, y1, x2, y2, damage, owner) =>
+        this.enemies.hit(x1, y1, x2, y2, damage, owner, ew),
+      terrain: (x1, y1, x2, y2) => this.hitsTerrain(x1, y1, x2, y2),
+      spark: (x, y, shot) => this.events.push({ kind: "spark", x, y, shot }),
+    };
+  }
+
   private playerWorld(): PlayerWorld {
     return {
       terrainSpeed: this.layers[TERRAIN_LAYER]!.speed,
@@ -342,12 +356,12 @@ export class World {
       let rem: number;
       do {
         rem = this.enemies.hit(x1, y1, x2, y2, 15, p.index, ew);
-        if (rem >= 0 && rem < 15) p.energy = f32(p.energy - 2);
+        if (rem < 15) p.energy = f32(p.energy - 2);
         if (p.energy < 0) {
           this.killPlayer(p);
           break;
         }
-      } while (rem >= 0 && rem !== 15);
+      } while (rem !== 15);
       if (p.energy > p.maxEnergy) p.energy = p.maxEnergy;
     }
   }
@@ -486,10 +500,15 @@ export class World {
     }
     const pw = this.playerWorld();
     for (const p of this.players) updatePlayer(p, inputs[p.index] ?? NO_INPUT, pw);
+    for (const p of this.players)
+      firePrimary(p, inputs[p.index] ?? NO_INPUT, this.playerShots, false);
+    const sh = this.shotHost();
+    moveShots(this.playerShots[0], sh);
     this.moveSpecials();
     this.enemies.step(this.makeEnemyWorld());
     this.anims.move(4, this.level, this.layers);
     this.layers[3]!.move(this.surfaces, this.groupFrames);
+    moveShots(this.playerShots[1], sh);
     this.anims.move(3, this.level, this.layers);
     const sw = this.shotWorld();
     this.fire.stepEmitters(sw, {

@@ -359,9 +359,13 @@ export class Enemies {
   }
 
   /**
-   * `CheckColisionWithEnemy` für Spielerschüsse und Kontakt: der erste Gegner
-   * (Slotreihenfolge), dessen sichtbares Teil der Kasten nach Kontur trifft.
-   * Rückgabe: −1 kein Treffer, 0 absorbiert, > 0 Überschuss des Schadens.
+   * `CheckColisionWithEnemy` (`0x4C3E10`): der erste Gegner in Slotreihenfolge,
+   * dessen sichtbares Teil (vom letzten zum ersten) der Kasten nach Kontur
+   * trifft; je Aufruf höchstens ein Teil. Rückgabe ist der **Restschaden**:
+   * `damage` ohne Treffer, 0 wenn der Treffer verbraucht wird, bei einem
+   * Abschuss der Überschuss (der Schuss fliegt damit weiter). Gepanzerte Teile
+   * nehmen keinen Schaden; nur ein durchschlagender Aufrufer gegen einen Typ
+   * mit `armorPassThrough` behält dann den vollen Schaden.
    */
   hit(
     x1: number,
@@ -371,47 +375,50 @@ export class Enemies {
     damage: number,
     player: number,
     w: EnemyWorld,
-    exclude = -1,
+    opts: { exclude?: number; pierce?: boolean } = {},
   ): number {
+    const exclude = opts.exclude ?? -1;
     for (let i = 0; i <= this.high; i++) {
       const e = this.items[i];
       if (!e?.alive || e.inState || i === exclude) continue;
-      for (const p of e.parts) {
+      for (let j = e.parts.length - 1; j >= 0; j--) {
+        const p = e.parts[j]!;
         if (!p.visible) continue;
         const s = this.surface(p);
         if (!s) continue;
         const [x, y] = this.partPos(e, p);
         if (!spanHit(s, cint(x), cint(y), x1, y1, x2, y2)) continue;
-        if (p.def.armored !== 0) return 0;
+        if (damage < 0) return 0;
+        let ret = e.def.armorPassThrough <= 0 || !opts.pierce ? 0 : damage;
+        if (p.def.armored !== 0) return ret;
         if (e.def.hitFlash === 1) p.flash = 2;
         else if (e.def.hitFlash >= 2) for (const q of e.parts) q.flash = 2;
         if (p.def.damagesBody !== 0) {
           e.actor.hp = f32(e.actor.hp - damage);
           if (e.actor.hp > 0) return 0;
-          const rest = cint(-e.actor.hp);
-          this.killBy(i, e, player, w);
-          return rest;
+          ret = cint(-e.actor.hp);
+          this.killBy(e, player, w);
+          return ret;
         }
         p.hp = f32(p.hp - damage);
-        if (p.hp > 0) return 0;
-        const rest = cint(-p.hp);
+        if (p.hp > 0) return ret;
+        ret = cint(-p.hp);
         p.visible = false;
         w.addScore(p.score, player);
-        if (p.def.vital !== 0 || !e.parts.some((q) => q.visible)) this.killBy(i, e, player, w);
-        return rest;
+        if (p.def.vital !== 0 || !e.parts.some((q) => q.visible)) this.killBy(e, player, w);
+        return ret;
       }
     }
-    return -1;
+    return damage;
   }
 
   /** Abschuss durch einen Spieler (Zustandswahl §4, ohne Beam/Nova). */
-  private killBy(i: number, e: Enemy, player: number, w: EnemyWorld): void {
+  private killBy(e: Enemy, player: number, w: EnemyWorld): void {
     w.addScore(e.score, player);
     if (e.def.explosionSpec > 0) this.enterState(e, DeathState.explosive);
     else if (e.def.bigDeath > 0) this.enterState(e, DeathState.chain);
     else if (e.def.boss > 0) this.enterState(e, DeathState.boss);
     else this.enterState(e, DeathState.normal);
-    void i;
   }
 }
 
