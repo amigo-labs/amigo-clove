@@ -393,7 +393,9 @@ Cache-Key `sha256(input) ⊕ sha256(options) ⊕ converterVersion`, content-geha
 Dateinamen. `assets:check` als CI-Gate baut in einen Temp-Ordner und schlägt
 fehl, sobald ein Output vom Committeten abweicht — das fängt handeditierte
 Assets. Video wird vom Hash-Gate ausgenommen (Encoder sind über Buildversionen
-nicht bit-identisch) und nur mit `--force-video` neu erzeugt.
+nicht bit-identisch) und nur mit `--force-video` neu erzeugt. *(M6)* Ebenso Opus: libopus
+kodiert auf verschiedenen CPUs verschieden (SIMD zur Laufzeit gewählt); das Flag heißt
+`--force-encode`, siehe `docs/formats/dovez-assets.md`.
 
 ~~**Eine Besonderheit:** Terrain-Kollisionsmasken~~ *(M3)* Entfällt: Das
 Original testet Wände per inklusivem AABB gegen die Tile-Rechtecke, nicht

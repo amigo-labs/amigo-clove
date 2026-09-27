@@ -2,8 +2,8 @@
 /**
  * Asset-Pipeline. Aufruf über die Root-Skripte:
  *
- *   bun run assets:build  [--game=dove|dovez] [--only=level1,core] [--force] [--force-video]
- *   bun run assets:check    # CI-Gate: frischer Build ≡ committeter Baum (Videos ausgenommen)
+ *   bun run assets:build  [--game=dove|dovez] [--only=level1,core] [--force] [--force-encode]
+ *   bun run assets:check    # CI-Gate: frischer Build ≡ committeter Baum (Opus/Video übernommen)
  *   bun run assets:verify   # Hashes der Ausgaben gegen das Manifest
  *   bun run assets:report   # Größen je Bundle und Art
  *
@@ -28,15 +28,16 @@ interface Args {
   out?: string;
   only?: string[];
   force: boolean;
-  forceVideo: boolean;
+  /** Auch Opus und Video neu kodieren (`volatile`-Jobs). */
+  forceEncode: boolean;
 }
 
 function parseArgs(argv: readonly string[]): Args {
   const [command = "", ...rest] = argv;
-  const args: Args = { command, games: Object.keys(GAMES), force: false, forceVideo: false };
+  const args: Args = { command, games: Object.keys(GAMES), force: false, forceEncode: false };
   for (const a of rest) {
     if (a === "--force") args.force = true;
-    else if (a === "--force-video") args.forceVideo = true;
+    else if (a === "--force-encode") args.forceEncode = true;
     else if (a.startsWith("--only=")) args.only = a.slice(7).split(",").filter(Boolean);
     else if (a.startsWith("--out=")) args.out = resolve(a.slice(6));
     else if (a.startsWith("--game=")) {
@@ -63,7 +64,7 @@ async function runGame(args: Args, game: string): Promise<number> {
         out,
         game,
         force: args.force,
-        forceVolatile: args.forceVideo,
+        forceVolatile: args.forceEncode,
         log: console.log,
         ...(args.only ? { only: args.only } : {}),
       });
@@ -115,7 +116,7 @@ async function runGame(args: Args, game: string): Promise<number> {
     default:
       console.error(
         "Aufruf: cli.ts build|check|verify|report [--game=dove|dovez] [--only=<bundle,…>] " +
-          "[--force] [--force-video] [--out=<dir>]",
+          "[--force] [--force-encode] [--out=<dir>]",
       );
       return 2;
   }

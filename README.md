@@ -32,8 +32,8 @@ Asset-Pipeline mit Atlanten, Opus, Musik und Video, Debug-Seite
 
 ## Entwicklung
 
-Voraussetzung: [Bun](https://bun.sh) ≥ 1.3.11; für die DoveZ-Assets zusätzlich
-ffmpeg mit libopus und libvpx (Ubuntu 24.04: `apt install ffmpeg`).
+Voraussetzung: [Bun](https://bun.sh) ≥ 1.3.11; zum Bauen der DoveZ-Assets
+zusätzlich ffmpeg mit libopus und libvpx (Ubuntu 24.04: `apt install ffmpeg`).
 
 ```sh
 bun install
@@ -44,7 +44,7 @@ bun run fmt          # oxfmt (schreibt), fmt:check prüft nur
 bun run test         # bun test
 
 bun run assets:build   # Originale → assets/dove/, assets/dovez/ (inkrementell; --game=…)
-bun run assets:check   # CI-Gate: frischer Build ≡ committeter Baum (ohne Videos)
+bun run assets:check   # CI-Gate: frischer Build ≡ committeter Baum (Opus/Video übernommen)
 bun run assets:verify  # Hashes gegen das Manifest
 bun run assets:report  # Größen je Bundle
 bun run smoke          # Browser-Smoke-Test: Kaltstart, Shell, Offline-Start

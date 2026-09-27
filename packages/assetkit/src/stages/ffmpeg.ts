@@ -3,9 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 /**
- * ffmpeg als externes Programm (Spec: kein ffmpeg.wasm). Die Versionszeile
- * gehört zum Cache-Schlüssel — ein anderes ffmpeg/libopus erzeugt andere Bytes,
- * und `assets:check` meldet das, statt es unbemerkt ins Repo zu lassen.
+ * ffmpeg als externes Programm (Spec: kein ffmpeg.wasm). Nur zum Kodieren
+ * nötig: Opus und VP9 sind zwischen Maschinen nicht bitgenau, ihre Jobs sind
+ * `volatile`, und `assets:check` übernimmt sie aus dem Baum, statt zu kodieren.
  */
 function probeVersion(): string {
   try {
@@ -47,7 +47,7 @@ async function run(args: readonly string[], input?: Uint8Array): Promise<Uint8Ar
   return new Uint8Array(out);
 }
 
-/** Bitgenau reproduzierbare Ausgabe: keine Encoder-Tags, feste Ogg-Seriennummer. */
+/** Keine Encoder-Tags, feste Ogg-Seriennummer: auf derselben Maschine bitgenau. */
 const BITEXACT = ["-map_metadata", "-1", "-fflags", "+bitexact", "-flags:a", "+bitexact"];
 
 export interface OpusOptions {
@@ -55,7 +55,6 @@ export interface OpusOptions {
   readonly bitrate: number;
   /** Auf einen Kanal mischen (Sprache). */
   readonly mono: boolean;
-  readonly ffmpeg: string;
 }
 
 /** WAV → Ogg Opus. */
@@ -84,7 +83,6 @@ export interface VideoOptions {
   /** VP9-Qualität (CRF, konstante Qualität ohne Bitratenziel). */
   readonly crf: number;
   readonly audioBitrate: number;
-  readonly ffmpeg: string;
 }
 
 export interface VideoResult {

@@ -33,7 +33,7 @@ import {
   buildContours,
   planAtlas,
 } from "../stages/atlas";
-import { FFMPEG_VERSION, encodeOpus, encodeVideo } from "../stages/ffmpeg";
+import { encodeOpus, encodeVideo } from "../stages/ffmpeg";
 import { LIBWEBP_VERSION } from "../stages/image";
 
 export const DOVEZ_DATA = "original-dovez/Data";
@@ -41,11 +41,16 @@ export const DOVEZ_DATA = "original-dovez/Data";
 /** Eingefroren wie bei DOVE: eine Änderung schreibt jede Atlasseite neu. */
 export const DOVEZ_WEBP_EFFORT = 6;
 
-/** Spec: Sprache 48 kbit/s mono, Effekte 64 kbit/s. */
-const VOICE_OPUS = { bitrate: 48, mono: true, ffmpeg: FFMPEG_VERSION };
-const SFX_OPUS = { bitrate: 64, mono: false, ffmpeg: FFMPEG_VERSION };
+/**
+ * Spec: Sprache 48 kbit/s mono, Effekte 64 kbit/s. Opus und VP9 sind nicht
+ * plattformübergreifend bitgenau (libopus/libvpx wählen SIMD-Pfade zur
+ * Laufzeit; CI kodierte alle 243 Opus-Dateien mit anderen Bytes) — beide Jobs
+ * sind `volatile`, und die ffmpeg-Version gehört nicht zum Cache-Schlüssel.
+ */
+const VOICE_OPUS = { bitrate: 48, mono: true };
+const SFX_OPUS = { bitrate: 64, mono: false };
 /** VP9 CRF 34: SkyFight.avi 6,8 → 1,2 MB bei 800×600. */
-const VIDEO = { crf: 34, audioBitrate: 64, ffmpeg: FFMPEG_VERSION };
+const VIDEO = { crf: 34, audioBitrate: 64 };
 
 export const SOUND_OPUS_CONVERTER_VERSION = 1;
 export const VIDEO_CONVERTER_VERSION = 1;
@@ -259,6 +264,7 @@ function soundJob(
     sources: [path],
     options: opus,
     converterVersion: SOUND_OPUS_CONVERTER_VERSION,
+    volatile: true,
     outputs: listing.map((l) => ({ id: id(l.name), kind: "sound" as const, ext: "ogg" })),
     run: async ([bytes]) =>
       Promise.all(

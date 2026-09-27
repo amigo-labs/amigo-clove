@@ -6,9 +6,9 @@ Debug-Seite `#/dovez/debug/assets`. Formatbefunde zu den Quellen:
 [`dovez-container.md`](dovez-container.md). Befehle, Dateinamen, Manifest und
 Cache wie bei DOVE: [`dove-assets.md`](dove-assets.md).
 
-Voraussetzung zusätzlich zu Bun: **ffmpeg** mit libopus und libvpx
-(Ubuntu 24.04: `apt install ffmpeg`, 6.1.1-3ubuntu5). Die ffmpeg-Version gehört
-zum Cache-Schlüssel wie die libwebp-Version.
+Zum **Bauen** zusätzlich zu Bun: **ffmpeg** mit libopus und libvpx (Ubuntu
+24.04: `apt install ffmpeg`). `assets:check` braucht es nicht (siehe „Ton,
+Musik, Video“).
 
 ## Inhalt (169 MB, 425 Dateien)
 
@@ -91,17 +91,20 @@ neu berechnet — das Original kollidiert mit der Datei.
 
 ## Ton, Musik, Video
 
-Opus über ffmpeg mit `-fflags +bitexact`, ohne Metadaten: bitgenau
-reproduzierbar (geprüft durch `assets:check`). Manifest-Felder `sampleRate`,
-`channels`, `frames` beschreiben die Quelle; `format: "opus"`.
+Opus über ffmpeg mit `-fflags +bitexact`, ohne Metadaten. Manifest-Felder
+`sampleRate`, `channels`, `frames` beschreiben die Quelle; `format: "opus"`.
 
-Videos sind mit VP9 und mehreren Threads nicht bitgenau reproduzierbar und
-deshalb **vom Hash-Gate ausgenommen** (`volatile` im Job): `assets:check`
-übernimmt sie aus dem committeten Baum, sofern Quelle, Optionen und
-Konverterversion passen, statt sie neu zu kodieren; ein normaler Build kodiert
-sie nur bei Änderungen. `--force-video` erzwingt das Neukodieren (~10 min).
+**Opus und VP9 sind nicht maschinenübergreifend bitgenau.** Auf derselben
+Maschine ist Opus reproduzierbar, aber libopus (wie libvpx) wählt SIMD-Pfade
+zur Laufzeit: Der erste CI-Lauf auf einem anderen Runner kodierte alle 243
+Opus-Dateien mit anderen Bytes. Beide Jobarten sind deshalb **vom Hash-Gate
+ausgenommen** (`volatile` im Job): `assets:check` übernimmt ihre Ausgaben aus
+dem committeten Baum, sofern Quelle, Optionen und Konverterversion passen, statt
+neu zu kodieren — geänderte Quellen meldet es als veraltet. Ein normaler Build
+kodiert sie nur bei Änderungen, `--force-encode` erzwingt es (~11 min, fast nur
+Video). Die ffmpeg-Version gehört folglich nicht zum Cache-Schlüssel.
 
 ## Laufzeiten (4 Kerne)
 
 Voller Build 11 min, davon der Großteil Video; `assets:check` beider Spiele
-48 s; ein zweiter Build schreibt null Bytes (3 s).
+48 s, ohne ffmpeg; ein zweiter Build schreibt null Bytes (3 s).
