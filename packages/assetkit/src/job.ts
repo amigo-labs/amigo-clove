@@ -5,6 +5,8 @@ export interface OutputSpec {
   readonly id: string;
   readonly kind: AssetKind;
   readonly ext: string;
+  /** Überschreibt `Job.bundles` für diese Ausgabe (ein Paket, mehrere Bundles). */
+  readonly bundles?: readonly string[];
 }
 
 export interface JobOutput extends OutputSpec {
@@ -25,5 +27,11 @@ export interface Job {
   readonly options: Readonly<Record<string, unknown>>;
   readonly converterVersion: number;
   readonly outputs: readonly OutputSpec[];
+  /**
+   * Ausgabe nicht bitgenau reproduzierbar (Video). Wird nur bei geänderten
+   * Quellen/Optionen oder mit `forceVolatile` neu erzeugt; `assets:check`
+   * übernimmt sie aus dem committeten Baum, statt sie neu zu kodieren.
+   */
+  readonly volatile?: boolean;
   run(inputs: readonly Uint8Array[]): Promise<readonly JobOutput[]>;
 }

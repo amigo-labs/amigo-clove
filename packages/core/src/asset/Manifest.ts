@@ -8,7 +8,16 @@
 
 export const MANIFEST_VERSION = 1;
 
-export type AssetKind = "image" | "sound" | "music" | "level" | "levelData" | "data";
+export type AssetKind =
+  | "image"
+  | "sound"
+  | "music"
+  | "level"
+  | "levelData"
+  | "data"
+  | "atlas"
+  | "binary"
+  | "video";
 
 export interface AssetSource {
   /** Pfad relativ zum Repo-Root, z. B. `original-dove/Data/Grafik/feinde1.spr`. */
@@ -46,6 +55,8 @@ export interface ImageEntry extends ManifestEntryBase {
 
 export interface SoundEntry extends ManifestEntryBase {
   readonly kind: "sound";
+  /** Fehlt bei PCM16-WAV (DOVE); DoveZ: Ogg Opus. Rate/Kanäle/Frames beschreiben die Quelle. */
+  readonly format?: "opus";
   readonly sampleRate: number;
   readonly channels: number;
   readonly frames: number;
@@ -53,7 +64,8 @@ export interface SoundEntry extends ManifestEntryBase {
 
 export interface MusicEntry extends ManifestEntryBase {
   readonly kind: "music";
-  readonly format: "xm" | "it";
+  /** Tracker-Modul (DOVE, libopenmpt) oder Ogg Vorbis (DoveZ, gestreamt). */
+  readonly format: "xm" | "it" | "ogg";
 }
 
 export interface LevelEntry extends ManifestEntryBase {
@@ -71,17 +83,69 @@ export interface DataEntry extends ManifestEntryBase {
   readonly kind: "data";
 }
 
+/**
+ * Sprite-Atlas (JSON): Seiten (`image`-IDs), Rechteck und Überblendung je
+ * Sprite, optional Konturen in einem `binary`-Sidecar. Schema: `AtlasJson`.
+ */
+export interface AtlasEntry extends ManifestEntryBase {
+  readonly kind: "atlas";
+  readonly pages: readonly string[];
+  /** ID des Kontur-Sidecars, falls das Paket `.r`-Dateien hat. */
+  readonly contours?: string;
+}
+
+/** Unveränderte oder binär kodierte Rohdaten (Kontur-Sidecar, Level-Skript). */
+export interface BinaryEntry extends ManifestEntryBase {
+  readonly kind: "binary";
+}
+
+/** Video (WebM: VP9 + Opus), gestreamt, nie vorgeladen. */
+export interface VideoEntry extends ManifestEntryBase {
+  readonly kind: "video";
+  readonly width: number;
+  readonly height: number;
+  /** Dauer in Sekunden. */
+  readonly duration: number;
+}
+
 export type ManifestEntry =
   | ImageEntry
   | SoundEntry
   | MusicEntry
   | LevelEntry
   | LevelDataEntry
-  | DataEntry;
+  | DataEntry
+  | AtlasEntry
+  | BinaryEntry
+  | VideoEntry;
 
 export interface Manifest {
   readonly version: typeof MANIFEST_VERSION;
   readonly game: string;
   /** Nach `id` sortiert. */
   readonly entries: readonly ManifestEntry[];
+}
+
+/** Inhalt eines `atlas`-Assets. */
+export interface AtlasJson {
+  readonly version: 1;
+  /** `image`-IDs der Seiten, Index = `AtlasSprite.page`. */
+  readonly pages: readonly string[];
+  /** Nach Name (klein, ohne `.bmp`). */
+  readonly sprites: Readonly<Record<string, AtlasSprite>>;
+  /**
+   * Konturen nach Name: Offset (in Int16-Werten) in den Sidecar. Dort je Kontur
+   * `width, height, top, bottom` und `height` Paare `left, right` (leer: -1/-1).
+   */
+  readonly contours: Readonly<Record<string, number>>;
+}
+
+export interface AtlasSprite {
+  readonly page: number;
+  readonly x: number;
+  readonly y: number;
+  readonly w: number;
+  readonly h: number;
+  /** `key`: Schwarz ist durchsichtig; `alpha`: Alpha aus der Maske `XA.bmp`. */
+  readonly blend: "key" | "alpha";
 }

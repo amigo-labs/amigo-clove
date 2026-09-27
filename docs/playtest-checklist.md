@@ -64,6 +64,19 @@ Offline-Start bei beendetem Server). Von Hand:
 - [ ] **Spielstände:** Export, Browserdaten löschen, Import — Optionen,
       Freischaltungen und Highscores wieder da.
 
+## Stand M6 — DoveZ-Assets am Original prüfen
+
+- [ ] **`atlantis_saule2`:** Maske (200×540) größer als das Bild (190×520);
+      der Port nimmt den Ausschnitt oben links. Säule im Original mit dem Port
+      vergleichen — sitzt der Übergang versetzt (bester Versatz wäre 6 px)?
+- [ ] **Rauch in Rumbler (`rauch1–7`):** palettiert, Index- und RGB-Keying
+      fallen auseinander; der Port keyt auf RGB-Schwarz.
+- [ ] **Masken nicht grau** (19 von 83): Alpha = Mittelwert der Kanäle,
+      *geschätzt*.
+- [ ] **Videos:** VP9 CRF 34 gegen das DivX-Original (Artefakte bei schnellen
+      Schnitten, Ton synchron).
+- [ ] **Safari:** Ogg Opus per `decodeAudioData` und Ogg-Vorbis-Streaming.
+
 ## Nicht testbar, nur dokumentieren
 
 - Audio-Äquivalenz: BASS 0.8 und libopenmpt mischen unterschiedlich.
