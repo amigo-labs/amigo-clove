@@ -506,6 +506,21 @@ Browser-Storage kann jederzeit gelöscht werden, und ein durchgespieltes DoveZ
 sind Stunden Arbeit. Der `Save`-Befehl aus `Play.txt` mappt 1:1 auf einen
 Schreibvorgang.
 
+*(M5)* Umsetzung: `GameModule.preload` nennt die Bundles für den
+Ladebildschirm (DOVE: `core` und `screens`, 3,5 MB; Musik und Level lädt der
+Ablauf nach), `GameModule.gamepad` die Pad-Belegung nach dem W3C-„standard“-
+Mapping (Steuerkreuz und linker Stick sind immer die Pfeiltasten; Pads ohne
+Standardmapping werden ignoriert). Der Service Worker entsteht aus
+`packages/shell/src/sw.ts` als einzeln übersetztes klassisches Skript: App-
+Dateien je Build vorab in `clove-app-<version>`, Spielassets Cache-zuerst in
+einem gemeinsamen `clove-assets-v1` (content-gehasht, also nie veraltet;
+„Spieldaten installieren“ räumt Dateien älterer Stände ab), `manifest.json`
+Netz-zuerst. Abgleich mit `ignoreVary`, weil Server wie `vite preview`
+`Vary: Origin` senden und Modul-Skripte `Origin` mitschicken. Spielstände
+liegen für DOVE als `clove:<spiel>:<schlüssel>` in `localStorage`; die
+Exportdatei (`amigo-clove-save`, Version 1, Migrationskette) definiert
+`@clove/core`.
+
 ---
 
 ## Verifikation
@@ -576,8 +591,8 @@ Jeder hat genau ein überprüfbares Ergebnis.
 | **M1** | `@clove/formats`: BMP-Decoder (1/4/8/16/24/32 bpp), `LevelDat` parse **und** serialize, Frame-Ableitung. Messung der Original-Tickrate | 2–3 d | Round-Trip byte-identisch über 12 Level; Kreuzvalidierung 145/145 grün; `TICK_MS` ist eine **gemessene** Zahl — *Stand: erledigt; `TICK_MS = 14` statt gemessen aus der EXE hergeleitet, siehe `docs/measurements/tick-rate.md`* |
 | **M2** | Asset-Pipeline DOVE mit Manifest, Cache, `--check` | 2 d | ~11 MB Assets; zweiter Lauf schreibt null Bytes — *Stand: erledigt; 10,8 MB, siehe `docs/formats/dove-assets.md`* |
 | **M3** | ⭐ **Erstes spielbares Level.** Scope brutal geschnitten: keine Menüs, keine Musik, **eine** Waffe, kein Beam/Options/Bomben/Schild | 4–6 d | Level 1 läuft im Browser durch; aufgezeichnetes Replay reproduziert bit-identisch — *Stand: erledigt; Mechanik statisch aus der EXE, zwei Referenz-Replays, Browser-Smoke-Test in CI* |
-| **M4** | DOVE feature-complete: alle Waffen + Stufen, Beam, Options, Bomben, Schild, alle 12 Level, Vorhang, Highscore, Audio, die drei Optionen, Easteregg | 1,5–2 w | von Anfang bis Ende durchspielbar; Playtest-Checkliste abgehakt |
-| **M5** | Shell echt: Menü, Routing, Settings, Gamepad, Save-Export, Cache-Bundles, Service Worker, i18n | 3–4 d | deploybare Site; DOVE aus kaltem Cache spielbar |
+| **M4** | DOVE feature-complete: alle Waffen + Stufen, Beam, Options, Bomben, Schild, alle 12 Level, Vorhang, Highscore, Audio, die drei Optionen, Easteregg | 1,5–2 w | von Anfang bis Ende durchspielbar; Playtest-Checkliste abgehakt — *Stand: umgesetzt; Abgleich am Original (Playtest-Checkliste) offen* |
+| **M5** | Shell echt: Menü, Routing, Settings, Gamepad, Save-Export, Cache-Bundles, Service Worker, i18n | 3–4 d | deploybare Site; DOVE aus kaltem Cache spielbar — *Stand: erledigt; statischer Build mit relativen Pfaden, Smoke-Test startet DOVE kalt und nach „Spieldaten installieren“ bei beendetem Server. Offen: Ressourcenzähler für `dispose()` in Dev-Builds, Savegames in IndexedDB (DOVE braucht nur Schlüssel/Wert in `localStorage`)* |
 | **M6** | DoveZ Container + Assets | 1 w | ~120 MB Assets; Debug-Seite rendert jedes Sprite mit überlagerter `.r`-Kontur |
 | **M7** | ⚠ **DoveZ `.dat` dekodieren** (Risikoblock) | 1–2 w | `opaque` unter 5 %; Debug-Ansicht zeichnet Routen und Schussmuster |
 | **M8** | DoveZ Engine: Parallax, beide Schiffe, Coop, Funksystem, Bosse, Video, Kampagne | 3–5 w | Kampagne durchspielbar |
