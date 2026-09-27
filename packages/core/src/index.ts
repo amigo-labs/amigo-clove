@@ -2,6 +2,10 @@ export { AssetStore, type Fetch } from "./asset/AssetStore";
 export {
   MANIFEST_VERSION,
   type AssetKind,
+  type AtlasEntry,
+  type AtlasJson,
+  type AtlasSprite,
+  type BinaryEntry,
   type AssetSource,
   type DataEntry,
   type ImageEntry,
@@ -12,6 +16,7 @@ export {
   type ManifestEntryBase,
   type MusicEntry,
   type SoundEntry,
+  type VideoEntry,
 } from "./asset/Manifest";
 export {
   LOCALES,

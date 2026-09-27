@@ -16,7 +16,10 @@ Menüs, Highscore, Audio — der Abgleich am Original steht noch aus, siehe
 [`docs/playtest-checklist.md`](docs/playtest-checklist.md)) sind umgesetzt.
 **M5** (Shell) ebenso: Launcher, Einstellungen (Sprache, Lautstärken,
 Gamepad), Spielstand-Export/-Import, Ladebildschirm mit Bundle-Vorladen und
-Offline-Betrieb per Service Worker. Die Original-Tickrate (14 ms) ist aus der EXE hergeleitet:
+Offline-Betrieb per Service Worker. **M6** (DoveZ-Pakete und -Assets):
+Parser für Pakete, `.r`-Konturen, Masken, Funktexte und Kampagne,
+Asset-Pipeline mit Atlanten, Opus, Musik und Video, Debug-Seite
+`#/dovez/debug/assets`. Die Original-Tickrate (14 ms) ist aus der EXE hergeleitet:
 [`docs/measurements/tick-rate.md`](docs/measurements/tick-rate.md).
 
 - **Design-Spec:** [`docs/specs/2026-09-07-dove-dovez-browser-port.md`](docs/specs/2026-09-07-dove-dovez-browser-port.md)
@@ -24,10 +27,13 @@ Offline-Betrieb per Service Worker. Die Original-Tickrate (14 ms) ist aus der EX
   Meilensteine und Risiken.
 - **DOVE-Levelformat:** [`docs/formats/dove-level-dat.md`](docs/formats/dove-level-dat.md)
 - **DOVE-Assets:** [`docs/formats/dove-assets.md`](docs/formats/dove-assets.md)
+- **DoveZ-Formate und -Assets:** [`docs/formats/dovez-container.md`](docs/formats/dovez-container.md),
+  [`docs/formats/dovez-assets.md`](docs/formats/dovez-assets.md)
 
 ## Entwicklung
 
-Voraussetzung: [Bun](https://bun.sh) ≥ 1.3.11.
+Voraussetzung: [Bun](https://bun.sh) ≥ 1.3.11; für die DoveZ-Assets zusätzlich
+ffmpeg mit libopus und libvpx (Ubuntu 24.04: `apt install ffmpeg`).
 
 ```sh
 bun install
@@ -37,8 +43,8 @@ bun run lint         # oxlint
 bun run fmt          # oxfmt (schreibt), fmt:check prüft nur
 bun run test         # bun test
 
-bun run assets:build   # Originale → assets/dove/ (inkrementell)
-bun run assets:check   # CI-Gate: frischer Build ≡ committeter Baum
+bun run assets:build   # Originale → assets/dove/, assets/dovez/ (inkrementell; --game=…)
+bun run assets:check   # CI-Gate: frischer Build ≡ committeter Baum (ohne Videos)
 bun run assets:verify  # Hashes gegen das Manifest
 bun run assets:report  # Größen je Bundle
 bun run smoke          # Browser-Smoke-Test: Kaltstart, Shell, Offline-Start
@@ -74,9 +80,10 @@ Spielassets sind content-gehasht und dürfen unbegrenzt gecacht werden
 | `packages/core/`  | `@clove/core` — mechanikfreie Bausteine: Takt, Q16.16, Rng, Hash, Replay, Assets, i18n, Spielstanddatei, `GameModule` |
 | `packages/pixi-kit/` | `@clove/pixi-kit` — Pixi-Adapter: ganzzahliges Scaling, Texturen |
 | `packages/game-dove/` | `@clove/game-dove` — DOVE: Simulation (`src/sim`, Pixi-frei), Renderer, Replays |
+| `packages/game-dovez/` | `@clove/game-dovez` — DoveZ: bisher die Asset-Ansicht (Engine ab M8) |
 | `packages/shell/` | `@clove/shell` — Launcher (Vite): Routing, Einstellungen, Gamepad, Spielstände, Service Worker |
 | `packages/assetkit/` | `@clove/assetkit` — Asset-Pipeline (Bun, sharp) |
-| `assets/dove/`    | generierte DOVE-Assets + `manifest.json`, nie von Hand ändern |
+| `assets/dove/`, `assets/dovez/` | generierte Assets + `manifest.json`, nie von Hand ändern |
 | `tests/`          | repo-weite Architekturtests                  |
 | `docs/`           | Spezifikationen und Formatdokumentation      |
 

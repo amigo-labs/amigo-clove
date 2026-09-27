@@ -196,9 +196,12 @@ Nicht im Skript und damit Bonus-Inhalt: `Level8-1 Jungle`,
 
 ### Weitere Formate
 
-- **`.r`-Dateien:** `u32 width, height, bboxLeft, bboxRight, -1, -1`, danach pro
-  Bildzeile `i32 left, right` (Span des nicht-schwarzen Bereichs, bottom-up).
-  Strukturell dieselbe Datenstruktur wie DOVEs Konturzeilen.
+- **`.r`-Dateien:** ~~`u32 width, height, bboxLeft, bboxRight, -1, -1`, danach pro
+  Bildzeile `i32 left, right` (bottom-up)~~ *(M6, korrigiert)* `i32 width, height,
+  top, bottom` (erste/letzte belegte Zeile), dann `height` Paare `left, right`
+  **oben beginnend** (leer `-1, -1`), Abschluss `-1, -1`. 2525/2546 zeilengenau
+  zu den Pixeln. Strukturell dieselbe Datenstruktur wie DOVEs Konturzeilen.
+  Details: `docs/formats/dovez-container.md`.
 - **BMP-Tiefen: 1, 8, 16, 24 und 32 bpp.** 16 bpp (RGB555) und 32 bpp (XRGB mit
   Müll-Alphabyte) brauchen eigene Decoder-Pfade.
 - **Alpha:** nur **83 Masken-Paare** (`X.bmp` + `XA.bmp`) gegenüber 3026 reinen
@@ -207,7 +210,10 @@ Nicht im Skript und damit Bonus-Inhalt: `Level8-1 Jungle`,
   ein Pflicht-Override, kein Fall für stilles Skalieren.
 - **Funktexte:** INI-artig, `[Trigger]` + `Frame; <wav>; <ms>; <Untertitel>`,
   optional ein zweiter Sprecher-Block. Section-Namen entsprechen den Funk-IDs im
-  Level-Skript.
+  Level-Skript. *(M6)* Viergruppen `Sprecher; WAV; ms; Text` über Zeilen hinweg,
+  Sprecher `Frame` oder `0`. **Aufnahmen gibt es nur auf Englisch** — D und E
+  verweisen auf dieselben `…E_*.wav`; `R.txt` (CP1251) verweist auf fehlende
+  `RU`-Dateien. Das Bundle heißt daher `voice/<level>`, nicht `voice/<lang>`.
 - **Video:** DivX 5 (`dx50`, MPEG-4 ASP) + MP3, 800×600, 3,2 Mbit/s. Kein Browser
   spielt MPEG-4 ASP — Transkodierung ist Pflicht.
 
@@ -485,7 +491,7 @@ Server-Rewrite nötig. Beide Spiele sind getrennte Vite-Chunks per dynamischem
 | DOVE | `level{N}` | 2–6 MB |
 | DoveZ | `core` | ~10 MB |
 | DoveZ | `level/<slug>` | 2–20 MB |
-| DoveZ | `voice/<lang>` | 2–3 MB je Level |
+| DoveZ | `voice/<lang>` *(M6: `voice/<level>`, nur Englisch, 0,02–0,6 MB)* | 2–3 MB je Level |
 | DoveZ | `video/<name>` / `music` | gestreamt, nie vorgeladen |
 
 Zwei Hebel schneiden DoveZ drastisch: **nur eine Sprache laden** (die 107 MB
@@ -593,7 +599,7 @@ Jeder hat genau ein überprüfbares Ergebnis.
 | **M3** | ⭐ **Erstes spielbares Level.** Scope brutal geschnitten: keine Menüs, keine Musik, **eine** Waffe, kein Beam/Options/Bomben/Schild | 4–6 d | Level 1 läuft im Browser durch; aufgezeichnetes Replay reproduziert bit-identisch — *Stand: erledigt; Mechanik statisch aus der EXE, zwei Referenz-Replays, Browser-Smoke-Test in CI* |
 | **M4** | DOVE feature-complete: alle Waffen + Stufen, Beam, Options, Bomben, Schild, alle 12 Level, Vorhang, Highscore, Audio, die drei Optionen, Easteregg | 1,5–2 w | von Anfang bis Ende durchspielbar; Playtest-Checkliste abgehakt — *Stand: umgesetzt; Abgleich am Original (Playtest-Checkliste) offen* |
 | **M5** | Shell echt: Menü, Routing, Settings, Gamepad, Save-Export, Cache-Bundles, Service Worker, i18n | 3–4 d | deploybare Site; DOVE aus kaltem Cache spielbar — *Stand: erledigt; statischer Build mit relativen Pfaden, Smoke-Test startet DOVE kalt und nach „Spieldaten installieren“ bei beendetem Server. Offen: Ressourcenzähler für `dispose()` in Dev-Builds, Savegames in IndexedDB (DOVE braucht nur Schlüssel/Wert in `localStorage`)* |
-| **M6** | DoveZ Container + Assets | 1 w | ~120 MB Assets; Debug-Seite rendert jedes Sprite mit überlagerter `.r`-Kontur |
+| **M6** | DoveZ Container + Assets | 1 w | ~120 MB Assets; Debug-Seite rendert jedes Sprite mit überlagerter `.r`-Kontur — *Stand: erledigt; 169 MB (davon Musik 62 MB unverändert, Video 42 MB), 33 Atlanten auf 44 Seiten, `#/dovez/debug/assets`, siehe `docs/formats/dovez-assets.md`* |
 | **M7** | ⚠ **DoveZ `.dat` dekodieren** (Risikoblock) | 1–2 w | `opaque` unter 5 %; Debug-Ansicht zeichnet Routen und Schussmuster |
 | **M8** | DoveZ Engine: Parallax, beide Schiffe, Coop, Funksystem, Bosse, Video, Kampagne | 3–5 w | Kampagne durchspielbar |
 | **M9** | Politur, Performance, Barrierefreiheit, Deployment | 1 w | Release |
