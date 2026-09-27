@@ -28,3 +28,12 @@ export function doveSpriteNames(): string[] {
     .filter((f) => f.toLowerCase().endsWith(".spr"))
     .toSorted();
 }
+
+export const DOVEZ_DATA = join(import.meta.dir, "../../../original-dovez/Data");
+
+/** Alle Pakete (`.dlp`, `.dfp`, `.d2p`) in `original-dovez/Data`, sortiert. */
+export function dovezContainers(): string[] {
+  return readdirSync(DOVEZ_DATA)
+    .filter((f) => /\.(dlp|dfp|d2p)$/i.test(f))
+    .toSorted();
+}

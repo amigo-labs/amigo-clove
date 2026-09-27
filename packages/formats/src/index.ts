@@ -66,3 +66,26 @@ export {
   type IntroRect,
   type IntroScene,
 } from "./dove/IntroDat";
+export {
+  ContainerError,
+  containerRecords,
+  inflateWeb,
+  readContainer,
+  readContainerAsync,
+  type ContainerEntry,
+  type ContainerRecord,
+  type Inflate,
+  type InflateAsync,
+} from "./dovez/Container";
+export {
+  ContourError,
+  R_EMPTY,
+  contourOfImage,
+  parseContourR,
+  serializeContourR,
+  type DovezContour,
+} from "./dovez/Contour";
+export { decodeCp1251 } from "./text/cp1251";
+export { AlphaMaskError, applyAlphaMask, maskName, type MaskOffset } from "./dovez/AlphaMask";
+export { RadioTextError, parseRadioText, type RadioLine, type RadioTexts } from "./dovez/RadioText";
+export { PlayScriptError, parsePlayScript, type PlayStep } from "./dovez/PlayScript";
