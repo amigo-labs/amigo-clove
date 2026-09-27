@@ -173,6 +173,8 @@ export function newRouteActor(init: {
   width: number;
   height: number;
   spawnTick: number;
+  /** `Var` 32760; Gegner: y beim Spawn, Schüsse: laufende Nummer im Emitter. */
+  spawnY?: number;
   player?: number;
   regs?: Float32Array;
 }): RouteActor {
@@ -189,7 +191,7 @@ export function newRouteActor(init: {
     regs: init.regs ?? new Float32Array(14),
     width: init.width,
     height: init.height,
-    spawnY: Math.trunc(init.y),
+    spawnY: init.spawnY ?? Math.trunc(init.y),
     spawnTick: init.spawnTick,
     player: init.player ?? 0,
   };
@@ -530,4 +532,52 @@ export function stepRoute(route: DovezRoute, a: RouteActor, h: RouteHost): boole
         continue;
     }
   }
+}
+
+const VAR_NAMES = new Map<number, string>([
+  [VAR.tick, "TICK"],
+  [VAR.speed, "SPEED"],
+  [VAR.y, "Y"],
+  [VAR.x, "X"],
+  [VAR.spawnY, "SPAWNY"],
+  [VAR.spawnTick, "SPAWNTICK"],
+  [VAR.playerY, "PLY"],
+  [VAR.playerX, "PLX"],
+  [VAR.screenH, "550"],
+  [VAR.screenW, "800"],
+  [VAR.negHeight, "-H"],
+  [VAR.negWidth, "-W"],
+  [VAR.hp, "HP"],
+  [VAR.playersMinus1, "NPL1"],
+  [VAR.playerA8, "PLA8"],
+]);
+
+function termName(v: number): string {
+  const c = Math.abs(v);
+  const sign = v < 0 ? "-" : "";
+  // Single-Literale ohne Binärrest (0.1 statt 0.10000000149011612)
+  if (c < VAR.local7) return String(Number(v.toPrecision(7)));
+  if (c <= VAR.local0) return `${sign}L${VAR.local0 - c}`;
+  if (c >= VAR.reg0 && c <= VAR.reg13) return `${sign}R${c - VAR.reg0}`;
+  const n = VAR_NAMES.get(c);
+  if (!n) return `${sign}?${c}`;
+  return sign && n.startsWith("-") ? n.slice(1) : sign + n;
+}
+
+/** Ein Argument lesbar: `X+10`, `-W`, `L0`, `3.5`. */
+export function formatRouteArg(p: { readonly a: number; readonly b: number }): string {
+  const a = termName(p.a);
+  if (p.b === 0) return a;
+  const b = termName(p.b);
+  return b.startsWith("-") ? `${a}${b}` : `${a}+${b}`;
+}
+
+/** `MoveTo PLX, 275`; Vergleichsoperatoren von `If` als Symbol. */
+export function formatRouteOp(op: DovezRouteOp): string {
+  const name = OP_NAMES[op.op] ?? `Op${op.op}`;
+  if (op.op === Op.If && op.args.length === 3) {
+    const cmp = ["<", "<=", "==", ">=", ">"][(op.args[1]!.a as number) + 2] ?? "?";
+    return `If ${formatRouteArg(op.args[0]!)} ${cmp} ${formatRouteArg(op.args[2]!)}`;
+  }
+  return op.args.length ? `${name} ${op.args.map(formatRouteArg).join(", ")}` : name;
 }
