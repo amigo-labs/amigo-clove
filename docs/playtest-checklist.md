@@ -73,7 +73,7 @@ Offline-Start bei beendetem Server). Von Hand:
       fallen auseinander; der Port keyt auf RGB-Schwarz.
 - [ ] **Masken nicht grau** (19 von 83): Alpha = Mittelwert der Kanäle,
       *geschätzt*.
-- [ ] **Videos:** VP9 CRF 34 gegen das DivX-Original (Artefakte bei schnellen
+- [ ] **Videos:** VP9 CRF 44 gegen das DivX-Original (Artefakte bei schnellen
       Schnitten, Ton synchron).
 - [ ] **Safari:** Ogg Opus per `decodeAudioData` und Ogg-Vorbis-Streaming.
 

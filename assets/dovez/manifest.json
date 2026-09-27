@@ -5169,16 +5169,16 @@
         "video/escape"
       ],
       "kind": "video",
-      "file": "video/escape.bc1dd3bd.webm",
-      "bytes": 4986432,
-      "sha256": "bc1dd3bdf424fa6b27135092785f6d9ff9b544cee7ca538b62c14a897d606552",
+      "file": "video/escape.7cd6bfe4.webm",
+      "bytes": 2436020,
+      "sha256": "7cd6bfe4c1529cdb0f4559f3f812c614244fceede4f179a7509c26e73aff2792",
       "sources": [
         {
           "path": "original-dovez/Data/Video.d2p",
           "sha256": "a1354b9d1c9c2abfa472bfd6c46f6f148e1c4106a10fc26ab6d03b3cad496c4d"
         }
       ],
-      "optionsHash": "babbf289fbab4238",
+      "optionsHash": "a2832ef0b63ffb98",
       "converterVersion": 1,
       "width": 800,
       "height": 600,
@@ -5190,16 +5190,16 @@
         "video/introd"
       ],
       "kind": "video",
-      "file": "video/introd.9b2bd260.webm",
-      "bytes": 8762906,
-      "sha256": "9b2bd260a569508d629f01c98ce1b03e8aaf1e3909d3f408fe1d8cae3f8cba8b",
+      "file": "video/introd.52c61574.webm",
+      "bytes": 4104551,
+      "sha256": "52c61574986784a2497f5aa3ba9900de1e97735a2481694be9a2f4dbacca554b",
       "sources": [
         {
           "path": "original-dovez/Data/Video/IntroD.avi",
           "sha256": "c545772211aa81a5865700f10f662f136f1ebe587faf1c44ad2ed25aac44e9bc"
         }
       ],
-      "optionsHash": "babbf289fbab4238",
+      "optionsHash": "a2832ef0b63ffb98",
       "converterVersion": 1,
       "width": 800,
       "height": 600,
@@ -5211,16 +5211,16 @@
         "video/introe"
       ],
       "kind": "video",
-      "file": "video/introe.becfd9f1.webm",
-      "bytes": 8518658,
-      "sha256": "becfd9f1f9a035ac9d5b6c5ca40d6831f7679ff240a23c461016430a7a81562f",
+      "file": "video/introe.18823d5a.webm",
+      "bytes": 3693537,
+      "sha256": "18823d5ad0ed80a944ccc39aa676dbf8033aa697d8602d50fd1b97ba84c02fa8",
       "sources": [
         {
           "path": "original-dovez/Data/Video/IntroE.avi",
           "sha256": "c626e216042f751e9748fb61102190bda16d2dc5c78e19b943a791b2ed749929"
         }
       ],
-      "optionsHash": "babbf289fbab4238",
+      "optionsHash": "a2832ef0b63ffb98",
       "converterVersion": 1,
       "width": 800,
       "height": 600,
@@ -5232,16 +5232,16 @@
         "video/midtown_madness"
       ],
       "kind": "video",
-      "file": "video/midtown_madness.ec3cf888.webm",
-      "bytes": 620717,
-      "sha256": "ec3cf888d1c4d2b4e186dcd4d48c34de354a5f9514ae822558869f405f02a360",
+      "file": "video/midtown_madness.0aa6796d.webm",
+      "bytes": 286907,
+      "sha256": "0aa6796d53335272aafc8c55103cb6d4daaa9cda8d877f929a42a250f7d3ff1c",
       "sources": [
         {
           "path": "original-dovez/Data/Video.d2p",
           "sha256": "a1354b9d1c9c2abfa472bfd6c46f6f148e1c4106a10fc26ab6d03b3cad496c4d"
         }
       ],
-      "optionsHash": "babbf289fbab4238",
+      "optionsHash": "a2832ef0b63ffb98",
       "converterVersion": 1,
       "width": 800,
       "height": 600,
@@ -5253,16 +5253,16 @@
         "video/missing_in_space"
       ],
       "kind": "video",
-      "file": "video/missing_in_space.bbd61982.webm",
-      "bytes": 1141917,
-      "sha256": "bbd61982e94961fe344772f709adbb6b6bad1e9df5bd9adb836682c94f9b005b",
+      "file": "video/missing_in_space.2ce91a8d.webm",
+      "bytes": 689877,
+      "sha256": "2ce91a8db17159dc9f3854f752cab7e87ab1bc51af435f88b6384a719db47754",
       "sources": [
         {
           "path": "original-dovez/Data/Video.d2p",
           "sha256": "a1354b9d1c9c2abfa472bfd6c46f6f148e1c4106a10fc26ab6d03b3cad496c4d"
         }
       ],
-      "optionsHash": "babbf289fbab4238",
+      "optionsHash": "a2832ef0b63ffb98",
       "converterVersion": 1,
       "width": 800,
       "height": 600,
@@ -5274,16 +5274,16 @@
         "video/outro2d"
       ],
       "kind": "video",
-      "file": "video/outro2d.2fe5396a.webm",
-      "bytes": 4174246,
-      "sha256": "2fe5396adc8bcc1ca64f2b848802ca6db9b258b6f4a316d1a24500b5113cd8bc",
+      "file": "video/outro2d.5602fc06.webm",
+      "bytes": 1942966,
+      "sha256": "5602fc06e402d23b8f4f43fecd1a5d04c0617070cba08071981ce14c283ec713",
       "sources": [
         {
           "path": "original-dovez/Data/Video.d2p",
           "sha256": "a1354b9d1c9c2abfa472bfd6c46f6f148e1c4106a10fc26ab6d03b3cad496c4d"
         }
       ],
-      "optionsHash": "babbf289fbab4238",
+      "optionsHash": "a2832ef0b63ffb98",
       "converterVersion": 1,
       "width": 800,
       "height": 600,
@@ -5295,16 +5295,16 @@
         "video/outro2e"
       ],
       "kind": "video",
-      "file": "video/outro2e.60701e84.webm",
-      "bytes": 3423425,
-      "sha256": "60701e84d11832c20d803259149ff36d828b0a7847807e1da32072d71d7ee603",
+      "file": "video/outro2e.f97fe60b.webm",
+      "bytes": 1635138,
+      "sha256": "f97fe60b1c115968efda0a334793344e9a686d772fffb624db0327b56158b5cf",
       "sources": [
         {
           "path": "original-dovez/Data/Video.d2p",
           "sha256": "a1354b9d1c9c2abfa472bfd6c46f6f148e1c4106a10fc26ab6d03b3cad496c4d"
         }
       ],
-      "optionsHash": "babbf289fbab4238",
+      "optionsHash": "a2832ef0b63ffb98",
       "converterVersion": 1,
       "width": 800,
       "height": 600,
@@ -5316,16 +5316,16 @@
         "video/outrod"
       ],
       "kind": "video",
-      "file": "video/outrod.acdc80a7.webm",
-      "bytes": 3375940,
-      "sha256": "acdc80a77442f17dbfa4fac28b0941a956a0bd7df9e54316a04d2153f7b56336",
+      "file": "video/outrod.b67a9f7d.webm",
+      "bytes": 1666582,
+      "sha256": "b67a9f7dde1ca2f7ad0892eda6c2a7cce2a7e783958afc8a438f5c9cf9b8317a",
       "sources": [
         {
           "path": "original-dovez/Data/Video.d2p",
           "sha256": "a1354b9d1c9c2abfa472bfd6c46f6f148e1c4106a10fc26ab6d03b3cad496c4d"
         }
       ],
-      "optionsHash": "babbf289fbab4238",
+      "optionsHash": "a2832ef0b63ffb98",
       "converterVersion": 1,
       "width": 800,
       "height": 600,
@@ -5337,16 +5337,16 @@
         "video/outroe"
       ],
       "kind": "video",
-      "file": "video/outroe.faf4329a.webm",
-      "bytes": 1995965,
-      "sha256": "faf4329ae5d5835f3fb65238edef4fa69e55055935c74963ae6d15d713737d71",
+      "file": "video/outroe.1ce93c74.webm",
+      "bytes": 1019985,
+      "sha256": "1ce93c7447751d6f5be06607466b010e339a1152cecdf1db6760b3c2969a56ff",
       "sources": [
         {
           "path": "original-dovez/Data/Video.d2p",
           "sha256": "a1354b9d1c9c2abfa472bfd6c46f6f148e1c4106a10fc26ab6d03b3cad496c4d"
         }
       ],
-      "optionsHash": "babbf289fbab4238",
+      "optionsHash": "a2832ef0b63ffb98",
       "converterVersion": 1,
       "width": 800,
       "height": 600,
@@ -5358,16 +5358,16 @@
         "video/skyfight"
       ],
       "kind": "video",
-      "file": "video/skyfight.c5769467.webm",
-      "bytes": 1178152,
-      "sha256": "c5769467ab7959aa014e3b97b5640115df330cb0f95175b30724ee9f1c858121",
+      "file": "video/skyfight.d3d8e242.webm",
+      "bytes": 518343,
+      "sha256": "d3d8e242e2a71acac900e085a9373960798cc03c0111e213fbf1b83260fdf04a",
       "sources": [
         {
           "path": "original-dovez/Data/Video.d2p",
           "sha256": "a1354b9d1c9c2abfa472bfd6c46f6f148e1c4106a10fc26ab6d03b3cad496c4d"
         }
       ],
-      "optionsHash": "babbf289fbab4238",
+      "optionsHash": "a2832ef0b63ffb98",
       "converterVersion": 1,
       "width": 800,
       "height": 600,
@@ -5379,16 +5379,16 @@
         "video/take_3"
       ],
       "kind": "video",
-      "file": "video/take_3.d8a9892f.webm",
-      "bytes": 1075209,
-      "sha256": "d8a9892f5e35c2bf00da715659c63b7824f6f964ef7b88e4496293d94861bc35",
+      "file": "video/take_3.64eeb15f.webm",
+      "bytes": 541579,
+      "sha256": "64eeb15f65a5847441f7a7c467e00afe3a3bbfaa5084abc4bd0c6186cd6bb445",
       "sources": [
         {
           "path": "original-dovez/Data/Video.d2p",
           "sha256": "a1354b9d1c9c2abfa472bfd6c46f6f148e1c4106a10fc26ab6d03b3cad496c4d"
         }
       ],
-      "optionsHash": "babbf289fbab4238",
+      "optionsHash": "a2832ef0b63ffb98",
       "converterVersion": 1,
       "width": 800,
       "height": 600,
@@ -5400,16 +5400,16 @@
         "video/take_6"
       ],
       "kind": "video",
-      "file": "video/take_6.d806ffd7.webm",
-      "bytes": 706053,
-      "sha256": "d806ffd7291a285a3b271a0ed37a936df46de1039db42cbabcdd0075f113ca59",
+      "file": "video/take_6.d311012d.webm",
+      "bytes": 343916,
+      "sha256": "d311012d901904a7f984eb73ba929e320c52d7894506af2e4ef2fc28819a093a",
       "sources": [
         {
           "path": "original-dovez/Data/Video.d2p",
           "sha256": "a1354b9d1c9c2abfa472bfd6c46f6f148e1c4106a10fc26ab6d03b3cad496c4d"
         }
       ],
-      "optionsHash": "babbf289fbab4238",
+      "optionsHash": "a2832ef0b63ffb98",
       "converterVersion": 1,
       "width": 800,
       "height": 600,
@@ -5421,16 +5421,16 @@
         "video/take_7"
       ],
       "kind": "video",
-      "file": "video/take_7.bf91aa17.webm",
-      "bytes": 962469,
-      "sha256": "bf91aa17dfc6000ccce11f1982c72054d1eb6242d489dd6ea37478385fd56c7a",
+      "file": "video/take_7.00b6128e.webm",
+      "bytes": 448292,
+      "sha256": "00b6128ee445da8c01c4803044d34d237ce3827ee1c26c80806ae8a13a68a41e",
       "sources": [
         {
           "path": "original-dovez/Data/Video.d2p",
           "sha256": "a1354b9d1c9c2abfa472bfd6c46f6f148e1c4106a10fc26ab6d03b3cad496c4d"
         }
       ],
-      "optionsHash": "babbf289fbab4238",
+      "optionsHash": "a2832ef0b63ffb98",
       "converterVersion": 1,
       "width": 800,
       "height": 600,
@@ -5442,16 +5442,16 @@
         "video/take_8"
       ],
       "kind": "video",
-      "file": "video/take_8.e650bd98.webm",
-      "bytes": 1086691,
-      "sha256": "e650bd98c931974336f72e134cac5f988afc6c7e5cde858a8522486460fb5afe",
+      "file": "video/take_8.d4b62a13.webm",
+      "bytes": 534551,
+      "sha256": "d4b62a130d589eeccd0ebcfa51f5bb3347daf0164010aab5516ec29be284e2ab",
       "sources": [
         {
           "path": "original-dovez/Data/Video.d2p",
           "sha256": "a1354b9d1c9c2abfa472bfd6c46f6f148e1c4106a10fc26ab6d03b3cad496c4d"
         }
       ],
-      "optionsHash": "babbf289fbab4238",
+      "optionsHash": "a2832ef0b63ffb98",
       "converterVersion": 1,
       "width": 800,
       "height": 600,

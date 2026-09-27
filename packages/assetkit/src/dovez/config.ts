@@ -49,8 +49,13 @@ export const DOVEZ_WEBP_EFFORT = 6;
  */
 const VOICE_OPUS = { bitrate: 48, mono: true };
 const SFX_OPUS = { bitrate: 64, mono: false };
-/** VP9 CRF 34: SkyFight.avi 6,8 → 1,2 MB bei 800×600. */
-const VIDEO = { crf: 34, audioBitrate: 64 };
+/**
+ * VP9 CRF 44, Opus 48 kbit/s. Probe `SkyFight.avi` (6,8 MB DivX): CRF 34 →
+ * 1,18 MB (SSIM 0,974), CRF 40 → 0,71 MB (0,965), **CRF 44 → 0,52 MB (0,957)**,
+ * CRF 48 → 0,38 MB (0,949, Texturen verschwimmen sichtbar). CRF 44 glättet vor
+ * allem das Rauschen des DivX-Originals.
+ */
+const VIDEO = { crf: 44, audioBitrate: 48 };
 
 export const SOUND_OPUS_CONVERTER_VERSION = 1;
 export const VIDEO_CONVERTER_VERSION = 1;

@@ -16,7 +16,7 @@ import { join } from "node:path";
 import { inflateSync } from "node:zlib";
 import { packRects } from "../src/atlas/maxrects";
 import type { Job } from "../src/job";
-import { MANIFEST_FILE, build, check, verify } from "../src/pipeline";
+import { MANIFEST_FILE, build, check, stale, verify } from "../src/pipeline";
 import { readContour } from "../src/stages/atlas";
 import { decodeWebp } from "../src/stages/image";
 
@@ -236,6 +236,48 @@ describe("volatile Jobs", () => {
       expect(r.missing.length + r.changed.length).toBeGreaterThan(0);
       await build([job], { root, out, game: "t" });
       expect(runs).toBe(2);
+    });
+  });
+});
+
+function dataJob(converterVersion: number, bundles: string[]): Job {
+  return {
+    bundles,
+    sources: ["src/a.txt"],
+    options: { q: 1 },
+    converterVersion,
+    outputs: [{ id: "data/a", kind: "data", ext: "json" }],
+    run: async () => [
+      {
+        id: "data/a",
+        kind: "data",
+        ext: "json",
+        bytes: new TextEncoder().encode("{}"),
+        meta: {},
+      },
+    ],
+  };
+}
+
+describe("Aktualität ohne Konvertierung", () => {
+  test("stale meldet geänderte Quellen, Versionen, Bundles und verwaiste Einträge", async () => {
+    await withTemp(async (root) => {
+      await mkdir(join(root, "src"));
+      await writeFile(join(root, "src/a.txt"), "quelle");
+      const out = join(root, "out");
+      await build([dataJob(1, ["core"])], { root, out, game: "t" });
+      expect(await stale([dataJob(1, ["core"])], { root, out })).toEqual([]);
+      expect(await stale([dataJob(2, ["core"])], { root, out })).toEqual([
+        "data/a: Konverterversion 1 statt 2",
+      ]);
+      expect(await stale([dataJob(1, ["menu"])], { root, out })).toEqual([
+        "data/a: Bundles geändert",
+      ]);
+      expect(await stale([], { root, out })).toEqual(["data/a: kein Job erzeugt es"]);
+      await writeFile(join(root, "src/a.txt"), "neu");
+      expect(await stale([dataJob(1, ["core"])], { root, out })).toEqual([
+        "data/a: Quelle geändert",
+      ]);
     });
   });
 });
