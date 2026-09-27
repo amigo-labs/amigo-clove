@@ -27,6 +27,8 @@ const levels = new Map<string, DovezLevel>(
   [...files].map(([name, bytes]) => [name, parseDovezLevelDat(bytes)]),
 );
 
+const sum = (f: (l: DovezLevel) => number) => [...levels.values()].reduce((a, l) => a + f(l), 0);
+
 describe("DoveZ-Level-Skript", () => {
   test("alle 27 parsen restlos, Round-Trip byte-identisch", () => {
     expect(files.size).toBe(27);
@@ -60,8 +62,6 @@ describe("DoveZ-Level-Skript", () => {
   });
 
   test("Inventar", () => {
-    const sum = (f: (l: DovezLevel) => number) =>
-      [...levels.values()].reduce((a, l) => a + f(l), 0);
     expect(sum((l) => l.groups.length)).toBe(994);
     expect(sum((l) => l.enemies.length)).toBe(267);
     expect(sum((l) => l.routes.length)).toBe(519);
