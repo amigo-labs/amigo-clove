@@ -116,6 +116,22 @@ try {
   }
   await assets.close();
 
+  // 1b2. DoveZ spielen: Skyfight ab Tick 300, unverwundbar, feuern
+  const game = await browser.newPage({ viewport: { width: 800, height: 600 } });
+  watch(game, "dovez-game");
+  await game.goto(`${ORIGIN}/#/dovez?invincible=1&from=300`);
+  await game.waitForSelector("body[data-game=dovez]", { timeout: 30_000 });
+  await game.keyboard.down("KeyS");
+  await game.waitForTimeout(2500);
+  const played = await game.screenshot();
+  await game.keyboard.up("KeyS");
+  const field = await litShare(played, 0, 0, 800, 550);
+  console.log(`dovez-game: Spielfeld ${(field * 100).toFixed(1)} % hell`);
+  if (field < 0.2) failures.push("dovez-game: Spielfeld leer");
+  if (process.env["SMOKE_SHOTS"])
+    await Bun.write(`${process.env["SMOKE_SHOTS"]}/dovez-game.png`, played);
+  await game.close();
+
   // 1c. DoveZ-Level-Ansicht: Route zeichnen, zur nächsten, dann Schussmuster
   const levelView = await browser.newPage({ viewport: { width: 800, height: 600 } });
   watch(levelView, "dovez-level");
