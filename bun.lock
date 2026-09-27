@@ -55,6 +55,8 @@
       "dependencies": {
         "@clove/core": "workspace:*",
         "@clove/formats": "workspace:*",
+        "@clove/pixi-kit": "workspace:*",
+        "pixi.js": "8.21.0",
       },
     },
     "packages/pixi-kit": {
