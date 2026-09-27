@@ -48,6 +48,35 @@ laufenden Original (Referenzaufnahme mit OBS, 60 fps).
       nicht nur exaktes Schwarz. Der Port keyt exakt RGB(0,0,0) — fast
       schwarze Ränder an Sprites (z. B. Menügrafik in titel.spr) vergleichen.
 
+## Stand M5 — Shell, auf echten Geräten prüfen
+
+Der Smoke-Test deckt Chromium headless ab (Kaltstart, Sprachwechsel,
+Offline-Start bei beendetem Server). Von Hand:
+
+- [ ] **Gamepad:** Xbox- und PlayStation-Pad in Chrome und Firefox — Menüs der
+      Shell (hoch/runter, A, B), DOVE-Belegung, Stick-Totzone.
+- [ ] **Ton nur mit Pad:** Browser zählen Pad-Tasten meist nicht als
+      Nutzergeste; ob der AudioContext ohne Tastatur/Klick anläuft, prüfen.
+- [ ] **Offline:** Firefox und Safari — „Spieldaten installieren“, Flugmodus,
+      Neustart des Browsers; `navigator.storage.persist()` wird gewährt?
+- [ ] **Update:** neuer Build ausgeliefert — alter Tab spielt weiter, nach dem
+      Schließen aller Tabs gilt die neue Version.
+- [ ] **Spielstände:** Export, Browserdaten löschen, Import — Optionen,
+      Freischaltungen und Highscores wieder da.
+
+## Stand M6 — DoveZ-Assets am Original prüfen
+
+- [ ] **`atlantis_saule2`:** Maske (200×540) größer als das Bild (190×520);
+      der Port nimmt den Ausschnitt oben links. Säule im Original mit dem Port
+      vergleichen — sitzt der Übergang versetzt (bester Versatz wäre 6 px)?
+- [ ] **Rauch in Rumbler (`rauch1–7`):** palettiert, Index- und RGB-Keying
+      fallen auseinander; der Port keyt auf RGB-Schwarz.
+- [ ] **Masken nicht grau** (19 von 83): Alpha = Mittelwert der Kanäle,
+      *geschätzt*.
+- [ ] **Videos:** VP9 CRF 44 gegen das DivX-Original (Artefakte bei schnellen
+      Schnitten, Ton synchron).
+- [ ] **Safari:** Ogg Opus per `decodeAudioData` und Ogg-Vorbis-Streaming.
+
 ## Nicht testbar, nur dokumentieren
 
 - Audio-Äquivalenz: BASS 0.8 und libopenmpt mischen unterschiedlich.

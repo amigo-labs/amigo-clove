@@ -13,7 +13,8 @@
   "dependencies": {
     "@clove/audio": "workspace:*",
     "@clove/core": "workspace:*",
-    "@clove/game-dove": "workspace:*"
+    "@clove/game-dove": "workspace:*",
+    "@clove/game-dovez": "workspace:*"
   },
   "devDependencies": {
     "playwright-core": "1.56.1",

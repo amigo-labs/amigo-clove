@@ -1,7 +1,16 @@
 import { MANIFEST_VERSION, type Manifest, type ManifestEntry } from "@clove/core";
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, readFile, readdir, rm, rmdir, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import {
+  copyFile,
+  mkdir,
+  mkdtemp,
+  readFile,
+  readdir,
+  rm,
+  rmdir,
+  writeFile,
+} from "node:fs/promises";
+import { availableParallelism, tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import { optionsHash, sha256 } from "./hash";
 import type { Job } from "./job";
@@ -16,8 +25,17 @@ export interface BuildOptions {
   readonly game: string;
   /** Nur Jobs, die zu einem dieser Bundles gehören; übrige Manifest-Einträge bleiben stehen. */
   readonly only?: readonly string[];
-  /** Cache ignorieren und alles neu konvertieren. */
+  /** Cache ignorieren und alles neu konvertieren (außer `volatile`-Jobs). */
   readonly force?: boolean;
+  /** Auch `volatile`-Jobs (Video) neu erzeugen. */
+  readonly forceVolatile?: boolean;
+  /**
+   * `volatile`-Jobs nicht kodieren, sondern gültige Ausgaben aus diesem Baum
+   * übernehmen (für `check`); fehlen sie oder sind veraltet, bleibt der Job leer.
+   */
+  readonly volatileFrom?: string;
+  /** Gleichzeitig laufende Jobs (Vorgabe: Anzahl der Kerne). */
+  readonly parallel?: number;
   readonly log?: (message: string) => void;
 }
 
@@ -79,6 +97,31 @@ function contentFile(id: string, hash: string, ext: string): string {
   return `${id}.${hash.slice(0, 8)}.${ext}`;
 }
 
+function bundlesOf(job: Job): string[] {
+  return [...job.bundles, ...job.outputs.flatMap((o) => o.bundles ?? [])];
+}
+
+/** Gültige Cache-Einträge eines Jobs in `dir` (alle Ausgaben vorhanden und unverändert). */
+async function cachedIn(
+  job: Job,
+  manifest: ReadonlyMap<string, ManifestEntry>,
+  dir: string,
+  sources: readonly { path: string; sha256: string }[],
+  optHash: string,
+): Promise<ManifestEntry[] | undefined> {
+  const cached = job.outputs.map((o) => manifest.get(o.id)).filter((e): e is ManifestEntry => !!e);
+  if (cached.length !== job.outputs.length) return undefined;
+  const valid = await Promise.all(
+    cached.map(async (e) => {
+      if (e.optionsHash !== optHash || e.converterVersion !== job.converterVersion) return false;
+      if (JSON.stringify(e.sources) !== JSON.stringify(sources)) return false;
+      const path = join(dir, e.file);
+      return existsSync(path) && sha256(await readBytes(path)) === e.sha256;
+    }),
+  );
+  return valid.every(Boolean) ? cached : undefined;
+}
+
 /**
  * Baut alle Jobs in `out`. Ein Job wird übersprungen, wenn Quellhashes,
  * Optionen und Konverterversion zum bestehenden Manifest passen und seine
@@ -99,7 +142,7 @@ export async function build(jobs: readonly Job[], options: BuildOptions): Promis
   }
 
   const only = options.only ? new Set(options.only) : undefined;
-  const selected = only ? jobs.filter((j) => j.bundles.some((b) => only.has(b))) : jobs;
+  const selected = only ? jobs.filter((j) => bundlesOf(j).some((b) => only.has(b))) : jobs;
   if (only && selected.length === 0) throw new Error(`kein Job gehört zu ${[...only].join(", ")}`);
 
   const entries = new Map<string, ManifestEntry>();
@@ -113,34 +156,37 @@ export async function build(jobs: readonly Job[], options: BuildOptions): Promis
   let filesWritten = 0;
   let bytesWritten = 0;
   const warnings: string[] = [];
+  const volatileSource = options.volatileFrom
+    ? new Map(((await readManifest(options.volatileFrom))?.entries ?? []).map((e) => [e.id, e]))
+    : undefined;
 
-  for (const job of selected) {
+  const runJob = async (job: Job) => {
     const inputs = await Promise.all(job.sources.map((s) => readBytes(join(options.root, s))));
     const sources = job.sources.map((path, i) => ({ path, sha256: sha256(inputs[i]!) }));
     const optHash = optionsHash(job.options);
+    const bundlesFor = (id: string) => job.outputs.find((o) => o.id === id)?.bundles ?? job.bundles;
 
-    const cached = options.force
-      ? undefined
-      : job.outputs.map((o) => old.get(o.id)).filter((e): e is ManifestEntry => !!e);
-    const hit =
-      cached !== undefined &&
-      cached.length === job.outputs.length &&
-      (
-        await Promise.all(
-          cached.map(async (e) => {
-            if (e.optionsHash !== optHash || e.converterVersion !== job.converterVersion)
-              return false;
-            if (JSON.stringify(e.sources) !== JSON.stringify(sources)) return false;
-            const path = join(options.out, e.file);
-            return existsSync(path) && sha256(await readBytes(path)) === e.sha256;
-          }),
-        )
-      ).every(Boolean);
-
-    if (hit) {
+    if (job.volatile && volatileSource && options.volatileFrom) {
+      const cached = await cachedIn(job, volatileSource, options.volatileFrom, sources, optHash);
+      if (!cached) {
+        warnings.push(`${job.outputs.map((o) => o.id).join(", ")}: veraltet, nicht übernommen`);
+        return;
+      }
+      for (const e of cached) {
+        await mkdir(dirname(join(options.out, e.file)), { recursive: true });
+        await copyFile(join(options.volatileFrom, e.file), join(options.out, e.file));
+        entries.set(e.id, { ...e, bundles: bundlesFor(e.id) });
+      }
       reused++;
-      for (const e of cached) entries.set(e.id, { ...e, bundles: job.bundles });
-      continue;
+      return;
+    }
+
+    const skipCache = job.volatile ? options.forceVolatile : options.force;
+    const cached = skipCache ? undefined : await cachedIn(job, old, options.out, sources, optHash);
+    if (cached) {
+      reused++;
+      for (const e of cached) entries.set(e.id, { ...e, bundles: bundlesFor(e.id) });
+      return;
     }
 
     converted++;
@@ -156,7 +202,7 @@ export async function build(jobs: readonly Job[], options: BuildOptions): Promis
       if (o.warning) warnings.push(o.warning);
       entries.set(o.id, {
         id: o.id,
-        bundles: job.bundles,
+        bundles: bundlesFor(o.id),
         kind: o.kind,
         file,
         bytes: o.bytes.length,
@@ -167,7 +213,16 @@ export async function build(jobs: readonly Job[], options: BuildOptions): Promis
         ...o.meta,
       } as ManifestEntry);
     }
-  }
+  };
+
+  // Planungsreihenfolge; die Planung stellt lange Jobs nach vorn.
+  const queue = [...selected];
+  const worker = async () => {
+    for (let job = queue.shift(); job; job = queue.shift()) await runJob(job);
+  };
+  await Promise.all(
+    Array.from({ length: Math.max(1, options.parallel ?? availableParallelism()) }, worker),
+  );
 
   const manifest: Manifest = {
     version: MANIFEST_VERSION,
@@ -189,7 +244,7 @@ export async function build(jobs: readonly Job[], options: BuildOptions): Promis
   }
   if (removed.length > 0) await removeEmptyDirs(options.out);
 
-  return { converted, reused, filesWritten, bytesWritten, removed, warnings };
+  return { converted, reused, filesWritten, bytesWritten, removed, warnings: warnings.toSorted() };
 }
 
 export interface CheckResult {
@@ -199,8 +254,9 @@ export interface CheckResult {
 }
 
 /**
- * CI-Gate: baut vollständig und ohne Cache in einen Temp-Ordner und vergleicht
- * byteweise mit `out`. Fängt handeditierte, veraltete und fehlende Assets.
+ * Gründliche lokale Prüfung (nicht in CI): baut vollständig und ohne Cache in
+ * einen Temp-Ordner und vergleicht byteweise mit `out`. Fängt handeditierte,
+ * veraltete und fehlende Assets; `volatile`-Ausgaben werden übernommen.
  */
 export async function check(
   jobs: readonly Job[],
@@ -208,7 +264,13 @@ export async function check(
 ): Promise<CheckResult> {
   const temp = await mkdtemp(join(tmpdir(), "clove-assets-"));
   try {
-    await build(jobs, { root: options.root, game: options.game, out: temp, force: true });
+    await build(jobs, {
+      root: options.root,
+      game: options.game,
+      out: temp,
+      force: true,
+      volatileFrom: options.out,
+    });
     const expected = await listTree(temp);
     const actual = new Set(await listTree(options.out));
     const missing = expected.filter((f) => !actual.has(f));
@@ -242,6 +304,56 @@ export async function verify(out: string): Promise<string[]> {
   }
   const keep = new Set([MANIFEST_FILE, ...manifest.entries.map((e) => e.file)]);
   for (const f of await listTree(out)) if (!keep.has(f)) problems.push(`${f}: nicht im Manifest`);
+  return problems;
+}
+
+/**
+ * Aktualität ohne Konvertierung: Passen Quellhashes, Optionen, Konverterversion
+ * und Bundles jedes geplanten Jobs zum Manifest, und hat jeder Eintrag einen
+ * Job? Zusammen mit `verify` das CI-Gate — Assets werden einmal lokal gebaut
+ * und committet, CI hasht nur.
+ */
+export async function stale(
+  jobs: readonly Job[],
+  options: { readonly root: string; readonly out: string },
+): Promise<string[]> {
+  const manifest = await readManifest(options.out);
+  if (!manifest) return [`${MANIFEST_FILE} fehlt in ${options.out}`];
+  const entries = new Map(manifest.entries.map((e) => [e.id, e]));
+  const hashes = new Map<string, string>();
+  const hashOf = async (path: string) => {
+    let h = hashes.get(path);
+    if (h === undefined) {
+      h = sha256(await readBytes(join(options.root, path)));
+      hashes.set(path, h);
+    }
+    return h;
+  };
+  const problems: string[] = [];
+  const planned = new Set<string>();
+  for (const job of jobs) {
+    const sources = await Promise.all(
+      job.sources.map(async (path) => ({ path, sha256: await hashOf(path) })),
+    );
+    const optHash = optionsHash(job.options);
+    for (const o of job.outputs) {
+      planned.add(o.id);
+      const e = entries.get(o.id);
+      const bundles = o.bundles ?? job.bundles;
+      if (!e) problems.push(`${o.id}: fehlt im Manifest`);
+      else if (JSON.stringify(e.sources) !== JSON.stringify(sources))
+        problems.push(`${o.id}: Quelle geändert`);
+      else if (e.optionsHash !== optHash) problems.push(`${o.id}: Optionen geändert`);
+      else if (e.converterVersion !== job.converterVersion)
+        problems.push(
+          `${o.id}: Konverterversion ${e.converterVersion} statt ${job.converterVersion}`,
+        );
+      else if (JSON.stringify(e.bundles) !== JSON.stringify(bundles))
+        problems.push(`${o.id}: Bundles geändert`);
+    }
+  }
+  for (const id of entries.keys())
+    if (!planned.has(id)) problems.push(`${id}: kein Job erzeugt es`);
   return problems;
 }
 

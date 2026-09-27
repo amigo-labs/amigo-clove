@@ -50,8 +50,18 @@ export interface GameInstance {
   dispose(): void;
 }
 
+/**
+ * Gamepad-Belegung eines Spiels: Taste der Standardbelegung (`Gamepad.buttons`-Index,
+ * W3C „standard“ mapping) → `KeyboardEvent.code`, die das Spiel als gehalten sieht.
+ * Steuerkreuz und linker Stick sind immer die Pfeiltasten.
+ */
+export type GamepadBindings = Readonly<Record<number, readonly string[]>>;
+
 export interface GameModule {
   readonly id: string;
   readonly title: string;
+  /** Bundles, die die Shell vor `boot()` mit Fortschrittsanzeige lädt. */
+  readonly preload?: readonly string[];
+  readonly gamepad?: GamepadBindings;
   boot(host: GameHost, options?: Readonly<Record<string, string>>): Promise<GameInstance>;
 }

@@ -1,0 +1,59 @@
+import { LOCALES, type LocalePreference } from "@clove/core";
+
+/** Einstellungen der Shell, spielübergreifend. */
+export interface Settings {
+  readonly language: LocalePreference;
+  /** Pegel 0…1. */
+  readonly volume: { readonly master: number; readonly music: number; readonly sfx: number };
+  readonly gamepad: boolean;
+}
+
+export const DEFAULT_SETTINGS: Settings = {
+  language: "auto",
+  volume: { master: 1, music: 1, sfx: 1 },
+  gamepad: true,
+};
+
+export const SETTINGS_KEY = "clove:settings";
+
+function level(v: unknown, fallback: number): number {
+  return typeof v === "number" && Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : fallback;
+}
+
+/** Nimmt aus beliebigem JSON nur, was gültig ist; der Rest fällt auf die Vorgabe zurück. */
+export function sanitizeSettings(raw: unknown): Settings {
+  const r = typeof raw === "object" && raw !== null ? (raw as Record<string, unknown>) : {};
+  const v =
+    typeof r["volume"] === "object" && r["volume"] !== null
+      ? (r["volume"] as Record<string, unknown>)
+      : {};
+  const lang = r["language"];
+  const d = DEFAULT_SETTINGS;
+  return {
+    language:
+      lang === "auto" || LOCALES.some((l) => l === lang) ? (lang as LocalePreference) : d.language,
+    volume: {
+      master: level(v["master"], d.volume.master),
+      music: level(v["music"], d.volume.music),
+      sfx: level(v["sfx"], d.volume.sfx),
+    },
+    gamepad: typeof r["gamepad"] === "boolean" ? r["gamepad"] : d.gamepad,
+  };
+}
+
+export function loadSettings(storage: Pick<Storage, "getItem"> | undefined): Settings {
+  try {
+    const text = storage?.getItem(SETTINGS_KEY);
+    return sanitizeSettings(text ? JSON.parse(text) : undefined);
+  } catch {
+    return DEFAULT_SETTINGS;
+  }
+}
+
+export function saveSettings(storage: Pick<Storage, "setItem"> | undefined, s: Settings): void {
+  try {
+    storage?.setItem(SETTINGS_KEY, JSON.stringify(s));
+  } catch {
+    // privates Fenster / Speicher voll: Einstellung gilt nur für diese Sitzung
+  }
+}

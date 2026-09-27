@@ -1,12 +1,18 @@
 /**
- * Browser-Smoke-Test: startet den gebauten Launcher per `vite preview`, bootet
- * DOVE in Chromium (WebGL über SwiftShader) und prüft, dass es fehlerfrei
- * läuft und rendert. Aufruf: `bun run smoke` (baut vorher mit Vite).
+ * Browser-Smoke-Test: startet den gebauten Launcher per `vite preview` und prüft
+ * in Chromium (WebGL über SwiftShader):
+ * 1. DOVE startet aus kaltem Cache fehlerfrei und rendert, die DoveZ-Asset-
+ *    Ansicht zeigt Sprites,
+ * 2. Launcher und Einstellungen (Sprachwechsel) funktionieren,
+ * 3. nach „Spieldaten installieren“ startet DOVE bei beendetem Server
+ *    vollständig aus dem Service-Worker-Cache.
+ * Aufruf: `bun run smoke` (baut vorher mit Vite).
  */
-import { chromium } from "playwright-core";
+import { chromium, type Page } from "playwright-core";
 import sharp from "sharp";
 
 const PORT = 4173;
+const ORIGIN = `http://localhost:${PORT}`;
 const server = Bun.spawn(["bunx", "vite", "preview", "--port", String(PORT), "--strictPort"], {
   cwd: `${import.meta.dir}/..`,
   stdout: "ignore",
@@ -39,36 +45,103 @@ async function litShare(png: Buffer, x: number, y: number, w: number, h: number)
 }
 
 const failures: string[] = [];
+
+/** Fehler der Seite sammeln; `requestfailed` nur, solange das Netz da sein soll. */
+function watch(page: Page, label: string): void {
+  page.on("pageerror", (e) => failures.push(`${label} pageerror: ${e.message}`));
+  page.on("console", (m) => {
+    if (m.type() === "error" && !m.text().includes("favicon"))
+      failures.push(`${label} console: ${m.text()}`);
+  });
+  page.on("requestfailed", (r) => failures.push(`${label} request: ${r.url()}`));
+}
+
+/** DOVE Level 1 ab Tick 2100 direkt starten und prüfen, dass HUD und Spielfeld rendern. */
+async function playDove(page: Page, label: string): Promise<void> {
+  await page.goto(`${ORIGIN}/#/dove?level=1&seed=1&invincible=1&from=2100`);
+  await page.waitForSelector("body[data-game]", { timeout: 30_000 });
+  const state = await page.getAttribute("body", "data-game");
+  if (state !== "dove") {
+    failures.push(`${label}: Boot fehlgeschlagen: ${await page.textContent("#error")}`);
+    return;
+  }
+  await page.keyboard.down("KeyS");
+  await page.waitForTimeout(3000);
+  const png = await page.screenshot();
+  await page.keyboard.up("KeyS");
+
+  // HUD (konsole.spr) ist opak und hell; im Spielfeld liegt ab Tick 2100 Landschaft.
+  const hud = await litShare(png, 0, 410, 640, 70);
+  const field = await litShare(png, 0, 0, 640, 410);
+  console.log(
+    `${label}: HUD ${(hud * 100).toFixed(1)} % hell, Spielfeld ${(field * 100).toFixed(1)} % hell`,
+  );
+  if (hud < 0.9) failures.push(`${label}: HUD nicht gerendert (${(hud * 100).toFixed(1)} %)`);
+  if (field < 0.05) failures.push(`${label}: Spielfeld leer (${(field * 100).toFixed(1)} %)`);
+}
+
 try {
   await waitForServer();
   const browser = await chromium.launch({
     args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"],
   });
-  const page = await browser.newPage({ viewport: { width: 640, height: 480 } });
-  page.on("pageerror", (e) => failures.push(`pageerror: ${e.message}`));
-  page.on("console", (m) => {
-    if (m.type() === "error" && !m.text().includes("favicon"))
-      failures.push(`console: ${m.text()}`);
-  });
-  page.on("requestfailed", (r) => failures.push(`request: ${r.url()}`));
 
-  await page.goto(`http://localhost:${PORT}/#/dove?level=1&seed=1&invincible=1&from=2100`);
-  await page.waitForSelector("body[data-game]", { timeout: 30_000 });
-  const state = await page.getAttribute("body", "data-game");
-  if (state !== "dove") failures.push(`Boot fehlgeschlagen: ${await page.textContent("#error")}`);
+  // 1. Kalter Start ohne Cache direkt ins Spiel
+  const cold = await browser.newPage({ viewport: { width: 640, height: 480 } });
+  watch(cold, "kalt");
+  await playDove(cold, "kalt");
+  await cold.close();
 
-  await page.keyboard.down("KeyS");
-  await page.waitForTimeout(3000);
-  const png = await page.screenshot();
-  await page.keyboard.up("KeyS");
+  // 1b. DoveZ-Asset-Ansicht: erster Atlas mit Konturen, dann Wechsel zum nächsten
+  const assets = await browser.newPage({ viewport: { width: 800, height: 600 } });
+  watch(assets, "dovez-assets");
+  await assets.goto(`${ORIGIN}/#/dovez/debug/assets`);
+  await assets.waitForSelector("body[data-game=dovez]", { timeout: 30_000 });
+  await assets.waitForTimeout(1500);
+  const first = await assets.screenshot();
+  // gehalten, nicht getippt: die Ansicht fragt den Tastenzustand einmal pro Frame ab
+  await assets.keyboard.down("ArrowRight");
+  await assets.waitForTimeout(100);
+  await assets.keyboard.up("ArrowRight");
+  await assets.waitForTimeout(1500);
+  const second = await assets.screenshot();
+  const sprites = await litShare(first, 0, 44, 800, 556);
+  const next = await litShare(second, 0, 44, 800, 556);
+  console.log(`dovez-assets: ${(sprites * 100).toFixed(1)} % / ${(next * 100).toFixed(1)} % hell`);
+  if (sprites < 0.05 || next < 0.05) failures.push("dovez-assets: keine Sprites gerendert");
+  if (Buffer.compare(first, second) === 0) failures.push("dovez-assets: Atlaswechsel ohne Wirkung");
+  if (process.env["SMOKE_SHOTS"]) {
+    await Bun.write(`${process.env["SMOKE_SHOTS"]}/dovez-assets-1.png`, first);
+    await Bun.write(`${process.env["SMOKE_SHOTS"]}/dovez-assets-2.png`, second);
+  }
+  await assets.close();
+
+  // 2. Launcher und Einstellungen; dann Spieldaten offline installieren
+  const context = await browser.newContext({ viewport: { width: 640, height: 480 } });
+  const page = await context.newPage();
+  watch(page, "shell");
+  await page.goto(`${ORIGIN}/`);
+  await page.waitForSelector("#launcher [data-play=dove]");
+  await page.click("a[href='#/settings']");
+  await page.waitForSelector("#settings");
+  await page.selectOption("#language", "en");
+  await page.waitForFunction(
+    () => document.querySelector("#settings h1")?.textContent === "Settings",
+  );
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  await page.waitForSelector("[data-install=dove][data-state=missing]");
+  await page.click("[data-install=dove]");
+  await page.waitForSelector("[data-install=dove][data-state=ready]", { timeout: 120_000 });
+  console.log("Offline-Installation abgeschlossen.");
+
+  // 3. Server beenden: DOVE muss vollständig aus dem Cache starten
+  server.kill();
+  await server.exited;
+  page.removeAllListeners("requestfailed");
+  await page.goto(`${ORIGIN}/`);
+  await page.waitForSelector("#launcher [data-play=dove]");
+  await playDove(page, "offline");
   await browser.close();
-
-  // HUD (konsole.spr) ist opak und hell; im Spielfeld liegt ab Tick 2100 Landschaft.
-  const hud = await litShare(png, 0, 410, 640, 70);
-  const field = await litShare(png, 0, 0, 640, 410);
-  console.log(`HUD ${(hud * 100).toFixed(1)} % hell, Spielfeld ${(field * 100).toFixed(1)} % hell`);
-  if (hud < 0.9) failures.push(`HUD nicht gerendert (${(hud * 100).toFixed(1)} %)`);
-  if (field < 0.05) failures.push(`Spielfeld leer (${(field * 100).toFixed(1)} %)`);
 } catch (err) {
   failures.push(String(err));
 } finally {
