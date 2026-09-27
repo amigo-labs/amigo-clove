@@ -152,7 +152,7 @@ export class EnemyFire {
         }
         ox = m.cx;
         oy = m.cy;
-        if (def.muzzleRotated !== 0) {
+        if (def.turret !== 0) {
           const d = degIndex(cint(m.rotation));
           ox = f32(ox - (m.w * COS_DEG[d]!) / 2);
           oy = f32(oy - (m.h * SIN_DEG[d]!) / 2);

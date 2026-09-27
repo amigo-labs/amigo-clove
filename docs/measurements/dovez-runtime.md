@@ -55,7 +55,7 @@ Spielerzustände, 3 Trümmer (`wreckGroup`), 4 Boss, 5 explosiv
 Je Tick und Salve `j`: solange weder `delay[j] > 0` noch `left[j] < 0`:
 feuern, `fired++`, `left[j]--`, bei `left[j] ≥ 0` `delay[j] = interval`; danach
 `delay[j]--`. Der Emitter stirbt, wenn alle Salven leer sind oder sein Teil tot
-ist. Ursprung: Bildmitte des Teils (bei `muzzleRotated` an den Rand gedreht)
+ist. Ursprung: Bildmitte des Teils (bei `turret` an den Rand gedreht)
 plus `offsetX/Y`.
 
 ## Gegnerschuss (`Me.BE8`, 501 × 0x114)
