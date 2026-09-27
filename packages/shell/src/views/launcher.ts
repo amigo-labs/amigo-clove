@@ -7,6 +7,8 @@ export interface GameCard {
   readonly title: string;
   readonly subtitle: string;
   readonly available: boolean;
+  /** Unterpfad einer Debug-Ansicht (`#/<id>/<debug>`). */
+  readonly debug?: string;
 }
 
 /** Startseite: ein Eintrag je Spiel, Offline-Stand, Link zu den Einstellungen. */
@@ -17,13 +19,14 @@ export function launcherView(t: ShellText, games: readonly GameCard[]): HTMLElem
     list.append(
       h(
         "li",
-        { class: g.available ? "game" : "game disabled" },
+        { class: g.available ? "game" : "game unavailable" },
         h("div", { class: "title" }, g.title),
         h("div", { class: "sub" }, g.subtitle),
         g.available
           ? h("a", { class: "button", href: `#/${g.id}`, "data-play": g.id }, t("play"))
           : h("span", { class: "button" }, t("comingSoon")),
         status,
+        g.debug && h("a", { class: "debug", href: `#/${g.id}/${g.debug}` }, t("debugAssets")),
       ),
     );
     if (g.available && offlineSupported()) {

@@ -6,6 +6,7 @@ type Key =
   | "settings"
   | "back"
   | "comingSoon"
+  | "debugAssets"
   | "doveSub"
   | "dovezSub"
   | "offlineReady"
@@ -50,6 +51,7 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
     settings: "Einstellungen",
     back: "Zurück",
     comingSoon: "folgt",
+    debugAssets: "Assets ansehen (Debug)",
     doveSub: "1999–2003 · Horizontal-Shooter, 12 Level",
     dovezSub: "2004–2019 · The Second Wave",
     offlineReady: "offline spielbar",
@@ -94,6 +96,7 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
     settings: "Settings",
     back: "Back",
     comingSoon: "coming later",
+    debugAssets: "View assets (debug)",
     doveSub: "1999–2003 · horizontal shooter, 12 levels",
     dovezSub: "2004–2019 · The Second Wave",
     offlineReady: "playable offline",

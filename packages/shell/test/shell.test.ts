@@ -15,7 +15,14 @@ describe("Routing", () => {
     expect(parseRoute("#/dove/?level=1&nosound", games)).toEqual({
       view: "game",
       id: "dove",
+      sub: "",
       params: { level: "1", nosound: "" },
+    });
+    expect(parseRoute("#/dove/debug/assets?x=1", games)).toEqual({
+      view: "game",
+      id: "dove",
+      sub: "debug/assets",
+      params: { x: "1" },
     });
     expect(parseRoute("#/dovez", games)).toEqual({ view: "unknown", path: "dovez" });
   });
