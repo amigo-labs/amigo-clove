@@ -25,13 +25,29 @@ import { settingsView } from "./views/settings";
  * `#/dove?level=1` startet DOVE (URL-Optionen siehe `@clove/game-dove`).
  * Die Shell besitzt Canvas, AudioContext, Speicher, Eingabegeräte und Sprache.
  */
-const GAMES: Readonly<
-  Record<string, { title: string; subtitle: TextKey; load: () => Promise<GameModule> }>
-> = {
+interface GameInfo {
+  readonly title: string;
+  readonly subtitle: TextKey;
+  /** Im Launcher startbar und offline installierbar. */
+  readonly playable: boolean;
+  /** Unterpfad einer Debug-Ansicht, im Launcher verlinkt. */
+  readonly debug?: string;
+  load(): Promise<GameModule>;
+}
+
+const GAMES: Readonly<Record<string, GameInfo>> = {
   dove: {
     title: "DOVE",
     subtitle: "doveSub",
+    playable: true,
     load: async () => (await import("@clove/game-dove")).default,
+  },
+  dovez: {
+    title: "DoveZ",
+    subtitle: "dovezSub",
+    playable: false,
+    debug: "debug/assets",
+    load: async () => (await import("@clove/game-dovez")).default,
   },
 };
 
@@ -194,15 +210,16 @@ async function route(): Promise<void> {
   switch (r.view) {
     case "launcher":
       showPage(
-        launcherView(t, [
-          ...Object.entries(GAMES).map(([id, g]) => ({
+        launcherView(
+          t,
+          Object.entries(GAMES).map(([id, g]) => ({
             id,
             title: g.title,
             subtitle: t(g.subtitle),
-            available: true,
+            available: g.playable,
+            ...(g.debug ? { debug: g.debug } : {}),
           })),
-          { id: "dovez", title: "DoveZ", subtitle: t("dovezSub"), available: false },
-        ]),
+        ),
         view.signal,
       );
       return;
@@ -215,7 +232,9 @@ async function route(): Promise<void> {
           settings: () => settings,
           update: updateSettings,
           signal: view.signal,
-          games: Object.entries(GAMES).map(([id, g]) => ({ id, title: g.title })),
+          games: Object.entries(GAMES)
+            .filter(([, g]) => g.playable)
+            .map(([id, g]) => ({ id, title: g.title })),
         }),
         view.signal,
       );
@@ -232,7 +251,7 @@ async function route(): Promise<void> {
       );
       return;
     case "game":
-      await startGame(r.id, r.params, gen);
+      await startGame(r.id, r.sub ? { ...r.params, view: r.sub } : r.params, gen);
   }
 }
 

@@ -1,7 +1,8 @@
 /**
  * Browser-Smoke-Test: startet den gebauten Launcher per `vite preview` und prüft
  * in Chromium (WebGL über SwiftShader):
- * 1. DOVE startet aus kaltem Cache fehlerfrei und rendert,
+ * 1. DOVE startet aus kaltem Cache fehlerfrei und rendert, die DoveZ-Asset-
+ *    Ansicht zeigt Sprites,
  * 2. Launcher und Einstellungen (Sprachwechsel) funktionieren,
  * 3. nach „Spieldaten installieren“ startet DOVE bei beendetem Server
  *    vollständig aus dem Service-Worker-Cache.
@@ -90,6 +91,30 @@ try {
   watch(cold, "kalt");
   await playDove(cold, "kalt");
   await cold.close();
+
+  // 1b. DoveZ-Asset-Ansicht: erster Atlas mit Konturen, dann Wechsel zum nächsten
+  const assets = await browser.newPage({ viewport: { width: 800, height: 600 } });
+  watch(assets, "dovez-assets");
+  await assets.goto(`${ORIGIN}/#/dovez/debug/assets`);
+  await assets.waitForSelector("body[data-game=dovez]", { timeout: 30_000 });
+  await assets.waitForTimeout(1500);
+  const first = await assets.screenshot();
+  // gehalten, nicht getippt: die Ansicht fragt den Tastenzustand einmal pro Frame ab
+  await assets.keyboard.down("ArrowRight");
+  await assets.waitForTimeout(100);
+  await assets.keyboard.up("ArrowRight");
+  await assets.waitForTimeout(1500);
+  const second = await assets.screenshot();
+  const sprites = await litShare(first, 0, 44, 800, 556);
+  const next = await litShare(second, 0, 44, 800, 556);
+  console.log(`dovez-assets: ${(sprites * 100).toFixed(1)} % / ${(next * 100).toFixed(1)} % hell`);
+  if (sprites < 0.05 || next < 0.05) failures.push("dovez-assets: keine Sprites gerendert");
+  if (Buffer.compare(first, second) === 0) failures.push("dovez-assets: Atlaswechsel ohne Wirkung");
+  if (process.env["SMOKE_SHOTS"]) {
+    await Bun.write(`${process.env["SMOKE_SHOTS"]}/dovez-assets-1.png`, first);
+    await Bun.write(`${process.env["SMOKE_SHOTS"]}/dovez-assets-2.png`, second);
+  }
+  await assets.close();
 
   // 2. Launcher und Einstellungen; dann Spieldaten offline installieren
   const context = await browser.newContext({ viewport: { width: 640, height: 480 } });

@@ -49,6 +49,13 @@
         "pixi.js": "8.21.0",
       },
     },
+    "packages/game-dovez": {
+      "name": "@clove/game-dovez",
+      "version": "0.0.0",
+      "dependencies": {
+        "@clove/core": "workspace:*",
+      },
+    },
     "packages/pixi-kit": {
       "name": "@clove/pixi-kit",
       "version": "0.0.0",
@@ -64,6 +71,7 @@
         "@clove/audio": "workspace:*",
         "@clove/core": "workspace:*",
         "@clove/game-dove": "workspace:*",
+        "@clove/game-dovez": "workspace:*",
       },
       "devDependencies": {
         "playwright-core": "1.56.1",
@@ -82,6 +90,8 @@
     "@clove/formats": ["@clove/formats@workspace:packages/formats"],
 
     "@clove/game-dove": ["@clove/game-dove@workspace:packages/game-dove"],
+
+    "@clove/game-dovez": ["@clove/game-dovez@workspace:packages/game-dovez"],
 
     "@clove/pixi-kit": ["@clove/pixi-kit@workspace:packages/pixi-kit"],
 
