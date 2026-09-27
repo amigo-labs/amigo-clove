@@ -5,6 +5,16 @@ import { doAni } from "./doAni";
 import { EVENT_LAYER, LayerState, SCREEN_W, TERRAIN_LAYER, TILE_CAPACITY } from "./layers";
 import { Enemies, type Enemy, type EnemyWorld } from "./enemies";
 import { EnemyFire, type ShotWorld } from "./enemyFire";
+import {
+  DEATH_TICKS,
+  NO_INPUT,
+  Player,
+  SHOT_HIT,
+  killPlayer,
+  updatePlayer,
+  type PlayerInput,
+  type PlayerWorld,
+} from "./player";
 import { Op, type RouteEffect } from "./route";
 import { buildSurfaces, spanHit, type SpriteSource, type Surface } from "./surfaces";
 import { VbRnd, cint, f32, vbInt } from "./vb";
@@ -57,13 +67,14 @@ export type WorldEvent =
       /** Großer Ton (Punkte > 1499). */
       readonly big: boolean;
     }
-  | { readonly kind: "effect"; readonly effect: RouteEffect };
-
-/** Spielerposition, wie Routen und Gegner sie sehen (links oben am Schiff). */
-export interface PlayerPos {
-  x: number;
-  y: number;
-}
+  | { readonly kind: "effect"; readonly effect: RouteEffect }
+  | { readonly kind: "playerHit"; readonly player: number }
+  | {
+      readonly kind: "pickup";
+      readonly player: number;
+      readonly subtype: number;
+      readonly item: number;
+    };
 
 export class World {
   readonly surfaces: Surface[][];
@@ -94,7 +105,9 @@ export class World {
   events: WorldEvent[] = [];
   readonly enemies: Enemies;
   readonly fire: EnemyFire;
-  readonly players: PlayerPos[];
+  readonly players: Player[];
+  /** Gemeinsame Leben (`P[0].44`): 3 mit einem, 6 mit zwei Spielern. */
+  lives: number;
   /** SetGlobal/GetGlobal der Routen (`Me.A64`). */
   readonly globals: number[] = [];
   score = [0, 0];
@@ -102,7 +115,7 @@ export class World {
   constructor(
     readonly level: DovezLevel,
     sprites: SpriteSource,
-    opts: { players?: 1 | 2; seed?: number; startTick?: number } = {},
+    opts: { players?: 1 | 2; seed?: number; startTick?: number; ship?: 0 | 1 } = {},
   ) {
     this.surfaces = buildSurfaces(level, sprites);
     this.layers = level.layers.map((l, i) => new LayerState(l.scrollSpeed, TILE_CAPACITY[i] ?? 0));
@@ -114,13 +127,13 @@ export class World {
     this.rnd = new VbRnd(opts.seed);
     this.enemies = new Enemies(level, this.surfaces, this.playersMinus1);
     this.fire = new EnemyFire(level, this.surfaces);
-    this.players =
-      this.playersMinus1 === 0
-        ? [{ x: 100, y: 260 }]
-        : [
-            { x: 100, y: 228 },
-            { x: 100, y: 292 },
-          ];
+    const players = this.playersMinus1 + 1;
+    const ship = opts.ship ?? 0;
+    this.players = Array.from(
+      { length: players },
+      (_, i) => new Player(i, i === 0 ? ship : 1 - ship, players),
+    );
+    this.lives = players === 1 ? 3 : 6;
     this.tick = opts.startTick ?? 0;
     this.preroll();
   }
@@ -164,6 +177,7 @@ export class World {
       }
     });
     this.tick++;
+    if (this.tick === this.level.levelLength - 150) for (const p of this.players) p.exitState = 1;
     if (this.tick === this.level.levelLength) this.state = 2;
   }
 
@@ -271,7 +285,77 @@ export class World {
       hitsLandscape: (x1, y1, x2, y2) => this.hitsTerrain(x1, y1, x2, y2),
       partDestroyed: () => false,
       terrain: (x1, y1, x2, y2) => this.hitsTerrain(x1, y1, x2, y2),
+      hitPlayers: (shot, piercing) => {
+        const a = shot.actor;
+        for (const p of this.players) {
+          if (!p.alive) continue;
+          const hit =
+            a.x < p.x + SHOT_HIT.right &&
+            a.x + a.width > p.x + SHOT_HIT.left &&
+            a.y < p.y + SHOT_HIT.bottom &&
+            a.y + a.height > p.y + SHOT_HIT.top;
+          if (!hit) continue;
+          p.energy = f32(p.energy - shot.damage);
+          this.events.push({ kind: "playerHit", player: p.index });
+          if (!piercing && p.energy >= 0) return true;
+        }
+        return false;
+      },
     };
+  }
+
+  private playerWorld(): PlayerWorld {
+    return {
+      terrainSpeed: this.layers[TERRAIN_LAYER]!.speed,
+      underwater: (p) =>
+        this.level.waterHeight === 550 || PLAYFIELD_H - this.level.waterHeight < p.y + 17,
+      terrain: (x1, y1, x2, y2) => this.hitsTerrain(x1, y1, x2, y2),
+      kill: (p) => this.killPlayer(p),
+    };
+  }
+
+  killPlayer(p: Player): void {
+    if (killPlayer(p)) {
+      this.events.push({ kind: "explosion", x: p.x, y: p.y + 17, w: 64, h: 37, big: true });
+    }
+  }
+
+  /** `SpielFeindberührung`: Landschaft, Gegnerkontakt, Energie, Todessequenz. */
+  private contact(): void {
+    const ew = this.makeEnemyWorld();
+    for (const p of this.players) {
+      if (p.exitState !== 0) continue;
+      if (!p.alive) {
+        if (++p.deathTimer >= DEATH_TICKS) this.playerDead(p);
+        continue;
+      }
+      if (p.invulnerable > 0) {
+        p.invulnerable--;
+        p.energy = p.startEnergy;
+        continue;
+      }
+      const [x1, y1, x2, y2] = p.hitbox();
+      if (this.hitsTerrain(x1, y1, x2, y2)) {
+        this.killPlayer(p);
+        continue;
+      }
+      let rem: number;
+      do {
+        rem = this.enemies.hit(x1, y1, x2, y2, 15, p.index, ew);
+        if (rem >= 0 && rem < 15) p.energy = f32(p.energy - 2);
+        if (p.energy < 0) {
+          this.killPlayer(p);
+          break;
+        }
+      } while (rem >= 0 && rem !== 15);
+      if (p.energy > p.maxEnergy) p.energy = p.maxEnergy;
+    }
+  }
+
+  /** Ende der Todessequenz; der Neustart (Checkpoint) liegt bei der Engine. */
+  private playerDead(p: Player): void {
+    p.deathTimer = DEATH_TICKS;
+    if (this.players.every((q) => !q.alive)) this.state = 1;
   }
 
   /** Punkte: `score += Multiplikator · Punkte / (1 + 0,5 · zwei Spieler)` (Kombo folgt). */
@@ -386,9 +470,10 @@ export class World {
     }
   }
 
-  /** Ein Tick. */
-  step(): void {
+  /** Ein Tick; `inputs` je Spieler. */
+  step(inputs: readonly PlayerInput[] = []): void {
     if (this.state !== 0) return;
+    for (const p of this.players) p.startEnergy = p.energy;
     this.level.groups.forEach((g, i) => doAni(g, this.groupFrames[i]!));
     this.timeline();
     if (this.background === 1) {
@@ -399,6 +484,8 @@ export class World {
       this.layers[l]!.move(this.surfaces, this.groupFrames);
       this.anims.move(l, this.level, this.layers);
     }
+    const pw = this.playerWorld();
+    for (const p of this.players) updatePlayer(p, inputs[p.index] ?? NO_INPUT, pw);
     this.moveSpecials();
     this.enemies.step(this.makeEnemyWorld());
     this.anims.move(4, this.level, this.layers);
@@ -418,6 +505,35 @@ export class World {
     this.fire.stepShots(sw);
     this.layers[6]!.move(this.surfaces, this.groupFrames);
     this.anims.move(6, this.level, this.layers);
+    this.contact();
+  }
+
+  /** Wirkung eines Power-ups (Waffen-Slots und Satelliten folgen mit den Spielerwaffen). */
+  private pickup(p: Player, s: Special): void {
+    this.events.push({ kind: "pickup", player: p.index, subtype: s.subtype, item: s.item });
+    if (s.subtype !== 3) return;
+    switch (s.item) {
+      case 2:
+        p.speed = f32(p.speed + 1);
+        return;
+      case 3:
+        p.speed = f32(p.speed - 1);
+        return;
+      case 4:
+        for (const q of this.players) q.shotPower = Math.min(q.shotPower + 1, 3);
+        return;
+      case 5:
+        p.energy = f32(p.energy + 50);
+        return;
+      case 6:
+        p.invulnerable = 200;
+        return;
+      case 7:
+      case 8:
+      case 9:
+        p.extraWeapon = s.item - 6;
+        return;
+    }
   }
 
   private moveSpecials(): void {
@@ -428,7 +544,21 @@ export class World {
         s.frame = (s.frame + 1) % 6;
       }
       s.x = f32(s.x + s.vx);
-      if (s.x < -64) s.active = false;
+      if (s.x < -64) {
+        s.active = false;
+        continue;
+      }
+      for (const p of this.players) {
+        const own = s.subtype === 0 ? p.shipType === 0 : s.subtype === 4 ? p.shipType === 1 : true;
+        if (!own || !p.alive) continue;
+        const [x1, y1, x2, y2] = p.hitbox();
+        if (x1 < s.x + 48 && x2 > s.x + 16 && y1 < s.y + 48 && y2 > s.y + 16) {
+          this.addScore(1000, p.index);
+          this.pickup(p, s);
+          s.active = false;
+          break;
+        }
+      }
     }
   }
 }

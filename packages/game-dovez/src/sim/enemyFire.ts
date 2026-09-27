@@ -57,6 +57,8 @@ export interface MuzzleSource {
 export interface ShotWorld extends Omit<RouteHost, "effect"> {
   /** Schüsse ohne `ignoreWalls` prüfen die Landschaft. */
   terrain(x1: number, y1: number, x2: number, y2: number): boolean;
+  /** Treffer auf Spieler; `true`: der Schuss vergeht. */
+  hitPlayers?(shot: EnemyShot, piercing: boolean): boolean;
 }
 
 /** Maße eines Schusstyps: eingebaute Kugel 16×16, sonst erstes Bild der Gruppe. */
@@ -247,7 +249,8 @@ export class EnemyFire {
       const wall =
         type?.ignoreWalls === 0 &&
         world.terrain(cint(a.x), cint(a.y), cint(a.x + a.width), cint(a.y + a.height));
-      if (ended || (cull && off) || wall) shot.active = false;
+      const absorbed = world.hitPlayers?.(shot, (salvo?.piercing ?? 0) !== 0) ?? false;
+      if (ended || (cull && off) || wall || absorbed) shot.active = false;
     }
   }
 }
