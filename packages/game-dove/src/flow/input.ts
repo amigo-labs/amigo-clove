@@ -33,18 +33,26 @@ const ALL = [...new Set([...Object.values(KEYS).flat(), ...NAME_KEYS])];
  * Tastenflanken pro 14-ms-Tick. `sample()` einmal zu Beginn jedes Ticks;
  * `hit()` ist wahr, wenn eine Taste der Gruppe in diesem Tick neu gedrückt wurde.
  * Der Zustand überlebt Bildschirmwechsel — eine gehaltene Bestätigungstaste
- * löst im nächsten Menü nicht erneut aus.
+ * löst im nächsten Menü nicht erneut aus. Was beim Start schon gehalten ist
+ * (Enter oder Pad-A auf „Spielen“ im Launcher), zählt erst nach dem Loslassen.
  */
 export class KeyEdges {
   private prev = new Set<string>();
-  private now = new Set<string>();
+  private now: Set<string>;
 
-  constructor(readonly keys: KeyState) {}
+  constructor(readonly keys: KeyState) {
+    this.now = this.read();
+  }
+
+  private read(): Set<string> {
+    const down = new Set<string>();
+    for (const c of ALL) if (this.keys.isDown(c)) down.add(c);
+    return down;
+  }
 
   sample(): void {
     this.prev = this.now;
-    this.now = new Set();
-    for (const c of ALL) if (this.keys.isDown(c)) this.now.add(c);
+    this.now = this.read();
   }
 
   held(g: KeyGroup): boolean {
