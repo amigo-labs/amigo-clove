@@ -213,8 +213,8 @@ const WEAPON_SUB = [
 
 const WEAPON = [
   { name: "name", type: "str" },
-  /** Mündung am Rand des gedrehten Teils (`Part.rotation`). */
-  { name: "muzzleRotated", type: "i16" },
+  /** Geschützturm: das Teil dreht sich jeden Tick zum Spieler, die Mündung sitzt am gedrehten Rand. */
+  { name: "turret", type: "i16" },
   { count: "salvos" },
   { list: "salvos", of: WEAPON_SUB },
 ] as const satisfies Schema;

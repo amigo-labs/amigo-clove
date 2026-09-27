@@ -239,7 +239,7 @@ und die Laufzeitstrukturen in der Analyse-Notiz (siehe unten).
 
 ### Gegnerwaffe (`0x5880A4`) und Schusstyp (`0x58809C`)
 
-Waffe: `name`, `muzzleRotated` (Mündung am Rand des gedrehten Teils), Salven.
+Waffe: `name`, `turret` (Geschützturm: das Teil dreht sich zum Spieler, die Mündung sitzt am gedrehten Rand), Salven.
 Eine Salve feuert `repeat + 1` Schüsse ab `startDelay`, alle `interval` Ticks
 (0: alle im selben Tick — Ringe). Der Emitter zählt Schüsse über alle Salven;
 die Nummer ist `Var` 32760 der Schussroute (Ringe: Winkel = Nummer · 18).
