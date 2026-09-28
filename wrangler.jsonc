@@ -9,4 +9,6 @@
   "assets": {
     "directory": "./packages/shell/dist",
   },
+  // Zweig-Builds laufen über `wrangler preview`, das diesen Block verlangt (leer genügt).
+  "previews": {},
 }
