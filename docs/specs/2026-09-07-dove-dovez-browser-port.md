@@ -615,7 +615,7 @@ Jeder hat genau ein überprüfbares Ergebnis.
 | **M5** | Shell echt: Menü, Routing, Settings, Gamepad, Save-Export, Cache-Bundles, Service Worker, i18n | 3–4 d | deploybare Site; DOVE aus kaltem Cache spielbar — *Stand: erledigt; statischer Build mit relativen Pfaden, Smoke-Test startet DOVE kalt und nach „Spieldaten installieren“ bei beendetem Server. Offen: Ressourcenzähler für `dispose()` in Dev-Builds, Savegames in IndexedDB (DOVE braucht nur Schlüssel/Wert in `localStorage`)* |
 | **M6** | DoveZ Container + Assets | 1 w | ~120 MB Assets; Debug-Seite rendert jedes Sprite mit überlagerter `.r`-Kontur — *Stand: erledigt; 147 MB (davon Musik 62 MB unverändert, Video 20 MB), 33 Atlanten auf 44 Seiten, `#/dovez/debug/assets`, siehe `docs/formats/dovez-assets.md`* |
 | **M7** | ⚠ **DoveZ `.dat` dekodieren** (Risikoblock) | 1–2 w | `opaque` unter 5 %; Debug-Ansicht zeichnet Routen und Schussmuster — *Stand: erledigt; Grammatik aus `LadeDaten`, 27/27 byte-identisch, **0 Byte offen** (benannt oder nachweislich ungelesen), Routen-Interpreter bitgleich zum Referenzsimulator, `#/dovez/debug/level`, siehe `docs/formats/dovez-level-dat.md`. Offen für M8: Abgleich am Original, Start-Tick vor 0 (`Me.560`)* |
-| **M8** | DoveZ Engine: Parallax, beide Schiffe, Coop, Funksystem, Bosse, Video, Kampagne | 3–5 w | Kampagne durchspielbar — *Stand: im Aufbau; Mechanik statisch aus der EXE (`docs/measurements/dovez-runtime.md`, Takt 16 ms). Spielbar über `#/dovez`: Zeitleiste mit Vorlauf, Ebenen und Landschaft, Effekt-Animationen, Gegner mit Routen, Teilen und Waffen, Schiff mit Hauptschuss, Treffer, Kontakt, Power-ups, Levelausflug; Todeszustände mit Funken, Explosionen, Popups und Wackeln; Checkpoint-Tor mit Schnappschuss und Neustart; HUD; Ton, Funk mit Laufband, gestreamte Musik; alle 27 Level laufen kopflos durch. Offen: Zweitwaffen, Partikel/Force/Beam/Nova, Bosse (Zustand 4), Druckwelle als Spielwirkung, Continue, Coop-Eingabe, prozedurale Hintergründe, Wetter, Video, Kampagne* |
+| **M8** | DoveZ Engine: Parallax, beide Schiffe, Coop, Funksystem, Bosse, Video, Kampagne | 3–5 w | Kampagne durchspielbar — *Stand: im Aufbau; Mechanik statisch aus der EXE (`docs/measurements/dovez-runtime.md`, Takt 16 ms). Spielbar über `#/dovez`: Zeitleiste mit Vorlauf, Ebenen und Landschaft, Effekt-Animationen, Gegner mit Routen, Teilen und Waffen, Schiff mit Hauptschuss, Treffer, Kontakt, Power-ups, Levelausflug; Todeszustände mit Funken, Explosionen, Popups und Wackeln; Checkpoint-Tor mit Schnappschuss und Neustart; HUD; Ton, Funk mit Laufband, gestreamte Musik; alle 27 Level laufen kopflos durch. Dazu Zweitwaffen und alle Schusstypen, Partikel (D-Tonator) und Force (D-Phyton), Beam mit Kombo, Super-Nova, Boss-Finale (Zustand 4), Druckwelle als Spielwirkung, Schiffzeichnung aus SpielMoveDove, Continue/Pause mit Highscoreliste, Coop-Eingabe (`players=2`), prozedurale Hintergründe, Wetter, Wasser, Overlays und Spezialabläufe (Tutorial-Start). Offen: Video, Kampagne, Abschusszähler der Nova (`B48[0].54`), zweites Schiff im Port* |
 | **M9** | Politur, Performance, Barrierefreiheit, Deployment | 1 w | Release |
 
 **Kürzester Weg zum ersten spielbaren Level:** M0 → M1 (nur `LevelDat` +
@@ -722,7 +722,9 @@ Publisher (magnussoft), was Rechte weiter verteilt.
 
 Für die private Entwicklung im privaten Repo ist das unkritisch. **Eine
 Veröffentlichung setzt eine schriftliche Freigabe voraus** — zu klären vor M9,
-nicht danach.
+nicht danach. *(M8: Repository und Site sind seit dem 28.09.2026 auf Entscheidung
+des Repository-Inhabers öffentlich; Auslieferung über Cloudflare Workers Builds,
+`wrangler.jsonc`.)*
 
 ---
 

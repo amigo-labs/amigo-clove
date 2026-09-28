@@ -53,7 +53,7 @@ function serviceWorker(): Plugin {
     enforce: "post",
     async generateBundle(_options, bundle) {
       const files = Object.keys(bundle)
-        .filter((f) => !f.endsWith(".map"))
+        .filter((f) => !f.endsWith(".map") && f !== HEADERS_FILE)
         .toSorted();
       const version = createHash("sha256");
       for (const f of files) {
@@ -81,6 +81,33 @@ function serviceWorker(): Plugin {
   };
 }
 
+/**
+ * `_headers` für das statische Hosting (Cloudflare Workers Assets): Bundle-Dateien
+ * und Spielassets sind content-gehasht und unbegrenzt cachebar, die beiden
+ * `manifest.json` nicht. `index.html`, `sw.js` und `vendor/` behalten die
+ * Vorgabe (immer revalidieren). Nicht in der Vorab-Liste des Service Workers,
+ * der Host liefert die Datei nicht aus.
+ */
+const HEADERS_FILE = "_headers";
+function staticHeaders(): Plugin {
+  const immutable = "  Cache-Control: public, max-age=31536000, immutable";
+  const rules = [
+    ...["/assets/*", "/dove/*", "/dovez/*"].flatMap((p) => [p, immutable]),
+    ...["/dove/manifest.json", "/dovez/manifest.json"].flatMap((p) => [
+      p,
+      "  ! Cache-Control",
+      "  Cache-Control: no-cache",
+    ]),
+  ];
+  return {
+    name: "clove-static-headers",
+    apply: "build",
+    generateBundle() {
+      this.emitFile({ type: "asset", fileName: HEADERS_FILE, source: `${rules.join("\n")}\n` });
+    },
+  };
+}
+
 // Generierte Assets liegen im Repo unter assets/ und werden 1:1 ausgeliefert
 // (content-gehashte Dateinamen, nie im Bundle).
 export default defineConfig({
@@ -89,5 +116,5 @@ export default defineConfig({
   base: "./",
   build: { target: "es2023", assetsInlineLimit: 0 },
   server: { port: 5173 },
-  plugins: [chiptuneWorklet(), serviceWorker()],
+  plugins: [chiptuneWorklet(), staticHeaders(), serviceWorker()],
 });

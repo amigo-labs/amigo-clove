@@ -21,7 +21,10 @@ Gamepad), Spielstand-Export/-Import, Ladebildschirm mit Bundle-Vorladen und
 Offline-Betrieb per Service Worker. **M6** (DoveZ-Pakete und -Assets):
 Parser für Pakete, `.r`-Konturen, Masken, Funktexte und Kampagne,
 Asset-Pipeline mit Atlanten, Opus, Musik und Video, Debug-Seite
-`#/dovez/debug/assets`. Die Original-Tickrate (14 ms) ist aus der EXE hergeleitet:
+`#/dovez/debug/assets`. **M7** (DoveZ-`.dat` vollständig dekodiert) ist
+fertig. **M8** (DoveZ-Engine) ist im Aufbau: `#/dovez` spielt alle 27 Level
+mit Gegnern, Bossen, allen Waffen, Beam, Super-Nova, Coop, Continue/Pause,
+Hintergründen und Wetter. Es fehlen noch Video und Kampagne. Die Original-Tickrate (14 ms) ist aus der EXE hergeleitet:
 [`docs/measurements/tick-rate.md`](docs/measurements/tick-rate.md).
 
 - **Design-Spec:** [`docs/specs/2026-09-07-dove-dovez-browser-port.md`](docs/specs/2026-09-07-dove-dovez-browser-port.md)
@@ -79,7 +82,13 @@ mit relativen Pfaden — sie läuft unter jedem Unterpfad ohne Server-Rewrite
 (Hash-Routing). Für den Service Worker braucht es HTTPS (oder `localhost`).
 Spielassets sind content-gehasht und dürfen unbegrenzt gecacht werden
 (`Cache-Control: immutable`); `index.html`, `sw.js` und die
-`manifest.json`-Dateien nicht. Veröffentlichen nur mit Freigabe, siehe unten.
+`manifest.json`-Dateien nicht. Der Build schreibt diese Regeln als `_headers`.
+
+Öffentlich ausgeliefert wird über **Cloudflare Workers Builds** (nur statische
+Assets, kein Worker-Skript): `wrangler.jsonc` im Wurzelverzeichnis baut mit
+`bun install --frozen-lockfile && bun run build` und lädt
+`packages/shell/dist/` hoch; jeder PR bekommt eine Vorschau. Lokal prüfen:
+`npx wrangler dev` (liefert die Site samt `_headers` unter `localhost:8787`).
 
 ## Verzeichnisse
 
@@ -91,7 +100,7 @@ Spielassets sind content-gehasht und dürfen unbegrenzt gecacht werden
 | `packages/core/`  | `@clove/core` — mechanikfreie Bausteine: Takt, Q16.16, Rng, Hash, Replay, Assets, i18n, Spielstanddatei, `GameModule` |
 | `packages/pixi-kit/` | `@clove/pixi-kit` — Pixi-Adapter: ganzzahliges Scaling, Texturen |
 | `packages/game-dove/` | `@clove/game-dove` — DOVE: Simulation (`src/sim`, Pixi-frei), Renderer, Replays |
-| `packages/game-dovez/` | `@clove/game-dovez` — DoveZ: bisher die Asset-Ansicht (Engine ab M8) |
+| `packages/game-dovez/` | `@clove/game-dovez` — DoveZ (M8 im Aufbau): `#/dovez?level=…&from=…` spielt ein Level, Esc Pause, ohne Leben Continue (`screen=continue\|pause` zur Sichtprüfung); Debug-Ansichten |
 | `packages/shell/` | `@clove/shell` — Launcher (Vite): Routing, Einstellungen, Gamepad, Spielstände, Service Worker |
 | `packages/assetkit/` | `@clove/assetkit` — Asset-Pipeline (Bun, sharp) |
 | `assets/dove/`, `assets/dovez/` | generierte Assets + `manifest.json`, nie von Hand ändern |
@@ -113,6 +122,6 @@ bun scripts/originals-crlf.ts restore <DOVE-Ordner> <DoveZ-Ordner>
 
 Für beide Spiele liegt **keine** Freeware- oder Weitergabe-Erlaubnis vor; bei
 DoveZ ist Vervielfältigung ohne schriftliche Genehmigung ausdrücklich untersagt.
-Dieses Repository ist deshalb **privat**. Eine Veröffentlichung setzt eine
-schriftliche Freigabe des Autors voraus. Details im Abschnitt „Rechtlicher
-Befund" der Design-Spec.
+Repository und Site sind seit dem 28.09.2026 auf Entscheidung des
+Repository-Inhabers **öffentlich**. Der rechtliche Befund (Abschnitt
+„Rechtlicher Befund" der Design-Spec) bleibt davon unberührt.

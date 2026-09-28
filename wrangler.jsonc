@@ -1,0 +1,14 @@
+// Cloudflare Workers Builds: statische Site aus `bun run build` (nur Assets, kein Worker-Skript).
+// Hash-Routing, daher keine SPA-Rewrites; Cache-Regeln in `packages/shell/vite.config.ts` (`_headers`).
+{
+  "name": "amigo-clove",
+  "compatibility_date": "2025-09-01",
+  "build": {
+    "command": "bun install --frozen-lockfile && bun run build",
+  },
+  "assets": {
+    "directory": "./packages/shell/dist",
+  },
+  // Zweig-Builds laufen über `wrangler preview`, das diesen Block verlangt (leer genügt).
+  "previews": {},
+}
