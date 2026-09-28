@@ -651,7 +651,7 @@ Sterne aus dem Schnappschuss, Wetter neu ausgelegt, erneut sichern,
 `SpielDoveWiedergeburt` (`0x50A620`: nur Partikel und `newborn1.wav`). Kein
 Vorlauf, die Musik läuft weiter, der Funk bricht ab. 2P mit Leben und ohne
 Boss: der Spieler ersteht allein beim Partner wieder, ohne Neustart; sonst
-stirbt der Partner mit. Ohne Leben: Continue-Bildschirm (fehlt im Port).
+stirbt der Partner mit. Ohne Leben: Continue-Bildschirm (s. „Continue“).
 
 ## HUD `SpielDisplay` (`0x510E10`)
 
@@ -714,4 +714,62 @@ dem Ende neu. Pegel je Tick `90 · Me.1C0 / 100`, `Me.1C0` fällt in den
 letzten 50 Ticks um 2 je Tick, beim letzten Leben um 1. Kein Bosswechsel —
 Bosse sind eigene Level mit eigener Musik. Continue spielt `Continue.ogg`
 einmal, danach blendet die Levelmusik in 20 Ticks ein.
+
+## Continue (`Continue` `0x521790`)
+
+Nach dem Tod ohne Leben (SpielLoop #264, 2P: gemeinsame Leben): Funk aus,
+`AddHighscore` (`0x577A90`) je Spieler mit dem **vollen** Stand, Platz 1…10
+als „‹Name› landet auf Platz N!“ / „‹Name› ranked at place N!“ (Arial 24,
+zentriert um x 400, y 490 + 20·p). Hintergrund: das letzte Spielbild mit 30 %
+Schwarz; `Continue.ogg` einmal auf vollem Musikpegel. Eigene Schleife mit
+`Wait 40` (25 Hz): Countdown 9 → 0, je Schritt 28 Durchläufe (1,12 s, zusammen
+10,08 s), Esc/D/Q gehalten +9 je Durchlauf → 3 Durchläufe je Schritt. Die „0“
+steht einen Durchlauf, dann schaltet der „Fernseher“ aus (50 Durchläufe
+schrumpfendes Bild, 7 Leuchtstrich `a_kreis2`, 15 Nachlauf ≈ 2,9 s; nichts
+wird gelöscht, nur um 15 % abgedunkelt) → Game Over → Hauptmenü. Bestätigen:
+Feuer/Beam (ohne Levelausflug), Leertaste, Enter — gehaltene Tasten zählen
+sofort, ohne Fokus keine. Je Durchlauf 101 Schneeflocken 2×2 und bis zu drei
+1×600-Streifen (weiß α 0,8 additiv), „Continue“ und Ziffer (Zelle 128 px,
+„Orbit-B BT“ fehlt → Arial, Schatten ±2 px, die Ziffer zittert in den ersten
+15 Durchläufen um ±10 px), zu 10 % ein Bildriss, zuletzt das ganze Bild auf
+64×64 vergröbert mit α `Rnd/2 + 0,1` darüber. „Ja“: `speech.wav` (0 dB),
+Leben 4 (2P 7), Punkte `\ 3` je Spieler, Extraleben-Schwelle 3, Levelmusik
+von vorn mit Einblenden über 20 Ticks, dann der normale Neustart (ein Leben
+weniger → 3 bzw. 6).
+
+**Zufall:** Beide Bildschirme ziehen im Original aus dem globalen `Rnd`
+(Continue 207–211 Aufrufe je gezeichnetem Durchlauf, beim Ausschalten 1),
+abhängig von Echtzeit und ausgelassenen Bildern. Der Port zieht dieselben
+Aufrufe in derselben Reihenfolge aus `World.rnd`, als wäre jeder Durchlauf
+gezeichnet — die Folge nach dem Continue hängt so nur von den Eingaben ab.
+Gezeichnet wird je Anzeigebild nur der letzte fällige Durchlauf.
+**Highscore:** 10 Plätze (Name, Punkte, Spiel-ID; ein Platz je Spiel), beim
+Host gespeichert (`highscores`, JSON), Name „Bruce“ (Vorgabe bei leerem Namen;
+der Port hat noch kein Namensmenü). Umsetzung: `src/game/continueScreen.ts`
+(Logik), `continueView.ts`, `highscore.ts`; Sichtprüfung `#/dovez?screen=continue`.
+
+## Pause (`Pause` `0x524610`)
+
+Auslöser am Ende jedes Ticks: Esc (`TastePause`, Gamepad Start) oder
+Fokusverlust (Port: `blur` des Fensters, verborgene Seite). Beim Eintritt
+`SpielSoundOFF`, Funkstimme angehalten (Position gemerkt), Musik stumm (läuft
+weiter), `Pause.wav` (−10 dB). Erst wenn Esc/D/Q losgelassen sind, läuft die
+Schleife mit `Wait 16`: Schwarz, das Spielbild halb so groß in der Vorschau
+(288, 77)–(688, 377) mit Abtaststrich (Zeile 2 px versetzt, `balken` α 0,1
+additiv) und zufällig (2 % je Bild in Zeile 21…234) 45 Bilder Linsenstörung
+mit Rauschpunkten und Linien, darüber `pausescreen` (Schwarz durchsichtig),
+Menü „WEITER“/„RESUME“ und „EXIT“ (Arial, gewählt 26 px, sonst 21 px, bei
+(118, 89)/(118, 120)), Titel „Level1-1 Skyfight (Bruce)“ (Arial 20, grün mit
+Schatten, (120, 35)), Funkprotokoll (das Laufband, Arial 18, 7 Zeilen à
+530 px ab (135, 412), neueste unten, vorne umgebrochen) und in den ersten 19
+Bildern das Spielbild darüber (α 0,95 → 0,05). ↑/↓ wählen, sonst keine
+Markierung. Esc/D/Q setzt immer fort; OK (Feuer/Beam, Leertaste, Enter) auf
+EXIT trägt den Highscore ein → Hauptmenü, sonst weiter. Nur mit „WEITER“
+verlassen: `Pause.wav`, Musikpegel und Funkstimme zurück. Danach nochmals
+Loslassen abwarten; im Spiel blendet das letzte Pausebild (0…550) in 20 Ticks
+aus, die Pausenzeit wird nicht nachgeholt. Nicht übernommen: `Screenshot.bmp`
+und das Ladebild. Die Schleifentöne der Waffen startet der Port nach der Pause
+neu (das Original fragt ihren Puffer je Tick ab). Umsetzung:
+`src/game/pauseScreen.ts` (Logik), `pauseView.ts`; Sichtprüfung
+`#/dovez?screen=pause`.
 
