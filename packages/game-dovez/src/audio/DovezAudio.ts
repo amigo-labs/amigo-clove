@@ -1,6 +1,7 @@
 import { SfxPool, StreamPlayer } from "@clove/audio";
 import type { AssetStore, AudioHost } from "@clove/core";
 import { dovezSlug } from "@clove/formats";
+import type { AudioGains } from "../game/config";
 import type { World } from "../sim/world";
 
 /**
@@ -8,12 +9,11 @@ import type { World } from "../sim/world";
  * Ereignisse der Simulation einmal pro Frame, dedupliziert, und streamt
  * die Levelmusik. Befund: `docs/measurements/dovez-runtime.md` („Ton“).
  *
- * Pegel wie die Vorgaben des Originals (Hundertstel dB, `10^(v/2000)`):
- * Engine-Effekte −1000 (0,316), Level-Töne und Funkstimmen 0 (1,0), Musik 90 %.
+ * Pegel aus den Optionen (`game/config.ts`, Hundertstel dB, `10^(v/2000)`),
+ * Vorgaben des Originals: Engine-Effekte −1000 (0,316), Level-Töne und
+ * Funkstimmen 0 (1,0), Musik 90 %.
  */
-const SFX_GAIN = 10 ** (-1000 / 2000);
-const SPEECH_GAIN = 1;
-const MUSIC_GAIN = 0.9;
+const DEFAULT_GAINS: AudioGains = { sfx: 10 ** (-1000 / 2000), speech: 1, music: 0.9 };
 
 export class DovezAudio {
   /** Laufende Schleifen der Level-Töne je Index (`SpielSoundOFF` hält sie an). */
@@ -34,10 +34,16 @@ export class DovezAudio {
     private readonly sfx: SfxPool,
     private readonly music: StreamPlayer,
     private readonly slug: string,
+    private readonly gains: AudioGains,
   ) {}
 
   /** Lädt die 84 Effekte (`core`) und die Stimmen des Levels (`voice/<slug>`). */
-  static async create(host: AudioHost, assets: AssetStore, slug: string): Promise<DovezAudio> {
+  static async create(
+    host: AudioHost,
+    assets: AssetStore,
+    slug: string,
+    gains: AudioGains = DEFAULT_GAINS,
+  ): Promise<DovezAudio> {
     const sfx = new SfxPool(host.context, host.sfx, { maxVoices: 24, maxPerSound: 6 });
     const ids = [
       ...assets.bundle("core").filter((id) => id.startsWith("sound/")),
@@ -58,6 +64,7 @@ export class DovezAudio {
       sfx,
       new StreamPlayer(host.context, host.music),
       slug,
+      gains,
     );
   }
 
@@ -74,7 +81,7 @@ export class DovezAudio {
   /** Continue: `Continue.ogg` einmal auf vollem Musikpegel (`StopOgg` vorher). */
   playContinueMusic(): void {
     this.music.stop();
-    this.music.setVolume(MUSIC_GAIN);
+    this.music.setVolume(this.gains.music);
     if (this.assets.has("music/continue"))
       this.music.play(this.assets.url("music/continue"), false);
   }
@@ -83,9 +90,25 @@ export class DovezAudio {
     this.music.stop();
   }
 
+  /** Levelende: `SpielSoundOFF` (Schleifen aus) und `StopOgg`. */
+  stopLevel(): void {
+    for (const stop of this.loops.values()) stop();
+    this.loops.clear();
+    for (const loop of this.sfxLoops.values()) loop.stop();
+    this.sfxLoops.clear();
+    this.music.stop();
+  }
+
+  /** Speicherbildschirm: `Save_Screen.ogg` auf dem Musikpegel, Schleife. */
+  playSaveMusic(): void {
+    this.music.setVolume(this.gains.music);
+    if (this.assets.has("music/save_screen"))
+      this.music.play(this.assets.url("music/save_screen"), true);
+  }
+
   /** Engine-Effekt (−10 dB) oder mit `speech` auf Sprachpegel (0 dB), z. B. `speech.wav`. */
   effect(name: string, speech = false): void {
-    this.sfx.play(`sound/${name}`, 0, speech ? SPEECH_GAIN : SFX_GAIN);
+    this.sfx.play(`sound/${name}`, 0, speech ? this.gains.speech : this.gains.sfx);
   }
 
   /**
@@ -116,7 +139,7 @@ export class DovezAudio {
    */
   resume(restore: boolean): void {
     for (const name of this.pausedLoops)
-      this.sfxLoops.set(name, this.sfx.loopHandle(`sound/${name}`, SFX_GAIN));
+      this.sfxLoops.set(name, this.sfx.loopHandle(`sound/${name}`, this.gains.sfx));
     this.pausedLoops = [];
     const v = this.pausedVoice;
     this.pausedVoice = undefined;
@@ -125,14 +148,14 @@ export class DovezAudio {
     if (v) {
       this.voice = v.id;
       this.voiceStarted = this.context.currentTime - v.at;
-      this.sfx.play(v.id, 0, SPEECH_GAIN, 1, v.at);
+      this.sfx.play(v.id, 0, this.gains.speech, 1, v.at);
     }
   }
 
   /** Einmal pro Frame nach den Simulationsticks; leert `world.events` nicht. */
   update(world: World): void {
     // Super-Nova: Musik auf 1/10 des Optionspegels (`MusikLautstärke([0x588084] \ 10)`)
-    this.music.setVolume((MUSIC_GAIN * (world.nova ? 10 : world.musicVolume)) / 100);
+    this.music.setVolume((this.gains.music * (world.nova ? 10 : world.musicVolume)) / 100);
     const seen = new Set<string>();
     for (const e of world.events) {
       const key = JSON.stringify(e);
@@ -140,7 +163,7 @@ export class DovezAudio {
       seen.add(key);
       switch (e.kind) {
         case "sfx":
-          this.sfx.play(`sound/${e.name}`, 0, SFX_GAIN, e.rate ?? 1);
+          this.sfx.play(`sound/${e.name}`, 0, this.gains.sfx, e.rate ?? 1);
           break;
         case "sfxLoop": {
           const loop = this.sfxLoops.get(e.name);
@@ -149,7 +172,7 @@ export class DovezAudio {
             else
               this.sfxLoops.set(
                 e.name,
-                this.sfx.loopHandle(`sound/${e.name}`, SFX_GAIN, e.rate ?? 1),
+                this.sfx.loopHandle(`sound/${e.name}`, this.gains.sfx, e.rate ?? 1),
               );
           } else {
             loop?.stop();
@@ -164,8 +187,8 @@ export class DovezAudio {
           if (e.mode === 1) {
             if (this.loops.has(e.sound) && !e.rewind) break;
             this.loops.get(e.sound)?.();
-            this.loops.set(e.sound, this.sfx.loop(id, SPEECH_GAIN));
-          } else this.sfx.play(id, 0, e.sfx ? SFX_GAIN : SPEECH_GAIN);
+            this.loops.set(e.sound, this.sfx.loop(id, this.gains.speech));
+          } else this.sfx.play(id, 0, e.sfx ? this.gains.sfx : this.gains.speech);
           break;
         }
         case "stopSound": {
@@ -185,7 +208,7 @@ export class DovezAudio {
           this.stopVoice();
           this.voice = `voice/${this.slug}/${dovezSlug(e.wav)}`;
           this.voiceStarted = this.context.currentTime;
-          this.sfx.play(this.voice, 0, SPEECH_GAIN);
+          this.sfx.play(this.voice, 0, this.gains.speech);
           break;
         case "voiceStop":
           this.stopVoice();

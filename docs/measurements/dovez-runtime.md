@@ -243,8 +243,8 @@ erscheinen Waffen-Power-ups nur für das gewählte Schiff.
   Rauch unter halber Energie (ein Zähler für beide Spieler).
 - **Punkte** (`AddPunkte` `0x50F750`): `score = CLng(Kombo · Punkte / (1 + 0,5 ·
   zwei Spieler) + score)`; der Kombo-Multiplikator wirkt auf alle Punkte des
-  Spielers, solange er > 1 ist („Beam und Kombo“). Extraleben bei 200 000,
-  400 000, 800 000 …
+  Spielers, solange er > 1 ist („Beam und Kombo“). Extraleben bei 300 000,
+  600 000, 1 200 000 … (`Me.524` = 3 aus `DoveReset`, verdoppelt je Extraleben).
 
 ## Spielerwaffen
 
@@ -287,7 +287,6 @@ erscheinen Waffen-Power-ups nur für das gewählte Schiff.
   Teile vom letzten zum ersten, Konturtest wie bei der Landschaft; je Aufruf
   höchstens ein Teil. Rückgabe ist der **Restschaden**: ohne Treffer der volle,
   bei verbrauchtem Treffer 0, bei einem Abschuss der Überschuss (der Schuss
-<<<<<<< HEAD
   fliegt damit weiter). Gepanzerte Teile nehmen keinen Schaden; mit Schaden −1
   prüft der Aufruf nur, ob etwas überlappt (Force).
   `CheckWhereColisionRight/Left` (`0x4C6A60`/`0x4C64B0`) suchen die nächste
@@ -350,12 +349,6 @@ Ladung). Schaden `CLng(L^1,6 · Stufe)`, voll `8500 · Stufe` (+1500 Schiff 1).
   bei einem entkommenen Gegner (außer `noComboReset`/`solid`), am Ende der
   Kraftphase und im Nachglühen. Anzeige nur für Spieler 1: `combo` bei
   (730, 520) mit Zähler und Bonus, am Ende „Combo: N Hit B“ im Laufband.
-=======
-  fliegt damit weiter). Gepanzerte Teile nehmen keinen Schaden.
-- Zweitwaffen (Bombe, Fallrakete, Zielsuchrakete), Partikel (Schiff 0), Force
-  (Schiff 1), Beam (Aufladen 0,9 je Tick bis 165) und Super-Nova (eigener
-  Abschnitt) sind im Port umgesetzt.
->>>>>>> worktree-agent-a6289ba1d320e1b28
 
 ## Gegner-Laufzeit `SpielMoveEnemy` (`0x4B5850`)
 
@@ -376,7 +369,6 @@ Gegner geht nur, wenn seine Route endet oder er stirbt. Je Gegner:
 Aufblitzen als zweiter additiver Durchgang. DirectDraw-Gruppen als
 Colorkey-Blit, beim Aufblitzen das Negativ `_i`.
 
-<<<<<<< HEAD
 **Todeszustand** beim Abschuss (`0x4C4C8F`…`0x4C5A5F`): `explosionSpec` → 5,
 `bigDeath` → 7. Sonst zerplatzt der Gegner **sofort** (mit Punkten, Popup
 steigt, `Explosion1/2`), wenn ein anderer Gegner ihn getötet hat oder der
@@ -388,17 +380,8 @@ Punkte auch). Dauern: 1 30 Ticks, 2 40, 3 bis 160 (Trümmer mit Schwerkraft),
 4 570 (Boss-Finale), 5 15 (Zündung, blauer Blitz), 7 10 je Teil. Im 1P
 wackelt der Bildschirm beim Zerplatzen nicht, solange die Kraftphase läuft.
 Im Port vollständig: 1, 3, 4, 5 (mit Kettenreaktion über
-`CheckColisionWithEnemy` mit `exclude`), 6 und 7; 2 läuft seine Dauer ab und
-zerplatzt (Nova fehlt noch). Zustand 6 im Einzelnen: vier grüne Linien
-=======
-**Todeszustand** beim Abschuss: `explosionSpec` → 5, `bigDeath` → 7, durch
-einen anderen Gegner getötet → sofort Explosion, sonst **6** (normaler Abschuss,
-50 Ticks grüne Zielerfassung, dann Explosion); überschrieben zu 1 während des
-Beams, 2 während Nova, 4 für Bosse. Dauern: 1 30 Ticks, 2 40, 3 bis 160
-(Trümmer mit Schwerkraft), 4 570 (Boss-Finale), 5 15 (Zündung), 7 10 je Teil.
-Im Port vollständig: alle Zustände, 5 mit Kettenreaktion über
-`CheckColisionWithEnemy` mit `exclude`; 0, 2 und −1 im Abschnitt „Super-Nova“. Zustand 6 im Einzelnen: vier grüne Linien
->>>>>>> worktree-agent-a6289ba1d320e1b28
+`CheckColisionWithEnemy` mit `exclude`), 6 und 7; 0, 2 und −1 im Abschnitt
+„Super-Nova“. Zustand 6 im Einzelnen: vier grüne Linien
 wachsen aus den Ecken des Umrisses über die sichtbaren Teile, ab t = 21 je
 Tick zehn Funken aus der Mitte und ein rotierendes, schrumpfendes Quadrat
 (Radius 20·(50 − t)), bei t = 50 zerplatzt jedes Teil — mit einem um ±50 px
@@ -655,8 +638,8 @@ stirbt der Partner mit. Ohne Leben: Continue-Bildschirm (s. „Continue“).
 
 ## HUD `SpielDisplay` (`0x510E10`)
 
-Jeden Tick nach der Abblende, nicht gewackelt. Logik: Extraleben bei 200 000,
-400 000, 800 000 … Punkten (`Liveup.wav`, die Lebensziffer leuchtet 50 Ticks),
+Jeden Tick nach der Abblende, nicht gewackelt. Logik: Extraleben bei 300 000,
+600 000, 1 200 000 … Punkten (`n ≥ Me.524`, Start 3 aus `DoveReset` `0x4A6EC0`) (`Liveup.wav`, die Lebensziffer leuchtet 50 Ticks),
 die angezeigten Punkte zählen in Schritten 5111/511/51/11/1 hoch. Zeichnen
 (1P, Satz `I` = Schiffstyp, in 2P `interface3_*`):
 
@@ -767,9 +750,167 @@ Markierung. Esc/D/Q setzt immer fort; OK (Feuer/Beam, Leertaste, Enter) auf
 EXIT trägt den Highscore ein → Hauptmenü, sonst weiter. Nur mit „WEITER“
 verlassen: `Pause.wav`, Musikpegel und Funkstimme zurück. Danach nochmals
 Loslassen abwarten; im Spiel blendet das letzte Pausebild (0…550) in 20 Ticks
-aus, die Pausenzeit wird nicht nachgeholt. Nicht übernommen: `Screenshot.bmp`
-und das Ladebild. Die Schleifentöne der Waffen startet der Port nach der Pause
+aus, die Pausenzeit wird nicht nachgeholt. Nicht übernommen: `Screenshot.bmp`;
+das Bild fürs Ladebild-Mosaik legt der Port an („Kampagne“). Die Schleifentöne der Waffen startet der Port nach der Pause
 neu (das Original fragt ihren Puffer je Tick ab). Umsetzung:
 `src/game/pauseScreen.ts` (Logik), `pauseView.ts`; Sichtprüfung
 `#/dovez?screen=pause`.
+
+## Kampagne (`LevelSkript` `0x54D3F0`, Hauptschleife `0x54E430`)
+
+Die Programm-Hauptschleife ruft `LevelSkript` → `LadeDaten` → `SpielLoop` →
+`LevelSkript` …; liefert `LevelSkript` False, geht es ins Hauptmenü.
+`LevelSkript` liest `Play.txt` (in `Play.d2p`) bis Zeile `Me.115C`, zählt
+weiter und prüft das erste Wort ohne Groß-/Kleinschreibung:
+
+| Anweisung | Wirkung |
+|---|---|
+| `Load <Level>,<Bild>` | Levelname `[0x5880C4]`, Ladebild `Me.1160`, `DovePosSetup`, True → `LadeDaten` + `SpielLoop` |
+| `Save` | `SaveGame` sofort (der Bildschirm ist die Rückfrage) |
+| `Play <datei.avi>` | „Loading“ (System 18, weiß, 376/490), Flip, `PlayAVIFile(…, "Video.d2p")`, Schwarz |
+| `credits` | Highscore, `[0x588080] = Me.6D8` falls größer, „Loading“, `Outro<Sprache>.avi` (ab Durchgang 2 `Outro2…`), `ShowCredits`; ab Durchgang 2 das Level **Epilog** (Ladebild leer), sonst Skriptende |
+| Dateiende | `AddHighscore` für alle Spieler, False → Menü |
+
+Neues Spiel: `Me.115C = 0` → `DoveReset`. Einzellevel (Bonus, `-Skip`)
+setzen `Me.1158`: nach dem Level `Me.115C = 10000` (Ende). Ob ein Level
+geschafft ist, steht nur in `mode`: `SpielLoop` endet bei `Me.580 = 2` mit
+`mode = 0` (nächste Anweisung); Game Over (Continue „nein“) und Pause-„EXIT“
+setzen `mode = 9` → `LevelSkript` gibt False (Menü). Am Levelende gibt es
+keinen Bonus und keinen Jingle: Ausflug ab `Me.588 − 150`, Musik und
+Abblende in den letzten 50 Ticks, danach `SpielSoundOFF`, `KillCheckpoint`,
+`StopOgg`. `Me.6D8` ist der laufende Durchgang (`[0x588080] + 1` beim neuen
+Spiel), `[0x588080]` der höchste geschaffte (Konfiguration).
+
+**Was von Level zu Level bleibt:** Nur `DoveReset` (neues Spiel) setzt Leben
+3/6, Punkte, Schussstärke 1, Tempo 6, Zweitwaffe, Max.-Energie 100,
+Partikelplätze, Force, Drohnen, `Me.524 = 3` (Extraleben ab 300 000). Je Level
+setzen `DovePosSetup` (Position, Neigung, Ausflug, Abklingzeiten, Kombo-
+Bestwerte, Partikel auf die Schiffsmitte), `VariabelnLösch` (alle Pools,
+Kombo, Beam, Funk, Nova) und `DoveInit` (Energie = Maximum, 100 Ticks
+unverwundbar) zurück; alles andere geht über. Die `Rnd`-Folge läuft durch.
+Port: `World.carry()`/Option `carry` (`sim/world.ts`), eine `VbRnd` je Spiel.
+
+**Ladebildschirm** (`LadeDaten` `0x4C72C0`): mit Bild `Take<n>` aus
+`Loading.d2p` (600 × 480, auf 800 × 600 gestreckt, *mittel*; `Take9` ist
+8 × 8) je geladenem Levelbild Balken (290, 480)…(290 + 220·p) 6 px Schwarz →
+RGB(137, 190, 255), weißer Rahmen (290, 476)–(510, 484), „nn%“ (System 16 bei
+410 − 5·Len, 455), „Loading“ (376, 490); danach „Press any key to start!“
+(System 24, Grau `CLng(Sin(k°)·63 + 192)`, 294/470, auch auf Deutsch englisch)
+bis `TasteOK` oder Esc, Esc loslassen abwarten. Ohne Bild (Einzellevel,
+Epilog) das Mosaik `Loadingscreen.bmp`: 16 Kacheln à 200 × 150 aus
+`NewPictureToLoadingscreen` (`0x520F50`, beim Öffnen der Pause und nach jedem
+Tod, reihum `Me.1CC`), 90 % Schwarz, additive Bänder und Leuchtkreise, Logo
+(200, 120), „nn%“ (System 32); ohne Tastendruck. Kein Ton, kein `Rnd`. `p` ist
+im Original der Anteil der Bildgruppen, im Port der geladenen Bytes.
+
+**Video** (`PlayAVIFile` `0x551930`, DirectShow): Option Videos aus → nichts;
+800 × 600 1:1, Ton 0 dB (unabhängig vom Musikpegel), ohne Ton stumm; Ende bei
+`CLng(Position) ≥ CLng(Dauer)` (bis 0,5 s vor dem letzten Bild), Abbruch nur
+mit Esc (sofort), danach Loslassen abwarten; keine Musik. Das Intro
+(`introD/E.avi`, lose) läuft nur beim ersten Menüstart. Port: `<video>` als
+Pixi-Textur, Ton über den Effekt-Bus, `video=0` schaltet ab.
+
+**Speicherbildschirm** (`SaveGame` `0x541010`): Plätze der Spieler per
+`AddHighscore` (2P: Gleichstand schiebt Spieler 1 hinter Spieler 2),
+Hintergrund 4 (rotes Plasma, Sterne neu) und HUD laufen mit, `Save_Screen.ogg`
+in Schleife, Logo fährt ein (`xLogo = CLng(xLogo / 4)` ab −400), Einblende
+`1 − Me.584/50`. Texte Arial mit schwarzem Schatten +2/+2: „<Level>
+geschafft!“/„Cleared!“ 24 (50, 170), „Spieler n: Punkte (HIGHSCORE: p.
+Platz!)“ 18 (50, 180 + 20n), „Spiel speichern?“ 24 (50, 280), Top 10 rechts
+(x 460, Punkte bündig 788, y 20n − 10, `QBColor(14)` gelb nur für Spieler 1
+allein — die Bedingung schließt 2P aus), „Nicht speichern“ 16 (50, 310),
+Plätze 3 × 7 (x 230·Spalte + 50, y 20·Zeile + 315, gewählt gelb und 17).
+Tasten mit Flanke: hoch/runter 0…21 mit Umlauf, rechts/links ±7 (nur ab
+Platz 1; 15 + 7 = 22 ist kein Platz, wird aber gehalten). OK bzw. Esc wirken
+beim Loslassen; OK auf einem Platz speichert (ohne Rückfrage), dann
+„Gespeichert“ (Arial 150, 20/150) bzw. „Saved“ (Arial 300, 20/120),
+`Save.wav`; immer `FadeOut(0, False)`. Wer das Level mit gehaltenem Feuer
+beendet, verlässt den Bildschirm beim Loslassen — wie im Original.
+
+**Spielstand** `App\save\<1…21>.sav` (Version 4): Beschriftung „P<Spieler>
+S<Schiff><Durchgang als Buchstabe> - <Level bis „-x“>  <Datum>“, dann zlib:
+Spieleranzahl, `Me.1158/115C/1160`, `B48[0..1]`, `A7C[0..1]`, Force,
+Partikelplätze, Beam-Block, `Me.524`, `Me.6D8` (keine Drohnen, keine Welt).
+Der Index steht **nach** `Save`: Laden beginnt mit dem Zwischenvideo. Der Port
+speichert denselben Inhalt als JSON beim Host (`save/<n>`, `saveGame.ts`);
+Einstieg `#/dovez?load=<n>`.
+
+**`FadeOut(richtung, abbrechbar)`** (`0x545C70`): 80 × `Wait 16`; das Bild
+wird in ein um 16 px gestauchtes Rechteck kopiert (Richtung 0 oben und unten,
+sonst eine Seite nach `Int(Rnd · 4)`, dazu ein unbenutztes `Rnd`), 20 %
+abgedunkelt und das Anfangsbild mit α 0,95 − 0,05 je Durchlauf darübergelegt.
+
+**Abspann** (`ShowCredits` `0x5566C0`): `credits` 500 × 3000 bei
+(150, 600 − t) auf Schwarz, 1 px je `Wait 25` (40 Hz), t = 0…3600 (≈ 90 s);
+alle 3 Durchläufe Glitzer (`Add1BigPartikel` Art 14, Größe 60, Verzögerung 3,
+Leben 12) an hellen Pixeln (Blau ≥ 128, jede 6. Spalte) der Bildzeilen bei
+y = 3 und y = 600; je Durchlauf `Rnd < 0,1` → goldener Funke (drei weitere
+`Rnd`: x, y, Wachstum ·10); `balken` schwarz als weiche Kanten
+(0, −50)–(800, 50) und (0, 550)–(800, 650); Musik `Enhaced Credits.ogg`; Esc
+beendet sofort; danach `FadeOut(1, False)` und Musik in ~0,18 s aus. Port:
+`src/game/campaign.ts` (Ablauf), `Game.ts`, `level.ts`, `loadingScreen.ts`,
+`videoScene.ts`, `saveScreen.ts`, `credits.ts`, `fadeOut.ts`, `mosaic.ts`;
+Sichtprüfung `#/dovez?screen=save|credits`.
+
+Offen: das Byte-Layout des Beam-Blocks im `.sav`, ob die
+`Take`-Bilder wirklich gestreckt werden.
+
+## Hauptmenü (`MenuLoop` `0x559630`, `ShowMenu` `0x558890`, `ShowLogo` `0x553730`)
+
+**Start** (nur beim ersten Aufruf): `LoadMenuSurfaces` würfelt den Hangar
+(`Int(Rnd · 2)`, vor jedem Menü), dann drei `ShowLogo`: Intergenies
+(42, 30, 0, −1) mit `Logo.wav` und Glitch-Vorspann — 91 Durchläufe à `Wait 31`:
+schwarz, das Logo dreimal über `RenderVerzerrt` (Gitter 20 × 20, Texturkoordinaten
+`(i/n − pu·D, j/n − pv·D)`, `D = sin 9i°·cos 9i°·sin 9j°·cos 9j°`; α 0,33,
+normal/additiv/additiv; Winkel alle 5…15 Bilder neu, 3 `Rnd`), Rauschen
+(α = sin 2t°/4 + 0,3·Rnd, 48 `Rnd`), Zeilenriss (61 Bänder à 7 px ab y = 90 um
+`CLng(CLng((50 − 50·cos 4t°)·sin(y·0,3°)) + 5·Rnd)` px nach rechts, nur ab
+3 px) —, dann 72 Bilder voll (`Wait 25`) und `FadeOut(0, True)`; Toxeen und
+Clockwork (40, 30, 0, 0): 30 Bilder Einblenden, 40 Halten, 50 Bilder
+Zoom-Tunnel (Bild auf (16, 16)–(784, 584) auf sich selbst, 10 % Schwarz, Logo
+α 0,80 … 0). Jede Anzeige zieht 1 `Rnd`. Esc beendet jede Phase sofort (ohne
+Loslassen). Danach `intro<D|E>.avi`, das Menü blendet aus dem nackten Hangar
+ein (α 0,95 … 0), `intro.ogg` in Schleife. `Magnussoft` und `menu_logo` zeigt
+das Original nie.
+
+**Jeder Durchlauf** (`Wait 18`, kein Bildauslassen): schwarz, `hangar<h>`,
+ab Durchlauf ≈ 101 `hangar_frozen<h>` darüber (α +0,01 je Bild, ab 1 allein)
+und Rauschen (α bis 0,025, 48 `Rnd`), DoveZ-Logo (200, 0), Seite, Funken und
+Glitzer, Überblende (`Blenden`: Bild erfassen, α 0,95 → 0), Rauschen. Die
+Knopfleiste (`ShowMenu`) gleitet mit /4 zum Seitenziel (Start x = −1000):
+rote (mit Lücken) und weiße Punktkette aus `a_kreis2` 3 × 3 (je Punkt 1 `Rnd`,
+1 : 20 000 eine Garbe aus 10 Funken — 2·(⌊(67n + 82)/2⌋ + 1) `Rnd` je Bild,
+352 im Hauptmenü), Lampen (50, 66 + 67i) grün für den gewählten, Knöpfe
+(136 + Versatz, 83 + 67i; gewählt gleitet der Versatz auf 30, sonst −3),
+`menu_topg`, `menu_bottomg`, Texte Arial 36 grau mit schwarzem Versatz +1/+1.
+Tafeln `menu_back` fahren von rechts ein (k = 400/460/320/700 →
+`CLng(0,75k − 1)`); Listen (`ShowList`) erst bei k = 0, Arial 24, Farben
+QBColor 8 (inaktiv), 7 (wählbar), 15 (gewählt). Schiffsdrehung auf Seite 1:
+`shipselect1…` rückwärts (D-Tonator) bzw. `shipselect0…` vorwärts, 2 Bilder
+je Stufe, vier Schichten für Bewegungsunschärfe, bei (510 + k, 310).
+Highscore-Seite: vier additive Leuchtbänder und je Bild ein Glitzer (7 `Rnd`).
+
+**Seiten:** 3 Hauptmenü (Neu, Laden, Optionen, Highscore, Exit; Esc = Exit),
+10 Spieleranzahl (2 Spieler ohne Überblende, so im Original), 1 Schiff (nur
+Spieler 1 wählt, Spieler 2 fliegt das andere), 2 Name (`KeyAscii` ab 32,
+höchstens 16, Backspace, Enter; leer → „Bruce“; Spiel-ID
+`Int(Rnd · 10000) + Durchgänge · 10000`, eindeutig), 20 Spiel laden (Plätze
+1–21, Vorauswahl „Zurück“), 30 Optionen (Bonus erst nach einem Durchgang),
+31 Grundeinstellungen (Force-Taste `Me.512`, Auto-Arrange `Me.50E`, Trägheit
+`Me.510`), 32 Lautstärke (Musik +5 mit Umlauf; Sound/Sprache +250 dB/100, über
+0 stumm), 33 Tastenkonfiguration, 40 Bonus (Jungle, Space, Stift je nach
+Durchgängen; als Einzellevel), 50 Highscore. ↑/↓ und OK mit Flanke, ohne
+Wiederholung, mit Umlauf; Links/Rechts gibt es nicht; Zurück ist Esc/D/Q, im
+Hauptmenü und auf den Seiten 1 und 2 nur Esc. Töne: OK `dude`, Umschalten
+`plingding`, Sprachtest `speech`. Nach einem Spielstart `FadeOut(1, False)`;
+Game Over, EXIT und Skriptende führen zurück ins Menü (ohne Logos), „Exit“
+beendet das Programm (im Port: zurück zur Shell). Einen Credits-Eintrag gibt es
+nicht; das Osterei „LOV“ fehlt im Port.
+
+Port: `src/game/menu/` (`menuLogic.ts` Logik, `menuView.ts` Zeichnung,
+`menuScene.ts` Takt, Töne, Zeicheneingabe, `logos.ts` Logos), Optionen in
+`src/game/config.ts` (gespeichert beim Ändern). Abweichungen: Russisch fehlt;
+die Tastenseite zeigt die Belegung nur an (Umbelegen fehlt noch); Trägheit
+(„Realistic“) lässt sich schalten, wirkt aber noch nicht (der Port kennt nur
+Arcade); keine Vibration. `#/dovez?nointro=1` startet ohne Logos und Intro.
 
