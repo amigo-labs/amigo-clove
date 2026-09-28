@@ -247,6 +247,9 @@ export class World {
   readonly combo = [1, 1];
   readonly comboHits = [0, 0];
   readonly comboBonus = [0, 0];
+  /** Nachbilder der Schiffe ab dem Levelausflug (`Me.B78`) und Rauchzähler für alle (`G.538`). */
+  private afterimages = false;
+  private smoke = 0;
   /** Kombo-Anzeige im HUD (`SpielDisplay` `0x5130FB`, nur Spieler 1) und Bestwerte (`B48[0].60/.64`). */
   readonly comboHud = { shown: 0, timer: 0, last: 0, bonus: 0 };
   readonly comboBest = { hits: 0, bonus: 0 };
@@ -756,36 +759,117 @@ export class World {
   }
 
   /**
-   * `SpielMoveDove` (`0x509110`), nur der Rauch unter halber Energie: je
-   * niedriger die Energie, desto öfter vier Funken und ein weißes Wölkchen.
+   * `SpielMoveDove` (`0x509110`) je lebendem Spieler: Nachbilder im
+   * Levelausflug, Schild (blinkt im Takt der Unverwundbarkeit) mit grauen
+   * Blitzen, das Schiff, Glühen in der 2P-Kraftphase, Tönung (rot nach
+   * Energie, grün bei Energiegewinn, blau bei vollem Beam), magenta Blitz bei
+   * Schaden in den letzten 10 Ticks oder in der Kraftphase, Rauch unter
+   * halber Energie (Zähler für alle Spieler gemeinsam). Zeichnet in `ship`.
    */
   private moveDove(): void {
+    const out = this.fx.lists.ship;
+    const fx = this.fx;
+    const rnd = this.rnd;
     for (const p of this.players) {
-      if (!p.alive || p.exitState !== 0) continue;
-      if (idiv(p.maxEnergy, 2) <= p.energy) continue;
-      if (p.smoke > (10 * p.energy) / p.maxEnergy) {
-        p.smoke = 0;
-        const [x1, y1, x2, y2] = p.hitbox();
-        this.fx.addSparks(1, 4, x1, y1, x2, y2, false);
-        const r1 = this.rnd.next();
-        const r2 = this.rnd.next();
-        const r3 = this.rnd.next();
-        const r4 = this.rnd.next();
-        this.fx.addBig(
-          p.x + 64 * r1 - 4,
-          p.y + 17 + 37 * r2 - 4,
-          r3 - 0.5,
-          -2 - r4,
-          1,
-          1,
-          1,
-          8,
-          0,
-          6,
-          10,
-          0,
+      if (!p.alive) continue;
+      const key = (tilt: number, frame: number) => `dove${p.shipType}${tilt + 1}${frame + 1}`;
+      if (this.afterimages) {
+        for (let k = 0; k <= 10; k++) {
+          const x = cint(p.histX[k] ?? p.x);
+          const y = cint(p.histY[k] ?? p.y);
+          const img = key(p.histTilt[k] ?? p.tilt, p.histFrame[k] ?? p.animFrame);
+          out.quad(img, x, y, x + 64, y + 64, 1, 1, 1, f32(1 / (12 - k)));
+        }
+      }
+      const x = p.x;
+      const y = p.y;
+      const shield = p.invulnerable > 10 || p.invulnerable % 2 === 1;
+      const shieldBolt = () => {
+        const r1 = rnd.next();
+        const r2 = rnd.next();
+        fx.lightning(
+          out,
+          f32(x + 32),
+          f32(y + 32),
+          f32(x - 15 + r1 * 94),
+          f32(y - 5 + r2 * 74),
+          3,
+          3,
+          5,
+          0.5,
+          0.5,
+          0.5,
+          true,
         );
-      } else p.smoke++;
+      };
+      if (shield) {
+        out.quad("a_kreis2", x - 15, y - 5, x + 79, y + 69, 0.6, 1, 0.6, 0.4, true);
+        shieldBolt();
+      }
+      const img = key(p.tilt, p.animFrame);
+      const sx = cint(x);
+      const sy = cint(y);
+      out.quad(img, sx, sy, sx + 64, sy + 64);
+      const beam = this.beams[p.index];
+      let tint: [number, number, number, number] = [sx, sy, sx + 64, sy + 64];
+      if (beam?.power && this.playersMinus1 === 1) {
+        for (let k = 0; k <= 10; k++)
+          out.quad(img, x - k, y - k, x + 64 + k, y + 64 + k, 1, 1, 1, 0.1, true);
+        tint = [x - 10, y - 10, x + 74, y + 74];
+      }
+      const e0 = p.histEnergy[0] ?? p.energy;
+      const g = p.energy > e0 ? 1 : 0;
+      const bl = beam?.charge === 165 && this.tick % 2 === 0 ? 1 : 0;
+      out.quad(img, ...tint, 1 - p.energy / p.maxEnergy, g, bl, 1, true);
+      if (e0 > p.energy || beam?.power) {
+        const r1 = rnd.next();
+        const r2 = rnd.next();
+        const r3 = rnd.next();
+        const r4 = rnd.next();
+        fx.lightning(
+          out,
+          f32(x + 64 * r1),
+          f32(17 + y + 37 * r2),
+          f32(x + 64 * r3),
+          f32(17 + y + 37 * r4),
+          5,
+          5,
+          20,
+          1,
+          0.6,
+          1,
+          true,
+        );
+      }
+      if (Math.trunc(cint(p.maxEnergy) / 2) > p.energy) {
+        if ((p.energy / p.maxEnergy) * 10 < this.smoke) {
+          this.smoke = 0;
+          const [x1, y1, x2, y2] = p.hitbox();
+          fx.addSparks(1, 4, x1, y1, x2, y2, false);
+          const r1 = rnd.next();
+          const r2 = rnd.next();
+          const r3 = rnd.next();
+          const r4 = rnd.next();
+          fx.addBig(
+            x + 64 * r1 - 4,
+            y + 17 + 37 * r2 - 4,
+            r3 - 0.5,
+            -2 - r4,
+            1,
+            1,
+            1,
+            8,
+            0,
+            6,
+            10,
+            0,
+          );
+        } else this.smoke++;
+      }
+      if (shield) {
+        shieldBolt();
+        out.quad("a_kreis2", x - 30, y - 15, x + 94, y + 79, 0.6, 1, 0.6, 0.4, true);
+      }
     }
   }
 
@@ -983,6 +1067,7 @@ export class World {
     this.checkpoint.active = false;
     this.fx.shake = 0;
     for (const b of this.beams) clearBeam(b);
+    this.afterimages = false;
     for (let p = 0; p < 2; p++) this.resetCombo(p);
     this.radio.reset(this.events);
     // LoadCheckpoint (die Kopie wird verbraucht; gleich danach wird neu gesichert)
@@ -1246,6 +1331,7 @@ export class World {
     this.checkpointPass(0);
     const pw = this.playerWorld();
     for (const p of this.players) updatePlayer(p, inputs[p.index] ?? NO_INPUT, pw);
+    if (this.players.some((p) => p.exitState >= 1)) this.afterimages = true;
     moveParticles(this.companionWorld(), this.companionKeys);
     fireWeapons(this.weaponWorld(), this.fireState, inputs);
     moveShots(this.playerShots[0], 0, this.shotHost(), this.shotBox, this.fx.lists.shots0);

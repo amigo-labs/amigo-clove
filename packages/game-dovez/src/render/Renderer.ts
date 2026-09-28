@@ -107,7 +107,7 @@ export class Renderer {
       "fx:shots0",
       "fx:sparks0",
       "specials",
-      "player",
+      "fx:ship",
       "enemies",
       "fx:enemies",
       "fx:bubbles",
@@ -194,7 +194,6 @@ export class Renderer {
     for (let l = 0; l < LAYER_COUNT; l++) this.drawTiles(l);
     for (let l = 0; l < LAYER_COUNT; l++) this.drawAnims(l);
     this.drawSpecials();
-    this.drawPlayers();
     this.drawEnemies();
     this.drawEnemyShots();
     for (const [slot, list] of Object.entries(w.fx.lists)) {
@@ -414,26 +413,6 @@ export class Renderer {
             : `pow${s.item}${s.frame}`;
       const tex = this.texture(key);
       if (tex) b.put(tex, Math.round(s.x), Math.round(s.y));
-    }
-  }
-
-  private drawPlayers(): void {
-    const w = this.world;
-    const b = this.batch("player");
-    for (const p of w.players) {
-      if (!p.alive) continue;
-      if (p.invulnerable > 0 && p.invulnerable <= 10 && this.frameNo % 2 === 1) continue;
-      const tex = this.texture(`dove${p.shipType}${p.tilt + 1}${p.animFrame + 1}`);
-      if (!tex) continue;
-      b.put(tex, Math.floor(p.x), Math.floor(p.y));
-      if (p.invulnerable > 0)
-        b.put(tex, Math.floor(p.x), Math.floor(p.y), {
-          red: 0.3,
-          green: 1,
-          blue: 0.3,
-          alpha: 0.4,
-          additive: true,
-        });
     }
   }
 

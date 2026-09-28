@@ -107,6 +107,8 @@ export const DRAW_SLOTS = [
   "shots0",
   /** Kleine Partikel Ebene 0 (vor Schiff und Gegnern). */
   "sparks0",
+  /** Schiffe mit Schild, Tönung und Blitzen (`SpielMoveDove`). */
+  "ship",
   /** Linien, Trümmer und Glut aus den Todeszuständen (`SpielMoveEnemy`). */
   "enemies",
   "bubbles",
