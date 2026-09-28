@@ -56,7 +56,8 @@ export class DovezAudio {
 
   /** Einmal pro Frame nach den Simulationsticks; leert `world.events` nicht. */
   update(world: World): void {
-    this.music.setVolume((MUSIC_GAIN * world.musicVolume) / 100);
+    // Super-Nova: Musik auf 1/10 des Optionspegels (`MusikLautstärke([0x588084] \ 10)`)
+    this.music.setVolume((MUSIC_GAIN * (world.nova ? 10 : world.musicVolume)) / 100);
     const seen = new Set<string>();
     for (const e of world.events) {
       const key = JSON.stringify(e);
