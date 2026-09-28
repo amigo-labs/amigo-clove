@@ -114,6 +114,8 @@ export const DRAW_SLOTS = [
   "particles",
   /** Spielerschüsse Ebene 1 (`SpielMoveSchuss(1)`, über der Landschaft). */
   "shots1",
+  /** Beam (`SpielBeam`, nach den Emittern). */
+  "beam",
   /** Kleine Partikel Ebene 1 (nach der Landschaft). */
   "sparks1",
   "big",

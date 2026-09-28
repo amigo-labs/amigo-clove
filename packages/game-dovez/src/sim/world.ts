@@ -23,6 +23,15 @@ import { Op, type RouteEffect } from "./route";
 import { collectShared, deepClone } from "./snapshot";
 import { buildSurfaces, spanEdges, spanHit, type SpriteSource, type Surface } from "./surfaces";
 import {
+  clearBeam,
+  newBeam,
+  newBeamShared,
+  resetCombo,
+  stepBeams,
+  type Beam,
+  type BeamWorld,
+} from "./beam";
+import {
   killCompanions,
   moveParticles,
   newCompanionKeys,
@@ -124,7 +133,12 @@ export type WorldEvent =
   /** Effekt-Ton der Engine aus `Sound.d2p` (`sound/<name>`), SFX-Pegel. */
   | { readonly kind: "sfx"; readonly name: string }
   /** Effekt-Ton als Schleife starten (`on`) bzw. anhalten. */
-  | { readonly kind: "sfxLoop"; readonly name: string; readonly on: boolean }
+  | {
+      readonly kind: "sfxLoop";
+      readonly name: string;
+      readonly on: boolean;
+      readonly rate?: number;
+    }
   /** `SpielSoundOFF`: Schleifen und alle Level-Töne aus. */
   | { readonly kind: "soundOff" }
   /** Funkstimme `voice/<Level>/<wav>` (Sprachpegel) bzw. ihr Abbruch. */
@@ -204,7 +218,7 @@ export class World {
   private readonly shotBox = newShotBox();
   private readonly fireState = newFireState();
   /** Laufende Schleifentöne der Waffen. */
-  private readonly loopsOn = new Set<string>();
+  private readonly loopsOn = new Map<string, number>();
   /** Force des D-Phyton und die vier Partikel des D-Tonator. */
   readonly force: Force = newForce();
   readonly particles: Particle[] = newParticles();
@@ -222,13 +236,20 @@ export class World {
   readonly fx: Effects;
   /** Funk und Laufband. */
   readonly radio: Radio;
-  /** Beam-Kraftphase je Spieler (`Me.CB0[p]+0x2E`); folgt mit dem Beam. */
-  readonly beamPower = [false, false];
+  /** Beam je Spieler (`Me.CB0[p]`) und die gemeinsamen Beam-Globalen. */
+  readonly beams: Beam[] = [newBeam(), newBeam()];
+  private readonly beamShared = newBeamShared();
+  /** Option „Force-Modus-Taste wirkt als Beamwechsel“ (`Me.512 = 0`). */
+  qToggles = true;
   /** Super-Nova läuft (`Me.D6C`); folgt mit der Nova. */
   nova = false;
-  /** Kombo-Multiplikator (`Me.59C[p]`) und -Zähler (`Me.5B8[p]`). */
+  /** Kombo-Multiplikator (`Me.59C[p]`), -Treffer (`Me.5B8[p]`), -Bonus (`Me.5D4[p]`). */
   readonly combo = [1, 1];
   readonly comboHits = [0, 0];
+  readonly comboBonus = [0, 0];
+  /** Kombo-Anzeige im HUD (`SpielDisplay` `0x5130FB`, nur Spieler 1) und Bestwerte (`B48[0].60/.64`). */
+  readonly comboHud = { shown: 0, timer: 0, last: 0, bonus: 0 };
+  readonly comboBest = { hits: 0, bonus: 0 };
   /** Abschüsse (`P[0].+54`, immer Spieler 1). */
   kills = 0;
 
@@ -421,9 +442,10 @@ export class World {
       killEmitters: (i) => this.fire.killEmittersOf(i),
       sound: (name) => this.sfx(name),
       shockwave: (cx, cy, life) => this.fire.addShockwave(cx, cy, life),
-      beamPower: (p) => this.beamPower[p] === true,
+      beamPower: (p) => this.beams[p]?.power === true,
       nova: this.nova,
       boss: this.bossHooks,
+      comboReset: (p) => this.resetCombo(p),
       comboUp: (p) => {
         this.combo[p] = f32((this.comboHits[p] ?? 0) * 0.1 + 1);
         this.comboHits[p] = (this.comboHits[p] ?? 0) + 1;
@@ -606,7 +628,7 @@ export class World {
       players: this.players,
       force: this.force,
       particles: this.particles,
-      beamPower: (p) => this.beamPower[p] === true,
+      beamPower: (p) => this.beams[p]?.power === true,
       sound: (name) => this.sfx(name),
       loop: (name, on) => this.loopSfx(name, on),
       whereRight: (x1, y1, x2, y2) => this.whereColision(true, x1, y1, x2, y2),
@@ -644,19 +666,56 @@ export class World {
     };
   }
 
+  /** `SpielSoundOFF`: Schleifen und Level-Töne aus (auch die Schleifentöne der Waffen). */
+  private soundOff(): void {
+    this.loopsOn.clear();
+    this.events.push({ kind: "soundOff" });
+  }
+
+  private resetCombo(p: number): void {
+    resetCombo({ mult: this.combo, hits: this.comboHits, bonus: this.comboBonus }, p);
+  }
+
+  private beamWorld(): BeamWorld {
+    const ew = this.makeEnemyWorld();
+    return {
+      tick: this.tick,
+      rnd: this.rnd,
+      fx: this.fx,
+      out: this.fx.lists.beam,
+      players: this.players,
+      playersMinus1: this.playersMinus1,
+      beams: this.beams,
+      shared: this.beamShared,
+      combo: { mult: this.combo, hits: this.comboHits, bonus: this.comboBonus },
+      waterLine: PLAYFIELD_H - this.level.waterHeight,
+      qToggles: this.qToggles,
+      input: (p) => this.inputs[p],
+      terrain: (x1, y1, x2, y2) => this.hitsTerrain(x1, y1, x2, y2),
+      hitEnemies: (x1, y1, x2, y2, damage, owner, pierce, out) =>
+        this.enemies.hit(x1, y1, x2, y2, damage, owner, ew, { pierce, sparks: true, out }),
+      background: (v) => this.bossHooks.background(v),
+      sound: (name) => this.sfx(name),
+      loop: (name, on, rate) => this.loopSfx(name, on, rate),
+    };
+  }
+
   /** Schleifenton an/aus, Ereignis nur beim Wechsel (`GetStatus` des Puffers). */
-  private loopSfx(name: string, on: boolean): void {
-    if (this.loopsOn.has(name) === on) return;
-    if (on) this.loopsOn.add(name);
+  private loopSfx(name: string, on: boolean, rate?: number): void {
+    const was = this.loopsOn.get(name);
+    if (on ? was === (rate ?? 1) : was === undefined) return;
+    if (on) this.loopsOn.set(name, rate ?? 1);
     else this.loopsOn.delete(name);
-    this.events.push({ kind: "sfxLoop", name, on });
+    this.events.push({ kind: "sfxLoop", name, on, ...(rate !== undefined ? { rate } : {}) });
   }
 
   private playerWorld(): PlayerWorld {
     return {
       terrainSpeed: this.layers[TERRAIN_LAYER]!.speed,
+      // in der Beam-Kraftphase entfällt der Tempoabzug unter Wasser
       underwater: (p) =>
-        this.level.waterHeight === 550 || PLAYFIELD_H - this.level.waterHeight < p.y + 17,
+        !this.beams[p.index]?.power &&
+        (this.level.waterHeight === 550 || PLAYFIELD_H - this.level.waterHeight < p.y + 17),
       terrain: (x1, y1, x2, y2) => this.hitsTerrain(x1, y1, x2, y2),
       kill: (p) => this.killPlayer(p),
       exhaust: (p, dx) => this.exhaust(p, dx),
@@ -781,7 +840,7 @@ export class World {
     if (this.playersMinus1 === 1 && partner) {
       if (this.lives > 0 && !this.bossAlive) {
         if (p.deathTimer < DEATH_TICKS) return;
-        this.events.push({ kind: "soundOff" });
+        this.soundOff();
         this.lives--;
         doveInit(p);
         let [x, y] = [partner.x, partner.y];
@@ -807,7 +866,7 @@ export class World {
       }
       return;
     }
-    this.events.push({ kind: "soundOff" });
+    this.soundOff();
     if (this.lives <= 0) this.musicStep = -1;
     if (p.deathTimer >= DEATH_TICKS) {
       this.state = 1;
@@ -823,7 +882,14 @@ export class World {
   private readonly bossHooks: BossHooks = {
     start: () => {
       for (const p of this.players) p.invulnerable = 600;
-      // 1P: eine laufende Beam-Kraftphase endet (folgt mit dem Beam)
+      // 1P: ein laufender Beam 2 geht ins Ausklingen (ohne Prüfung der Kraftphase, wie das Original)
+      const b = this.beams[0]!;
+      if (this.playersMinus1 === 0 && b.running && b.type === 1) {
+        b.time = 500;
+        this.background = b.damage;
+        b.charge = 0;
+        b.power = false;
+      }
     },
     background: (v) => {
       if (v !== undefined) this.background = v;
@@ -916,6 +982,8 @@ export class World {
     Object.assign(l0, { highWater: -1, firstFree: 0, cursor: 0 });
     this.checkpoint.active = false;
     this.fx.shake = 0;
+    for (const b of this.beams) clearBeam(b);
+    for (let p = 0; p < 2; p++) this.resetCombo(p);
     this.radio.reset(this.events);
     // LoadCheckpoint (die Kopie wird verbraucht; gleich danach wird neu gesichert)
     this.tick = s.tick;
@@ -1041,16 +1109,20 @@ export class World {
   }
 
   /**
-   * `AddPunkte` (`0x50F750`): `score = CLng(score + Multiplikator · Punkte /
-   * (1 + 0,5 · zwei Spieler))`, ab 1500 Punkten Wackeln, ab 1000 ein Popup
-   * (Kombo-Multiplikator folgt mit dem Beam).
+   * `AddPunkte` (`0x50F750`): `score = CLng(Multiplikator · Punkte / (1 + 0,5 ·
+   * zwei Spieler) + score)`, der Kombo-Bonus zählt mit, solange Treffer laufen;
+   * ab 1500 Punkten Wackeln, ab 1000 (oder mit Kombo) ein Popup.
    */
   addPoints(points: number, x: number, y: number, vy: number, player: number): void {
     if (player < 0) return;
-    const mult = 1;
-    this.score[player] = cint(
-      (this.score[player] ?? 0) + (mult * points) / (1 + 0.5 * this.playersMinus1),
-    );
+    const mult = this.combo[player] ?? 1;
+    const div = this.playersMinus1 * 0.5 + 1;
+    this.score[player] = cint((mult * points) / div + (this.score[player] ?? 0));
+    if ((this.comboHits[player] ?? 0) > 0)
+      this.comboBonus[player] = cint(
+        (mult * points - points) / div + (this.comboBonus[player] ?? 0),
+      );
+    else this.comboBonus[player] = 0;
     if (points >= 1500) this.fx.shake += idiv(points, 500);
     if (mult > 1 || points >= 1000) this.fx.addPopup(cint(points * mult), x, y, vy);
   }
@@ -1198,6 +1270,7 @@ export class World {
         return { cx: x + r.w / 2, cy: y + r.h / 2, w: r.w, h: r.h, rotation: p.rotation };
       },
     });
+    stepBeams(this.beamWorld());
     this.fx.moveSparks(1, this.level.gravity);
     this.fx.moveBig(this.effectWorld());
     this.fire.stepShots(sw);
@@ -1254,7 +1327,39 @@ export class World {
       this.shownScore[p] = (this.shownScore[p] ?? 0) + step;
     }
     this.radio.step(this.rnd, this.events, this.fx.lists.radio);
+    this.comboDisplay();
     this.radio.stepTicker();
+  }
+
+  /** Kombo-Anzeige: Zähler springt je Treffer, am Ende eine Laufband-Meldung „Combo: N Hit B“. */
+  private comboDisplay(): void {
+    const S = this.comboHud;
+    const cnt = this.comboHits[0] ?? 0;
+    const bonus = this.comboBonus[0] ?? 0;
+    this.comboBest.bonus = Math.max(this.comboBest.bonus, bonus);
+    this.comboBest.hits = Math.max(this.comboBest.hits, cnt);
+    if (bonus > S.bonus) S.bonus = bonus;
+    if (cnt > 0 && bonus < S.bonus) S.bonus = bonus;
+    if (cnt > S.shown + 1) S.shown = cnt - 1;
+    if (cnt !== S.shown && cnt > 0 && cnt !== S.last) {
+      S.timer = 10;
+      S.last = cnt;
+    } else if (cnt === 0 && S.last > 0) {
+      S.timer = 100;
+      if (S.last > 1) this.radio.addMessage(`Combo: ${S.last} Hit ${S.bonus}`);
+      S.shown = S.last;
+      S.last = 0;
+    }
+    S.timer--;
+    if (S.timer === 1 && cnt > 0) S.shown = cnt;
+    if (S.timer === 0) {
+      if (cnt > 0) S.timer = 1;
+      else {
+        S.shown = 0;
+        S.last = 0;
+        S.bonus = 0;
+      }
+    }
   }
 
   /** Wirkung eines Power-ups (`SpielMoveSpezialObjekt` `0x4D1910`). */
