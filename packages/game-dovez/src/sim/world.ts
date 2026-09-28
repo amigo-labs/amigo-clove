@@ -23,9 +23,19 @@ import { Op, type RouteEffect } from "./route";
 import { collectShared, deepClone } from "./snapshot";
 import { buildSurfaces, spanEdges, spanHit, type SpriteSource, type Surface } from "./surfaces";
 import {
+  clearBeam,
+  newBeam,
+  newBeamShared,
+  resetCombo,
+  stepBeams,
+  type Beam,
+  type BeamWorld,
+} from "./beam";
+import {
   killCompanions,
   moveParticles,
   newCompanionKeys,
+  nextParticle,
   pickupCompanion,
   resetParticles,
   stepForce,
@@ -43,6 +53,7 @@ import {
   type WeaponWorld,
 } from "./weapons";
 import { COS_DEG, SIN_DEG, VbRnd, cint, degIndex, f32, idiv, vbInt, winkelInGrad } from "./vb";
+import { newNovaState, novaBackground, novaFlash, stepNova, type NovaWorld } from "./nova";
 
 /**
  * Weltzustand eines DoveZ-Levels und der Tick in der Reihenfolge von
@@ -124,7 +135,12 @@ export type WorldEvent =
   /** Effekt-Ton der Engine aus `Sound.d2p` (`sound/<name>`), SFX-Pegel. */
   | { readonly kind: "sfx"; readonly name: string }
   /** Effekt-Ton als Schleife starten (`on`) bzw. anhalten. */
-  | { readonly kind: "sfxLoop"; readonly name: string; readonly on: boolean }
+  | {
+      readonly kind: "sfxLoop";
+      readonly name: string;
+      readonly on: boolean;
+      readonly rate?: number;
+    }
   /** `SpielSoundOFF`: Schleifen und alle Level-Töne aus. */
   | { readonly kind: "soundOff" }
   /** Funkstimme `voice/<Level>/<wav>` (Sprachpegel) bzw. ihr Abbruch. */
@@ -204,7 +220,7 @@ export class World {
   private readonly shotBox = newShotBox();
   private readonly fireState = newFireState();
   /** Laufende Schleifentöne der Waffen. */
-  private readonly loopsOn = new Set<string>();
+  private readonly loopsOn = new Map<string, number>();
   /** Force des D-Phyton und die vier Partikel des D-Tonator. */
   readonly force: Force = newForce();
   readonly particles: Particle[] = newParticles();
@@ -222,13 +238,25 @@ export class World {
   readonly fx: Effects;
   /** Funk und Laufband. */
   readonly radio: Radio;
-  /** Beam-Kraftphase je Spieler (`Me.CB0[p]+0x2E`); folgt mit dem Beam. */
-  readonly beamPower = [false, false];
-  /** Super-Nova läuft (`Me.D6C`); folgt mit der Nova. */
+  /** Beam je Spieler (`Me.CB0[p]`) und die gemeinsamen Beam-Globalen. */
+  readonly beams: Beam[] = [newBeam(), newBeam()];
+  private readonly beamShared = newBeamShared();
+  /** Option „Force-Modus-Taste wirkt als Beamwechsel“ (`Me.512 = 0`). */
+  qToggles = true;
+  /** Super-Nova läuft (`Me.D6C`); schaltet mitten im Tick (`SpielNova`, `nova.ts`). */
   nova = false;
-  /** Kombo-Multiplikator (`Me.59C[p]`) und -Zähler (`Me.5B8[p]`). */
+  /** Ablauf der Super-Nova (Zähler, Variante, Arbeitsbereich, Bildbruch). */
+  readonly novaState = newNovaState();
+  /** Kombo-Multiplikator (`Me.59C[p]`), -Treffer (`Me.5B8[p]`), -Bonus (`Me.5D4[p]`). */
   readonly combo = [1, 1];
   readonly comboHits = [0, 0];
+  readonly comboBonus = [0, 0];
+  /** Nachbilder der Schiffe ab dem Levelausflug (`Me.B78`) und Rauchzähler für alle (`G.538`). */
+  private afterimages = false;
+  private smoke = 0;
+  /** Kombo-Anzeige im HUD (`SpielDisplay` `0x5130FB`, nur Spieler 1) und Bestwerte (`B48[0].60/.64`). */
+  readonly comboHud = { shown: 0, timer: 0, last: 0, bonus: 0 };
+  readonly comboBest = { hits: 0, bonus: 0 };
   /** Abschüsse (`P[0].+54`, immer Spieler 1). */
   kills = 0;
 
@@ -421,9 +449,10 @@ export class World {
       killEmitters: (i) => this.fire.killEmittersOf(i),
       sound: (name) => this.sfx(name),
       shockwave: (cx, cy, life) => this.fire.addShockwave(cx, cy, life),
-      beamPower: (p) => this.beamPower[p] === true,
+      beamPower: (p) => this.beams[p]?.power === true,
       nova: this.nova,
       boss: this.bossHooks,
+      comboReset: (p) => this.resetCombo(p),
       comboUp: (p) => {
         this.combo[p] = f32((this.comboHits[p] ?? 0) * 0.1 + 1);
         this.comboHits[p] = (this.comboHits[p] ?? 0) + 1;
@@ -606,7 +635,7 @@ export class World {
       players: this.players,
       force: this.force,
       particles: this.particles,
-      beamPower: (p) => this.beamPower[p] === true,
+      beamPower: (p) => this.beams[p]?.power === true,
       sound: (name) => this.sfx(name),
       loop: (name, on) => this.loopSfx(name, on),
       whereRight: (x1, y1, x2, y2) => this.whereColision(true, x1, y1, x2, y2),
@@ -644,19 +673,84 @@ export class World {
     };
   }
 
+  /** `SpielSoundOFF`: Schleifen und Level-Töne aus (auch die Schleifentöne der Waffen). */
+  private soundOff(): void {
+    this.loopsOn.clear();
+    this.events.push({ kind: "soundOff" });
+  }
+
+  private resetCombo(p: number): void {
+    resetCombo({ mult: this.combo, hits: this.comboHits, bonus: this.comboBonus }, p);
+  }
+
+  private novaWorld(): NovaWorld {
+    return {
+      rnd: this.rnd,
+      fx: this.fx,
+      out: this.fx.lists.nova,
+      players: this.players,
+      playersMinus1: this.playersMinus1,
+      inputs: this.inputs,
+      particles: this.particles,
+      force: this.force,
+      enemies: this.enemies,
+      shots: this.fire.shots,
+      overlays: this.overlays,
+      running: () => this.nova,
+      setRunning: (on) => {
+        this.nova = on;
+      },
+      background: (v) => this.bossHooks.background(v),
+      nextParticle: (p) => nextParticle(this.companionWorld(), p),
+      addPoints: (points, x, y, vy, player) => this.addPoints(points, x, y, vy, player),
+      sound: (name) => this.sfx(name),
+      soundOff: () => this.soundOff(),
+      noFlash: () => {
+        this.noFlash = true;
+      },
+    };
+  }
+
+  private beamWorld(): BeamWorld {
+    const ew = this.makeEnemyWorld();
+    return {
+      tick: this.tick,
+      rnd: this.rnd,
+      fx: this.fx,
+      out: this.fx.lists.beam,
+      players: this.players,
+      playersMinus1: this.playersMinus1,
+      beams: this.beams,
+      shared: this.beamShared,
+      combo: { mult: this.combo, hits: this.comboHits, bonus: this.comboBonus },
+      waterLine: PLAYFIELD_H - this.level.waterHeight,
+      qToggles: this.qToggles,
+      input: (p) => this.inputs[p],
+      terrain: (x1, y1, x2, y2) => this.hitsTerrain(x1, y1, x2, y2),
+      hitEnemies: (x1, y1, x2, y2, damage, owner, pierce, out) =>
+        this.enemies.hit(x1, y1, x2, y2, damage, owner, ew, { pierce, sparks: true, out }),
+      background: (v) => this.bossHooks.background(v),
+      sound: (name) => this.sfx(name),
+      loop: (name, on, rate) => this.loopSfx(name, on, rate),
+    };
+  }
+
   /** Schleifenton an/aus, Ereignis nur beim Wechsel (`GetStatus` des Puffers). */
-  private loopSfx(name: string, on: boolean): void {
-    if (this.loopsOn.has(name) === on) return;
-    if (on) this.loopsOn.add(name);
+  private loopSfx(name: string, on: boolean, rate?: number): void {
+    const was = this.loopsOn.get(name);
+    if (on ? was === (rate ?? 1) : was === undefined) return;
+    if (on) this.loopsOn.set(name, rate ?? 1);
     else this.loopsOn.delete(name);
-    this.events.push({ kind: "sfxLoop", name, on });
+    this.events.push({ kind: "sfxLoop", name, on, ...(rate !== undefined ? { rate } : {}) });
   }
 
   private playerWorld(): PlayerWorld {
     return {
       terrainSpeed: this.layers[TERRAIN_LAYER]!.speed,
+      // in der Beam-Kraftphase entfällt der Tempoabzug unter Wasser
       underwater: (p) =>
-        this.level.waterHeight === 550 || PLAYFIELD_H - this.level.waterHeight < p.y + 17,
+        !this.beams[p.index]?.power &&
+        (this.level.waterHeight === 550 || PLAYFIELD_H - this.level.waterHeight < p.y + 17),
       terrain: (x1, y1, x2, y2) => this.hitsTerrain(x1, y1, x2, y2),
       kill: (p) => this.killPlayer(p),
       exhaust: (p, dx) => this.exhaust(p, dx),
@@ -697,36 +791,117 @@ export class World {
   }
 
   /**
-   * `SpielMoveDove` (`0x509110`), nur der Rauch unter halber Energie: je
-   * niedriger die Energie, desto öfter vier Funken und ein weißes Wölkchen.
+   * `SpielMoveDove` (`0x509110`) je lebendem Spieler: Nachbilder im
+   * Levelausflug, Schild (blinkt im Takt der Unverwundbarkeit) mit grauen
+   * Blitzen, das Schiff, Glühen in der 2P-Kraftphase, Tönung (rot nach
+   * Energie, grün bei Energiegewinn, blau bei vollem Beam), magenta Blitz bei
+   * Schaden in den letzten 10 Ticks oder in der Kraftphase, Rauch unter
+   * halber Energie (Zähler für alle Spieler gemeinsam). Zeichnet in `ship`.
    */
   private moveDove(): void {
+    const out = this.fx.lists.ship;
+    const fx = this.fx;
+    const rnd = this.rnd;
     for (const p of this.players) {
-      if (!p.alive || p.exitState !== 0) continue;
-      if (idiv(p.maxEnergy, 2) <= p.energy) continue;
-      if (p.smoke > (10 * p.energy) / p.maxEnergy) {
-        p.smoke = 0;
-        const [x1, y1, x2, y2] = p.hitbox();
-        this.fx.addSparks(1, 4, x1, y1, x2, y2, false);
-        const r1 = this.rnd.next();
-        const r2 = this.rnd.next();
-        const r3 = this.rnd.next();
-        const r4 = this.rnd.next();
-        this.fx.addBig(
-          p.x + 64 * r1 - 4,
-          p.y + 17 + 37 * r2 - 4,
-          r3 - 0.5,
-          -2 - r4,
-          1,
-          1,
-          1,
-          8,
-          0,
-          6,
-          10,
-          0,
+      if (!p.alive) continue;
+      const key = (tilt: number, frame: number) => `dove${p.shipType}${tilt + 1}${frame + 1}`;
+      if (this.afterimages) {
+        for (let k = 0; k <= 10; k++) {
+          const x = cint(p.histX[k] ?? p.x);
+          const y = cint(p.histY[k] ?? p.y);
+          const img = key(p.histTilt[k] ?? p.tilt, p.histFrame[k] ?? p.animFrame);
+          out.quad(img, x, y, x + 64, y + 64, 1, 1, 1, f32(1 / (12 - k)));
+        }
+      }
+      const x = p.x;
+      const y = p.y;
+      const shield = p.invulnerable > 10 || p.invulnerable % 2 === 1;
+      const shieldBolt = () => {
+        const r1 = rnd.next();
+        const r2 = rnd.next();
+        fx.lightning(
+          out,
+          f32(x + 32),
+          f32(y + 32),
+          f32(x - 15 + r1 * 94),
+          f32(y - 5 + r2 * 74),
+          3,
+          3,
+          5,
+          0.5,
+          0.5,
+          0.5,
+          true,
         );
-      } else p.smoke++;
+      };
+      if (shield) {
+        out.quad("a_kreis2", x - 15, y - 5, x + 79, y + 69, 0.6, 1, 0.6, 0.4, true);
+        shieldBolt();
+      }
+      const img = key(p.tilt, p.animFrame);
+      const sx = cint(x);
+      const sy = cint(y);
+      out.quad(img, sx, sy, sx + 64, sy + 64);
+      const beam = this.beams[p.index];
+      let tint: [number, number, number, number] = [sx, sy, sx + 64, sy + 64];
+      if (beam?.power && this.playersMinus1 === 1) {
+        for (let k = 0; k <= 10; k++)
+          out.quad(img, x - k, y - k, x + 64 + k, y + 64 + k, 1, 1, 1, 0.1, true);
+        tint = [x - 10, y - 10, x + 74, y + 74];
+      }
+      const e0 = p.histEnergy[0] ?? p.energy;
+      const g = p.energy > e0 ? 1 : 0;
+      const bl = beam?.charge === 165 && this.tick % 2 === 0 ? 1 : 0;
+      out.quad(img, ...tint, 1 - p.energy / p.maxEnergy, g, bl, 1, true);
+      if (e0 > p.energy || beam?.power) {
+        const r1 = rnd.next();
+        const r2 = rnd.next();
+        const r3 = rnd.next();
+        const r4 = rnd.next();
+        fx.lightning(
+          out,
+          f32(x + 64 * r1),
+          f32(17 + y + 37 * r2),
+          f32(x + 64 * r3),
+          f32(17 + y + 37 * r4),
+          5,
+          5,
+          20,
+          1,
+          0.6,
+          1,
+          true,
+        );
+      }
+      if (Math.trunc(cint(p.maxEnergy) / 2) > p.energy) {
+        if ((p.energy / p.maxEnergy) * 10 < this.smoke) {
+          this.smoke = 0;
+          const [x1, y1, x2, y2] = p.hitbox();
+          fx.addSparks(1, 4, x1, y1, x2, y2, false);
+          const r1 = rnd.next();
+          const r2 = rnd.next();
+          const r3 = rnd.next();
+          const r4 = rnd.next();
+          fx.addBig(
+            x + 64 * r1 - 4,
+            y + 17 + 37 * r2 - 4,
+            r3 - 0.5,
+            -2 - r4,
+            1,
+            1,
+            1,
+            8,
+            0,
+            6,
+            10,
+            0,
+          );
+        } else this.smoke++;
+      }
+      if (shield) {
+        shieldBolt();
+        out.quad("a_kreis2", x - 30, y - 15, x + 94, y + 79, 0.6, 1, 0.6, 0.4, true);
+      }
     }
   }
 
@@ -781,7 +956,7 @@ export class World {
     if (this.playersMinus1 === 1 && partner) {
       if (this.lives > 0 && !this.bossAlive) {
         if (p.deathTimer < DEATH_TICKS) return;
-        this.events.push({ kind: "soundOff" });
+        this.soundOff();
         this.lives--;
         doveInit(p);
         let [x, y] = [partner.x, partner.y];
@@ -807,7 +982,7 @@ export class World {
       }
       return;
     }
-    this.events.push({ kind: "soundOff" });
+    this.soundOff();
     if (this.lives <= 0) this.musicStep = -1;
     if (p.deathTimer >= DEATH_TICKS) {
       this.state = 1;
@@ -823,7 +998,14 @@ export class World {
   private readonly bossHooks: BossHooks = {
     start: () => {
       for (const p of this.players) p.invulnerable = 600;
-      // 1P: eine laufende Beam-Kraftphase endet (folgt mit dem Beam)
+      // 1P: ein laufender Beam 2 geht ins Ausklingen (ohne Prüfung der Kraftphase, wie das Original)
+      const b = this.beams[0]!;
+      if (this.playersMinus1 === 0 && b.running && b.type === 1) {
+        b.time = 500;
+        this.background = b.damage;
+        b.charge = 0;
+        b.power = false;
+      }
     },
     background: (v) => {
       if (v !== undefined) this.background = v;
@@ -916,6 +1098,9 @@ export class World {
     Object.assign(l0, { highWater: -1, firstFree: 0, cursor: 0 });
     this.checkpoint.active = false;
     this.fx.shake = 0;
+    for (const b of this.beams) clearBeam(b);
+    this.afterimages = false;
+    for (let p = 0; p < 2; p++) this.resetCombo(p);
     this.radio.reset(this.events);
     // LoadCheckpoint (die Kopie wird verbraucht; gleich danach wird neu gesichert)
     this.tick = s.tick;
@@ -1041,16 +1226,20 @@ export class World {
   }
 
   /**
-   * `AddPunkte` (`0x50F750`): `score = CLng(score + Multiplikator · Punkte /
-   * (1 + 0,5 · zwei Spieler))`, ab 1500 Punkten Wackeln, ab 1000 ein Popup
-   * (Kombo-Multiplikator folgt mit dem Beam).
+   * `AddPunkte` (`0x50F750`): `score = CLng(Multiplikator · Punkte / (1 + 0,5 ·
+   * zwei Spieler) + score)`, der Kombo-Bonus zählt mit, solange Treffer laufen;
+   * ab 1500 Punkten Wackeln, ab 1000 (oder mit Kombo) ein Popup.
    */
   addPoints(points: number, x: number, y: number, vy: number, player: number): void {
     if (player < 0) return;
-    const mult = 1;
-    this.score[player] = cint(
-      (this.score[player] ?? 0) + (mult * points) / (1 + 0.5 * this.playersMinus1),
-    );
+    const mult = this.combo[player] ?? 1;
+    const div = this.playersMinus1 * 0.5 + 1;
+    this.score[player] = cint((mult * points) / div + (this.score[player] ?? 0));
+    if ((this.comboHits[player] ?? 0) > 0)
+      this.comboBonus[player] = cint(
+        (mult * points - points) / div + (this.comboBonus[player] ?? 0),
+      );
+    else this.comboBonus[player] = 0;
     if (points >= 1500) this.fx.shake += idiv(points, 500);
     if (mult > 1 || points >= 1000) this.fx.addPopup(cint(points * mult), x, y, vy);
   }
@@ -1152,7 +1341,12 @@ export class World {
     }
   }
 
-  /** Ein Tick; `inputs` je Spieler. */
+  /**
+   * Ein Tick; `inputs` je Spieler. Die elf `Me.D6C`-Prüfungen von `SpielLoop`
+   * fragen `nova` jeweils an ihrer Stelle ab: die Nova schaltet mitten im Tick
+   * (Stelle 15), im Auslöse-Tick ruhen daher schon Gegnerschüsse bis Kontakt,
+   * im End-Tick laufen sie wieder.
+   */
   step(inputs: readonly PlayerInput[] = []): void {
     if (this.state !== 0) return;
     this.inputs = inputs;
@@ -1160,56 +1354,82 @@ export class World {
     this.noFlash = false;
     for (const p of this.players) p.startEnergy = p.energy;
     this.level.groups.forEach((g, i) => doAni(g, this.groupFrames[i]!));
-    this.musicVolume = Math.min(100, Math.max(0, this.musicVolume + this.musicStep));
-    if (this.tick >= this.level.levelLength - 50) this.musicStep = -2;
-    this.timeline();
+    // [1] Musik-Fade, Zeitleiste
+    if (!this.nova) {
+      this.musicVolume = Math.min(100, Math.max(0, this.musicVolume + this.musicStep));
+      if (this.tick >= this.level.levelLength - 50) this.musicStep = -2;
+      this.timeline();
+    }
     if (this.background === 1) {
       this.backgroundX = f32(this.backgroundX - this.layers[0]!.speed);
       if (this.backgroundX <= -SCREEN_W) this.backgroundX = f32(this.backgroundX + SCREEN_W);
     }
-    for (const l of [0, 1, 2, 5]) {
-      this.layers[l]!.move(this.surfaces, this.groupFrames);
-      this.anims.move(l, this.level, this.layers);
+    novaBackground(this.novaState, this.rnd, this.background);
+    // [2] Ebenen 0, 1, 2, 5, Checkpoint, Steuerung
+    if (!this.nova) {
+      for (const l of [0, 1, 2, 5]) {
+        this.layers[l]!.move(this.surfaces, this.groupFrames);
+        this.anims.move(l, this.level, this.layers);
+      }
+      this.checkpointPass(0);
+      const pw = this.playerWorld();
+      for (const p of this.players) updatePlayer(p, inputs[p.index] ?? NO_INPUT, pw);
+      if (this.players.some((p) => p.exitState >= 1)) this.afterimages = true;
     }
-    this.checkpointPass(0);
-    const pw = this.playerWorld();
-    for (const p of this.players) updatePlayer(p, inputs[p.index] ?? NO_INPUT, pw);
     moveParticles(this.companionWorld(), this.companionKeys);
-    fireWeapons(this.weaponWorld(), this.fireState, inputs);
-    moveShots(this.playerShots[0], 0, this.shotHost(), this.shotBox, this.fx.lists.shots0);
+    // [3] Abfeuern, Spielerschüsse Ebene 0
+    if (!this.nova) {
+      fireWeapons(this.weaponWorld(), this.fireState, inputs);
+      moveShots(this.playerShots[0], 0, this.shotHost(), this.shotBox, this.fx.lists.shots0);
+    }
     this.fx.moveSparks(0, this.level.gravity);
-    this.moveSpecials();
+    // [4] Power-ups
+    if (!this.nova) this.moveSpecials();
     this.moveDove();
     this.enemies.step(this.makeEnemyWorld());
     this.fx.moveBubbles(this.effectWorld(), this.background !== 0);
-    this.anims.move(4, this.level, this.layers);
-    this.layers[3]!.move(this.surfaces, this.groupFrames);
+    // [5] Animationen 4, Landschaft
+    if (!this.nova) {
+      this.anims.move(4, this.level, this.layers);
+      this.layers[3]!.move(this.surfaces, this.groupFrames);
+    }
     stepParticles(this.companionWorld(), this.fx.lists.particles);
-    moveShots(this.playerShots[1], 1, this.shotHost(), this.shotBox, this.fx.lists.shots1);
-    this.anims.move(3, this.level, this.layers);
-    const sw = this.shotWorld();
-    this.fire.stepEmitters(sw, {
-      muzzle: (enemy, part) => {
-        const e = this.enemies.items[enemy];
-        const p = e?.parts[part];
-        if (!e?.alive || !p?.visible) return undefined;
-        const r = this.enemies.surface(p)?.rect ?? { w: 0, h: 0 };
-        const [x, y] = this.enemies.partPos(e, p);
-        return { cx: x + r.w / 2, cy: y + r.h / 2, w: r.w, h: r.h, rotation: p.rotation };
-      },
-    });
+    // [6] Spielerschüsse Ebene 1, Animationen 3, Emitter, Beam
+    if (!this.nova) {
+      moveShots(this.playerShots[1], 1, this.shotHost(), this.shotBox, this.fx.lists.shots1);
+      this.anims.move(3, this.level, this.layers);
+      this.fire.stepEmitters(this.shotWorld(), {
+        muzzle: (enemy, part) => {
+          // nur das Teil zählt (0x4AA17C): Waffen von Nova-Opfern feuern ihre Salven zu Ende
+          const e = this.enemies.items[enemy];
+          const p = e?.parts[part];
+          if (!e || !p?.visible) return undefined;
+          const r = this.enemies.surface(p)?.rect ?? { w: 0, h: 0 };
+          const [x, y] = this.enemies.partPos(e, p);
+          return { cx: x + r.w / 2, cy: y + r.h / 2, w: r.w, h: r.h, rotation: p.rotation };
+        },
+      });
+      stepBeams(this.beamWorld());
+    }
+    stepNova(this.novaWorld(), this.novaState);
     this.fx.moveSparks(1, this.level.gravity);
     this.fx.moveBig(this.effectWorld());
-    this.fire.stepShots(sw);
+    // [7] Gegnerschüsse
+    if (!this.nova) this.fire.stepShots(this.shotWorld());
     stepForce(this.companionWorld(), this.companionKeys, this.fx.lists.force);
     this.fx.movePopups();
-    this.checkpointPass(1);
-    this.layers[6]!.move(this.surfaces, this.groupFrames);
-    this.anims.move(6, this.level, this.layers);
+    // [8] Checkpoint, Ebene 6
+    if (!this.nova) {
+      this.checkpointPass(1);
+      this.layers[6]!.move(this.surfaces, this.groupFrames);
+      this.anims.move(6, this.level, this.layers);
+    }
     this.fx.stepShake();
-    this.contact();
+    // [10] Kontakt ([9] Schrifteffekt und [11] Abblende: Renderer)
+    if (!this.nova) this.contact();
     this.stepOverlays();
     this.flash();
+    novaFlash(this.novaState, this.fx.lists.flash, this.noFlash);
     this.display();
   }
 
@@ -1254,7 +1474,39 @@ export class World {
       this.shownScore[p] = (this.shownScore[p] ?? 0) + step;
     }
     this.radio.step(this.rnd, this.events, this.fx.lists.radio);
+    this.comboDisplay();
     this.radio.stepTicker();
+  }
+
+  /** Kombo-Anzeige: Zähler springt je Treffer, am Ende eine Laufband-Meldung „Combo: N Hit B“. */
+  private comboDisplay(): void {
+    const S = this.comboHud;
+    const cnt = this.comboHits[0] ?? 0;
+    const bonus = this.comboBonus[0] ?? 0;
+    this.comboBest.bonus = Math.max(this.comboBest.bonus, bonus);
+    this.comboBest.hits = Math.max(this.comboBest.hits, cnt);
+    if (bonus > S.bonus) S.bonus = bonus;
+    if (cnt > 0 && bonus < S.bonus) S.bonus = bonus;
+    if (cnt > S.shown + 1) S.shown = cnt - 1;
+    if (cnt !== S.shown && cnt > 0 && cnt !== S.last) {
+      S.timer = 10;
+      S.last = cnt;
+    } else if (cnt === 0 && S.last > 0) {
+      S.timer = 100;
+      if (S.last > 1) this.radio.addMessage(`Combo: ${S.last} Hit ${S.bonus}`);
+      S.shown = S.last;
+      S.last = 0;
+    }
+    S.timer--;
+    if (S.timer === 1 && cnt > 0) S.shown = cnt;
+    if (S.timer === 0) {
+      if (cnt > 0) S.timer = 1;
+      else {
+        S.shown = 0;
+        S.last = 0;
+        S.bonus = 0;
+      }
+    }
   }
 
   /** Wirkung eines Power-ups (`SpielMoveSpezialObjekt` `0x4D1910`). */

@@ -92,8 +92,13 @@ export class SfxPool {
 
   /** Endlosschleife (z. B. der blaue Laser); liefert die Stopp-Funktion. */
   loop(id: string, volume = 1, rate = 1): () => void {
+    return this.loopHandle(id, volume, rate).stop;
+  }
+
+  /** Endlosschleife mit veränderlicher Abspielrate (z. B. der Ladeton des Beams). */
+  loopHandle(id: string, volume = 1, rate = 1): { stop(): void; setRate(rate: number): void } {
     const buffer = this.buffers.get(id);
-    if (!buffer || buffer.length === 0) return () => {};
+    if (!buffer || buffer.length === 0) return { stop: () => {}, setRate: () => {} };
     const source = this.context.createBufferSource();
     source.buffer = buffer;
     source.loop = true;
@@ -102,9 +107,14 @@ export class SfxPool {
     gain.gain.value = volume;
     source.connect(gain).connect(this.output);
     source.start();
-    return () => {
-      source.stop();
-      gain.disconnect();
+    return {
+      stop: () => {
+        source.stop();
+        gain.disconnect();
+      },
+      setRate: (r) => {
+        source.playbackRate.value = r;
+      },
     };
   }
 

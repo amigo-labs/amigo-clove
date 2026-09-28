@@ -73,9 +73,12 @@ export class Player {
   /** Position zu Tickbeginn (`Me.B64[p + 20]`, Mündungsfunken). */
   prevX: number;
   prevY: number;
-  /** Verlauf `Me.B64`: Positionen der letzten 11 Tickanfänge, [0] vor 10 Ticks (Force-Rückruf). */
+  /** Verlauf `Me.B64`: Stand der letzten 11 Tickanfänge, [0] vor 10 Ticks (Force-Rückruf, Nachbilder, Tönung). */
   readonly histX: number[];
   readonly histY: number[];
+  readonly histEnergy: number[];
+  readonly histTilt: number[];
+  readonly histFrame: number[];
   /** Gewählter Partikel-Platz −1…3 (`P.58`, nur D-Tonator). */
   selected = 0;
   /** Schussstärke 1–3, 0: kann nicht feuern. */
@@ -91,8 +94,6 @@ export class Player {
   exitState = 0;
   /** Energie zu Tickbeginn (Unverwundbarkeit setzt sie zurück). */
   startEnergy = MAX_ENERGY;
-  /** Zähler für den Rauch unter halber Energie (`G.538`). */
-  smoke = 0;
 
   constructor(
     readonly index: number,
@@ -105,12 +106,32 @@ export class Player {
     this.prevY = this.y;
     this.histX = Array.from({ length: 11 }, () => this.x);
     this.histY = Array.from({ length: 11 }, () => this.y);
+    this.histEnergy = Array.from({ length: 11 }, () => this.energy);
+    this.histTilt = Array.from({ length: 11 }, () => this.tilt);
+    this.histFrame = Array.from({ length: 11 }, () => this.animFrame);
   }
 
-  /** `VariabelnLösch`: den ganzen Verlauf mit der aktuellen Position füllen. */
+  /** `VariabelnLösch`: den ganzen Verlauf mit dem aktuellen Stand füllen. */
   fillHistory(): void {
     this.histX.fill(this.x);
     this.histY.fill(this.y);
+    this.histEnergy.fill(this.energy);
+    this.histTilt.fill(this.tilt);
+    this.histFrame.fill(this.animFrame);
+  }
+
+  /** `SpielKeysDove`: Verlauf um einen Tick schieben, der Stand zu Tickbeginn kommt hinten an. */
+  pushHistory(): void {
+    for (const [a, v] of [
+      [this.histX, this.x],
+      [this.histY, this.y],
+      [this.histEnergy, this.energy],
+      [this.histTilt, this.tilt],
+      [this.histFrame, this.animFrame],
+    ] as const) {
+      a.shift();
+      a.push(v);
+    }
   }
 
   get alive(): boolean {
@@ -214,10 +235,7 @@ export function updatePlayer(p: Player, input: PlayerInput, w: PlayerWorld): voi
   if (!p.alive) return;
   p.prevX = p.x;
   p.prevY = p.y;
-  p.histX.shift();
-  p.histY.shift();
-  p.histX.push(p.x);
-  p.histY.push(p.y);
+  p.pushHistory();
   if (p.exitState >= 1) {
     exitFlight(p);
     return;
