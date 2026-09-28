@@ -34,6 +34,7 @@ const KEY_SETS: readonly Readonly<Record<keyof PlayerInput, readonly string[]>>[
     switchBeam: ["KeyQ"],
     rotate: ["KeyW"],
     nova: ["KeyE"],
+    horn: ["F11"],
   },
   {
     left: ["KeyJ", "ArrowLeft"],
@@ -46,6 +47,7 @@ const KEY_SETS: readonly Readonly<Record<keyof PlayerInput, readonly string[]>>[
     switchBeam: ["KeyQ"],
     rotate: ["KeyW"],
     nova: ["KeyE"],
+    horn: ["F11"],
   },
   {
     left: ["Numpad4"],
@@ -58,6 +60,7 @@ const KEY_SETS: readonly Readonly<Record<keyof PlayerInput, readonly string[]>>[
     switchBeam: ["Insert"],
     rotate: ["Home"],
     nova: ["PageUp"],
+    horn: ["F11"],
   },
 ];
 
@@ -76,7 +79,29 @@ export function readInput(host: GameHost, set = 0): PlayerInput {
     switchBeam: down(keys.switchBeam),
     rotate: down(keys.rotate),
     nova: down(keys.nova),
+    horn: down(keys.horn),
   };
+}
+
+/** Aktionen in der Reihenfolge der Belegungstabellen (`0x588174`, Index wie `SetSpecial` Typ 1). */
+const ACTIONS = [
+  "left",
+  "up",
+  "right",
+  "down",
+  "fire",
+  "beam",
+  "switchWeapon",
+  "switchBeam",
+  "rotate",
+  "nova",
+] as const;
+
+/** Tastenname einer Aktion für den Tastenhinweis (erste Taste des Satzes, `KeyS` → „S“). */
+export function keyLabel(action: number, set = 0): string {
+  const name = ACTIONS[action];
+  const code = name ? (KEY_SETS[set] ?? KEY_SETS[0]!)[name][0] : undefined;
+  return (code ?? "?").replace(/^Key|^Digit/, "").replace(/^Arrow/, "");
 }
 
 export interface GameOptions {
@@ -121,7 +146,7 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
     ? await DovezAudio.create(host.audio, host.assets, pack.slug).catch(() => undefined)
     : undefined;
   audio?.playMusic(pack.level.music);
-  const renderer = new Renderer(textures, world, atlases, app.renderer);
+  const renderer = new Renderer(textures, world, atlases, app.renderer, { german, keyLabel });
   app.stage.addChild(renderer.root);
   const loop = new FixedStepLoop(TICK_MS);
   let over = false;
@@ -132,15 +157,17 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
       return;
     }
     const n = loop.frame(host.now());
-    for (let i = 0; i < n && !over; i++) {
+    // Tod: Neustart am Checkpoint erst nach dem gezeichneten Todesbild (Standbild für die Überblendung)
+    if (world.state === 1 && !world.respawn()) over = true;
+    const running = () => world.state === 0;
+    for (let i = 0; i < n && !over && running(); i++) {
       const inputs =
         opts.players === 2 ? [readInput(host, 1), readInput(host, 2)] : [readInput(host), NO_INPUT];
       if (opts.invincible)
         for (const p of world.players) p.invulnerable = Math.max(p.invulnerable, 2);
       world.step(inputs);
-      // Tod: Neustart am Checkpoint; ohne Leben ist vorerst Schluss (Continue folgt)
-      if (world.state === 1 && !world.respawn()) over = true;
-      else if (world.state === 2) over = true;
+      // ohne Leben ist nach dem Tod vorerst Schluss (Continue folgt)
+      if (world.state === 2) over = true;
     }
     audio?.update(world);
     world.events.length = 0;
