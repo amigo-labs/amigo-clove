@@ -73,6 +73,8 @@ export class FadeScene implements Scene {
     private readonly app: Application,
     private readonly t: ScreenTargets,
     private readonly logic: FadeLogic,
+    /** `abbrechbar`: Abfrage am Ende jedes Durchlaufs (`TastePause`). */
+    private readonly abort?: () => boolean,
   ) {
     // Anfangsbild (`Me.774`) und Backbuffer
     t.draw(app.stage, t.back, true);
@@ -101,6 +103,7 @@ export class FadeScene implements Scene {
       this.t.copyBack();
       this.first.alpha = this.logic.alpha;
       this.t.draw(this.pass, this.t.back);
+      if (this.abort?.()) return true;
     }
     return this.logic.done;
   }

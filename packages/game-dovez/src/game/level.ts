@@ -19,6 +19,7 @@ import { ContinueView } from "./continueView";
 import { GdiText, atlasTexture } from "./gdi";
 import { addHighscore } from "./highscore";
 import { keyLabel, readInput, screenKeys } from "./input";
+import { type DovezConfig, audioGains } from "./config";
 import type { Mosaic } from "./mosaic";
 import { PAUSE_MS, PauseLogic, pauseMenu, pauseTitle, wrapRadioLog } from "./pauseScreen";
 import { PauseView } from "./pauseView";
@@ -39,6 +40,8 @@ export interface GameContext {
   readonly mosaic: Mosaic;
   readonly players: 1 | 2;
   readonly ship: 0 | 1;
+  /** Optionen aus dem Menü (Pegel, Force-Taste, Auto-Arrange). */
+  readonly config: DovezConfig;
 }
 
 export interface LevelOptions {
@@ -158,8 +161,13 @@ export class LevelScene implements Scene {
       ...(opts.rnd ? { rnd: opts.rnd } : {}),
     });
     const audio = host.audio
-      ? await DovezAudio.create(host.audio, host.assets, pack.slug).catch(() => undefined)
+      ? await DovezAudio.create(host.audio, host.assets, pack.slug, audioGains(ctx.config)).catch(
+          () => undefined,
+        )
       : undefined;
+    // `Me.512` (normal) und `Me.50E` aus den Grundeinstellungen
+    world.qToggles = !ctx.config.qNormal;
+    world.autoArrange = ctx.config.autoArrange;
     const renderer = new Renderer(textures, world, atlases, ctx.app.renderer, { german, keyLabel });
     // Seiten, die nur dieses Level braucht (die globalen bleiben geladen)
     const shared = new Set(Renderer.pageIds(globals.map((json) => ({ json }))));
