@@ -40,6 +40,8 @@ function scriptSurfaces(level: DovezLevel): Surface[][] {
       right: 0,
       topRow: -1,
       bottomRow: -1,
+      minX: 0,
+      maxX: 1,
       spans: new Int16Array(0),
     })),
   );

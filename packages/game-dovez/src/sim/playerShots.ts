@@ -87,8 +87,10 @@ export interface ShotHost {
   /** Restschaden nach `CheckColisionWithEnemy`. */
   hitEnemies(x1: number, y1: number, x2: number, y2: number, damage: number, owner: number): number;
   terrain(x1: number, y1: number, x2: number, y2: number): boolean;
-  /** Treffer- oder Aufschlagfunke (Typfarbe). */
-  spark(x: number, y: number, kind: number): void;
+  /** Glut beim Einschlag (Typfarbe); an der Landschaft zusätzlich ein Funke. */
+  glow(x: number, y: number, kind: number, terrain: boolean): void;
+  /** Leuchtspur ab Waffenstufe 2, vor der Bewegung. */
+  trail(s: PlayerShot): void;
 }
 
 /** `SpielSchieß`, nur der Hauptschuss: Abkühlzeit 6 (Schiff 0, 2) bzw. 12 (Schiff 1). */
@@ -136,6 +138,7 @@ export function moveShots(layer: ShotLayer, host: ShotHost): void {
     const s = layer.shots[i]!;
     if (!s.active || s.type < -2 || s.type > 1) continue;
     const kind = s.type >= 0 ? s.type : Math.abs(s.type) + 1;
+    if (s.param > 1) host.trail(s);
     s.x = f32(s.x + s.vx);
     s.y = f32(s.y + s.vy);
     if (s.x > 800 || s.x + SHOT_BOX < 0 || s.y > 550 || s.y + SHOT_BOX < 0) {
@@ -147,13 +150,13 @@ export function moveShots(layer: ShotLayer, host: ShotHost): void {
     const rem = host.hitEnemies(x1, y1, x1 + SHOT_BOX, y1 + SHOT_BOX, cint(s.damage), s.owner);
     s.damage = f32(rem);
     if (rem === 0) {
-      host.spark(s.x, s.y, kind);
       layer.kill(i);
+      host.glow(s.x, s.y, kind, false);
       continue;
     }
     if (host.terrain(x1, y1, x1 + SHOT_BOX, y1 + SHOT_BOX)) {
-      host.spark(s.x, s.y, kind);
       layer.kill(i);
+      host.glow(s.x, s.y, kind, true);
     }
   }
 }

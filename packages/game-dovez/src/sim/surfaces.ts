@@ -20,6 +20,9 @@ export interface Surface {
   /** Erste/letzte belegte Zeile, auf das Rechteck beschnitten (+0xA8/+0xAC). */
   readonly topRow: number;
   readonly bottomRow: number;
+  /** Kleinste Zeilen-Linke / größte Zeilen-Rechte über alle BMP-Zeilen (+0xB0/+0xB4); leer 0/1. */
+  readonly minX: number;
+  readonly maxX: number;
   /** Je BMP-Zeile `left, right`; leer `-1, -1` (+0xA0/+0xA4). */
   readonly spans: Int16Array;
 }
@@ -37,8 +40,23 @@ const EMPTY: Surface = {
   right: 0,
   topRow: -1,
   bottomRow: -1,
+  minX: 0,
+  maxX: 1,
   spans: new Int16Array(0),
 };
+
+/** `+0xB0/+0xB4` aus den Zeilenspannen. */
+function spanExtent(spans: Int16Array): { minX: number; maxX: number } {
+  let minX = Infinity;
+  let maxX = -Infinity;
+  for (let i = 0; i + 1 < spans.length; i += 2) {
+    const l = spans[i] as number;
+    if (l < 0) continue;
+    minX = Math.min(minX, l);
+    maxX = Math.max(maxX, spans[i + 1] as number);
+  }
+  return minX === Infinity ? { minX: 0, maxX: 1 } : { minX, maxX };
+}
 
 export function buildSurfaces(level: DovezLevel, source: SpriteSource): Surface[][] {
   return level.groups.map((g) =>
@@ -50,6 +68,7 @@ export function buildSurfaces(level: DovezLevel, source: SpriteSource): Surface[
       const rect = frameRect(f, size.w, size.h);
       const c = source.contour(key);
       const rawBottom = rect.y + rect.h;
+      const spans = c ? c.subarray(4, 4 + (c[1] as number) * 2) : new Int16Array(0);
       return {
         key,
         rect,
@@ -57,7 +76,8 @@ export function buildSurfaces(level: DovezLevel, source: SpriteSource): Surface[
         right: rect.x + rect.w,
         topRow: c ? Math.max(c[2] as number, rect.y) : -1,
         bottomRow: c ? Math.min(c[3] as number, rawBottom) : -1,
-        spans: c ? c.subarray(4, 4 + (c[1] as number) * 2) : new Int16Array(0),
+        ...spanExtent(spans),
+        spans,
       };
     }),
   );

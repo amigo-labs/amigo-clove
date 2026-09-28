@@ -14,6 +14,11 @@ export function cint(v: number): number {
 /** VB `Int`: abrunden. */
 export const vbInt = Math.floor;
 
+/** VB `a \ b`: beide Operanden per `CLng` gerundet, Quotient zur Null hin. */
+export function idiv(a: number, b: number): number {
+  return Math.trunc(cint(a) / cint(b));
+}
+
 /** VB6-`Rnd` ohne `Randomize`: `seed = (seed · 0x43FD43FD + 0xC39EC3) mod 2^24`. */
 export class VbRnd {
   constructor(public seed = 0x50000) {}

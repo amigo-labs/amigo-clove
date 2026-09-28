@@ -81,6 +81,8 @@ export class Player {
   exitState = 0;
   /** Energie zu Tickbeginn (Unverwundbarkeit setzt sie zurück). */
   startEnergy = MAX_ENERGY;
+  /** Zähler für den Rauch unter halber Energie (`G.538`). */
+  smoke = 0;
 
   constructor(
     readonly index: number,
@@ -112,6 +114,8 @@ export interface PlayerWorld {
   underwater(p: Player): boolean;
   terrain(x1: number, y1: number, x2: number, y2: number): boolean;
   kill(p: Player): void;
+  /** Abgasflamme zeichnen; `dx` = Weg seit Tickbeginn. */
+  exhaust?(p: Player, dx: number): void;
 }
 
 /** `SpielTastenCheck`: Tasten in Bewegung und Neigung (Arcade: ohne Trägheit). */
@@ -192,6 +196,7 @@ export function updatePlayer(p: Player, input: PlayerInput, w: PlayerWorld): voi
     exitFlight(p);
     return;
   }
+  const startX = p.x;
   // Landschaft voraus schiebt das Schiff mit der Scrollgeschwindigkeit nach links
   const [bx1, by1, bx2, by2] = p.hitbox(w.terrainSpeed);
   if (w.terrain(bx1, by1, bx2, by2)) {
@@ -212,6 +217,7 @@ export function updatePlayer(p: Player, input: PlayerInput, w: PlayerWorld): voi
   if (p.x + HIT_LEFT < 0) p.x = 0 - HIT_LEFT;
   if (p.y + HIT_TOP < 0) p.y = 0 - HIT_TOP;
   if (p.y + HIT_BOTTOM > 550) p.y = 550 - HIT_BOTTOM;
+  w.exhaust?.(p, p.x - startX);
   // Wände sperren achsenweise: zurück auf die Position zu Tickbeginn
   const hitAt = (x: number, y: number) =>
     w.terrain(cint(x + HIT_LEFT), cint(y + HIT_TOP), cint(x + HIT_RIGHT), cint(y + HIT_BOTTOM));

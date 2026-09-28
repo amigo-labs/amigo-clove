@@ -1,5 +1,6 @@
 import type { DovezLevel, DovezTimelineEntry } from "@clove/formats";
 import { AnimPool, prepareAnim } from "./anims";
+import { Effects, type EffectWorld } from "./effects";
 import type { FrameState } from "./doAni";
 import { doAni } from "./doAni";
 import { EVENT_LAYER, LayerState, SCREEN_W, TERRAIN_LAYER, TILE_CAPACITY } from "./layers";
@@ -18,7 +19,7 @@ import {
 import { ShotLayer, firePrimary, moveShots, type ShotHost } from "./playerShots";
 import { Op, type RouteEffect } from "./route";
 import { buildSurfaces, spanHit, type SpriteSource, type Surface } from "./surfaces";
-import { VbRnd, cint, f32, vbInt } from "./vb";
+import { VbRnd, cint, f32, idiv, vbInt } from "./vb";
 
 /**
  * Weltzustand eines DoveZ-Levels und der Tick in der Reihenfolge von
@@ -56,27 +57,34 @@ export interface Checkpoint {
 
 /** Ereignisse für Ton, Funk und Engine-Teile, die noch fehlen; die Engine leert sie je Frame. */
 export type WorldEvent =
-  | { readonly kind: "sound"; readonly sound: number; readonly mode: number }
-  | { readonly kind: "stopSound"; readonly sound: number }
-  | { readonly kind: "radio"; readonly radio: number }
+  /** Level-Ton `sounds[sound]`: `mode` 0 einmal, 1 Schleife (Zeitleiste ohne, Route mit Rücklauf). */
   | {
-      readonly kind: "explosion";
-      readonly x: number;
-      readonly y: number;
-      readonly w: number;
-      readonly h: number;
-      /** Großer Ton (Punkte > 1499). */
-      readonly big: boolean;
+      readonly kind: "sound";
+      readonly sound: number;
+      readonly mode: number;
+      readonly rewind: boolean;
     }
+  | { readonly kind: "stopSound"; readonly sound: number }
+  /** Effekt-Ton der Engine aus `Sound.d2p` (`sound/<name>`), SFX-Pegel. */
+  | { readonly kind: "sfx"; readonly name: string }
+  /** `SpielSoundOFF`: Schleifen und alle Level-Töne aus. */
+  | { readonly kind: "soundOff" }
+  | { readonly kind: "radio"; readonly radio: number }
   | { readonly kind: "effect"; readonly effect: RouteEffect }
-  | { readonly kind: "playerHit"; readonly player: number }
-  | { readonly kind: "spark"; readonly x: number; readonly y: number; readonly shot: number }
   | {
       readonly kind: "pickup";
       readonly player: number;
       readonly subtype: number;
       readonly item: number;
     };
+
+/** Glutfarbe eines Spielerschusses beim Einschlag (Typ-Index 0–3, `0x4DD0D0`). */
+const SHOT_GLOW = [
+  [0.6, 0.8, 1],
+  [1, 0.3, 0.3],
+  [0.4, 1, 0.4],
+  [1, 1, 0],
+] as const;
 
 export class World {
   readonly surfaces: Surface[][];
@@ -115,6 +123,10 @@ export class World {
   /** SetGlobal/GetGlobal der Routen (`Me.A64`). */
   readonly globals: number[] = [];
   score = [0, 0];
+  /** Effekte (Partikel, Popups, Wackeln) und ihre Zeichenlisten. */
+  readonly fx: Effects;
+  /** Abschüsse (`P[0].+54`, immer Spieler 1). */
+  kills = 0;
 
   constructor(
     readonly level: DovezLevel,
@@ -131,6 +143,8 @@ export class World {
     this.rnd = new VbRnd(opts.seed);
     this.enemies = new Enemies(level, this.surfaces, this.playersMinus1);
     this.fire = new EnemyFire(level, this.surfaces);
+    this.fx = new Effects(this.rnd, level.waterHeight);
+    this.fx.style = this.background === 3 ? 1 : level.weatherParticles >= 500 ? 3 : 0;
     const players = this.playersMinus1 + 1;
     const ship = opts.ship ?? 0;
     this.players = Array.from(
@@ -189,8 +203,10 @@ export class World {
     const layer = this.layers[l]!;
     if (l === EVENT_LAYER) {
       if (e.kind === 0) this.enemies.add(e.p1, e.p2, this.tick, e.p3, SCREEN_W, this.rnd);
-      else if (e.kind === 1) this.events.push({ kind: "sound", sound: e.p1, mode: e.p2 });
-      else if (e.kind === 2) this.events.push({ kind: "radio", radio: e.p1 });
+      else if (e.kind === 1) {
+        if (e.p2 === 2) this.events.push({ kind: "stopSound", sound: e.p1 });
+        else this.events.push({ kind: "sound", sound: e.p1, mode: e.p2, rewind: false });
+      } else if (e.kind === 2) this.events.push({ kind: "radio", radio: e.p1 });
       return;
     }
     switch (e.kind) {
@@ -270,12 +286,32 @@ export class World {
       globals: this.globals,
       rnd: this.rnd,
       surfaces: this.surfaces,
+      fx: this.fx,
+      gravity: this.level.gravity,
       terrain: (x1, y1, x2, y2, exclude) => this.hitsTerrain(x1, y1, x2, y2, exclude),
       effect: (i, fx) => this.routeEffect(i, fx),
       partFires: (i, j) => this.partFires(i, j),
-      addScore: (points, player) => this.addScore(points, player),
-      killed: (e, how) => this.enemyKilled(e, how),
+      addPoints: (points, x, y, vy, player) => this.addPoints(points, x, y, vy, player),
+      killEmitters: (i) => this.fire.killEmittersOf(i),
+      sound: (name) => this.sfx(name),
+      // Spielwirkung der Druckwelle (Spieler wegschieben) ist noch nicht portiert
+      shockwave: () => {},
     };
+  }
+
+  private effectWorld(): EffectWorld {
+    return {
+      tick: this.tick,
+      gravity: this.level.gravity,
+      groups: this.level.groups,
+      surfaces: this.surfaces,
+      terrain: (x1, y1, x2, y2) => this.hitsTerrain(x1, y1, x2, y2),
+      sound: (name) => this.sfx(name),
+    };
+  }
+
+  sfx(name: string): void {
+    this.events.push({ kind: "sfx", name });
   }
 
   private shotWorld(): ShotWorld {
@@ -299,8 +335,27 @@ export class World {
             a.y < p.y + SHOT_HIT.bottom &&
             a.y + a.height > p.y + SHOT_HIT.top;
           if (!hit) continue;
+          this.sfx("hit");
           p.energy = f32(p.energy - shot.damage);
-          this.events.push({ kind: "playerHit", player: p.index });
+          // kleines Knistern (Blitz, 6 Bilder) bei kleinen Schüssen
+          if (a.width < 20 && a.height < 20) {
+            const type = this.level.shots[shot.shotType];
+            const kind1 = type !== undefined && type.kind !== 0;
+            this.fx.addBig(
+              a.x - idiv(a.width, 2),
+              a.y - idiv(a.height, 2),
+              0,
+              0,
+              kind1 ? type.red : 1,
+              kind1 ? type.green : 0.3,
+              kind1 ? type.blue : 0.3,
+              16,
+              1,
+              5,
+              0,
+              0,
+            );
+          }
           if (!piercing && p.energy >= 0) return true;
         }
         return false;
@@ -310,11 +365,21 @@ export class World {
 
   private shotHost(): ShotHost {
     const ew = this.makeEnemyWorld();
+    const fx = this.fx;
     return {
       hitEnemies: (x1, y1, x2, y2, damage, owner) =>
-        this.enemies.hit(x1, y1, x2, y2, damage, owner, ew),
+        this.enemies.hit(x1, y1, x2, y2, damage, owner, ew, { sparks: true }),
       terrain: (x1, y1, x2, y2) => this.hitsTerrain(x1, y1, x2, y2),
-      spark: (x, y, shot) => this.events.push({ kind: "spark", x, y, shot }),
+      glow: (x, y, kind, terrain) => {
+        if (terrain) fx.addSparks(1, 1, cint(x - 3), cint(y - 3), cint(x + 18), cint(y + 18), true);
+        const [r, g, b] = SHOT_GLOW[kind] ?? SHOT_GLOW[0];
+        fx.addBig(x, y, 0, 0, r, g, b, 16, 0, 9, 1, 0);
+      },
+      trail: (s) => {
+        const r1 = this.rnd.next();
+        const r2 = s.vy === 0 ? 0.5 : this.rnd.next();
+        fx.addBig(s.x, s.y, 2 * r1 - 1, 2 * r2 - 1, 0.3 * s.param, 0.2, 1, 16, 0, 6, 1, 0);
+      },
     };
   }
 
@@ -325,12 +390,73 @@ export class World {
         this.level.waterHeight === 550 || PLAYFIELD_H - this.level.waterHeight < p.y + 17,
       terrain: (x1, y1, x2, y2) => this.hitsTerrain(x1, y1, x2, y2),
       kill: (p) => this.killPlayer(p),
+      exhaust: (p, dx) => this.exhaust(p, dx),
     };
   }
 
+  /** Abgasflamme (`SpielKeysDove` `0x508AAD`): drei additive Glutflecken, länger beim Rückwärtsflug. */
+  private exhaust(p: Player, dx: number): void {
+    const [r, g, b] = p.shipType === 0 ? [0.3, 0.4, 1] : [1, 0.4, 0.3];
+    for (let k = 0; k < 3; k++) {
+      const q = 3 * this.rnd.next();
+      const bb = 9 - q * q;
+      const e = bb * 0.4 * (2 * this.rnd.next() - 1);
+      this.fx.lists.exhaust.quad(
+        "a_kreis2",
+        p.x - 30 - 2 * dx + bb,
+        p.y + 22 + e,
+        p.x + 22 + bb,
+        p.y + 42 + e,
+        r,
+        g,
+        b,
+        1,
+        true,
+      );
+    }
+  }
+
+  /** `KillDove` (`0x50B0D0`): Funken und blaue Feuerbälle über der Hitbox, Explosionston. */
   killPlayer(p: Player): void {
-    if (killPlayer(p)) {
-      this.events.push({ kind: "explosion", x: p.x, y: p.y + 17, w: 64, h: 37, big: true });
+    if (!killPlayer(p)) return;
+    const [x1, y1, x2, y2] = [p.x, p.y + 17, p.x + 64, p.y + 54];
+    this.fx.addSparks(1, 500, cint(x1), cint(y1), cint(x2), cint(y2), false);
+    this.fx.addSparks(1, 100, cint(x1), cint(y1), cint(x2), cint(y2), true);
+    this.fx.addFireballs(x1, y1, x2, y2, 0.2, 0.2, 1, 32, 10, 15);
+    this.sfx("explosiondove");
+  }
+
+  /**
+   * `SpielMoveDove` (`0x509110`), nur der Rauch unter halber Energie: je
+   * niedriger die Energie, desto öfter vier Funken und ein weißes Wölkchen.
+   */
+  private moveDove(): void {
+    for (const p of this.players) {
+      if (!p.alive || p.exitState !== 0) continue;
+      if (idiv(p.maxEnergy, 2) <= p.energy) continue;
+      if (p.smoke > (10 * p.energy) / p.maxEnergy) {
+        p.smoke = 0;
+        const [x1, y1, x2, y2] = p.hitbox();
+        this.fx.addSparks(1, 4, x1, y1, x2, y2, false);
+        const r1 = this.rnd.next();
+        const r2 = this.rnd.next();
+        const r3 = this.rnd.next();
+        const r4 = this.rnd.next();
+        this.fx.addBig(
+          p.x + 64 * r1 - 4,
+          p.y + 17 + 37 * r2 - 4,
+          r3 - 0.5,
+          -2 - r4,
+          1,
+          1,
+          1,
+          8,
+          0,
+          6,
+          10,
+          0,
+        );
+      } else p.smoke++;
     }
   }
 
@@ -354,14 +480,22 @@ export class World {
         continue;
       }
       let rem: number;
+      let touched = false;
       do {
         rem = this.enemies.hit(x1, y1, x2, y2, 15, p.index, ew);
-        if (rem < 15) p.energy = f32(p.energy - 2);
+        if (rem < 15) {
+          p.energy = f32(p.energy - 2);
+          touched = true;
+        }
         if (p.energy < 0) {
           this.killPlayer(p);
           break;
         }
       } while (rem !== 15);
+      if (touched) {
+        this.fx.shake += 4;
+        this.fx.addCircle(0, 6, 0, cint(p.x + idiv(64, 2)), cint(p.y + idiv(54 - 17, 2)), 100);
+      }
       if (p.energy > p.maxEnergy) p.energy = p.maxEnergy;
     }
   }
@@ -372,24 +506,19 @@ export class World {
     if (this.players.every((q) => !q.alive)) this.state = 1;
   }
 
-  /** Punkte: `score += Multiplikator · Punkte / (1 + 0,5 · zwei Spieler)` (Kombo folgt). */
-  addScore(points: number, player: number): void {
+  /**
+   * `AddPunkte` (`0x50F750`): `score = CLng(score + Multiplikator · Punkte /
+   * (1 + 0,5 · zwei Spieler))`, ab 1500 Punkten Wackeln, ab 1000 ein Popup
+   * (Kombo-Multiplikator folgt mit dem Beam).
+   */
+  addPoints(points: number, x: number, y: number, vy: number, player: number): void {
     if (player < 0) return;
-    this.score[player] = (this.score[player] ?? 0) + points / (1 + 0.5 * this.playersMinus1);
-  }
-
-  private enemyKilled(e: Enemy, how: "explode" | "silent"): void {
-    this.fire.killEmittersOf(this.enemies.items.indexOf(e));
-    if (how === "silent") return;
-    const { x, y } = e.actor;
-    this.events.push({
-      kind: "explosion",
-      x,
-      y,
-      w: e.actor.width,
-      h: e.actor.height,
-      big: e.score > 1499,
-    });
+    const mult = 1;
+    this.score[player] = cint(
+      (this.score[player] ?? 0) + (mult * points) / (1 + 0.5 * this.playersMinus1),
+    );
+    if (points >= 1500) this.fx.shake += idiv(points, 500);
+    if (mult > 1 || points >= 1000) this.fx.addPopup(cint(points * mult), x, y, vy);
   }
 
   /** Teil feuert: Waffe anhängen oder Kind-Gegner (`spawnSpec`) ausspucken. */
@@ -471,7 +600,12 @@ export class World {
         return;
       }
       case Op.PlaySound:
-        this.events.push({ kind: "sound", sound: cint(a[0] ?? 0), mode: (a[1] ?? 0) >= 1 ? 1 : 0 });
+        this.events.push({
+          kind: "sound",
+          sound: cint(a[0] ?? 0),
+          mode: (a[1] ?? 0) >= 1 ? 1 : 0,
+          rewind: true,
+        });
         return;
       case Op.StopSound:
         this.events.push({ kind: "stopSound", sound: cint(a[0] ?? 0) });
@@ -487,6 +621,7 @@ export class World {
   /** Ein Tick; `inputs` je Spieler. */
   step(inputs: readonly PlayerInput[] = []): void {
     if (this.state !== 0) return;
+    this.fx.beginTick();
     for (const p of this.players) p.startEnergy = p.energy;
     this.level.groups.forEach((g, i) => doAni(g, this.groupFrames[i]!));
     this.timeline();
@@ -504,8 +639,11 @@ export class World {
       firePrimary(p, inputs[p.index] ?? NO_INPUT, this.playerShots, false);
     const sh = this.shotHost();
     moveShots(this.playerShots[0], sh);
+    this.fx.moveSparks(0, this.level.gravity);
     this.moveSpecials();
+    this.moveDove();
     this.enemies.step(this.makeEnemyWorld());
+    this.fx.moveBubbles(this.effectWorld(), this.background !== 0);
     this.anims.move(4, this.level, this.layers);
     this.layers[3]!.move(this.surfaces, this.groupFrames);
     moveShots(this.playerShots[1], sh);
@@ -521,9 +659,13 @@ export class World {
         return { cx: x + r.w / 2, cy: y + r.h / 2, w: r.w, h: r.h, rotation: p.rotation };
       },
     });
+    this.fx.moveSparks(1, this.level.gravity);
+    this.fx.moveBig(this.effectWorld());
     this.fire.stepShots(sw);
+    this.fx.movePopups();
     this.layers[6]!.move(this.surfaces, this.groupFrames);
     this.anims.move(6, this.level, this.layers);
+    this.fx.stepShake();
     this.contact();
   }
 
@@ -572,7 +714,8 @@ export class World {
         if (!own || !p.alive) continue;
         const [x1, y1, x2, y2] = p.hitbox();
         if (x1 < s.x + 48 && x2 > s.x + 16 && y1 < s.y + 48 && y2 > s.y + 16) {
-          this.addScore(1000, p.index);
+          this.addPoints(1000, s.x + 32, s.y + 32, -1, p.index);
+          this.sfx(s.subtype === 3 && (s.item === 2 || s.item === 3) ? "speed" : "extra");
           this.pickup(p, s);
           s.active = false;
           break;
