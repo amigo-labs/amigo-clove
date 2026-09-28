@@ -18,6 +18,8 @@ const MUSIC_GAIN = 0.9;
 export class DovezAudio {
   /** Laufende Schleifen der Level-Töne je Index (`SpielSoundOFF` hält sie an). */
   private readonly loops = new Map<number, () => void>();
+  /** Laufende Schleifen der Engine-Effekte je Name (Boss-Finale, Waffen). */
+  private readonly sfxLoops = new Map<string, () => void>();
   private voice: string | undefined;
 
   private constructor(
@@ -64,6 +66,15 @@ export class DovezAudio {
         case "sfx":
           this.sfx.play(`sound/${e.name}`, 0, SFX_GAIN);
           break;
+        case "sfxLoop":
+          if (e.on) {
+            if (!this.sfxLoops.has(e.name))
+              this.sfxLoops.set(e.name, this.sfx.loop(`sound/${e.name}`, SFX_GAIN));
+          } else {
+            this.sfxLoops.get(e.name)?.();
+            this.sfxLoops.delete(e.name);
+          }
+          break;
         case "sound": {
           const file = world.level.sounds[e.sound]?.file;
           if (!file) break;
@@ -85,6 +96,8 @@ export class DovezAudio {
         case "soundOff":
           for (const stop of this.loops.values()) stop();
           this.loops.clear();
+          for (const stop of this.sfxLoops.values()) stop();
+          this.sfxLoops.clear();
           break;
         case "voice":
           this.stopVoice();
@@ -105,6 +118,7 @@ export class DovezAudio {
 
   dispose(): void {
     for (const stop of this.loops.values()) stop();
+    for (const stop of this.sfxLoops.values()) stop();
     this.sfx.stopAll();
     this.music.dispose();
   }

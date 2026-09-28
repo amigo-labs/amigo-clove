@@ -18,9 +18,10 @@ import { COS_DEG, SIN_DEG, cint, degIndex, f32, idiv, vbInt, winkelInGrad } from
  * Treffer: `CheckColisionWithEnemy` (`0x4C3E10`). Befund:
  * `docs/measurements/dovez-runtime.md`.
  *
- * Todeszustände: 3 (Wrack), 5 (Sprengkörper), 6 (normaler Abschuss) und
- * 7 (Kettenexplosion) sind vollständig; 1 (Beam-Spaltung), 2 (Nova) und
- * 4 (Boss-Finale) laufen nur ihre Dauer ab und zerplatzen am Ende.
+ * Ein gewöhnlicher Abschuss lässt den Gegner sofort zerplatzen (`killBy`).
+ * Todeszustände: 3 (Wrack), 5 (Sprengkörper), 6 (Abschuss durch den Beam)
+ * und 7 (Kettenexplosion) sowie 4 (Boss-Finale) sind vollständig; 1
+ * (Beam-Spaltung) und 2 (Nova) laufen nur ihre Dauer ab und zerplatzen am Ende.
  */
 
 export const ENEMY_CAPACITY = 101;
@@ -98,6 +99,27 @@ export interface EnemyWorld {
   sound(name: string): void;
   /** Druckwelle `AddGegnerS(−1, …)` um (cx, cy) mit Lebensdauer `life`. */
   shockwave(cx: number, cy: number, life: number, target: number): void;
+  /** Beam-Kraftphase des Spielers (`Me.CB0[p]+0x2E`). */
+  beamPower(player: number): boolean;
+  /** Super-Nova läuft (`Me.D6C`). */
+  readonly nova: boolean;
+  /** Kombo + 1 während der Kraftphase (`Me.59C`/`Me.5B8`). */
+  comboUp(player: number): void;
+  /** Boss-Finale (Zustand 4): Hintergrund `Me.7CC`, Levelende, Overlays, Ton-Schleifen. */
+  readonly boss: BossHooks;
+}
+
+export interface BossHooks {
+  /** T = 1: beide Spieler 600 Ticks unverwundbar, im 1P eine Beam-Kraftphase beenden. */
+  start(): void;
+  /** Hintergrund `Me.7CC` lesen/setzen. */
+  background(v?: number): number;
+  /** T = 520: `Me.584 = Me.588 − 151` (Levelausflug im nächsten Tick). */
+  jumpToLevelEnd(): void;
+  /** Bildschirm-Overlays A (`Me.508`) und B (`Me.506`) von `OverlayEffekte`. */
+  overlay(which: "a" | "b", on: boolean): void;
+  /** Effekt-Ton als Schleife (`PlaySound …, 1`) bzw. `StopSound`. */
+  loop(name: string, on: boolean): void;
 }
 
 export class Enemies {
@@ -107,6 +129,11 @@ export class Enemies {
   high = -1;
   /** Gegner-Index, der gerade läuft (für Effekte aus Teilrouten). */
   current = -1;
+  /**
+   * „Boss lebt“ (`[0x5882A8]`): `AddEnemy` setzt es bei `boss = 1`, nur
+   * `VariabelnLösch` löscht es (nicht der Boss-Tod, nicht der Schnappschuss).
+   */
+  bossFlag = false;
 
   constructor(
     private readonly level: DovezLevel,
@@ -203,6 +230,7 @@ export class Enemies {
     };
     if (i > this.high) this.high = i;
     this.hint = i + 1;
+    if (def.boss === 1) this.bossFlag = true;
     return i;
   }
 
@@ -391,8 +419,8 @@ export class Enemies {
   /** §6.4: Druckwelle (Spielwirkung bei der Welt) und ihr Ring (große Partikel Art 13). */
   private shockwave(e: Enemy, w: EnemyWorld): void {
     const { w: bw, h: bh } = this.box(e.def);
-    const cx = e.actor.x + idiv(bw, 2);
-    const cy = e.actor.y + idiv(bh, 2);
+    const cx = f32(e.actor.x + idiv(bw, 2));
+    const cy = f32(e.actor.y + idiv(bh, 2));
     w.shockwave(cx, cy, e.def.deathShockwave, e.actor.player);
     const r = w.rnd.next();
     w.fx.addBig(cx - 32, cy - 32, 0, 0, 1, 1, 1, 64, 0, e.def.deathShockwave, 13, r * 359);
@@ -465,19 +493,230 @@ export class Enemies {
       case DeathState.chain:
         this.stepChain(i, e, w);
         return;
+      case DeathState.boss:
+        this.stepBoss(i, e, w);
+        return;
     }
     const t = e.stateTimer++;
     if (t === 0) w.killEmitters(i);
     const end =
-      e.deathState === DeathState.split
-        ? 30
-        : e.deathState === DeathState.nova
-          ? 40
-          : e.deathState === DeathState.boss
-            ? 570
-            : Infinity;
+      e.deathState === DeathState.split ? 30 : e.deathState === DeathState.nova ? 40 : Infinity;
     if (t >= end) {
       for (const p of e.parts) if (p.visible) this.burstPart(e, p, w, 150, 0, true, true);
+      this.kill(i);
+    }
+  }
+
+  /**
+   * Zustand 4, Boss-Finale (`0x4B9394`…`0x4BCF9A`), 570 Ticks: Teile stehen
+   * eingefroren (der Renderer zeichnet sie bis T = 500), Rauch, Funken und
+   * Explosionen, Strahlenkranz (t = 120), Explosionsellipsen (t = 160…230),
+   * implodierende Wellen ab T = 325, rote Glut und Wackeln (T = 430), zwei
+   * weiße Vollbildblitze; T = 500 zerplatzen die Teile, T = 520 beginnt der
+   * Levelausflug, T = 570 ist der Boss weg. Befund: `reports`/Doku „Bosse“.
+   */
+  private stepBoss(i: number, e: Enemy, w: EnemyWorld): void {
+    const { w: bw, h: bh } = this.box(e.def);
+    const x = e.actor.x;
+    const y = e.actor.y;
+    const rnd = w.rnd;
+    const fx = w.fx;
+    const out = fx.lists.enemies;
+    const t = e.stateTimer;
+    if (t < 500) {
+      if (t % 2 === 0) {
+        let X = f32(x + (bw - 64) * rnd.next());
+        let Y = f32(y + (bh - 64) * rnd.next());
+        if (X < 0) X = 0;
+        if (Y < 0) Y = 0;
+        if (X > 736) X = 736;
+        if (Y > 486) Y = 486;
+        fx.addBig(X, Y, 0, -1, 1, 1, 1, 64, 0, 20, 11, 0);
+        fx.addExplosion(X, Y, f32(X + 64), f32(Y + 64));
+      }
+      for (let n = 0; n < 2; n++) {
+        const r1 = rnd.next();
+        const r2 = rnd.next();
+        const r3 = rnd.next();
+        const r4 = rnd.next();
+        fx.addBig(
+          f32(x + (bw - 8) * r1),
+          f32(y + (bh - 16) * r2),
+          0,
+          -2,
+          1,
+          r3,
+          f32(r4 / 2),
+          8,
+          0,
+          16,
+          10,
+          0,
+        );
+      }
+      fx.addSparks(1, 1, cint(x), cint(y), cint(x + bw), cint(y + bh), false);
+    }
+    if (t < 20) out.quad("weiss", 0, 0, 800, 550, 1, 1, 1, f32(1 - Math.abs(10 - t) / 10), true);
+    const cx = x + bw / 2 - 15;
+    const cy = y + bh / 2 - 15;
+    if (t === 120) {
+      for (let k = 0; k < 24; k++) {
+        const a = cint(rnd.next() * 359);
+        const r1 = rnd.next();
+        const r2 = rnd.next();
+        const r3 = rnd.next();
+        const c = COS_DEG[a] ?? 0;
+        const sn = SIN_DEG[a] ?? 0;
+        fx.addBig(
+          f32(cx + c * 600),
+          f32(cy + sn * 600),
+          f32(c * -15),
+          f32(sn * -15),
+          1,
+          f32(r1 * 0.5 + 0.2),
+          f32(r2 * 0.3),
+          30,
+          cint(r3 * 30),
+          40,
+          15,
+          a,
+        );
+      }
+      for (let a = 0; a < 360; a += 15) {
+        const r = rnd.next();
+        const c = COS_DEG[a] ?? 0;
+        const sn = SIN_DEG[a] ?? 0;
+        fx.addBig(
+          f32(cx + c * 600),
+          f32(cy + sn * 600),
+          f32(c * -15),
+          f32(sn * -15),
+          1,
+          f32(0.8),
+          f32(0.3),
+          30,
+          cint(r * 30),
+          40,
+          15,
+          a,
+        );
+      }
+    }
+    // ein Rnd jeden Tick, auch ohne Ton
+    if (rnd.next() < 0.2 && t < 160 && t > 130) {
+      w.sound("endgegnerw3");
+      w.sound("endgegnerw3");
+    }
+    if (t === 170) {
+      w.boss.overlay("b", true);
+      w.boss.loop("endgegnerw2", true);
+    }
+    if (t === 290) {
+      w.boss.overlay("a", true);
+      w.boss.overlay("b", true);
+      w.sound("endgegnerw4");
+      w.sound("endgegnerw4");
+    }
+    if (t > 150 && t < 240 && t % 10 === 0) {
+      const k = 2 * t - 280;
+      for (let a = 0; a < 360; a += 15) {
+        const X = f32(((SIN_DEG[a] ?? 0) + 1) * (bw / 2 + k) + x - k);
+        const Y = f32(((COS_DEG[a] ?? 0) + 1) * (bh / 2 + k) + y - k);
+        fx.addExplosion(X, Y, f32(X + 32), f32(Y + 32));
+      }
+    }
+    if (t === 340) {
+      w.boss.overlay("a", false);
+      w.boss.overlay("b", false);
+    }
+    if (t === 260) {
+      w.boss.overlay("b", false);
+      w.boss.loop("endgegnerw2", false);
+    }
+    const T = ++e.stateTimer;
+    if (T === 1) {
+      w.boss.loop("endgegnerw5", true);
+      w.killEmitters(i);
+      w.boss.start();
+    }
+    if (T === 2) {
+      for (let n = 0; n < 3; n++) fx.addBig(x, y, 0, 0, 0.1, 0.2, 1, bh, 0, 450, 0, bw);
+      e.actor.locals[0] = w.boss.background();
+      w.boss.background(0);
+    }
+    if (T === 325 || T === 365 || T === 395 || T === 415 || T === 425 || T === 427 || T === 429) {
+      fx.addBig(
+        f32(x + idiv(bw, 2) - 1000),
+        f32(y + idiv(bh, 2) - 1000),
+        0,
+        0,
+        1,
+        1,
+        1,
+        2000,
+        15,
+        5,
+        2,
+        -100,
+      );
+      w.sound("endgegnerw1");
+      w.sound("endgegnerw1");
+    }
+    if (T === 430) {
+      fx.addBig(
+        f32(x + idiv(bw, 2) - 1),
+        f32(y + idiv(bh, 2) - 1),
+        0,
+        0,
+        1,
+        0,
+        0,
+        2,
+        50,
+        15,
+        1,
+        15,
+      );
+      fx.shake += 70;
+      w.sound("endgegnerw6");
+      w.sound("endgegnerw6");
+    }
+    if (T > 480) {
+      const a = f32(1 - Math.abs(500 - T) / 10);
+      if (a > 0) out.quad("weiss", 0, 0, 800, 550, 1, 1, 1, a);
+    }
+    if (T === 500) {
+      w.boss.loop("endgegnerw5", false);
+      w.boss.overlay("b", false);
+      w.boss.background(cint(e.actor.locals[0] ?? 0));
+      for (const p of e.parts) {
+        const s = this.surface(p);
+        if (!p.visible || !s) continue;
+        const bx = x + (p.actor ? p.actor.x : p.def.x);
+        const by = y + (p.actor ? p.actor.y : p.def.y);
+        fx.addSparks(
+          1,
+          150,
+          cint(bx + s.left + 5),
+          cint(by + s.topRow + 5),
+          cint(bx + s.right - 5),
+          cint(by + s.bottomRow - 5),
+          false,
+        );
+        fx.addExplosion(
+          f32(bx + s.left),
+          f32(by + s.topRow),
+          f32(bx + s.right),
+          f32(by + s.bottomRow),
+        );
+        if (!w.beamPower(0) || this.playersMinus1 === 1) fx.shake += idiv(p.score, 500) + 1;
+        w.sound(p.score > 1499 ? "explosion2" : "explosion1");
+      }
+    }
+    if (T === 520) w.boss.jumpToLevelEnd();
+    if (T === 570) {
+      w.sound("endgegnerw7");
+      for (let n = 0; n < 3; n++) fx.addBig(x, y, 0, 0, 0.1, 0.2, 1, bh, 0, 10, 0, bw);
       this.kill(i);
     }
   }
@@ -634,14 +873,14 @@ export class Enemies {
     if (t === 160 || !any) this.kill(i);
   }
 
-  /** Zustand 5 (`0x4BCF9B`): Zündung mit rotem Blitz, nach 15 Ticks Flächenexplosion mit Kettenreaktion. */
+  /** Zustand 5 (`0x4BCF9B`): Zündung mit blauem Blitz, nach 15 Ticks Flächenexplosion mit Kettenreaktion. */
   private stepExplosive(i: number, e: Enemy, w: EnemyWorld): void {
     const { w: bw, h: bh } = this.box(e.def);
     const x = e.actor.x;
     const y = e.actor.y;
     if (e.stateTimer === 0) {
       w.killEmitters(i);
-      for (let k = 0; k < 3; k++) w.fx.addBig(x, y, 0, 0, 1, 0.2, 0.1, bh, 0, 10, 0, bw);
+      for (let k = 0; k < 3; k++) w.fx.addBig(x, y, 0, 0, 0.1, 0.2, 1, bh, 0, 10, 0, bw);
     }
     const t = ++e.stateTimer;
     if (t !== 15) return;
@@ -757,7 +996,7 @@ export class Enemies {
           e.actor.hp = f32(e.actor.hp - damage);
           if (e.actor.hp > 0) return 0;
           ret = cint(-e.actor.hp);
-          this.killBy(i, e, hx, hy, player, exclude, w);
+          this.killBy(i, e, hx, hy, player, exclude, opts.pierce === true, w);
           return ret;
         }
         p.hp = f32(p.hp - damage);
@@ -769,7 +1008,7 @@ export class Enemies {
         w.addPoints(p.score, hx + idiv(s.rect.w, 2), hy + idiv(s.rect.h, 2), -1, player);
         w.sound("explosion");
         if (p.def.vital !== 0 || !e.parts.some((q) => q.visible)) {
-          this.killBy(i, e, hx, hy, player, exclude, w);
+          this.killBy(i, e, hx, hy, player, exclude, opts.pierce === true, w);
         }
         return ret;
       }
@@ -777,7 +1016,13 @@ export class Enemies {
     return damage;
   }
 
-  /** Abschuss (§4): Todes-Spawn, dann Zustandswahl; `(hx, hy)` ist das getroffene Teil. */
+  /**
+   * Abschuss (`CheckColisionWithEnemy` `0x4C4C8F`…`0x4C5A5F`): Todes-Spawn,
+   * dann Zustandswahl; `(hx, hy)` ist das getroffene Teil. Ein gewöhnlicher
+   * Treffer (kein Boss, keine Beam-Kraftphase, nicht durchschlagend, keine
+   * Nova) oder einer durch einen anderen Gegner lässt den Gegner sofort
+   * zerplatzen; sonst Zustand 6, 1 (Kraftphase), 2 (Nova) oder 4 (Boss).
+   */
   private killBy(
     i: number,
     e: Enemy,
@@ -785,6 +1030,7 @@ export class Enemies {
     hy: number,
     player: number,
     exclude: number,
+    pierce: boolean,
     w: EnemyWorld,
   ): void {
     this.deathSpawn(e, w);
@@ -799,10 +1045,12 @@ export class Enemies {
       w.sound("spalt");
       return;
     }
-    if (exclude !== -1) {
-      // „plain“: sofort zerplatzen (von einem anderen Gegner getötet)
+    const beam = player >= 0 && w.beamPower(player);
+    const plain = d.boss <= 0 && !beam && !pierce && !w.nova;
+    if (exclude !== -1 || plain) {
       if (d.deathShockwave > 0) this.shockwave(e, w);
       w.sound(e.score > 1499 ? "explosion2" : "explosion1");
+      if (exclude === -1) w.addPoints(e.score, cx, cy, -1, player);
       for (const p of e.parts) {
         const s = this.surface(p);
         if (!p.visible || !s) continue;
@@ -824,8 +1072,15 @@ export class Enemies {
       else this.destroy(i, w);
       return;
     }
+    if (beam) w.comboUp(player);
     w.addPoints(e.score, cx, cy, 0, player);
-    this.enterState(e, d.boss > 0 ? DeathState.boss : DeathState.normal);
+    let state: number = beam ? DeathState.split : DeathState.normal;
+    if (w.nova) state = DeathState.nova;
+    if (d.boss > 0) {
+      state = DeathState.boss;
+      if (this.playersMinus1 === 1) w.addPoints(e.score, cx, cy, 0, 1 - player);
+    }
+    this.enterState(e, state);
     w.sound("spalt");
   }
 }
