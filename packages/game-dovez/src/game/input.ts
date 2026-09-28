@@ -89,6 +89,21 @@ export function keyLabel(action: number, set = 0): string {
 }
 
 /** Tasten von Spieler 1 für Continue und Pause (`TasteOK`, `TasteZurück`, hoch/runter). */
+/** Anzeigename einer Taste (`KeyName`): `KeyS` → „S“, `ArrowLeft` → „Left“, `Numpad4` → „Num 4“. */
+export function keyName(code: string): string {
+  return code
+    .replace(/^Key|^Digit/, "")
+    .replace(/^Arrow/, "")
+    .replace(/^Numpad(\d)$/, "Num $1");
+}
+
+/** `GetKeyText(T1, T2)` einer Aktion (0…9) im Satz 0…2: „a / b“. */
+export function keyText(set: number, action: number): string {
+  const name = ACTIONS[action];
+  const codes = name ? (KEY_SETS[set] ?? KEY_SETS[0]!)[name] : [];
+  return codes.map(keyName).join(" / ");
+}
+
 export function screenKeys(host: GameHost, set: number, exitState: number, focus: boolean) {
   const i = readInput(host, set);
   const key = (code: string) => host.keys.isDown(code);

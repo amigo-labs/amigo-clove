@@ -145,6 +145,29 @@ try {
     await Bun.write(`${process.env["SMOKE_SHOTS"]}/dovez-game.png`, played);
   await game.close();
 
+  // 1b3. DoveZ-Hauptmenü ohne Logos: Knopfleiste links, dann „Neu“ → Spieleranzahl
+  const menu = await browser.newPage({ viewport: { width: 800, height: 600 } });
+  watch(menu, "dovez-menu");
+  await menu.goto(`${ORIGIN}/#/dovez?nointro=1`);
+  await menu.waitForSelector("body[data-game=dovez]", { timeout: 30_000 });
+  await menu.waitForTimeout(4000);
+  const main = await menu.screenshot();
+  await menu.waitForTimeout(500);
+  await menu.keyboard.down("Enter");
+  await menu.waitForTimeout(400);
+  await menu.keyboard.up("Enter");
+  await menu.waitForTimeout(2000);
+  const newPage = await menu.screenshot();
+  const buttons = await litShare(main, 150, 160, 470, 420);
+  console.log(`dovez-menu: Knopfleiste ${(buttons * 100).toFixed(1)} % hell`);
+  if (buttons < 0.3) failures.push("dovez-menu: Hauptmenü leer");
+  if (Buffer.compare(main, newPage) === 0) failures.push("dovez-menu: „Neu“ ohne Wirkung");
+  if (process.env["SMOKE_SHOTS"]) {
+    await Bun.write(`${process.env["SMOKE_SHOTS"]}/dovez-menu-1.png`, main);
+    await Bun.write(`${process.env["SMOKE_SHOTS"]}/dovez-menu-2.png`, newPage);
+  }
+  await menu.close();
+
   // 1c. DoveZ-Level-Ansicht: Route zeichnen, zur nächsten, dann Schussmuster
   const levelView = await browser.newPage({ viewport: { width: 800, height: 600 } });
   watch(levelView, "dovez-level");

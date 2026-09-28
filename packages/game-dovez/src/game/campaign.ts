@@ -50,7 +50,7 @@ export class Campaign {
   }
 
   /** Einzellevel (`Me.1158`, Bonus/`-Skip`): nur dieses Level, Ladebild ohne Tastendruck. */
-  single(name: string): CampaignAction {
+  single(name: string): Extract<CampaignAction, { kind: "level" }> {
     this.finish();
     return { kind: "level", slug: dovezSlug(name), name, loading: "" };
   }
@@ -91,7 +91,7 @@ export class Campaign {
   }
 
   /** Epilog nach dem Abspann: `[0x5880C4] = "Epilog"`, `Me.1160 = ""`, danach Skriptende. */
-  epilog(): CampaignAction {
+  epilog(): Extract<CampaignAction, { kind: "level" }> {
     return this.single(EPILOG);
   }
 }

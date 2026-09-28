@@ -1,6 +1,7 @@
 import { type AtlasJson, FixedStepLoop, type GameHost } from "@clove/core";
 import type { TextureRegistry } from "@clove/pixi-kit";
 import { type Application, Container, Graphics, Sprite, type Texture } from "pixi.js";
+import { paintList } from "../render/paintList";
 import { SpriteBatch } from "../render/SpriteBatch";
 import { type DrawList, Effects, type EffectWorld } from "../sim/effects";
 import type { VbRnd } from "../sim/vb";
@@ -153,25 +154,9 @@ export class CreditsScene implements Scene {
   }
 
   private paint(list: DrawList): void {
-    const b = this.batch;
-    b.begin();
-    const tex = this.glitter;
-    if (tex)
-      for (const q of list.quads) {
-        const fw = tex.frame.width;
-        const fh = tex.frame.height;
-        b.put(tex, (q.x1 + q.x2) / 2 - fw / 2, (q.y1 + q.y2) / 2 - fh / 2, {
-          red: q.r,
-          green: q.g,
-          blue: q.b,
-          alpha: q.a,
-          scaleX: (q.x2 - q.x1) / fw,
-          scaleY: (q.y2 - q.y1) / fh,
-          rotation: q.rot,
-          additive: q.additive,
-        });
-      }
-    b.end();
+    this.batch.begin();
+    paintList(this.batch, list, () => this.glitter, undefined);
+    this.batch.end();
   }
 
   destroy(): void {

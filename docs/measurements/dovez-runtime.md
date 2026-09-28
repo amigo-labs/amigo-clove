@@ -869,7 +869,65 @@ beendet sofort; danach `FadeOut(1, False)` und Musik in ~0,18 s aus. Port:
 `videoScene.ts`, `saveScreen.ts`, `credits.ts`, `fadeOut.ts`, `mosaic.ts`;
 Sichtprüfung `#/dovez?screen=save|credits`.
 
-Offen: Hauptmenü (Namen, Schiffwahl, „Spiel laden“, Optionen) und Intro,
-das Byte-Layout des Beam-Blocks im `.sav`, ob die
+Offen: das Byte-Layout des Beam-Blocks im `.sav`, ob die
 `Take`-Bilder wirklich gestreckt werden.
+
+## Hauptmenü (`MenuLoop` `0x559630`, `ShowMenu` `0x558890`, `ShowLogo` `0x553730`)
+
+**Start** (nur beim ersten Aufruf): `LoadMenuSurfaces` würfelt den Hangar
+(`Int(Rnd · 2)`, vor jedem Menü), dann drei `ShowLogo`: Intergenies
+(42, 30, 0, −1) mit `Logo.wav` und Glitch-Vorspann — 91 Durchläufe à `Wait 31`:
+schwarz, das Logo dreimal über `RenderVerzerrt` (Gitter 20 × 20, Texturkoordinaten
+`(i/n − pu·D, j/n − pv·D)`, `D = sin 9i°·cos 9i°·sin 9j°·cos 9j°`; α 0,33,
+normal/additiv/additiv; Winkel alle 5…15 Bilder neu, 3 `Rnd`), Rauschen
+(α = sin 2t°/4 + 0,3·Rnd, 48 `Rnd`), Zeilenriss (61 Bänder à 7 px ab y = 90 um
+`CLng(CLng((50 − 50·cos 4t°)·sin(y·0,3°)) + 5·Rnd)` px nach rechts, nur ab
+3 px) —, dann 72 Bilder voll (`Wait 25`) und `FadeOut(0, True)`; Toxeen und
+Clockwork (40, 30, 0, 0): 30 Bilder Einblenden, 40 Halten, 50 Bilder
+Zoom-Tunnel (Bild auf (16, 16)–(784, 584) auf sich selbst, 10 % Schwarz, Logo
+α 0,80 … 0). Jede Anzeige zieht 1 `Rnd`. Esc beendet jede Phase sofort (ohne
+Loslassen). Danach `intro<D|E>.avi`, das Menü blendet aus dem nackten Hangar
+ein (α 0,95 … 0), `intro.ogg` in Schleife. `Magnussoft` und `menu_logo` zeigt
+das Original nie.
+
+**Jeder Durchlauf** (`Wait 18`, kein Bildauslassen): schwarz, `hangar<h>`,
+ab Durchlauf ≈ 101 `hangar_frozen<h>` darüber (α +0,01 je Bild, ab 1 allein)
+und Rauschen (α bis 0,025, 48 `Rnd`), DoveZ-Logo (200, 0), Seite, Funken und
+Glitzer, Überblende (`Blenden`: Bild erfassen, α 0,95 → 0), Rauschen. Die
+Knopfleiste (`ShowMenu`) gleitet mit /4 zum Seitenziel (Start x = −1000):
+rote (mit Lücken) und weiße Punktkette aus `a_kreis2` 3 × 3 (je Punkt 1 `Rnd`,
+1 : 20 000 eine Garbe aus 10 Funken — 2·(⌊(67n + 82)/2⌋ + 1) `Rnd` je Bild,
+352 im Hauptmenü), Lampen (50, 66 + 67i) grün für den gewählten, Knöpfe
+(136 + Versatz, 83 + 67i; gewählt gleitet der Versatz auf 30, sonst −3),
+`menu_topg`, `menu_bottomg`, Texte Arial 36 grau mit schwarzem Versatz +1/+1.
+Tafeln `menu_back` fahren von rechts ein (k = 400/460/320/700 →
+`CLng(0,75k − 1)`); Listen (`ShowList`) erst bei k = 0, Arial 24, Farben
+QBColor 8 (inaktiv), 7 (wählbar), 15 (gewählt). Schiffsdrehung auf Seite 1:
+`shipselect1…` rückwärts (D-Tonator) bzw. `shipselect0…` vorwärts, 2 Bilder
+je Stufe, vier Schichten für Bewegungsunschärfe, bei (510 + k, 310).
+Highscore-Seite: vier additive Leuchtbänder und je Bild ein Glitzer (7 `Rnd`).
+
+**Seiten:** 3 Hauptmenü (Neu, Laden, Optionen, Highscore, Exit; Esc = Exit),
+10 Spieleranzahl (2 Spieler ohne Überblende, so im Original), 1 Schiff (nur
+Spieler 1 wählt, Spieler 2 fliegt das andere), 2 Name (`KeyAscii` ab 32,
+höchstens 16, Backspace, Enter; leer → „Bruce“; Spiel-ID
+`Int(Rnd · 10000) + Durchgänge · 10000`, eindeutig), 20 Spiel laden (Plätze
+1–21, Vorauswahl „Zurück“), 30 Optionen (Bonus erst nach einem Durchgang),
+31 Grundeinstellungen (Force-Taste `Me.512`, Auto-Arrange `Me.50E`, Trägheit
+`Me.510`), 32 Lautstärke (Musik +5 mit Umlauf; Sound/Sprache +250 dB/100, über
+0 stumm), 33 Tastenkonfiguration, 40 Bonus (Jungle, Space, Stift je nach
+Durchgängen; als Einzellevel), 50 Highscore. ↑/↓ und OK mit Flanke, ohne
+Wiederholung, mit Umlauf; Links/Rechts gibt es nicht; Zurück ist Esc/D/Q, im
+Hauptmenü und auf den Seiten 1 und 2 nur Esc. Töne: OK `dude`, Umschalten
+`plingding`, Sprachtest `speech`. Nach einem Spielstart `FadeOut(1, False)`;
+Game Over, EXIT und Skriptende führen zurück ins Menü (ohne Logos), „Exit“
+beendet das Programm (im Port: zurück zur Shell). Einen Credits-Eintrag gibt es
+nicht; das Osterei „LOV“ fehlt im Port.
+
+Port: `src/game/menu/` (`menuLogic.ts` Logik, `menuView.ts` Zeichnung,
+`menuScene.ts` Takt, Töne, Zeicheneingabe, `logos.ts` Logos), Optionen in
+`src/game/config.ts` (gespeichert beim Ändern). Abweichungen: Russisch fehlt;
+die Tastenseite zeigt die Belegung nur an (Umbelegen fehlt noch); Trägheit
+(„Realistic“) lässt sich schalten, wirkt aber noch nicht (der Port kennt nur
+Arcade); keine Vibration. `#/dovez?nointro=1` startet ohne Logos und Intro.
 
