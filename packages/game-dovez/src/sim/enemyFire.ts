@@ -42,8 +42,12 @@ export interface EnemyShot {
   damage: number;
   frame: number;
   timer: number;
-  /** Tick seit dem Abschuss (Spur, Debug). */
+  /** Tick seit dem Abschuss (Spur, Debug); bei der Druckwelle das Alter (`+0x30`). */
   age: number;
+  /** Druckwelle (`+0x2C = −1`): statt einer Kugel ein wachsender Ring ohne Bild. */
+  shockwave: boolean;
+  /** Wirkdauer der Druckwelle (`+0x34`, `L − L\4`). */
+  life: number;
 }
 
 /** Wo ein Emitter an einem Gegnerteil sitzt: Bildmitte und Drehung. */
@@ -59,6 +63,8 @@ export interface ShotWorld extends Omit<RouteHost, "effect"> {
   terrain(x1: number, y1: number, x2: number, y2: number): boolean;
   /** Treffer auf Spieler; `true`: der Schuss vergeht. */
   hitPlayers?(shot: EnemyShot, piercing: boolean): boolean;
+  /** Druckwelle mit Mittelpunkt (cx, cy) und Radius `r` wirkt auf die Spieler. */
+  shockwave?(cx: number, cy: number, r: number): void;
 }
 
 /** Maße eines Schusstyps: eingebaute Kugel 16×16, sonst erstes Bild der Gruppe. */
@@ -97,6 +103,8 @@ export class EnemyFire {
     frame: 0,
     timer: 0,
     age: 0,
+    shockwave: false,
+    life: 0,
   }));
   /** Beobachter für Abschüsse (Debug-Spuren). */
   onFire?: (shot: EnemyShot) => void;
@@ -207,6 +215,7 @@ export class EnemyFire {
     shot.frame = 0;
     shot.timer = 0;
     shot.age = 0;
+    shot.shockwave = false;
     if (s.aimed !== 0) {
       const p = world.players[e.target] ?? world.players[0];
       const ang = winkel((p?.x ?? 0) + AIM_OFFSET_X - x, (p?.y ?? 0) + AIM_OFFSET_Y - y);
@@ -217,12 +226,34 @@ export class EnemyFire {
     this.onFire?.(shot);
   }
 
-  /** `SpielMoveGegnerS` (Bewegung, Culling, Landschaft; Spielertreffer folgen mit dem Spieler). */
+  /**
+   * `AddGegnerS(−1, 0, L, cx, cy, Ziel)` (`0x4AAF04`): Druckwelle um den
+   * Mittelpunkt, wirkt `L − L\4` Ticks; kein Ton, kein `Rnd`, kein Bild.
+   */
+  addShockwave(cx: number, cy: number, life: number): void {
+    const shot = this.shots.find((s2) => !s2.active);
+    if (!shot) return;
+    shot.active = true;
+    shot.shockwave = true;
+    shot.actor.x = f32(cx);
+    shot.actor.y = f32(cy);
+    shot.age = 0;
+    shot.life = life - Math.trunc(life / 4);
+  }
+
+  /** `SpielMoveGegnerS` (`0x4AAFE0`): Bewegung, Culling, Landschaft, Spielertreffer, Druckwellen. */
   stepShots(world: ShotWorld): void {
     const host: RouteHost = { ...world, effect: () => {} };
     for (const shot of this.shots) {
       if (!shot.active) continue;
       const a = shot.actor;
+      if (shot.shockwave) {
+        // 0x4AC33A: Radius 4 · Alter + 32, wirkt auf die Spieler
+        world.shockwave?.(a.x, a.y, f32(shot.age * 4 + 32));
+        shot.age++;
+        if (shot.age >= shot.life) shot.active = false;
+        continue;
+      }
       const salvo = this.level.weapons[shot.weapon]?.salvos[shot.salvo];
       let ended = false;
       if (shot.route < 0) {

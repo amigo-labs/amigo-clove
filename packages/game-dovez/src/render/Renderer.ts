@@ -2,7 +2,7 @@ import type { AtlasJson, AtlasSprite } from "@clove/core";
 import type { TextureRegistry } from "@clove/pixi-kit";
 import { Container, Graphics, Rectangle, Text, Texture } from "pixi.js";
 import type { DrawList, DrawSlot } from "../sim/effects";
-import type { Enemy } from "../sim/enemies";
+import { DeathState, type Enemy } from "../sim/enemies";
 import { LAYER_COUNT } from "../sim/layers";
 import type { Surface } from "../sim/surfaces";
 import { idiv } from "../sim/vb";
@@ -281,6 +281,8 @@ export class Renderer {
 
   private drawEnemy(e: Enemy, b: SpriteBatch): void {
     const w = this.world;
+    // Boss-Finale: die Teile zerplatzen bei T = 500 und werden danach nicht mehr gezeichnet
+    if (e.inState && e.deathState === DeathState.boss && e.stateTimer > 500) return;
     for (const p of e.parts) {
       if (!p.visible) continue;
       const s = w.enemies.surface(p);
@@ -360,7 +362,7 @@ export class Renderer {
     const w = this.world;
     const b = this.batch("eshots");
     for (const s of w.fire.shots) {
-      if (!s.active) continue;
+      if (!s.active || s.shockwave) continue;
       const type = w.level.shots[s.shotType];
       const a = s.actor;
       if (!type || type.kind === 0) {

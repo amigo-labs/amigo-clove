@@ -4,7 +4,7 @@ import { Effects, type EffectWorld } from "./effects";
 import type { FrameState } from "./doAni";
 import { doAni } from "./doAni";
 import { EVENT_LAYER, LayerState, SCREEN_W, TERRAIN_LAYER, TILE_CAPACITY } from "./layers";
-import { Enemies, type Enemy, type EnemyWorld } from "./enemies";
+import { Enemies, type BossHooks, type Enemy, type EnemyWorld } from "./enemies";
 import { EnemyFire, type ShotWorld } from "./enemyFire";
 import {
   DEATH_TICKS,
@@ -22,7 +22,7 @@ import { Radio } from "./radio";
 import { Op, type RouteEffect } from "./route";
 import { collectShared, deepClone } from "./snapshot";
 import { buildSurfaces, spanHit, type SpriteSource, type Surface } from "./surfaces";
-import { COS_DEG, SIN_DEG, VbRnd, cint, degIndex, f32, idiv, vbInt } from "./vb";
+import { COS_DEG, SIN_DEG, VbRnd, cint, degIndex, f32, idiv, vbInt, winkelInGrad } from "./vb";
 
 /**
  * Weltzustand eines DoveZ-Levels und der Tick in der Reihenfolge von
@@ -101,6 +101,8 @@ export type WorldEvent =
   | { readonly kind: "stopSound"; readonly sound: number }
   /** Effekt-Ton der Engine aus `Sound.d2p` (`sound/<name>`), SFX-Pegel. */
   | { readonly kind: "sfx"; readonly name: string }
+  /** Effekt-Ton als Schleife starten (`on`) bzw. anhalten. */
+  | { readonly kind: "sfxLoop"; readonly name: string; readonly on: boolean }
   /** `SpielSoundOFF`: Schleifen und alle Level-Töne aus. */
   | { readonly kind: "soundOff" }
   /** Funkstimme `voice/<Level>/<wav>` (Sprachpegel) bzw. ihr Abbruch. */
@@ -150,7 +152,13 @@ export class World {
     flashAlpha: 0,
     flashStep: 0,
   };
-  readonly background: BackgroundMode;
+  /** Veränderlich: das Boss-Finale schaltet ihn von T = 2 bis T = 500 ab. */
+  background: BackgroundMode;
+  /**
+   * Bildschirm-Overlays von `OverlayEffekte` (`0x538260`): A (`Me.508`) und
+   * B (`Me.506`) an/aus, ihr Alpha steigt um 0,025 bis 0,5 und fällt um 0,05.
+   */
+  readonly overlays = { a: false, b: false, alphaA: 0, alphaB: 0 };
   /** Scrollposition des Hintergrundbilds (`Me.7C8`), (−800, 0]. */
   backgroundX = 0;
   tick = 0;
@@ -187,6 +195,13 @@ export class World {
   readonly fx: Effects;
   /** Funk und Laufband. */
   readonly radio: Radio;
+  /** Beam-Kraftphase je Spieler (`Me.CB0[p]+0x2E`); folgt mit dem Beam. */
+  readonly beamPower = [false, false];
+  /** Super-Nova läuft (`Me.D6C`); folgt mit der Nova. */
+  nova = false;
+  /** Kombo-Multiplikator (`Me.59C[p]`) und -Zähler (`Me.5B8[p]`). */
+  readonly combo = [1, 1];
+  readonly comboHits = [0, 0];
   /** Abschüsse (`P[0].+54`, immer Spieler 1). */
   kills = 0;
 
@@ -376,8 +391,14 @@ export class World {
       addPoints: (points, x, y, vy, player) => this.addPoints(points, x, y, vy, player),
       killEmitters: (i) => this.fire.killEmittersOf(i),
       sound: (name) => this.sfx(name),
-      // Spielwirkung der Druckwelle (Spieler wegschieben) ist noch nicht portiert
-      shockwave: () => {},
+      shockwave: (cx, cy, life) => this.fire.addShockwave(cx, cy, life),
+      beamPower: (p) => this.beamPower[p] === true,
+      nova: this.nova,
+      boss: this.bossHooks,
+      comboUp: (p) => {
+        this.combo[p] = f32((this.comboHits[p] ?? 0) * 0.1 + 1);
+        this.comboHits[p] = (this.comboHits[p] ?? 0) + 1;
+      },
     };
   }
 
@@ -407,6 +428,19 @@ export class World {
       hitsLandscape: (x1, y1, x2, y2) => this.hitsTerrain(x1, y1, x2, y2),
       partDestroyed: () => false,
       terrain: (x1, y1, x2, y2) => this.hitsTerrain(x1, y1, x2, y2),
+      shockwave: (cx, cy, r) => {
+        // alle Spieler, ohne Lebend- oder Unverwundbar-Prüfung; Schub zugewiesen
+        for (const p of this.players) {
+          const dx = f32(cx - (p.x + 32));
+          const dy = f32(cy - (p.y + 35));
+          if (!(dx * dx + dy * dy < r * r)) continue;
+          const k = f32(r - Math.sqrt(dx * dx + dy * dy));
+          const a = degIndex(cint(winkelInGrad(dx, dy)));
+          p.energy = f32(p.energy - 0.1);
+          p.pushX = f32(((COS_DEG[a] ?? 0) * k) / 5);
+          p.pushY = f32(((SIN_DEG[a] ?? 0) * k) / 5);
+        }
+      },
       hitPlayers: (shot, piercing) => {
         const a = shot.actor;
         for (const p of this.players) {
@@ -627,9 +661,44 @@ export class World {
     }
   }
 
-  /** Boss lebt (`[0x5882A8]`): folgt mit den Bossen. */
+  /** Boss lebt (`[0x5882A8]`), bleibt nach dem Boss-Tod gesetzt. */
   get bossAlive(): boolean {
-    return false;
+    return this.enemies.bossFlag;
+  }
+
+  private readonly bossHooks: BossHooks = {
+    start: () => {
+      for (const p of this.players) p.invulnerable = 600;
+      // 1P: eine laufende Beam-Kraftphase endet (folgt mit dem Beam)
+    },
+    background: (v) => {
+      if (v !== undefined) this.background = v;
+      return this.background;
+    },
+    jumpToLevelEnd: () => {
+      this.tick = this.level.levelLength - 151;
+    },
+    overlay: (which, on) => {
+      this.overlays[which] = on;
+    },
+    loop: (name, on) => {
+      this.events.push({ kind: "sfxLoop", name, on });
+    },
+  };
+
+  /**
+   * `OverlayEffekte` (`0x538260`), Overlays A und B: additiv über dem
+   * Spielfeld, A leicht vergrößert auf (−50, −50)–(850, 600). Das Original
+   * kopiert dafür den Backbuffer in die Surface `blur`; der Port zeichnet das
+   * geladene `blur`-Bild (Näherung).
+   */
+  private stepOverlays(): void {
+    const o = this.overlays;
+    o.alphaA = o.a ? Math.min(0.5, f32(o.alphaA + 0.025)) : Math.max(0, f32(o.alphaA - 0.05));
+    o.alphaB = o.b ? Math.min(0.5, f32(o.alphaB + 0.025)) : Math.max(0, f32(o.alphaB - 0.05));
+    const out = this.fx.lists.flash;
+    if (o.alphaA > 0) out.quad("blur", -50, -50, 850, 600, 1, 1, 1, o.alphaA, true);
+    if (o.alphaB > 0) out.quad("blur", 0, 0, 800, 550, 1, 1, 1, o.alphaB, true);
   }
 
   /** `SaveCheckpoint(p)` (`0x51EA00`): ein Schnappschuss, jeder neue ersetzt den alten. */
@@ -695,6 +764,7 @@ export class World {
     // LoadCheckpoint (die Kopie wird verbraucht; gleich danach wird neu gesichert)
     this.tick = s.tick;
     Object.assign(this.enemies, s.enemies);
+    this.enemies.bossFlag = false;
     this.anims.items.splice(0, this.anims.items.length, ...s.anims);
     s.layers.forEach((l, i) => Object.assign(this.layers[i + 1]!, l));
     this.backgroundX = s.backgroundX;
@@ -975,6 +1045,7 @@ export class World {
     this.anims.move(6, this.level, this.layers);
     this.fx.stepShake();
     this.contact();
+    this.stepOverlays();
     this.flash();
     this.display();
   }
