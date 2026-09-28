@@ -21,6 +21,24 @@
       "converterVersion": 1
     },
     {
+      "id": "data/liesmich",
+      "bundles": [
+        "screens"
+      ],
+      "kind": "data",
+      "file": "data/liesmich.607dc966.json",
+      "bytes": 21727,
+      "sha256": "607dc966539c00cec059583c6c69c40161e97af987a1ad047ee12e01423693b1",
+      "sources": [
+        {
+          "path": "original-dove/Liesmich.txt",
+          "sha256": "d8f0ae661c5e6ccd877831e38df2e4a3fc491d18aea51bf87a0e32ff3174ddd0"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1
+    },
+    {
       "id": "data/metroid",
       "bundles": [
         "level1"
@@ -33,6 +51,24 @@
         {
           "path": "original-dove/Data/Grafik/METROID.dat",
           "sha256": "6ed990f2d032bd159478c8c4adc1b7e62d758a12e73f200ba070d78d505b0c9e"
+        }
+      ],
+      "optionsHash": "4f53cda18c2baa0c",
+      "converterVersion": 1
+    },
+    {
+      "id": "data/readme",
+      "bundles": [
+        "screens"
+      ],
+      "kind": "data",
+      "file": "data/readme.26d945bc.json",
+      "bytes": 8804,
+      "sha256": "26d945bc5e0d4654486879d08d75ab58ca8a7916ea6d1f7e7bae3a89ccc148d3",
+      "sources": [
+        {
+          "path": "original-dove/Readme.txt",
+          "sha256": "4c7ad68430d81497127979b3ba368bf00ee7fc1e5cd4dda26b25508589affc01"
         }
       ],
       "optionsHash": "4f53cda18c2baa0c",

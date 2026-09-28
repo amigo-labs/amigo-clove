@@ -6,7 +6,7 @@
 > sind jetzt [`docs/formats/dove-level-dat.md`](../formats/dove-level-dat.md),
 > [`docs/formats/dove-assets.md`](../formats/dove-assets.md) und für DoveZ
 > [`docs/formats/dovez-level-dat.md`](../formats/dovez-level-dat.md), für die
-> Mechanik `docs/measurements/dove-{events,player,enemies}.md` und
+> Mechanik `docs/measurements/dove-{events,player,enemies,weapons,bosses,audio,flow}.md` und
 > `dovez-runtime.md`. Korrigierte Stellen sind hier mit *(M1)* … *(M7)* markiert.
 
 ## Context
@@ -611,7 +611,7 @@ Jeder hat genau ein überprüfbares Ergebnis.
 | **M1** | `@clove/formats`: BMP-Decoder (1/4/8/16/24/32 bpp), `LevelDat` parse **und** serialize, Frame-Ableitung. Messung der Original-Tickrate | 2–3 d | Round-Trip byte-identisch über 12 Level; Kreuzvalidierung 145/145 grün; `TICK_MS` ist eine **gemessene** Zahl — *Stand: erledigt; `TICK_MS = 14` statt gemessen aus der EXE hergeleitet, siehe `docs/measurements/tick-rate.md`* |
 | **M2** | Asset-Pipeline DOVE mit Manifest, Cache, `--check` | 2 d | ~11 MB Assets; zweiter Lauf schreibt null Bytes — *Stand: erledigt; 10,8 MB, siehe `docs/formats/dove-assets.md`* |
 | **M3** | ⭐ **Erstes spielbares Level.** Scope brutal geschnitten: keine Menüs, keine Musik, **eine** Waffe, kein Beam/Options/Bomben/Schild | 4–6 d | Level 1 läuft im Browser durch; aufgezeichnetes Replay reproduziert bit-identisch — *Stand: erledigt; Mechanik statisch aus der EXE, zwei Referenz-Replays, Browser-Smoke-Test in CI* |
-| **M4** | DOVE feature-complete: alle Waffen + Stufen, Beam, Options, Bomben, Schild, alle 12 Level, Vorhang, Highscore, Audio, die drei Optionen, Easteregg | 1,5–2 w | von Anfang bis Ende durchspielbar; Playtest-Checkliste abgehakt — *Stand: umgesetzt; Abgleich am Original (Playtest-Checkliste) offen* |
+| **M4** | DOVE feature-complete: alle Waffen + Stufen, Beam, Options, Bomben, Schild, alle 12 Level, Vorhang, Highscore, Audio, die drei Optionen, Easteregg | 1,5–2 w | von Anfang bis Ende durchspielbar; Playtest-Checkliste abgehakt — *Stand: umgesetzt; alle Waffen, Beam, Options, Schild, 12 Level mit Skripten, 9 Bosse, Audio (Effekte + Module), Menüs, Intro, Continue, Highscore, Abspann. Offen: Playtest-Checkliste gegen das Original* |
 | **M5** | Shell echt: Menü, Routing, Settings, Gamepad, Save-Export, Cache-Bundles, Service Worker, i18n | 3–4 d | deploybare Site; DOVE aus kaltem Cache spielbar — *Stand: erledigt; statischer Build mit relativen Pfaden, Smoke-Test startet DOVE kalt und nach „Spieldaten installieren“ bei beendetem Server. Offen: Ressourcenzähler für `dispose()` in Dev-Builds, Savegames in IndexedDB (DOVE braucht nur Schlüssel/Wert in `localStorage`)* |
 | **M6** | DoveZ Container + Assets | 1 w | ~120 MB Assets; Debug-Seite rendert jedes Sprite mit überlagerter `.r`-Kontur — *Stand: erledigt; 147 MB (davon Musik 62 MB unverändert, Video 20 MB), 33 Atlanten auf 44 Seiten, `#/dovez/debug/assets`, siehe `docs/formats/dovez-assets.md`* |
 | **M7** | ⚠ **DoveZ `.dat` dekodieren** (Risikoblock) | 1–2 w | `opaque` unter 5 %; Debug-Ansicht zeichnet Routen und Schussmuster — *Stand: erledigt; Grammatik aus `LadeDaten`, 27/27 byte-identisch, **0 Byte offen** (benannt oder nachweislich ungelesen), Routen-Interpreter bitgleich zum Referenzsimulator, `#/dovez/debug/level`, siehe `docs/formats/dovez-level-dat.md`. Offen für M8: Abgleich am Original, Start-Tick vor 0 (`Me.560`)* |

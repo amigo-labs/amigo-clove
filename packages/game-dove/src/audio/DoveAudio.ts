@@ -47,6 +47,23 @@ export class DoveAudio {
     this.music.play(await this.assets.bytes(id), loop);
   }
 
+  /**
+   * Ausblenden und freigeben (`SetGlobalVolumes(i, 100, i)`, i = 100 → 0 im
+   * 4-ms-Takt, `0x46E16B`/`0x4AAE87`): 0,4 s, danach steht die Musik.
+   */
+  async fadeOutMusic(seconds = 0.4): Promise<void> {
+    if (!this.currentMusic) return;
+    this.music.fadeOut(seconds);
+    await new Promise((resolve) => setTimeout(resolve, seconds * 1000));
+    this.music.stop();
+    this.currentMusic = undefined;
+  }
+
+  /** Musikpegel 0…1 (setzt ein laufendes Ausblenden zurück). */
+  setMusicVolume(value: number): void {
+    this.music.setVolume(value);
+  }
+
   /** Musik zum Level: `S<L>`; Level 11 hat keine eigene und nimmt S0–S9 (`PlayMusik`). */
   static levelMusic(level: number, seed: number): string {
     return level === 11 ? `music/s${seed % 10}` : `music/s${level}`;
