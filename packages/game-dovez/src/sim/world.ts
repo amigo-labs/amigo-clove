@@ -11,6 +11,7 @@ import {
   NO_INPUT,
   Player,
   SHOT_HIT,
+  SPAWN_INVULNERABLE,
   killPlayer,
   updatePlayer,
   type PlayerInput,
@@ -18,8 +19,9 @@ import {
 } from "./player";
 import { ShotLayer, firePrimary, moveShots, type ShotHost } from "./playerShots";
 import { Op, type RouteEffect } from "./route";
+import { collectShared, deepClone } from "./snapshot";
 import { buildSurfaces, spanHit, type SpriteSource, type Surface } from "./surfaces";
-import { VbRnd, cint, f32, idiv, vbInt } from "./vb";
+import { COS_DEG, SIN_DEG, VbRnd, cint, degIndex, f32, idiv, vbInt } from "./vb";
 
 /**
  * Weltzustand eines DoveZ-Levels und der Tick in der Reihenfolge von
@@ -48,11 +50,40 @@ export interface Special {
   timer: number;
 }
 
+/** Checkpoint-Tor (`Me.CD8…CFC`), ein einziges Objekt, nicht Teil des Schnappschusses. */
 export interface Checkpoint {
   active: boolean;
   x: number;
   y: number;
   size: number;
+  /** Drehphase 0…19 und Atemphase 0…179. */
+  spin: number;
+  pulse: number;
+  /** 0 bis zum Durchflug, dann +10 je Tick; über 800 ist das Tor weg. */
+  grow: number;
+  triggered: boolean;
+  /** Weißer Blitz über dem Spielfeld und seine Änderung je Tick. */
+  flashAlpha: number;
+  flashStep: number;
+}
+
+/** Stand beim letzten Checkpoint (`SaveCheckPointSub`). */
+interface Saved {
+  readonly tick: number;
+  readonly enemies: Enemies;
+  readonly anims: AnimPool["items"];
+  /** Ebenen 1–6; Ebene 0 wird nie gesichert. */
+  readonly layers: LayerState[];
+  readonly backgroundX: number;
+  readonly players: Player[];
+  readonly playerShots: readonly ShotLayer[];
+  readonly fire: EnemyFire;
+  readonly sparks: Effects["sparks"];
+  readonly big: Effects["big"];
+  readonly bubbles: Effects["bubbles"];
+  readonly popups: Effects["popups"];
+  readonly specials: Special[];
+  readonly globals: number[];
 }
 
 /** Ereignisse für Ton, Funk und Engine-Teile, die noch fehlen; die Engine leert sie je Frame. */
@@ -102,13 +133,31 @@ export class World {
     frame: 0,
     timer: 0,
   }));
-  readonly checkpoint: Checkpoint = { active: false, x: 0, y: 0, size: 0 };
+  readonly checkpoint: Checkpoint = {
+    active: false,
+    x: 0,
+    y: 0,
+    size: 0,
+    spin: 0,
+    pulse: 0,
+    grow: 0,
+    triggered: false,
+    flashAlpha: 0,
+    flashStep: 0,
+  };
   readonly background: BackgroundMode;
   /** Scrollposition des Hintergrundbilds (`Me.7C8`), (−800, 0]. */
   backgroundX = 0;
   tick = 0;
-  /** 0 läuft, 2 Level geschafft (`Me.580`). */
+  /** 0 läuft, 1 Spieler tot → Neustart am Checkpoint (`respawn`), 2 Level geschafft (`Me.580`). */
   state: 0 | 1 | 2 = 0;
+  /** Musikpegel 0…100 (`Me.1C0`) und seine Änderung je Tick (`Me.1C4`). */
+  musicVolume = 100;
+  musicStep = 0;
+  /** `Me.50C`: in diesem Tick kein Blitz. */
+  private noFlash = false;
+  private saved: Saved | undefined;
+  private shared: WeakSet<object> | undefined;
   /** Spieler − 1 (`0x5882A4`). */
   readonly playersMinus1: number;
   readonly rnd: VbRnd;
@@ -154,6 +203,7 @@ export class World {
     this.lives = players === 1 ? 3 : 6;
     this.tick = opts.startTick ?? 0;
     this.preroll();
+    this.save(0);
   }
 
   /** `SpielPastTicks`: Kacheln, die zum Start schon auf dem Bildschirm wären. */
@@ -225,6 +275,12 @@ export class World {
             x: cint(SCREEN_W + Math.trunc(e.p1 / 2) + layer.scrollPos),
             y: e.p3,
             size: e.p1,
+            spin: 0,
+            pulse: 0,
+            grow: 0,
+            triggered: false,
+            flashAlpha: 0,
+            flashStep: 0,
           });
         }
         return;
@@ -466,7 +522,8 @@ export class World {
     for (const p of this.players) {
       if (p.exitState !== 0) continue;
       if (!p.alive) {
-        if (++p.deathTimer >= DEATH_TICKS) this.playerDead(p);
+        p.deathTimer++;
+        this.dying(p);
         continue;
       }
       if (p.invulnerable > 0) {
@@ -500,10 +557,229 @@ export class World {
     }
   }
 
-  /** Ende der Todessequenz; der Neustart (Checkpoint) liegt bei der Engine. */
-  private playerDead(p: Player): void {
-    p.deathTimer = DEATH_TICKS;
-    if (this.players.every((q) => !q.alive)) this.state = 1;
+  /**
+   * Todessequenz (`SpielFeindberührung` `0x50BC4C`/`0x50C700`): 1P nach 99
+   * Ticks Neustart am Checkpoint; 2P mit Leben und ohne Boss ersteht der
+   * Spieler allein beim Partner wieder, sonst stirbt der Partner mit.
+   */
+  private dying(p: Player): void {
+    const partner = this.players[1 - p.index];
+    if (this.playersMinus1 === 1 && partner) {
+      if (this.lives > 0 && !this.bossAlive) {
+        if (p.deathTimer < DEATH_TICKS) return;
+        this.events.push({ kind: "soundOff" });
+        this.lives--;
+        doveInit(p);
+        let [x, y] = [partner.x, partner.y];
+        while (this.hitsTerrain(cint(x), cint(y + 17), cint(x + 64), cint(y + 54))) {
+          x = this.rnd.next() * 736;
+          y = this.rnd.next() * 486;
+        }
+        p.x = f32(x);
+        p.y = f32(y);
+        this.rebirth(p);
+        return;
+      }
+      if (partner.alive) {
+        p.deathTimer = DEATH_TICKS;
+        partner.invulnerable = 0;
+        this.killPlayer(partner);
+        return;
+      }
+      if (this.lives <= 0) this.musicStep = -1;
+      if (p.deathTimer >= DEATH_TICKS && this.players.every((q) => q.deathTimer >= DEATH_TICKS)) {
+        this.state = 1;
+        this.noFlash = true;
+      }
+      return;
+    }
+    this.events.push({ kind: "soundOff" });
+    if (this.lives <= 0) this.musicStep = -1;
+    if (p.deathTimer >= DEATH_TICKS) {
+      this.state = 1;
+      this.noFlash = true;
+    }
+  }
+
+  /** Boss lebt (`[0x5882A8]`): folgt mit den Bossen. */
+  get bossAlive(): boolean {
+    return false;
+  }
+
+  /** `SaveCheckpoint(p)` (`0x51EA00`): ein Schnappschuss, jeder neue ersetzt den alten. */
+  private save(p: number): void {
+    if (!this.players.some((q) => q.alive)) return;
+    this.shared ??= collectShared([
+      this.level,
+      this.surfaces,
+      this.anims.anims,
+      this.rnd,
+      this.fx.lists,
+    ]);
+    const memo = new Map<object, unknown>();
+    const c = <T>(v: T): T => deepClone(v, this.shared!, memo);
+    const players = c(this.players);
+    const me = this.players[p];
+    for (const q of players) {
+      // Partner in der Landschaft: auf die Position des Auslösers
+      if (q.index === p || !me) continue;
+      if (this.hitsTerrain(...q.hitbox())) {
+        q.x = me.x;
+        q.y = me.y;
+      }
+    }
+    this.saved = {
+      tick: this.tick,
+      enemies: c(this.enemies),
+      anims: c(this.anims.items),
+      layers: c(this.layers.slice(1)),
+      backgroundX: this.backgroundX,
+      players,
+      playerShots: c(this.playerShots),
+      fire: c(this.fire),
+      sparks: c(this.fx.sparks),
+      big: c(this.fx.big),
+      bubbles: c(this.fx.bubbles),
+      popups: c(this.fx.popups),
+      specials: c(this.specials),
+      globals: c(this.globals),
+    };
+  }
+
+  /**
+   * Nach dem Tod (`state === 1`, SpielLoop `0x53F97B`): ein Leben weniger,
+   * Welt vom Checkpoint (`VariabelnLösch` + `LoadCheckpoint`), Schiffe voll
+   * und 100 Ticks unverwundbar, Punkte bleiben. Ohne Leben: `false`
+   * (Continue-Bildschirm bei der Engine).
+   */
+  respawn(): boolean {
+    const s = this.saved;
+    if (this.state !== 1 || !s) return false;
+    if (this.lives <= 0) return false;
+    this.state = 0;
+    const lives = this.lives;
+    const score = [...this.score];
+    // VariabelnLösch: Ebene 0 leer, Tor weg, Wackeln aus
+    const l0 = this.layers[0]!;
+    for (const t of l0.tiles) t.active = false;
+    Object.assign(l0, { highWater: -1, firstFree: 0, cursor: 0 });
+    this.checkpoint.active = false;
+    this.fx.shake = 0;
+    // LoadCheckpoint (die Kopie wird verbraucht; gleich danach wird neu gesichert)
+    this.tick = s.tick;
+    Object.assign(this.enemies, s.enemies);
+    this.anims.items.splice(0, this.anims.items.length, ...s.anims);
+    s.layers.forEach((l, i) => Object.assign(this.layers[i + 1]!, l));
+    this.backgroundX = s.backgroundX;
+    s.players.forEach((q, i) => Object.assign(this.players[i]!, q));
+    s.playerShots.forEach((l, i) => Object.assign(this.playerShots[i]!, l));
+    Object.assign(this.fire, s.fire);
+    this.fx.sparks.splice(0, 2, ...s.sparks);
+    Object.assign(this.fx.big, s.big);
+    Object.assign(this.fx.bubbles, s.bubbles);
+    Object.assign(this.fx.popups, s.popups);
+    this.specials.splice(0, this.specials.length, ...s.specials);
+    this.globals.splice(0, this.globals.length, ...s.globals);
+    Object.assign(this.checkpoint, { triggered: true, flashAlpha: 0.6, flashStep: -0.02 });
+    for (const p of this.players) doveInit(p);
+    this.lives = lives - 1;
+    this.score = score;
+    this.save(0);
+    for (const p of this.players) this.rebirth(p);
+    return true;
+  }
+
+  /** `SpielDoveWiedergeburt` (`0x50A620`): nur Effekt und Ton, das Schiff ist sofort steuerbar. */
+  private rebirth(p: Player): void {
+    const cx = p.x + 32;
+    const cy = p.y + 32;
+    const fx = this.fx;
+    fx.addBig(cx - 32, cy - 32, 0, 0, 1, 0.5, 0.4, 64, 0, 50, 14, 16);
+    fx.addBig(cx - 32, cy - 32, 0, 0, 0.9, 0.4, 0.3, 64, 0, 50, 14, 8);
+    fx.addBig(cx - 32, cy - 32, 0, 0, 0.8, 0.4, 0.3, 64, 10, 40, 2, 6);
+    const [r, g, b] = p.shipType === 0 ? [0.5, 0.7, 1] : [1, 0.7, 0.7];
+    fx.addBig(p.x - 32, p.y - 32, 0, 0, r, g, b, 128, 0, 50, 16, 0);
+    for (let a = 0; a <= 350; a += 10) {
+      const sin = SIN_DEG[degIndex(a)] ?? 0;
+      const cos = COS_DEG[degIndex(a)] ?? 0;
+      fx.addBig(
+        cx - 15 + sin * 600,
+        cy - 15 + cos * 600,
+        -sin * 20,
+        -cos * 20,
+        0.2,
+        0.4,
+        1,
+        30,
+        0,
+        30,
+        16,
+        0,
+      );
+    }
+    this.sfx("newborn1");
+  }
+
+  /**
+   * `SpielCheckpoint(pass)` (`0x51FAA0`): ein atmender, drehender Ring aus
+   * 18 Glutpunkten, Pass 0 hinter dem Schiff, Pass 1 davor. Pass 1 bewegt
+   * das Tor mit der Landschaft und löst beim Durchflug aus: sichern, dann
+   * +50 Energie, 1000 Punkte, Ton, weißer Blitz.
+   */
+  private checkpointPass(pass: 0 | 1): void {
+    const c = this.checkpoint;
+    if (!c.active) return;
+    const out = this.fx.lists[pass === 0 ? "gate0" : "gate1"];
+    const breath = SIN_DEG[c.pulse] ?? 0;
+    for (let i = 9 * pass + 1; i <= 9 * pass + 9; i++) {
+      const a = degIndex(cint(i * 20 + c.spin));
+      const s = SIN_DEG[a] ?? 0;
+      const h = 10 - s * 4;
+      const x = c.x - (breath * 20 + idiv(c.size, 2) - 20 + c.grow) * s;
+      const y = c.y + (breath * 40 + c.size - 40 + c.grow) * (COS_DEG[a] ?? 0);
+      out.quad("a_kreis2", x, y, x + h, y + h, 1, 1, 1, 0.7, true);
+    }
+    if (pass === 0) return;
+    c.spin++;
+    c.pulse = (c.pulse + 1) % 180;
+    if (c.spin === 20) c.spin = 0;
+    c.x = cint(c.x - this.layers[TERRAIN_LAYER]!.speed);
+    if (c.triggered) {
+      c.grow += 10;
+      if (c.grow > 800) {
+        c.active = false;
+        c.triggered = false;
+      }
+      return;
+    }
+    for (const p of this.players) {
+      if (!p.alive) continue;
+      const half = idiv(c.size, 2);
+      if (p.x < c.x && c.x < p.x + 64 && p.y + 17 < c.y + half && c.y - half < p.y + 54) {
+        this.save(p.index);
+        this.sfx("checkpoint");
+        this.sfx("checkpoint");
+        c.triggered = true;
+        this.noFlash = true;
+        c.grow = 1;
+        c.flashAlpha = 1;
+        c.flashStep = -0.05;
+        for (const q of this.players) q.energy = f32(q.energy + 50);
+        this.addPoints(1000, c.x, c.y, -1, p.index);
+      }
+    }
+  }
+
+  /** Blitz nach Checkpoint oder Wiedergeburt (`OverlayEffekte` `0x5388A7`). */
+  private flash(): void {
+    const c = this.checkpoint;
+    if (!c.triggered || c.flashStep === 0 || this.noFlash) return;
+    c.flashAlpha = f32(c.flashAlpha + c.flashStep);
+    if (c.flashAlpha <= 0) {
+      c.flashStep = 0;
+      c.flashAlpha = 0;
+    }
+    this.fx.lists.flash.quad("blur3", 0, 0, 800, 550, 1, 1, 1, c.flashAlpha);
   }
 
   /**
@@ -622,8 +898,11 @@ export class World {
   step(inputs: readonly PlayerInput[] = []): void {
     if (this.state !== 0) return;
     this.fx.beginTick();
+    this.noFlash = false;
     for (const p of this.players) p.startEnergy = p.energy;
     this.level.groups.forEach((g, i) => doAni(g, this.groupFrames[i]!));
+    this.musicVolume = Math.min(100, Math.max(0, this.musicVolume + this.musicStep));
+    if (this.tick >= this.level.levelLength - 50) this.musicStep = -2;
     this.timeline();
     if (this.background === 1) {
       this.backgroundX = f32(this.backgroundX - this.layers[0]!.speed);
@@ -633,6 +912,7 @@ export class World {
       this.layers[l]!.move(this.surfaces, this.groupFrames);
       this.anims.move(l, this.level, this.layers);
     }
+    this.checkpointPass(0);
     const pw = this.playerWorld();
     for (const p of this.players) updatePlayer(p, inputs[p.index] ?? NO_INPUT, pw);
     for (const p of this.players)
@@ -663,10 +943,12 @@ export class World {
     this.fx.moveBig(this.effectWorld());
     this.fire.stepShots(sw);
     this.fx.movePopups();
+    this.checkpointPass(1);
     this.layers[6]!.move(this.surfaces, this.groupFrames);
     this.anims.move(6, this.level, this.layers);
     this.fx.stepShake();
     this.contact();
+    this.flash();
   }
 
   /** Wirkung eines Power-ups (Waffen-Slots und Satelliten folgen mit den Spielerwaffen). */
@@ -723,4 +1005,11 @@ export class World {
       }
     }
   }
+}
+
+/** `DoveInit(p)` (`0x4A6F10`): lebt, volle Energie, 100 Ticks unverwundbar; Position bleibt. */
+function doveInit(p: Player): void {
+  p.deathTimer = 0;
+  p.energy = p.maxEnergy;
+  p.invulnerable = SPAWN_INVULNERABLE;
 }

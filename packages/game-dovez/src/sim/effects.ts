@@ -94,6 +94,8 @@ export class DrawList {
 
 /** Zeichenstellen in der Reihenfolge von `SpielLoop`. */
 export const DRAW_SLOTS = [
+  /** Checkpoint-Tor, hintere Hälfte. */
+  "gate0",
   /** Abgasflamme (`SpielKeysDove`), vor den Spielerschüssen. */
   "exhaust",
   /** Kleine Partikel Ebene 0 (vor Schiff und Gegnern). */
@@ -105,6 +107,10 @@ export const DRAW_SLOTS = [
   "sparks1",
   "big",
   "popups",
+  /** Checkpoint-Tor, vordere Hälfte (vor Ebene 6). */
+  "gate1",
+  /** Weißer Blitz nach Checkpoint und Wiedergeburt. */
+  "flash",
 ] as const;
 export type DrawSlot = (typeof DRAW_SLOTS)[number];
 

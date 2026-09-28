@@ -87,6 +87,59 @@ describe("Welt", () => {
   });
 });
 
+describe("Checkpoint", () => {
+  /** Steuert zum Tor, solange eines offen ist. */
+  const toGate = (w: World): PlayerInput => {
+    const p = w.players[0]!;
+    const c = w.checkpoint;
+    const open = c.active && !c.triggered;
+    return { ...fire, up: open && p.y + 35 > c.y + 5, down: open && p.y + 35 < c.y - 5 };
+  };
+
+  test("Durchflug: 1000 Punkte und Schnappschuss; Tod setzt dorthin zurück", async () => {
+    const { level, sprites } = await loadTestLevel("level1-1_skyfight");
+    const w = new World(level, sprites);
+    let gateTick = -1;
+    for (let t = 0; t < 3000 && gateTick < 0; t++) {
+      for (const p of w.players) p.invulnerable = 2;
+      const before = w.score[0]!;
+      w.step([toGate(w)]);
+      if (w.checkpoint.triggered) {
+        gateTick = w.tick;
+        expect(w.score[0]! - before).toBeGreaterThanOrEqual(1000);
+      }
+    }
+    expect(gateTick).toBe(2616);
+    // ohne Schutz und Eingabe stirbt das Schiff; Neustart am Tor
+    for (let t = 0; t < 5000 && w.state === 0; t++) w.step();
+    expect(w.state).toBe(1);
+    const score = w.score[0];
+    expect(w.respawn()).toBe(true);
+    expect([w.tick, w.lives, w.score[0], w.players[0]!.alive]).toEqual([gateTick, 2, score, true]);
+    expect(w.players[0]!.invulnerable).toBe(100);
+    expect(w.checkpoint.active).toBe(false);
+  }, 30_000);
+
+  test("ohne Leben kein Neustart; zwei Läufe mit Toden sind gleich", async () => {
+    const { level, sprites } = await loadTestLevel("level1-1_skyfight");
+    const run = () => {
+      const w = new World(level, sprites, { seed: 3 });
+      let respawns = 0;
+      for (let t = 0; t < 40000 && w.state !== 2; t++) {
+        w.step([{ ...fire, up: t % 300 < 40 }]);
+        if (w.state === 1) {
+          if (!w.respawn()) break;
+          respawns++;
+        }
+      }
+      return [respawns, w.lives, w.state, hash(w)];
+    };
+    const a = run();
+    expect(a.slice(0, 3)).toEqual([3, 0, 1]);
+    expect(run()).toEqual(a);
+  }, 30_000);
+});
+
 describe("Spieler", () => {
   const open = {
     terrainSpeed: 2,
