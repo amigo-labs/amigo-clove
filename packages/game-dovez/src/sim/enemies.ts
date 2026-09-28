@@ -20,9 +20,9 @@ import { COS_DEG, SIN_DEG, cint, degIndex, f32, idiv, vbInt, winkelInGrad } from
  *
  * Ein gewöhnlicher Abschuss lässt den Gegner sofort zerplatzen (`killBy`).
  * Todeszustände: 3 (Wrack), 5 (Sprengkörper), 6 (Abschuss durch den Beam)
- * und 7 (Kettenexplosion) sowie 1 (Spaltung in der Kraftphase) und 4
- * (Boss-Finale) sind vollständig; 2 (Nova) läuft nur seine Dauer ab und
- * zerplatzt am Ende.
+ * und 7 (Kettenexplosion) sowie 1 (Spaltung in der Kraftphase), 4
+ * (Boss-Finale), 2 (Nova-Tod), 0 (eingefroren) und −1 (während der Nova
+ * versteckt) sind vollständig.
  */
 
 export const ENEMY_CAPACITY = 101;
@@ -31,6 +31,9 @@ const PLAYER_HIT_CX = 32;
 const PLAYER_HIT_CY = 17 + 18;
 
 export const DeathState = {
+  /** Während der Super-Nova nova-immun bzw. beim Start inaktiv: weder bewegt noch gezeichnet. */
+  hidden: -1,
+  /** Während der Super-Nova eingefroren: nur gezeichnet. */
   frozen: 0,
   split: 1,
   nova: 2,
@@ -507,15 +510,70 @@ export class Enemies {
       case DeathState.split:
         this.stepSplit(i, e, w);
         return;
+      case DeathState.nova:
+        this.stepNovaDeath(i, e, w);
+        return;
+      case DeathState.frozen:
+      case DeathState.hidden:
+        // 0: nur zeichnen (der Renderer, ohne Aufblitzen); −1: ganz übersprungen
+        return;
     }
-    const t = e.stateTimer++;
-    if (t === 0) w.killEmitters(i);
-    const end =
-      e.deathState === DeathState.split ? 30 : e.deathState === DeathState.nova ? 40 : Infinity;
-    if (t >= end) {
-      for (const p of e.parts) if (p.visible) this.burstPart(e, p, w, 150, 0, true, true);
-      this.kill(i);
+    if (e.stateTimer++ === 0) w.killEmitters(i);
+  }
+
+  /**
+   * Zustand 2, Nova-Tod (`0x4B71C9`), 40 Ticks: im ersten Tick je großem
+   * sichtbarem Teil Glitzer-Fragmente (Glut, Strich, Welle; 3 `Rnd` je
+   * Stück) und die Waffen weg; bei 40 zerplatzt jedes Teil über seinem
+   * Quellrechteck (nicht der Kontur) mit Wackeln und Ton. Keine Punkte (die
+   * gab die Nova).
+   */
+  private stepNovaDeath(i: number, e: Enemy, w: EnemyWorld): void {
+    const fx = w.fx;
+    const origin = (p: PartState): [number, number] => [
+      e.actor.x + (p.actor ? p.actor.x : p.def.x),
+      e.actor.y + (p.actor ? p.actor.y : p.def.y),
+    ];
+    if (e.stateTimer === 0) {
+      for (const p of e.parts) {
+        const s = this.surface(p);
+        if (!p.visible || !s) continue;
+        if (!(s.maxX - s.minX > 30 && s.bottomRow - s.topRow > 30)) continue;
+        const [ox, oy] = origin(p);
+        // Bitmapgröße (+0x4/+0x6), nicht der Ausschnitt
+        const n = Math.trunc(((s.bmpW ?? s.rect.w) + (s.bmpH ?? s.rect.h)) / 100) + 1;
+        for (let m = 0; m <= n; m++) {
+          const r1 = w.rnd.next();
+          const x = f32(cint((s.maxX - s.minX - 30) * r1) + ox + s.minX + 15);
+          const r2 = w.rnd.next();
+          const y = f32(cint((s.bottomRow - s.topRow - 30) * r2) + oy + s.topRow + 15);
+          fx.addBig(x - 20, y - 20, 0, 0, 1, 1, 1, 40, 40, 5, 1, 0);
+          const r3 = w.rnd.next();
+          fx.addBig(x, y, 0, 0, 1, 1, 1, 0, 10, 30, 4, cint(r3 * 360));
+          fx.addBig(x, y, 0, 0, 1, 1, 1, 0, 0, 25, 2, 5);
+        }
+      }
+      w.killEmitters(i);
     }
+    if (++e.stateTimer !== 40) return;
+    for (const p of e.parts) {
+      const s = this.surface(p);
+      if (!p.visible || !s) continue;
+      const [ox, oy] = origin(p);
+      fx.addSparks(
+        1,
+        150,
+        cint(ox + s.left + 5),
+        cint(oy + s.topRow + 5),
+        cint(ox + s.right - 5),
+        cint(oy + s.bottomRow - 5),
+        false,
+      );
+      fx.addExplosion(ox + s.left, oy + s.topRow, ox + s.right, oy + s.bottomRow);
+      if (!w.beamPower(0) || this.playersMinus1 === 1) fx.shake += idiv(p.score, 500) + 1;
+      w.sound(p.score > 1499 ? "explosion2" : "explosion1");
+    }
+    this.kill(i);
   }
 
   /**

@@ -24,7 +24,7 @@ export class SpriteBatch {
   private readonly sprites: Sprite[] = [];
   private used = 0;
 
-  constructor(private readonly layer: Container) {}
+  constructor(readonly layer: Container) {}
 
   begin(): void {
     this.used = 0;
