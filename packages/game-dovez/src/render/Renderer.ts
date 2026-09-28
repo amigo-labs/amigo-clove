@@ -1,12 +1,20 @@
 import type { AtlasJson, AtlasSprite } from "@clove/core";
 import type { TextureRegistry } from "@clove/pixi-kit";
-import { Container, Graphics, Rectangle, Text, Texture } from "pixi.js";
+import {
+  Container,
+  Graphics,
+  Rectangle,
+  Text,
+  Texture,
+  type Renderer as PixiRenderer,
+} from "pixi.js";
 import type { DrawList, DrawSlot } from "../sim/effects";
 import { DeathState, type Enemy } from "../sim/enemies";
 import { LAYER_COUNT } from "../sim/layers";
 import type { Surface } from "../sim/surfaces";
 import { cint, idiv } from "../sim/vb";
 import type { World } from "../sim/world";
+import { NovaScreen } from "./NovaScreen";
 import { SpriteBatch } from "./SpriteBatch";
 
 /**
@@ -82,12 +90,15 @@ export class Renderer {
   /** Abblende-Schwarz über dem Spielfeld (Alpha je Frame). */
   private readonly fade = new Graphics().rect(0, 0, 800, 550).fill(0x000000);
   private frameNo = 0;
+  /** Bildbruch der Super-Nova (braucht den Pixi-Renderer für die Zwischenbilder). */
+  private readonly novaScreen: NovaScreen | undefined;
 
   constructor(
     private readonly textures: TextureRegistry,
     private readonly world: World,
     /** Level-Atlas zuerst, dann `spiel`, `standart`. */
     private readonly atlases: readonly AtlasRef[],
+    pixi?: PixiRenderer,
   ) {
     this.root.addChild(this.field);
     this.field.addChild(this.bgFill);
@@ -117,6 +128,7 @@ export class Renderer {
       "fx:shots1",
       "anim3",
       "fx:beam",
+      "fx:nova",
       "fx:sparks1",
       "fx:big",
       "eshots",
@@ -132,6 +144,8 @@ export class Renderer {
       this.batches.set(name, new SpriteBatch(c));
     }
     this.field.addChild(this.overlay);
+    const nova = this.batches.get("fx:nova");
+    this.novaScreen = pixi && nova ? new NovaScreen(pixi, this.field, nova.layer) : undefined;
     this.root.addChild(this.fade);
     const hud = new Container();
     this.root.addChild(hud);
@@ -191,6 +205,7 @@ export class Renderer {
     this.hud.begin();
     this.overlay.clear();
     this.drawBackground();
+    this.drawNovaVeil();
     for (let l = 0; l < LAYER_COUNT; l++) this.drawTiles(l);
     for (let l = 0; l < LAYER_COUNT; l++) this.drawAnims(l);
     this.drawSpecials();
@@ -202,13 +217,14 @@ export class Renderer {
     this.field.position.set(-w.fx.shakeX, -w.fx.shakeY);
     // Abblenden in den letzten 50 Ticks
     const left = w.level.levelLength - w.tick;
-    this.fade.alpha = left < 50 ? (50 - left) / 50 : 0;
+    this.fade.alpha = left < 50 && !w.nova ? (50 - left) / 50 : 0;
     this.drawHud();
     this.drawCombo();
     this.drawList(this.hud, w.fx.lists.radio);
     this.ticker.text = w.radio.ticker;
     for (const b of this.batches.values()) b.end();
     this.hud.end();
+    this.novaScreen?.apply(w.novaState.blits);
   }
 
   private drawBackground(): void {
@@ -224,6 +240,23 @@ export class Renderer {
     const x = Math.trunc(w.backgroundX);
     b.put(t, x, 0);
     if (x !== 0) b.put(t, x + 800, 0);
+  }
+
+  /**
+   * Schleier der Nova-Hintergründe (`SpielMoveHintergrund`): −1 `weiss`
+   * rgba(1, Rnd/2, 0, 0,1), −2 weiß. Das Original übermalt das stehende Bild
+   * je Tick mit 10 % (kein Flip bei Hintergrund ≤ 0, Nachzieh-Spuren); der
+   * Port füllt mit der Endfarbe (Näherung).
+   */
+  private drawNovaVeil(): void {
+    const w = this.world;
+    if (w.background !== -1 && w.background !== -2) return;
+    const g = w.background === -2 ? 255 : Math.round((w.novaState.bgRnd / 2) * 255);
+    const b = w.background === -2 ? 255 : 0;
+    this.bgFill
+      .clear()
+      .rect(0, 0, 800, 550)
+      .fill((255 << 16) | (g << 8) | b);
   }
 
   private drawTiles(l: number): void {
@@ -288,6 +321,8 @@ export class Renderer {
     const w = this.world;
     // Boss-Finale: die Teile zerplatzen bei T = 500 und werden danach nicht mehr gezeichnet
     if (e.inState && e.deathState === DeathState.boss && e.stateTimer > 500) return;
+    // während der Nova versteckt (Zustand −1)
+    if (e.inState && e.deathState === DeathState.hidden) return;
     for (const p of e.parts) {
       if (!p.visible) continue;
       const s = w.enemies.surface(p);
@@ -593,6 +628,7 @@ export class Renderer {
   }
 
   destroy(): void {
+    this.novaScreen?.destroy();
     for (const t of this.frames.values()) t.destroy(false);
     this.frames.clear();
     this.root.destroy({ children: true });

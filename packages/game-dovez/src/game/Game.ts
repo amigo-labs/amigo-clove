@@ -121,7 +121,7 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
     ? await DovezAudio.create(host.audio, host.assets, pack.slug).catch(() => undefined)
     : undefined;
   audio?.playMusic(pack.level.music);
-  const renderer = new Renderer(textures, world, atlases);
+  const renderer = new Renderer(textures, world, atlases, app.renderer);
   app.stage.addChild(renderer.root);
   const loop = new FixedStepLoop(TICK_MS);
   let over = false;

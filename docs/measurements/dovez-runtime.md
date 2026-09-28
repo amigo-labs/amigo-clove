@@ -25,7 +25,10 @@ Plan auf „jetzt“ gesetzt — verlorene Zeit wird nie nachgeholt. *(Der Port 
 `FixedStepLoop` mit bis zu 5 Ticks Aufholen; Abweichung nur bei Lastspitzen.)*
 
 Reihenfolge je Tick („Nova“ = Super-Nova läuft, `Me.D6C`; dann ruhen Zeitleiste,
-Ebenen, Eingabe, Schüsse, Emitter, Gegnerschüsse — Gegner, Partikel, HUD laufen):
+Ebenen, Eingabe, Schüsse, Power-ups, Emitter, Gegnerschüsse, Wetter, Kontakt —
+Gegner, Partikel, Force, HUD laufen). Die elf Prüfungen fragen `Me.D6C` jeweils
+an ihrer Stelle ab; die Nova schaltet in Schritt 9 mitten im Tick um (Abschnitt
+„Super-Nova“):
 
 1. Eingabe abfragen; `SpielObjektAnimationen` (DoAni für jede Gruppe, globaler
    Bildzähler der Kacheln).
@@ -35,16 +38,17 @@ Ebenen, Eingabe, Schüsse, Emitter, Gegnerschüsse — Gegner, Partikel, HUD lau
 4. außer Nova: Ebenen 0, 1, 2, 5 je mit ihren Animationen; Checkpoint;
    Spielereingabe und -bewegung (`SpielKeysDove` `0x507DB0`).
 5. Partikel; Drohnen; außer Nova: Abfeuern (`SpielSchieß` `0x4E2C20`),
-   Spielerschüsse Ebene 0, Power-ups.
+   Spielerschüsse Ebene 0; Funken 0; außer Nova: Power-ups.
 6. Schiff zeichnen (`SpielMoveDove` `0x509110`), **Gegner** (`0x4B5850`, auch
    während Nova), Blasen.
 7. außer Nova: Animationen der Ebene 4, **Ebene 3 (Landschaft, über Gegnern und
    Schiff gezeichnet)**.
 8. außer Nova: Spielerschüsse Ebene 1, Animationen 3, Emitter, Beam.
-9. Nova, Partikel, außer Nova: **Gegnerschüsse**; Satelliten, Punkteanzeigen.
+9. **Super-Nova** (`SpielNova` `0x52A230`, jeden Tick), Partikel; außer Nova:
+   **Gegnerschüsse**; Satelliten, Punkteanzeigen.
 10. außer Nova: Wetter, Checkpoint, **Ebene 6** mit Animationen, Wasser.
 11. Erschütterung; außer Nova: **Kontakt** (`SpielFeindberührung` `0x50B710`);
-    Abblenden in den letzten 50 Ticks; HUD.
+    Overlays; außer Nova: Abblenden in den letzten 50 Ticks; HUD.
 
 Zeichenreihenfolge der Ebenen damit 0, 1, 2, 5, [Schiff, Gegner], 4, 3, 6.
 
@@ -183,6 +187,7 @@ erscheinen Waffen-Power-ups nur für das gewählte Schiff.
   Teile vom letzten zum ersten, Konturtest wie bei der Landschaft; je Aufruf
   höchstens ein Teil. Rückgabe ist der **Restschaden**: ohne Treffer der volle,
   bei verbrauchtem Treffer 0, bei einem Abschuss der Überschuss (der Schuss
+<<<<<<< HEAD
   fliegt damit weiter). Gepanzerte Teile nehmen keinen Schaden; mit Schaden −1
   prüft der Aufruf nur, ob etwas überlappt (Force).
   `CheckWhereColisionRight/Left` (`0x4C6A60`/`0x4C64B0`) suchen die nächste
@@ -245,6 +250,12 @@ Ladung). Schaden `CLng(L^1,6 · Stufe)`, voll `8500 · Stufe` (+1500 Schiff 1).
   bei einem entkommenen Gegner (außer `noComboReset`/`solid`), am Ende der
   Kraftphase und im Nachglühen. Anzeige nur für Spieler 1: `combo` bei
   (730, 520) mit Zähler und Bonus, am Ende „Combo: N Hit B“ im Laufband.
+=======
+  fliegt damit weiter). Gepanzerte Teile nehmen keinen Schaden.
+- Zweitwaffen (Bombe, Fallrakete, Zielsuchrakete), Partikel (Schiff 0), Force
+  (Schiff 1), Beam (Aufladen 0,9 je Tick bis 165) und Super-Nova (eigener
+  Abschnitt) sind im Port umgesetzt.
+>>>>>>> worktree-agent-a6289ba1d320e1b28
 
 ## Gegner-Laufzeit `SpielMoveEnemy` (`0x4B5850`)
 
@@ -265,6 +276,7 @@ Gegner geht nur, wenn seine Route endet oder er stirbt. Je Gegner:
 Aufblitzen als zweiter additiver Durchgang. DirectDraw-Gruppen als
 Colorkey-Blit, beim Aufblitzen das Negativ `_i`.
 
+<<<<<<< HEAD
 **Todeszustand** beim Abschuss (`0x4C4C8F`…`0x4C5A5F`): `explosionSpec` → 5,
 `bigDeath` → 7. Sonst zerplatzt der Gegner **sofort** (mit Punkten, Popup
 steigt, `Explosion1/2`), wenn ein anderer Gegner ihn getötet hat oder der
@@ -278,6 +290,15 @@ wackelt der Bildschirm beim Zerplatzen nicht, solange die Kraftphase läuft.
 Im Port vollständig: 1, 3, 4, 5 (mit Kettenreaktion über
 `CheckColisionWithEnemy` mit `exclude`), 6 und 7; 2 läuft seine Dauer ab und
 zerplatzt (Nova fehlt noch). Zustand 6 im Einzelnen: vier grüne Linien
+=======
+**Todeszustand** beim Abschuss: `explosionSpec` → 5, `bigDeath` → 7, durch
+einen anderen Gegner getötet → sofort Explosion, sonst **6** (normaler Abschuss,
+50 Ticks grüne Zielerfassung, dann Explosion); überschrieben zu 1 während des
+Beams, 2 während Nova, 4 für Bosse. Dauern: 1 30 Ticks, 2 40, 3 bis 160
+(Trümmer mit Schwerkraft), 4 570 (Boss-Finale), 5 15 (Zündung), 7 10 je Teil.
+Im Port vollständig: alle Zustände, 5 mit Kettenreaktion über
+`CheckColisionWithEnemy` mit `exclude`; 0, 2 und −1 im Abschnitt „Super-Nova“. Zustand 6 im Einzelnen: vier grüne Linien
+>>>>>>> worktree-agent-a6289ba1d320e1b28
 wachsen aus den Ecken des Umrisses über die sichtbaren Teile, ab t = 21 je
 Tick zehn Funken aus der Mitte und ein rotierendes, schrumpfendes Quadrat
 (Radius 20·(50 − t)), bei t = 50 zerplatzt jedes Teil — mit einem um ±50 px
@@ -302,6 +323,62 @@ Bosslevel nie.
 **Explosion:** Funken (`AddPartikel`), Glut, Rauch und Feuerbälle
 (`AddExplosionsPartikel`, Größe nach Rechteck), Ton `Explosion1.wav` bzw.
 `Explosion2.wav` ab 1500 Punkten, `spalt.wav` beim animierten Abschuss.
+
+## Super-Nova (`SpielNova` `0x52A230`)
+
+Jeden Tick nach dem Beam (`nova.ts`). **Auslösen:** Nova-Taste (E; im 2P Satz
+`p + 1`), Flanke über einen für alle Spieler **gemeinsamen** Riegel (wer die
+Taste nicht hält, löst ihn jeden Tick). D-Tonator braucht einen gewählten
+Partikel, D-Phyton die Force; nicht während der Nova, nicht tot, nicht, solange
+ein Slot bis zum höchsten in Zustand 4 steht (Boss-Finale, auch ein toter).
+Keine Ladung, kein HUD — verbraucht wird der Partikel (Art 0: Platz weg und
+`NextPartikel`, sonst Art → 0) bzw. die Force. Beim Auslösen: alle 501
+Gegnerschüsse weg (auch Druckwellen, Emitter bleiben), Hintergrund gesichert
+und 0, Musik auf 1/10, `SpielSoundOFF`, `Nova.wav` + `NovaSchuss.wav`.
+
+**Varianten** (`Me.109C`): Partikelart bzw. beim D-Phyton `Int(Rnd·3) + 6`;
+Zähler `C` startet bei −1 und läuft je Tick um 1, Dauer `C₀ + 1`:
+
+| Art | Name | Dauer | Wirkung |
+|---|---|---|---|
+| −1 (Schild) | Streuung | 71 (ohne Gegner 55) | 21 Striche, Overlay B, alle bei C = 36 |
+| 0 (leer) | Ring | ≥ 101 | Welle 4 px/Tick vom Partikel, Treffer bei ¼ Abstand + 10 |
+| 1 | Blitze | 201 | zwei Vollbildblitze je Tick, Wanderblitz, alle bei C = 36 |
+| 2 | Feuerschlangen | 228 | drei Lissajous-Schlangen, Funken an jedem Gegner, alle bei C = 36 |
+| 3 | Bildbruch | 5n + 96 | Hintergrund −1, Streifenversatz, Gegner k bei t = 5k + 49 |
+| 4 | Funkenregen | 201 | Striche aus allen Gegnern und Streifenversatz bis C = 81, alle bei C = 36 |
+| 6 | Force-Jagd | 15 je Ziel + 41 (ohne Ziel 31) | Kugel fliegt 15 Ticks je Ziel an, Tod → Zustand 1 |
+| 7 | Schwarze Sonne | 251 | Hintergrund −2 (weiß), wachsende schwarze Scheibe, alle bei C = 70 |
+| 8 | Durchflug | Ausflug + 9 je Ziel + 21 | das Schiff rast in 9 Ticks durch jedes Ziel, dann Rückflug |
+| 5, ≥ 9 | Zielsuch-Schüsse | bis 50 nach dem letzten Treffer | Fadenkreuz, Schuss mit Kosinus-Einschwingen, Tod → Zustand 2 |
+
+**Gegner:** am ersten Tick alle Slots bis zum höchsten in die Zustandsmaschine,
+wählbare (`novaImmune = 0`, aktiv) in **Zustand 0** (nur gezeichnet, ohne
+Aufblitzen), die übrigen in **Zustand −1** (weder bewegt noch gezeichnet —
+nova-immune verschwinden und tauchen am Ende an derselben Stelle auf). Jeder
+Treffer zieht pauschal 10000 von der Gesamt-HP ab (Teile unberührt), der Tod
+gibt die Gesamtpunkte mit Popup an den Auslöser (keine Kombo) und ist meist
+`KillEnemy` ohne Emitterabbruch (die Waffen feuern nach der Nova ihre Salven
+zu Ende). **Zustand 2** (40 Ticks): im ersten Tick je Teil mit Kontur > 30 × 30
+Glitzer-Fragmente (3 `Rnd` je Stück, Anzahl aus der BMP-Größe) und die Emitter
+weg, bei 40 zerplatzt jedes Teil über seinem Quellrechteck. Am Ende laufen alle
+aktiven Gegner normal weiter; wer mit HP ≤ 0 noch in Zustand 1/2 war, zerstört
+sich im nächsten Tick selbst.
+
+**Mitten im Tick:** Im Auslöse-Tick liefen Zeitleiste, Steuerung, Schüsse und
+Gegner noch; ab `SpielNova` ruhen schon Gegnerschüsse, Ebene 6, Kontakt und
+Abblende. Im End-Tick laufen diese wieder, ab dem Folgetick alles. Der Spieler
+ist damit während der Nova unverwundbar; `Me.584` (Tick) steht.
+
+**Bild:** Hintergrund −1 rgba(1, Rnd/2, 0) (1 `Rnd` je Tick, früh im Tick),
+−2 weiß; Overlays A/B wie beim Boss; `Blenden` (C = 1) als weißer Blitz über
+`blur3`. *Näherungen:* Das Original flippt bei Hintergrund ≤ 0 nicht und
+übermalt das stehende Bild je Tick mit 10 % (Nachzieh-Spuren); der Port füllt
+mit der Endfarbe. Den Bildbruch (Varianten 3/4, `BltFast` des Backbuffers auf
+sich selbst, senkrechte Streifen ±5 px mit einem Fehler bei den Zielkoordinaten,
+dann waagerechte ±10 px) spielt der Renderer als Kopie des Spielfelds ab
+(`NovaScreen.ts`), ohne das Ansammeln über die Ticks; die `Rnd` laufen exakt.
+Die Sperre `B48[0].5C` (nur `SpielSpezial`) fehlt im Port.
 
 ## Gegner-Instanz (`[0x588110]`, 101 × 0xF0)
 
@@ -332,8 +409,8 @@ sichtbar/lebt, +0x48 Punkte (`CInt(hitPoints)`), +0x4C Feuerzähler,
 +0x50…+0x5C Routenzustand (ip, vx, vy, Warten), +0x60 Lokale, +0x80
 Routentempo (1,0), +0x84 Aufblitzen (Ticks).
 
-Todeszustände (`+0xE4`): 0 eingefroren (Nova), 1 und 2 besondere
-Spielerzustände, 3 Trümmer (`wreckGroup`), 4 Boss, 5 explosiv
+Todeszustände (`+0xE4`): −1 versteckt (Nova), 0 eingefroren (Nova), 1
+Spaltung (Beam), 2 Nova-Tod, 3 Trümmer (`wreckGroup`), 4 Boss, 5 explosiv
 (`explosionSpec`, nach 15 Ticks), 6 normale Explosion (Punkte, Kombo + 1),
 7 Kettenexplosion (`bigDeath`).
 

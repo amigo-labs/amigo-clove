@@ -118,6 +118,8 @@ export const DRAW_SLOTS = [
   "shots1",
   /** Beam (`SpielBeam`, nach den Emittern). */
   "beam",
+  /** Super-Nova (`SpielNova`, nach dem Beam). */
+  "nova",
   /** Kleine Partikel Ebene 1 (nach der Landschaft). */
   "sparks1",
   "big",

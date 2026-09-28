@@ -35,6 +35,7 @@ import {
   killCompanions,
   moveParticles,
   newCompanionKeys,
+  nextParticle,
   pickupCompanion,
   resetParticles,
   stepForce,
@@ -52,6 +53,7 @@ import {
   type WeaponWorld,
 } from "./weapons";
 import { COS_DEG, SIN_DEG, VbRnd, cint, degIndex, f32, idiv, vbInt, winkelInGrad } from "./vb";
+import { newNovaState, novaBackground, novaFlash, stepNova, type NovaWorld } from "./nova";
 
 /**
  * Weltzustand eines DoveZ-Levels und der Tick in der Reihenfolge von
@@ -241,8 +243,10 @@ export class World {
   private readonly beamShared = newBeamShared();
   /** Option „Force-Modus-Taste wirkt als Beamwechsel“ (`Me.512 = 0`). */
   qToggles = true;
-  /** Super-Nova läuft (`Me.D6C`); folgt mit der Nova. */
+  /** Super-Nova läuft (`Me.D6C`); schaltet mitten im Tick (`SpielNova`, `nova.ts`). */
   nova = false;
+  /** Ablauf der Super-Nova (Zähler, Variante, Arbeitsbereich, Bildbruch). */
+  readonly novaState = newNovaState();
   /** Kombo-Multiplikator (`Me.59C[p]`), -Treffer (`Me.5B8[p]`), -Bonus (`Me.5D4[p]`). */
   readonly combo = [1, 1];
   readonly comboHits = [0, 0];
@@ -677,6 +681,34 @@ export class World {
 
   private resetCombo(p: number): void {
     resetCombo({ mult: this.combo, hits: this.comboHits, bonus: this.comboBonus }, p);
+  }
+
+  private novaWorld(): NovaWorld {
+    return {
+      rnd: this.rnd,
+      fx: this.fx,
+      out: this.fx.lists.nova,
+      players: this.players,
+      playersMinus1: this.playersMinus1,
+      inputs: this.inputs,
+      particles: this.particles,
+      force: this.force,
+      enemies: this.enemies,
+      shots: this.fire.shots,
+      overlays: this.overlays,
+      running: () => this.nova,
+      setRunning: (on) => {
+        this.nova = on;
+      },
+      background: (v) => this.bossHooks.background(v),
+      nextParticle: (p) => nextParticle(this.companionWorld(), p),
+      addPoints: (points, x, y, vy, player) => this.addPoints(points, x, y, vy, player),
+      sound: (name) => this.sfx(name),
+      soundOff: () => this.soundOff(),
+      noFlash: () => {
+        this.noFlash = true;
+      },
+    };
   }
 
   private beamWorld(): BeamWorld {
@@ -1309,7 +1341,12 @@ export class World {
     }
   }
 
-  /** Ein Tick; `inputs` je Spieler. */
+  /**
+   * Ein Tick; `inputs` je Spieler. Die elf `Me.D6C`-Prüfungen von `SpielLoop`
+   * fragen `nova` jeweils an ihrer Stelle ab: die Nova schaltet mitten im Tick
+   * (Stelle 15), im Auslöse-Tick ruhen daher schon Gegnerschüsse bis Kontakt,
+   * im End-Tick laufen sie wieder.
+   */
   step(inputs: readonly PlayerInput[] = []): void {
     if (this.state !== 0) return;
     this.inputs = inputs;
@@ -1317,58 +1354,82 @@ export class World {
     this.noFlash = false;
     for (const p of this.players) p.startEnergy = p.energy;
     this.level.groups.forEach((g, i) => doAni(g, this.groupFrames[i]!));
-    this.musicVolume = Math.min(100, Math.max(0, this.musicVolume + this.musicStep));
-    if (this.tick >= this.level.levelLength - 50) this.musicStep = -2;
-    this.timeline();
+    // [1] Musik-Fade, Zeitleiste
+    if (!this.nova) {
+      this.musicVolume = Math.min(100, Math.max(0, this.musicVolume + this.musicStep));
+      if (this.tick >= this.level.levelLength - 50) this.musicStep = -2;
+      this.timeline();
+    }
     if (this.background === 1) {
       this.backgroundX = f32(this.backgroundX - this.layers[0]!.speed);
       if (this.backgroundX <= -SCREEN_W) this.backgroundX = f32(this.backgroundX + SCREEN_W);
     }
-    for (const l of [0, 1, 2, 5]) {
-      this.layers[l]!.move(this.surfaces, this.groupFrames);
-      this.anims.move(l, this.level, this.layers);
+    novaBackground(this.novaState, this.rnd, this.background);
+    // [2] Ebenen 0, 1, 2, 5, Checkpoint, Steuerung
+    if (!this.nova) {
+      for (const l of [0, 1, 2, 5]) {
+        this.layers[l]!.move(this.surfaces, this.groupFrames);
+        this.anims.move(l, this.level, this.layers);
+      }
+      this.checkpointPass(0);
+      const pw = this.playerWorld();
+      for (const p of this.players) updatePlayer(p, inputs[p.index] ?? NO_INPUT, pw);
+      if (this.players.some((p) => p.exitState >= 1)) this.afterimages = true;
     }
-    this.checkpointPass(0);
-    const pw = this.playerWorld();
-    for (const p of this.players) updatePlayer(p, inputs[p.index] ?? NO_INPUT, pw);
-    if (this.players.some((p) => p.exitState >= 1)) this.afterimages = true;
     moveParticles(this.companionWorld(), this.companionKeys);
-    fireWeapons(this.weaponWorld(), this.fireState, inputs);
-    moveShots(this.playerShots[0], 0, this.shotHost(), this.shotBox, this.fx.lists.shots0);
+    // [3] Abfeuern, Spielerschüsse Ebene 0
+    if (!this.nova) {
+      fireWeapons(this.weaponWorld(), this.fireState, inputs);
+      moveShots(this.playerShots[0], 0, this.shotHost(), this.shotBox, this.fx.lists.shots0);
+    }
     this.fx.moveSparks(0, this.level.gravity);
-    this.moveSpecials();
+    // [4] Power-ups
+    if (!this.nova) this.moveSpecials();
     this.moveDove();
     this.enemies.step(this.makeEnemyWorld());
     this.fx.moveBubbles(this.effectWorld(), this.background !== 0);
-    this.anims.move(4, this.level, this.layers);
-    this.layers[3]!.move(this.surfaces, this.groupFrames);
+    // [5] Animationen 4, Landschaft
+    if (!this.nova) {
+      this.anims.move(4, this.level, this.layers);
+      this.layers[3]!.move(this.surfaces, this.groupFrames);
+    }
     stepParticles(this.companionWorld(), this.fx.lists.particles);
-    moveShots(this.playerShots[1], 1, this.shotHost(), this.shotBox, this.fx.lists.shots1);
-    this.anims.move(3, this.level, this.layers);
-    const sw = this.shotWorld();
-    this.fire.stepEmitters(sw, {
-      muzzle: (enemy, part) => {
-        const e = this.enemies.items[enemy];
-        const p = e?.parts[part];
-        if (!e?.alive || !p?.visible) return undefined;
-        const r = this.enemies.surface(p)?.rect ?? { w: 0, h: 0 };
-        const [x, y] = this.enemies.partPos(e, p);
-        return { cx: x + r.w / 2, cy: y + r.h / 2, w: r.w, h: r.h, rotation: p.rotation };
-      },
-    });
-    stepBeams(this.beamWorld());
+    // [6] Spielerschüsse Ebene 1, Animationen 3, Emitter, Beam
+    if (!this.nova) {
+      moveShots(this.playerShots[1], 1, this.shotHost(), this.shotBox, this.fx.lists.shots1);
+      this.anims.move(3, this.level, this.layers);
+      this.fire.stepEmitters(this.shotWorld(), {
+        muzzle: (enemy, part) => {
+          // nur das Teil zählt (0x4AA17C): Waffen von Nova-Opfern feuern ihre Salven zu Ende
+          const e = this.enemies.items[enemy];
+          const p = e?.parts[part];
+          if (!e || !p?.visible) return undefined;
+          const r = this.enemies.surface(p)?.rect ?? { w: 0, h: 0 };
+          const [x, y] = this.enemies.partPos(e, p);
+          return { cx: x + r.w / 2, cy: y + r.h / 2, w: r.w, h: r.h, rotation: p.rotation };
+        },
+      });
+      stepBeams(this.beamWorld());
+    }
+    stepNova(this.novaWorld(), this.novaState);
     this.fx.moveSparks(1, this.level.gravity);
     this.fx.moveBig(this.effectWorld());
-    this.fire.stepShots(sw);
+    // [7] Gegnerschüsse
+    if (!this.nova) this.fire.stepShots(this.shotWorld());
     stepForce(this.companionWorld(), this.companionKeys, this.fx.lists.force);
     this.fx.movePopups();
-    this.checkpointPass(1);
-    this.layers[6]!.move(this.surfaces, this.groupFrames);
-    this.anims.move(6, this.level, this.layers);
+    // [8] Checkpoint, Ebene 6
+    if (!this.nova) {
+      this.checkpointPass(1);
+      this.layers[6]!.move(this.surfaces, this.groupFrames);
+      this.anims.move(6, this.level, this.layers);
+    }
     this.fx.stepShake();
-    this.contact();
+    // [10] Kontakt ([9] Schrifteffekt und [11] Abblende: Renderer)
+    if (!this.nova) this.contact();
     this.stepOverlays();
     this.flash();
+    novaFlash(this.novaState, this.fx.lists.flash, this.noFlash);
     this.display();
   }
 
