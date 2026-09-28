@@ -1,4 +1,4 @@
-import type { DovezLevel, DovezTimelineEntry } from "@clove/formats";
+import type { DovezLevel, DovezTimelineEntry, RadioTexts } from "@clove/formats";
 import { AnimPool, prepareAnim } from "./anims";
 import { Effects, type EffectWorld } from "./effects";
 import type { FrameState } from "./doAni";
@@ -18,6 +18,7 @@ import {
   type PlayerWorld,
 } from "./player";
 import { ShotLayer, firePrimary, moveShots, type ShotHost } from "./playerShots";
+import { Radio } from "./radio";
 import { Op, type RouteEffect } from "./route";
 import { collectShared, deepClone } from "./snapshot";
 import { buildSurfaces, spanHit, type SpriteSource, type Surface } from "./surfaces";
@@ -94,13 +95,17 @@ export type WorldEvent =
       readonly sound: number;
       readonly mode: number;
       readonly rewind: boolean;
+      /** Schusston einer Gegnerwaffe: Effektpegel statt Sprachpegel. */
+      readonly sfx?: boolean;
     }
   | { readonly kind: "stopSound"; readonly sound: number }
   /** Effekt-Ton der Engine aus `Sound.d2p` (`sound/<name>`), SFX-Pegel. */
   | { readonly kind: "sfx"; readonly name: string }
   /** `SpielSoundOFF`: Schleifen und alle Level-Töne aus. */
   | { readonly kind: "soundOff" }
-  | { readonly kind: "radio"; readonly radio: number }
+  /** Funkstimme `voice/<Level>/<wav>` (Sprachpegel) bzw. ihr Abbruch. */
+  | { readonly kind: "voice"; readonly wav: string }
+  | { readonly kind: "voiceStop" }
   | { readonly kind: "effect"; readonly effect: RouteEffect }
   | {
       readonly kind: "pickup";
@@ -180,13 +185,22 @@ export class World {
   score = [0, 0];
   /** Effekte (Partikel, Popups, Wackeln) und ihre Zeichenlisten. */
   readonly fx: Effects;
+  /** Funk und Laufband. */
+  readonly radio: Radio;
   /** Abschüsse (`P[0].+54`, immer Spieler 1). */
   kills = 0;
 
   constructor(
     readonly level: DovezLevel,
     sprites: SpriteSource,
-    opts: { players?: 1 | 2; seed?: number; startTick?: number; ship?: 0 | 1 } = {},
+    opts: {
+      players?: 1 | 2;
+      seed?: number;
+      startTick?: number;
+      ship?: 0 | 1;
+      /** Funktexte in der Spielsprache (`radio/<Level>`); ohne: kein Funk. */
+      radioTexts?: RadioTexts;
+    } = {},
   ) {
     this.surfaces = buildSurfaces(level, sprites);
     this.layers = level.layers.map((l, i) => new LayerState(l.scrollSpeed, TILE_CAPACITY[i] ?? 0));
@@ -200,6 +214,12 @@ export class World {
     this.fire = new EnemyFire(level, this.surfaces);
     this.fx = new Effects(this.rnd, level.waterHeight);
     this.fx.style = this.background === 3 ? 1 : level.weatherParticles >= 500 ? 3 : 0;
+    this.radio = new Radio(level.radio, opts.radioTexts);
+    // `AddGegnerS`: Schusston des Typs beim Abschuss
+    this.fire.onFire = (shot) => {
+      const sound = level.shots[shot.shotType]?.sound ?? -1;
+      if (sound >= 0) this.events.push({ kind: "sound", sound, mode: 0, rewind: true, sfx: true });
+    };
     const players = this.playersMinus1 + 1;
     const ship = opts.ship ?? 0;
     this.players = Array.from(
@@ -262,7 +282,7 @@ export class World {
       else if (e.kind === 1) {
         if (e.p2 === 2) this.events.push({ kind: "stopSound", sound: e.p1 });
         else this.events.push({ kind: "sound", sound: e.p1, mode: e.p2, rewind: false });
-      } else if (e.kind === 2) this.events.push({ kind: "radio", radio: e.p1 });
+      } else if (e.kind === 2) this.radio.trigger(e.p1);
       return;
     }
     switch (e.kind) {
@@ -671,6 +691,7 @@ export class World {
     Object.assign(l0, { highWater: -1, firstFree: 0, cursor: 0 });
     this.checkpoint.active = false;
     this.fx.shake = 0;
+    this.radio.reset(this.events);
     // LoadCheckpoint (die Kopie wird verbraucht; gleich danach wird neu gesichert)
     this.tick = s.tick;
     Object.assign(this.enemies, s.enemies);
@@ -893,7 +914,7 @@ export class World {
         this.events.push({ kind: "stopSound", sound: cint(a[0] ?? 0) });
         return;
       case Op.AddFunction:
-        this.events.push({ kind: "radio", radio: cint(a[0] ?? 0) });
+        this.radio.trigger(cint(a[0] ?? 0));
         return;
       default:
         this.events.push({ kind: "effect", effect: fx });
@@ -998,6 +1019,8 @@ export class World {
                             : 0;
       this.shownScore[p] = (this.shownScore[p] ?? 0) + step;
     }
+    this.radio.step(this.rnd, this.events, this.fx.lists.radio);
+    this.radio.stepTicker();
   }
 
   /** Wirkung eines Power-ups (Waffen-Slots und Satelliten folgen mit den Spielerwaffen). */

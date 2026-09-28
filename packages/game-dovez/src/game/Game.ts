@@ -1,5 +1,6 @@
 import { FixedStepLoop, type AtlasJson, type GameHost, type GameInstance } from "@clove/core";
 import { TextureRegistry, createScreen } from "@clove/pixi-kit";
+import { DovezAudio } from "../audio/DovezAudio";
 import { loadLevelPack } from "../data/LevelPack";
 import { Renderer } from "../render/Renderer";
 import { NO_INPUT, type PlayerInput } from "../sim/player";
@@ -8,7 +9,8 @@ import { TICK_MS, World } from "../sim/world";
 
 /**
  * Ein DoveZ-Level spielen (M8, erster Schnitt): Skript, Atlanten und
- * Konturen laden, Welt im 16-ms-Takt simulieren, zeichnen. Noch ohne
+ * Konturen laden, Welt im 16-ms-Takt simulieren, zeichnen, Ton und Funk
+ * (Texte in der Sprache der Shell, Stimmen nur englisch). Noch ohne
  * Kampagne und Continue-Bildschirm.
  */
 
@@ -61,7 +63,17 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
       return pack.contours.subarray(o, o + 4 + h * 2);
     },
   };
-  const world = new World(pack.level, sprites, { startTick: opts.from, ship: opts.ship });
+  const german = host.locale.toLowerCase().startsWith("de");
+  const radioTexts = pack.radio ? (german ? pack.radio.de : pack.radio.en) : undefined;
+  const world = new World(pack.level, sprites, {
+    startTick: opts.from,
+    ship: opts.ship,
+    ...(radioTexts ? { radioTexts } : {}),
+  });
+  const audio = host.audio
+    ? await DovezAudio.create(host.audio, host.assets, pack.slug).catch(() => undefined)
+    : undefined;
+  audio?.playMusic(pack.level.music);
   const renderer = new Renderer(textures, world, atlases);
   app.stage.addChild(renderer.root);
   const loop = new FixedStepLoop(TICK_MS);
@@ -78,11 +90,12 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
       if (opts.invincible)
         for (const p of world.players) p.invulnerable = Math.max(p.invulnerable, 2);
       world.step([input, NO_INPUT]);
-      world.events.length = 0;
       // Tod: Neustart am Checkpoint; ohne Leben ist vorerst Schluss (Continue folgt)
       if (world.state === 1 && !world.respawn()) over = true;
       else if (world.state === 2) over = true;
     }
+    audio?.update(world);
+    world.events.length = 0;
     renderer.draw();
     app.render();
   };
@@ -91,6 +104,7 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
   return {
     dispose() {
       app.ticker.remove(frame);
+      audio?.dispose();
       renderer.destroy();
       app.destroy({ removeView: false }, { children: true });
       textures.destroy();

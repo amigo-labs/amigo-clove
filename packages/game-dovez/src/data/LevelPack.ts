@@ -1,5 +1,5 @@
 import type { AssetStore, AtlasJson, AtlasSprite } from "@clove/core";
-import { dovezSlug, parseDovezLevelDat, type DovezLevel } from "@clove/formats";
+import { dovezSlug, parseDovezLevelDat, type DovezLevel, type RadioTexts } from "@clove/formats";
 
 /**
  * Alles, was ein Level zum Spielen braucht: das geparste Skript, der Atlas
@@ -13,6 +13,8 @@ export interface LevelPack {
   readonly atlas: AtlasJson;
   /** Konturen des Pakets (Int16, Layout siehe `AtlasJson.contours`). */
   readonly contours: Int16Array;
+  /** Funktexte je Sprache (`radio/<slug>`), fehlt bei Levels ohne Funk. */
+  readonly radio: { readonly de: RadioTexts; readonly en: RadioTexts } | undefined;
 }
 
 /** Schlüssel eines BMP im Atlas (klein, ohne Endung). */
@@ -38,7 +40,11 @@ export async function loadLevelPack(assets: AssetStore, slug: string): Promise<L
       contourBytes.byteOffset + contourBytes.byteLength,
     ),
   );
-  return { slug, level: parseDovezLevelDat(bytes), atlasId, atlas, contours };
+  const radioId = `radio/${slug}`;
+  const radio = assets.has(radioId)
+    ? await assets.json<{ de: RadioTexts; en: RadioTexts }>(radioId)
+    : undefined;
+  return { slug, level: parseDovezLevelDat(bytes), atlasId, atlas, contours, radio };
 }
 
 export function atlasSprite(pack: LevelPack, bmp: string): AtlasSprite | undefined {

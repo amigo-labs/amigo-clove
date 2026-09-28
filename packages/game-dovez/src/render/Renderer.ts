@@ -1,6 +1,6 @@
 import type { AtlasJson, AtlasSprite } from "@clove/core";
 import type { TextureRegistry } from "@clove/pixi-kit";
-import { Container, Graphics, Rectangle, Texture } from "pixi.js";
+import { Container, Graphics, Rectangle, Text, Texture } from "pixi.js";
 import type { DrawList, DrawSlot } from "../sim/effects";
 import type { Enemy } from "../sim/enemies";
 import { LAYER_COUNT } from "../sim/layers";
@@ -70,6 +70,11 @@ export class Renderer {
   private readonly overlay = new Graphics();
   /** HUD (`SpielDisplay`) über dem Spielfeld, nicht gewackelt, nicht abgeblendet. */
   private readonly hud: SpriteBatch;
+  /** Laufband (`ShowMSGS`): Courier 12, RGB(64, 255, 64), GDI nach dem HUD. */
+  private readonly ticker = new Text({
+    text: "",
+    style: { fill: 0x40ff40, fontSize: 12, fontFamily: "Courier New, Courier, monospace" },
+  });
   private readonly bgFill = new Graphics();
   /** Abblende-Schwarz über dem Spielfeld (Alpha je Frame). */
   private readonly fade = new Graphics().rect(0, 0, 800, 550).fill(0x000000);
@@ -124,6 +129,10 @@ export class Renderer {
     const hud = new Container();
     this.root.addChild(hud);
     this.hud = new SpriteBatch(hud);
+    this.ticker.position.set(575, 552);
+    const clip = new Graphics().rect(575, 540, 225, 30).fill(0xffffff);
+    this.ticker.mask = clip;
+    this.root.addChild(clip, this.ticker);
   }
 
   /** Alle Seiten-IDs der Atlanten. */
@@ -183,12 +192,16 @@ export class Renderer {
     this.drawPlayers();
     this.drawEnemies();
     this.drawEnemyShots();
-    for (const [slot, list] of Object.entries(w.fx.lists)) this.drawList(slot as DrawSlot, list);
+    for (const [slot, list] of Object.entries(w.fx.lists)) {
+      if (slot !== "radio") this.drawList(this.batch(`fx:${slot as DrawSlot}`), list);
+    }
     this.field.position.set(-w.fx.shakeX, -w.fx.shakeY);
     // Abblenden in den letzten 50 Ticks
     const left = w.level.levelLength - w.tick;
     this.fade.alpha = left < 50 ? (50 - left) / 50 : 0;
     this.drawHud();
+    this.drawList(this.hud, w.fx.lists.radio);
+    this.ticker.text = w.radio.ticker;
     for (const b of this.batches.values()) b.end();
     this.hud.end();
   }
@@ -294,10 +307,13 @@ export class Renderer {
   }
 
   /** Zeichenliste der Effekte: gestreckte Rechtecke und Balken-Linien. */
-  private drawList(slot: DrawSlot, list: DrawList): void {
-    const b = this.batch(`fx:${slot}`);
+  private drawList(b: SpriteBatch, list: DrawList): void {
     for (const q of list.quads) {
-      const tex = q.surface ? this.surfaceTexture(q.surface) : this.texture(q.key);
+      const tex = q.surface
+        ? this.surfaceTexture(q.surface)
+        : q.src
+          ? this.texture(q.key, ...q.src)
+          : this.texture(q.key);
       if (!tex) continue;
       const fw = tex.frame.width;
       const fh = tex.frame.height;

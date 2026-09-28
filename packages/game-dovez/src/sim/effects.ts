@@ -27,6 +27,8 @@ export interface Quad {
   /** Atlas-Schlüssel, oder `surface` für ein Gruppenbild. */
   key: string;
   surface?: Surface | undefined;
+  /** Ausschnitt im Bild (x, y, Breite, Höhe), sonst das ganze Bild. */
+  src?: readonly [number, number, number, number] | undefined;
   x1: number;
   y1: number;
   x2: number;
@@ -74,8 +76,9 @@ export class DrawList {
     additive = false,
     rot = 0,
     surface?: Surface,
+    src?: readonly [number, number, number, number],
   ): void {
-    this.quads.push({ key, surface, x1, y1, x2, y2, r, g, b, a, rot, additive });
+    this.quads.push({ key, surface, src, x1, y1, x2, y2, r, g, b, a, rot, additive });
   }
 
   line(
@@ -111,6 +114,8 @@ export const DRAW_SLOTS = [
   "gate1",
   /** Weißer Blitz nach Checkpoint und Wiedergeburt. */
   "flash",
+  /** Funkfenster im HUD (zeichnet der Renderer mit dem HUD). */
+  "radio",
 ] as const;
 export type DrawSlot = (typeof DRAW_SLOTS)[number];
 
