@@ -9,7 +9,7 @@ import {
   Texture,
   type Renderer as PixiRenderer,
 } from "pixi.js";
-import type { DrawList, DrawSlot } from "../sim/effects";
+import type { DrawList, DrawSlot, Quad } from "../sim/effects";
 import type { EnvSlot } from "../sim/envDraw";
 import { DeathState, type Enemy } from "../sim/enemies";
 import { LAYER_COUNT } from "../sim/layers";
@@ -17,6 +17,7 @@ import type { Surface } from "../sim/surfaces";
 import { cint, idiv } from "../sim/vb";
 import type { World } from "../sim/world";
 import { Compositor, type PlanItem } from "./Compositor";
+import { paintList } from "./paintList";
 import { SpriteBatch } from "./SpriteBatch";
 import type { StripTexture } from "./StripMesh";
 
@@ -75,8 +76,6 @@ const PARTICLE_SLOTS = [
 
 /** Balken-Textur (`Balken.bmp`, 128²) für `Linie` und `Blitz`. */
 const BAR = "balken";
-/** Farbverlauf einer Linie in so vielen Stücken. */
-const GRADIENT_STEPS = 4;
 
 /** Zeichenstellen in der Reihenfolge von `SpielLoop`; `env:*` sind Umgebungslisten. */
 const ORDER = [
@@ -155,7 +154,9 @@ export class Renderer {
   /** Abblende-Schwarz über dem Spielfeld (Alpha je Frame). */
   private readonly fade = new Graphics().rect(0, 0, 800, 550).fill(0x000000);
   private frameNo = 0;
-  /** Bildbruch der Super-Nova (braucht den Pixi-Renderer für die Zwischenbilder). */
+  /** Bildschirm-Overlays (Speicherbildschirm): GDI-Texte unter, Logo über der Abblende. */
+  readonly underFade = new Container();
+  readonly overFade = new Container();
 
   constructor(
     private readonly textures: TextureRegistry,
@@ -174,7 +175,7 @@ export class Renderer {
       this.layers.set(name, c);
       this.batches.set(name, new SpriteBatch(c));
     }
-    this.root.addChild(this.fade);
+    this.root.addChild(this.underFade, this.fade, this.overFade);
     const hud = new Container();
     this.root.addChild(hud);
     this.hud = new SpriteBatch(hud);
@@ -247,9 +248,32 @@ export class Renderer {
     // Abblenden in den letzten 50 Ticks
     const left = w.level.levelLength - w.tick;
     this.fade.alpha = left < 50 && !w.nova ? (50 - left) / 50 : 0;
+    this.fade.scale.y = 1;
     this.drawHud();
     this.drawCombo();
     this.drawList(this.hud, w.fx.lists.radio);
+    this.ticker.text = w.radio.ticker;
+    for (const b of this.batches.values()) b.end();
+    this.hud.end();
+    this.compose();
+  }
+
+  /**
+   * Speicherbildschirm (`SaveGame`): nur `SpielMoveHintergrund` und das HUD,
+   * dazu Schwarz mit `fade` über dem Spielfeld (unter `overFade` und HUD).
+   */
+  drawBackdrop(fade: number): void {
+    const w = this.world;
+    if (w.env.frame === this.lastFrame) return;
+    this.lastFrame = w.env.frame;
+    this.frameNo++;
+    for (const b of this.batches.values()) b.begin();
+    this.hud.begin();
+    this.drawHint();
+    this.screen.position.set(0, 0);
+    this.fade.alpha = Math.max(0, Math.min(1, fade));
+    this.fade.scale.y = 600 / 550;
+    this.drawHud();
     this.ticker.text = w.radio.ticker;
     for (const b of this.batches.values()) b.end();
     this.hud.end();
@@ -435,60 +459,21 @@ export class Renderer {
 
   /** Zeichenliste der Effekte: gestreckte Rechtecke und Balken-Linien. */
   private drawList(b: SpriteBatch, list: DrawList): void {
-    for (const q of list.quads) {
-      const tex = q.surface
-        ? q.src
-          ? this.texture(
-              q.surface.key,
-              q.surface.rect.x + q.src[0],
-              q.surface.rect.y + q.src[1],
-              q.src[2],
-              q.src[3],
-            )
-          : this.surfaceTexture(q.surface)
-        : q.src
-          ? this.texture(q.key, ...q.src)
-          : this.texture(q.key);
-      if (!tex) continue;
-      const fw = tex.frame.width;
-      const fh = tex.frame.height;
-      b.put(tex, (q.x1 + q.x2) / 2 - fw / 2, (q.y1 + q.y2) / 2 - fh / 2, {
-        red: q.r,
-        green: q.g,
-        blue: q.b,
-        alpha: q.a,
-        scaleX: (q.x2 - q.x1) / fw,
-        scaleY: (q.y2 - q.y1) / fh,
-        rotation: q.rot,
-        additive: q.additive,
-      });
-    }
-    const bar = this.texture(BAR);
-    if (!bar) return;
-    for (const l of list.segments) {
-      const dx = l.x2 - l.x1;
-      const dy = l.y2 - l.y1;
-      const len = Math.hypot(dx, dy);
-      if (len === 0) continue;
-      const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
-      const step = len / GRADIENT_STEPS;
-      for (let k = 0; k < GRADIENT_STEPS; k++) {
-        const f = (k + 0.5) / GRADIENT_STEPS;
-        const mix = (i: 0 | 1 | 2 | 3) => l.c1[i] + (l.c2[i] - l.c1[i]) * f;
-        const cx = l.x1 + dx * f;
-        const cy = l.y1 + dy * f;
-        b.put(bar, cx - bar.frame.width / 2, cy - bar.frame.height / 2, {
-          red: mix(0),
-          green: mix(1),
-          blue: mix(2),
-          alpha: mix(3),
-          scaleX: step / bar.frame.width,
-          scaleY: (2 * l.w) / bar.frame.height,
-          rotation: angle,
-          additive: l.additive,
-        });
-      }
-    }
+    paintList(b, list, (q) => this.quadTexture(q), this.texture(BAR));
+  }
+
+  private quadTexture(q: Quad): Texture | undefined {
+    if (q.surface)
+      return q.src
+        ? this.texture(
+            q.surface.key,
+            q.surface.rect.x + q.src[0],
+            q.surface.rect.y + q.src[1],
+            q.src[2],
+            q.src[3],
+          )
+        : this.surfaceTexture(q.surface);
+    return q.src ? this.texture(q.key, ...q.src) : this.texture(q.key);
   }
 
   private drawEnemyShots(): void {
