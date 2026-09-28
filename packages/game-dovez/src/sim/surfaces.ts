@@ -25,6 +25,9 @@ export interface Surface {
   readonly maxX: number;
   /** Je BMP-Zeile `left, right`; leer `-1, -1` (+0xA0/+0xA4). */
   readonly spans: Int16Array;
+  /** Größe des ganzen BMP (+0x4/+0x6), nicht des Ausschnitts. */
+  readonly bmpW?: number;
+  readonly bmpH?: number;
 }
 
 export interface SpriteSource {
@@ -78,6 +81,8 @@ export function buildSurfaces(level: DovezLevel, source: SpriteSource): Surface[
         bottomRow: c ? Math.min(c[3] as number, rawBottom) : -1,
         ...spanExtent(spans),
         spans,
+        bmpW: size.w,
+        bmpH: size.h,
       };
     }),
   );

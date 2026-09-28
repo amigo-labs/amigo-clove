@@ -107,6 +107,8 @@ export const DRAW_SLOTS = [
   "shots0",
   /** Kleine Partikel Ebene 0 (vor Schiff und Gegnern). */
   "sparks0",
+  /** Schiffe mit Schild, Tönung und Blitzen (`SpielMoveDove`). */
+  "ship",
   /** Linien, Trümmer und Glut aus den Todeszuständen (`SpielMoveEnemy`). */
   "enemies",
   "bubbles",
@@ -114,6 +116,10 @@ export const DRAW_SLOTS = [
   "particles",
   /** Spielerschüsse Ebene 1 (`SpielMoveSchuss(1)`, über der Landschaft). */
   "shots1",
+  /** Beam (`SpielBeam`, nach den Emittern). */
+  "beam",
+  /** Super-Nova (`SpielNova`, nach dem Beam). */
+  "nova",
   /** Kleine Partikel Ebene 1 (nach der Landschaft). */
   "sparks1",
   "big",

@@ -1,12 +1,20 @@
 import type { AtlasJson, AtlasSprite } from "@clove/core";
 import type { TextureRegistry } from "@clove/pixi-kit";
-import { Container, Graphics, Rectangle, Text, Texture } from "pixi.js";
+import {
+  Container,
+  Graphics,
+  Rectangle,
+  Text,
+  Texture,
+  type Renderer as PixiRenderer,
+} from "pixi.js";
 import type { DrawList, DrawSlot } from "../sim/effects";
 import { DeathState, type Enemy } from "../sim/enemies";
 import { LAYER_COUNT } from "../sim/layers";
 import type { Surface } from "../sim/surfaces";
-import { idiv } from "../sim/vb";
+import { cint, idiv } from "../sim/vb";
 import type { World } from "../sim/world";
+import { NovaScreen } from "./NovaScreen";
 import { SpriteBatch } from "./SpriteBatch";
 
 /**
@@ -26,6 +34,7 @@ interface AtlasRef {
 /** HUD-Positionen (links oben) je Element, 1 Spieler. */
 const HUD_1P = {
   score: [743, 578],
+  beam: [170, 578],
   energy: [152, 556],
   speed: [623, 565],
   power: [587, 566],
@@ -35,6 +44,7 @@ const HUD_1P = {
 const HUD_2P = [
   {
     score: [740, 565],
+    beam: [172, 560],
     energy: [158, 548],
     speed: [626, 565],
     power: [582, 566],
@@ -42,6 +52,7 @@ const HUD_2P = [
   },
   {
     score: [740, 581],
+    beam: [172, 586],
     energy: [158, 575],
     speed: [626, 581],
     power: [594, 583],
@@ -79,12 +90,15 @@ export class Renderer {
   /** Abblende-Schwarz über dem Spielfeld (Alpha je Frame). */
   private readonly fade = new Graphics().rect(0, 0, 800, 550).fill(0x000000);
   private frameNo = 0;
+  /** Bildbruch der Super-Nova (braucht den Pixi-Renderer für die Zwischenbilder). */
+  private readonly novaScreen: NovaScreen | undefined;
 
   constructor(
     private readonly textures: TextureRegistry,
     private readonly world: World,
     /** Level-Atlas zuerst, dann `spiel`, `standart`. */
     private readonly atlases: readonly AtlasRef[],
+    pixi?: PixiRenderer,
   ) {
     this.root.addChild(this.field);
     this.field.addChild(this.bgFill);
@@ -104,7 +118,7 @@ export class Renderer {
       "fx:shots0",
       "fx:sparks0",
       "specials",
-      "player",
+      "fx:ship",
       "enemies",
       "fx:enemies",
       "fx:bubbles",
@@ -113,6 +127,8 @@ export class Renderer {
       "fx:particles",
       "fx:shots1",
       "anim3",
+      "fx:beam",
+      "fx:nova",
       "fx:sparks1",
       "fx:big",
       "eshots",
@@ -128,6 +144,8 @@ export class Renderer {
       this.batches.set(name, new SpriteBatch(c));
     }
     this.field.addChild(this.overlay);
+    const nova = this.batches.get("fx:nova");
+    this.novaScreen = pixi && nova ? new NovaScreen(pixi, this.field, nova.layer) : undefined;
     this.root.addChild(this.fade);
     const hud = new Container();
     this.root.addChild(hud);
@@ -187,10 +205,10 @@ export class Renderer {
     this.hud.begin();
     this.overlay.clear();
     this.drawBackground();
+    this.drawNovaVeil();
     for (let l = 0; l < LAYER_COUNT; l++) this.drawTiles(l);
     for (let l = 0; l < LAYER_COUNT; l++) this.drawAnims(l);
     this.drawSpecials();
-    this.drawPlayers();
     this.drawEnemies();
     this.drawEnemyShots();
     for (const [slot, list] of Object.entries(w.fx.lists)) {
@@ -199,12 +217,14 @@ export class Renderer {
     this.field.position.set(-w.fx.shakeX, -w.fx.shakeY);
     // Abblenden in den letzten 50 Ticks
     const left = w.level.levelLength - w.tick;
-    this.fade.alpha = left < 50 ? (50 - left) / 50 : 0;
+    this.fade.alpha = left < 50 && !w.nova ? (50 - left) / 50 : 0;
     this.drawHud();
+    this.drawCombo();
     this.drawList(this.hud, w.fx.lists.radio);
     this.ticker.text = w.radio.ticker;
     for (const b of this.batches.values()) b.end();
     this.hud.end();
+    this.novaScreen?.apply(w.novaState.blits);
   }
 
   private drawBackground(): void {
@@ -220,6 +240,23 @@ export class Renderer {
     const x = Math.trunc(w.backgroundX);
     b.put(t, x, 0);
     if (x !== 0) b.put(t, x + 800, 0);
+  }
+
+  /**
+   * Schleier der Nova-Hintergründe (`SpielMoveHintergrund`): −1 `weiss`
+   * rgba(1, Rnd/2, 0, 0,1), −2 weiß. Das Original übermalt das stehende Bild
+   * je Tick mit 10 % (kein Flip bei Hintergrund ≤ 0, Nachzieh-Spuren); der
+   * Port füllt mit der Endfarbe (Näherung).
+   */
+  private drawNovaVeil(): void {
+    const w = this.world;
+    if (w.background !== -1 && w.background !== -2) return;
+    const g = w.background === -2 ? 255 : Math.round((w.novaState.bgRnd / 2) * 255);
+    const b = w.background === -2 ? 255 : 0;
+    this.bgFill
+      .clear()
+      .rect(0, 0, 800, 550)
+      .fill((255 << 16) | (g << 8) | b);
   }
 
   private drawTiles(l: number): void {
@@ -284,6 +321,8 @@ export class Renderer {
     const w = this.world;
     // Boss-Finale: die Teile zerplatzen bei T = 500 und werden danach nicht mehr gezeichnet
     if (e.inState && e.deathState === DeathState.boss && e.stateTimer > 500) return;
+    // während der Nova versteckt (Zustand −1)
+    if (e.inState && e.deathState === DeathState.hidden) return;
     for (const p of e.parts) {
       if (!p.visible) continue;
       const s = w.enemies.surface(p);
@@ -313,7 +352,15 @@ export class Renderer {
   private drawList(b: SpriteBatch, list: DrawList): void {
     for (const q of list.quads) {
       const tex = q.surface
-        ? this.surfaceTexture(q.surface)
+        ? q.src
+          ? this.texture(
+              q.surface.key,
+              q.surface.rect.x + q.src[0],
+              q.surface.rect.y + q.src[1],
+              q.src[2],
+              q.src[3],
+            )
+          : this.surfaceTexture(q.surface)
         : q.src
           ? this.texture(q.key, ...q.src)
           : this.texture(q.key);
@@ -404,26 +451,6 @@ export class Renderer {
     }
   }
 
-  private drawPlayers(): void {
-    const w = this.world;
-    const b = this.batch("player");
-    for (const p of w.players) {
-      if (!p.alive) continue;
-      if (p.invulnerable > 0 && p.invulnerable <= 10 && this.frameNo % 2 === 1) continue;
-      const tex = this.texture(`dove${p.shipType}${p.tilt + 1}${p.animFrame + 1}`);
-      if (!tex) continue;
-      b.put(tex, Math.floor(p.x), Math.floor(p.y));
-      if (p.invulnerable > 0)
-        b.put(tex, Math.floor(p.x), Math.floor(p.y), {
-          red: 0.3,
-          green: 1,
-          blue: 0.3,
-          alpha: 0.4,
-          additive: true,
-        });
-    }
-  }
-
   /** Atlas-Bild mit Farbschlüssel an (x, y), optional nur der Ausschnitt (rx, ry, rw, rh). */
   private hudPut(
     key: string,
@@ -499,6 +526,14 @@ export class Renderer {
         const right = Math.max(0, Math.min(energy.w, idiv(p.energy * energy.w, p.maxEnergy)));
         if (right > 0) this.hudPut(`${i}_energy`, L.energy[0], L.energy[1], 0, 0, right, energy.h);
       }
+      // Beam: gewählter Typ als Grund (nur im Wechselmodus), darüber die Ladung
+      const b = w.beams[n];
+      if (b) {
+        if (w.qToggles) this.hudPut(`${i}_beama${b.selected}`, L.beam[0], L.beam[1]);
+        const bar = this.sprite(`${i}_beam${b.type}`)?.s;
+        const bw = bar ? Math.trunc(cint(bar.w * b.charge) / 165) : 0;
+        if (bar && bw > 0) this.hudPut(`${i}_beam${b.type}`, L.beam[0], L.beam[1], 0, 0, bw, bar.h);
+      }
       if (!two) {
         this.hudPut(`${i}_spec0`, 175, 559, 0, 0, -1, -1, true);
         this.hudPut(`${i}_spec0`, 195, 582, 0, 0, -1, -1, true);
@@ -523,13 +558,77 @@ export class Renderer {
       }
       if (!two) {
         this.hudPut(`${i}_spec2`, 648, 567, 0, 0, -1, -1, true);
-        // Partikel-Slots von Schiff 0 (Zweitwaffen folgen): leer
-        if (p.shipType === 0) for (const [x, y] of PARTICLE_SLOTS) this.hudPut("d0s", x, y);
+        if (p.shipType === 0) this.drawParticleSlots(p.selected);
+        if (p.shipType === 1 && w.force.present) this.drawForceIcon();
       }
     });
   }
 
+  /** Waffenfeld des D-Tonator: inaktiv `d0s`, gewählt `d{i+1}s`, Stufe als `extra{Sorte}`, Schild dreimal `extra0`. */
+  private drawParticleSlots(selected: number): void {
+    this.world.particles.forEach((r, k) => {
+      const [x, y] = PARTICLE_SLOTS[k]!;
+      if (!r.present) this.hudPut("d0s", x, y);
+      else if (k === selected) this.hudPut(`d${k + 1}s`, x, y);
+      if (!r.present) return;
+      const icons = r.kind > 0 ? r.level : r.kind < 0 ? 3 : 0;
+      const key = r.kind > 0 ? `extra${r.kind}` : "extra0";
+      for (let j = 1; j <= icons; j++) this.hudPut(key, x + 16 * j + 3, y + 2);
+    });
+  }
+
+  /** Force im HUD: Farbsymbol blass gestreckt, darüber fünf Force-Bilder mit steigendem Alpha. */
+  private drawForceIcon(): void {
+    const f = this.world.force;
+    const icon = this.texture(`extra${f.color + 1}`);
+    if (icon)
+      this.hud.put(icon, 416 + 54 - icon.frame.width / 2, 555 + 20 - icon.frame.height / 2, {
+        scaleX: 108 / icon.frame.width,
+        scaleY: 40 / icon.frame.height,
+        alpha: 0.2,
+      });
+    for (let k = 0; k <= 4; k++) {
+      const t = this.texture(`force_0${f.level + 1}000${(f.frame + k) % 8}`);
+      if (!t) continue;
+      this.hud.put(t, 438 + 24 - t.frame.width / 2, 549 + 24 - t.frame.height / 2, {
+        scaleX: 48 / t.frame.width,
+        scaleY: 48 / t.frame.height,
+        red: 0.7,
+        green: 0.7,
+        alpha: k / 10,
+      });
+    }
+  }
+
+  /** Kombo-Anzeige (nur Spieler 1): `combo` bei (730, 520), Treffer und Bonus, beim Treffer gestreckt. */
+  private drawCombo(): void {
+    const w = this.world;
+    const S = w.comboHud;
+    const cnt = w.comboHits[0] ?? 0;
+    if (!((cnt > 1 || S.shown > 1) && S.timer > 0)) return;
+    this.hudPut("combo", 730, 520);
+    const digits = (v: number, right: number, y: number) => {
+      const str = String(Math.max(0, v));
+      for (let k = 1; k <= str.length; k++)
+        this.hudPut(`n${str[str.length - k]}`, right - 9 * k, y);
+    };
+    digits(S.shown, 721, 520);
+    digits(S.bonus, 800, 535);
+    if (cnt !== S.shown && cnt > 0) {
+      const pop = (key: string, x: number) => {
+        const t = this.texture(key);
+        if (!t) return;
+        const h = 12 + 2 * S.timer;
+        this.hud.put(t, x, 526 - t.frame.height / 2, { scaleY: h / t.frame.height });
+      };
+      pop("combo", 730);
+      const str = String(cnt);
+      for (let k = 1; k <= str.length; k++) pop(`n${str[str.length - k]}`, 721 - 9 * k);
+    }
+  }
+
   destroy(): void {
+    this.novaScreen?.destroy();
     for (const t of this.frames.values()) t.destroy(false);
     this.frames.clear();
     this.root.destroy({ children: true });

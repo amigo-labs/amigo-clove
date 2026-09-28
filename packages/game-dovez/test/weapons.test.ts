@@ -128,3 +128,80 @@ describe("Spielerwaffen", () => {
     expect(shotsOf(w, 12).length).toBe(1);
   });
 });
+
+describe("Beam", () => {
+  const beam: PlayerInput = { ...NO_INPUT, beam: true };
+
+  test("Laden 0,9 je Tick bis 165 (184 Ticks), Loslassen feuert mit 8500 · Stufe", async () => {
+    const { level, sprites } = await loadTestLevel("level1-1_skyfight");
+    const w = new World(level, sprites);
+    const b = w.beams[0]!;
+    step(w, beam, 183);
+    expect(b.charge).toBeLessThan(165);
+    step(w, beam);
+    expect(b.charge).toBe(165);
+    step(w, NO_INPUT);
+    expect(b.running).toBe(true);
+    expect(b.damage).toBe(8500);
+    const x = b.tipX;
+    step(w, NO_INPUT);
+    expect(b.tipX === x + 24 || !b.running).toBe(true);
+  });
+
+  test("Beam 2 voll: Kraftphase 500 Ticks, Hauptschuss doppelt, Hintergrund aus (1P)", async () => {
+    const { level, sprites } = await loadTestLevel("level1-1_skyfight");
+    const w = new World(level, sprites);
+    const b = w.beams[0]!;
+    const bg = w.background;
+    step(w, { ...NO_INPUT, switchBeam: true });
+    step(w, NO_INPUT);
+    expect(b.type).toBe(1);
+    step(w, beam, 184);
+    step(w, NO_INPUT);
+    expect(b.power).toBe(true);
+    expect(w.background).toBe(0);
+    step(w, NO_INPUT, 499);
+    expect(b.power).toBe(false);
+    expect(w.background).toBe(bg);
+  });
+
+  test("Abschuss in der Kraftphase: Zustand 1 (Spaltung), Kombo zählt", async () => {
+    const { level, sprites } = await loadTestLevel("level1-1_skyfight");
+    const w = new World(level, sprites);
+    w.beams[0]!.power = true;
+    let i = -1;
+    for (let t = 0; t < 3000 && i < 0; t++) {
+      step(w, NO_INPUT);
+      w.beams[0]!.power = true;
+      i = w.enemies.items.findIndex(
+        (e) =>
+          e?.alive &&
+          !e.inState &&
+          e.def.boss <= 0 &&
+          e.def.explosionSpec <= 0 &&
+          e.def.bigDeath <= 0 &&
+          e.parts.some((p) => p.visible && p.def.armored === 0 && p.def.damagesBody !== 0),
+      );
+    }
+    const e = w.enemies.items[i]!;
+    const p = e.parts.find((q) => q.visible && q.def.armored === 0)!;
+    const [x, y] = w.enemies.partPos(e, p);
+    const s = w.enemies.surface(p)!;
+    w.enemies.hit(
+      Math.round(x),
+      Math.round(y),
+      Math.round(x + s.rect.w),
+      Math.round(y + s.rect.h),
+      1e9,
+      0,
+      w["makeEnemyWorld"](),
+    );
+    expect([e.inState, e.deathState]).toEqual([true, 1]);
+    expect(w.comboHits[0]).toBe(1);
+    for (let t = 0; t < 31; t++) {
+      w.beams[0]!.power = true;
+      step(w, NO_INPUT);
+    }
+    expect(e.alive).toBe(false);
+  });
+});
