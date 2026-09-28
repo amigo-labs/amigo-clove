@@ -99,7 +99,7 @@ export class DovezAudio {
     for (const stop of this.loops.values()) stop();
     this.loops.clear();
     this.pausedLoops = [...this.sfxLoops.keys()];
-    for (const stop of this.sfxLoops.values()) stop();
+    for (const loop of this.sfxLoops.values()) loop.stop();
     this.sfxLoops.clear();
     if (this.voice) {
       const at = this.context.currentTime - this.voiceStarted;
@@ -116,7 +116,7 @@ export class DovezAudio {
    */
   resume(restore: boolean): void {
     for (const name of this.pausedLoops)
-      this.sfxLoops.set(name, this.sfx.loop(`sound/${name}`, SFX_GAIN));
+      this.sfxLoops.set(name, this.sfx.loopHandle(`sound/${name}`, SFX_GAIN));
     this.pausedLoops = [];
     const v = this.pausedVoice;
     this.pausedVoice = undefined;

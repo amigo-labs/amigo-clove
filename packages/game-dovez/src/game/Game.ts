@@ -390,8 +390,11 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
       // `TastePause` oder Fokusverlust am Ende des Ticks
       else if (host.keys.isDown("Escape") || !focused()) next = "pause";
     }
-    next ??= showcase;
-    showcase = undefined;
+    // Sichtprüfung: nach dem ersten Tick (das Schiff entsteht erst im Tick)
+    if (n > 0 && showcase) {
+      next ??= showcase;
+      showcase = undefined;
+    }
     audio?.update(world);
     world.events.length = 0;
     renderer.draw();
