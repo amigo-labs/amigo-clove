@@ -17,11 +17,31 @@ import {
   type PlayerInput,
   type PlayerWorld,
 } from "./player";
-import { ShotLayer, firePrimary, moveShots, type ShotHost } from "./playerShots";
+import { ShotLayer, moveShots, newShotBox, type ShotHost, type ShotTarget } from "./playerShots";
 import { Radio } from "./radio";
 import { Op, type RouteEffect } from "./route";
 import { collectShared, deepClone } from "./snapshot";
-import { buildSurfaces, spanHit, type SpriteSource, type Surface } from "./surfaces";
+import { buildSurfaces, spanEdges, spanHit, type SpriteSource, type Surface } from "./surfaces";
+import {
+  killCompanions,
+  moveParticles,
+  newCompanionKeys,
+  pickupCompanion,
+  resetParticles,
+  stepForce,
+  stepParticles,
+  tonator,
+  type CompanionWorld,
+} from "./companions";
+import {
+  fireWeapons,
+  newFireState,
+  newForce,
+  newParticles,
+  type Force,
+  type Particle,
+  type WeaponWorld,
+} from "./weapons";
 import { COS_DEG, SIN_DEG, VbRnd, cint, degIndex, f32, idiv, vbInt, winkelInGrad } from "./vb";
 
 /**
@@ -85,6 +105,8 @@ interface Saved {
   readonly popups: Effects["popups"];
   readonly specials: Special[];
   readonly globals: number[];
+  readonly force: Force;
+  readonly particles: Particle[];
 }
 
 /** Ereignisse für Ton, Funk und Engine-Teile, die noch fehlen; die Engine leert sie je Frame. */
@@ -115,14 +137,6 @@ export type WorldEvent =
       readonly subtype: number;
       readonly item: number;
     };
-
-/** Glutfarbe eines Spielerschusses beim Einschlag (Typ-Index 0–3, `0x4DD0D0`). */
-const SHOT_GLOW = [
-  [0.6, 0.8, 1],
-  [1, 0.3, 0.3],
-  [0.4, 1, 0.4],
-  [1, 1, 0],
-] as const;
 
 export class World {
   readonly surfaces: Surface[][];
@@ -186,6 +200,19 @@ export class World {
   readonly players: Player[];
   /** Spielerschüsse: Ebene 0 vor den Gegnern, Ebene 1 danach. */
   readonly playerShots = [new ShotLayer(), new ShotLayer()] as const;
+  /** Gemeinsamer Schusskasten `L.304…L.310` und Statics von `SpielSchieß` (nicht im Schnappschuss). */
+  private readonly shotBox = newShotBox();
+  private readonly fireState = newFireState();
+  /** Laufende Schleifentöne der Waffen. */
+  private readonly loopsOn = new Set<string>();
+  /** Force des D-Phyton und die vier Partikel des D-Tonator. */
+  readonly force: Force = newForce();
+  readonly particles: Particle[] = newParticles();
+  private readonly companionKeys = newCompanionKeys();
+  /** Option „D-Tonator-Partikel: Auto-Arrange“ (`Me.50E`). */
+  autoArrange = true;
+  /** Eingaben des laufenden Ticks (Begleiter lesen sie außerhalb von `SpielKeysDove`). */
+  private inputs: readonly PlayerInput[] = [];
   /** Gemeinsame Leben (`P[0].44`): 3 mit einem, 6 mit zwei Spielern. */
   lives: number;
   /** SetGlobal/GetGlobal der Routen (`Me.A64`). */
@@ -207,7 +234,7 @@ export class World {
 
   constructor(
     readonly level: DovezLevel,
-    sprites: SpriteSource,
+    private readonly sprites: SpriteSource,
     opts: {
       players?: 1 | 2;
       seed?: number;
@@ -242,6 +269,8 @@ export class World {
       (_, i) => new Player(i, i === 0 ? ship : 1 - ship, players),
     );
     this.lives = players === 1 ? 3 : 6;
+    const q = tonator(this.companionWorld());
+    if (q) resetParticles(this.particles, q);
     this.tick = opts.startTick ?? 0;
     this.preroll();
     this.save(0);
@@ -428,6 +457,17 @@ export class World {
       hitsLandscape: (x1, y1, x2, y2) => this.hitsTerrain(x1, y1, x2, y2),
       partDestroyed: () => false,
       terrain: (x1, y1, x2, y2) => this.hitsTerrain(x1, y1, x2, y2),
+      aimPoint: (t) => {
+        // 0x4AAD4A: auf einen D-Phyton streuen die Schützen über das Schiff bzw. die Force
+        const p = this.players[t] ?? this.players[0];
+        if (!p) return [0, 0];
+        if (p.shipType !== 1) return [cint(p.x + 28), cint(p.y + 31)];
+        const zy = cint(this.rnd.next() * 64 + p.y);
+        const st = this.force.state;
+        const zx =
+          st === 1 ? cint(p.x) : st === 2 ? cint(p.x + 64) : cint(this.rnd.next() * 64 + p.x);
+        return [zx, zy];
+      },
       shockwave: (cx, cy, r) => {
         // alle Spieler, ohne Lebend- oder Unverwundbar-Prüfung; Schub zugewiesen
         for (const p of this.players) {
@@ -479,24 +519,137 @@ export class World {
     };
   }
 
+  /**
+   * `CheckWhereColisionRight/Left` (`0x4C6A60`/`0x4C64B0`): nächste linke
+   * Kante rechts (Start 800) bzw. größte rechte Kante links (Start −1) über
+   * die Kacheln der Ebene 3 und alle sichtbaren Teile lebender Gegner ohne
+   * Todeszustand (ohne `solid`- und Panzerprüfung).
+   */
+  whereColision(right: boolean, x1: number, y1: number, x2: number, y2: number): number {
+    let best = right ? 800 : -1;
+    const take = (e: [number, number] | undefined) => {
+      if (!e || !(e[0] < x2 && e[1] > x1)) return;
+      if (right ? e[0] < best : e[1] > best) best = right ? e[0] : e[1];
+    };
+    const layer = this.layers[TERRAIN_LAYER]!;
+    for (let i = 0; i <= layer.highWater; i++) {
+      const t = layer.tiles[i]!;
+      if (!t.active) continue;
+      const s = this.surfaces[t.group]?.[this.groupFrames[t.group]?.frame ?? 0];
+      if (s) take(spanEdges(s, cint(t.x), cint(t.y), x1, y1, x2, y2));
+    }
+    const en = this.enemies;
+    for (let i = 0; i <= en.high; i++) {
+      const e = en.items[i];
+      if (!e?.alive || e.inState) continue;
+      for (const p of e.parts) {
+        const s = en.surface(p);
+        if (!p.visible || !s) continue;
+        const [x, y] = en.partPos(e, p);
+        take(spanEdges(s, cint(x), cint(y), x1, y1, x2, y2));
+      }
+    }
+    return best;
+  }
+
+  /** Ziele der Suchwaffen: sichtbare, ungepanzerte Teile mit Kontur lebender, nicht fester Gegner. */
+  private shotTargets(): ShotTarget[] {
+    const out: ShotTarget[] = [];
+    const en = this.enemies;
+    for (let i = 0; i <= en.high; i++) {
+      const e = en.items[i];
+      if (!e?.alive || e.inState || e.def.solid !== 0) continue;
+      for (const p of e.parts) {
+        const s = en.surface(p);
+        if (!p.visible || p.def.armored !== 0 || !s || s.topRow < 0) continue;
+        const [x, y] = en.partPos(e, p);
+        out.push({ x, y, w: s.rect.w, h: s.rect.h });
+      }
+    }
+    return out;
+  }
+
   private shotHost(): ShotHost {
     const ew = this.makeEnemyWorld();
-    const fx = this.fx;
+    let targets: ShotTarget[] | undefined;
     return {
-      hitEnemies: (x1, y1, x2, y2, damage, owner) =>
-        this.enemies.hit(x1, y1, x2, y2, damage, owner, ew, { sparks: true }),
+      tick: this.tick,
+      rnd: this.rnd,
+      fx: this.fx,
+      gravity: this.level.gravity,
+      terrainSpeed: this.layers[TERRAIN_LAYER]!.speed,
+      hitEnemies: (x1, y1, x2, y2, damage, owner, sparks) => {
+        targets = undefined;
+        return this.enemies.hit(x1, y1, x2, y2, damage, owner, ew, { sparks });
+      },
       terrain: (x1, y1, x2, y2) => this.hitsTerrain(x1, y1, x2, y2),
-      glow: (x, y, kind, terrain) => {
-        if (terrain) fx.addSparks(1, 1, cint(x - 3), cint(y - 3), cint(x + 18), cint(y + 18), true);
-        const [r, g, b] = SHOT_GLOW[kind] ?? SHOT_GLOW[0];
-        fx.addBig(x, y, 0, 0, r, g, b, 16, 0, 9, 1, 0);
+      whereRight: (x1, y1, x2, y2) => this.whereColision(true, x1, y1, x2, y2),
+      whereLeft: (x1, y1, x2, y2) => this.whereColision(false, x1, y1, x2, y2),
+      targets: () => (targets ??= this.shotTargets()),
+      combo: (p) => this.combo[p] ?? 1,
+      comboHit: (p) => {
+        this.combo[p] = f32((this.combo[p] ?? 1) + 0.1);
+        this.comboHits[p] = (this.comboHits[p] ?? 0) + 1;
       },
-      trail: (s) => {
-        const r1 = this.rnd.next();
-        const r2 = s.vy === 0 ? 0.5 : this.rnd.next();
-        fx.addBig(s.x, s.y, 2 * r1 - 1, 2 * r2 - 1, 0.3 * s.param, 0.2, 1, 16, 0, 6, 1, 0);
-      },
+      sound: (name) => this.sfx(name),
+      spriteSize: (key) => this.sprites.size(key),
     };
+  }
+
+  private weaponWorld(): WeaponWorld {
+    const ew = this.makeEnemyWorld();
+    return {
+      rnd: this.rnd,
+      fx: this.fx,
+      out: this.fx.lists.weapons,
+      layers: this.playerShots,
+      players: this.players,
+      force: this.force,
+      particles: this.particles,
+      beamPower: (p) => this.beamPower[p] === true,
+      sound: (name) => this.sfx(name),
+      loop: (name, on) => this.loopSfx(name, on),
+      whereRight: (x1, y1, x2, y2) => this.whereColision(true, x1, y1, x2, y2),
+      whereLeft: (x1, y1, x2, y2) => this.whereColision(false, x1, y1, x2, y2),
+      hitEnemies: (x1, y1, x2, y2, damage, owner) =>
+        this.enemies.hit(x1, y1, x2, y2, damage, owner, ew),
+    };
+  }
+
+  private companionWorld(): CompanionWorld {
+    const ew = this.makeEnemyWorld();
+    return {
+      tick: this.tick,
+      rnd: this.rnd,
+      fx: this.fx,
+      players: this.players,
+      playersMinus1: this.playersMinus1,
+      particles: this.particles,
+      force: this.force,
+      terrainSpeed: this.layers[TERRAIN_LAYER]?.speed ?? 0,
+      autoArrange: this.autoArrange,
+      input: (p) => this.inputs[p],
+      terrain: (x1, y1, x2, y2) => this.hitsTerrain(x1, y1, x2, y2),
+      hitEnemies: (x1, y1, x2, y2, damage, owner, out) =>
+        this.enemies.hit(x1, y1, x2, y2, damage, owner, ew, out ? { out } : {}),
+      enemyMotion: (i) => {
+        const e = this.enemies.items[i];
+        return { vx: e?.actor.vx ?? 0, vy: e?.actor.vy ?? 0, solid: (e?.def.solid ?? 0) !== 0 };
+      },
+      shots: () => this.fire.shots,
+      unblockable: (shot) =>
+        (this.level.weapons[shot.weapon]?.salvos[shot.salvo]?.unblockable ?? 0) !== 0,
+      addPoints: (points, x, y, vy, player) => this.addPoints(points, x, y, vy, player),
+      sound: (name) => this.sfx(name),
+    };
+  }
+
+  /** Schleifenton an/aus, Ereignis nur beim Wechsel (`GetStatus` des Puffers). */
+  private loopSfx(name: string, on: boolean): void {
+    if (this.loopsOn.has(name) === on) return;
+    if (on) this.loopsOn.add(name);
+    else this.loopsOn.delete(name);
+    this.events.push({ kind: "sfxLoop", name, on });
   }
 
   private playerWorld(): PlayerWorld {
@@ -539,6 +692,7 @@ export class World {
     this.fx.addSparks(1, 500, cint(x1), cint(y1), cint(x2), cint(y2), false);
     this.fx.addSparks(1, 100, cint(x1), cint(y1), cint(x2), cint(y2), true);
     this.fx.addFireballs(x1, y1, x2, y2, 0.2, 0.2, 1, 32, 10, 15);
+    killCompanions(this.companionWorld(), p, this.bossAlive);
     this.sfx("explosiondove");
   }
 
@@ -738,6 +892,8 @@ export class World {
       popups: c(this.fx.popups),
       specials: c(this.specials),
       globals: c(this.globals),
+      force: c(this.force),
+      particles: c(this.particles),
     };
   }
 
@@ -777,8 +933,13 @@ export class World {
     Object.assign(this.fx.popups, s.popups);
     this.specials.splice(0, this.specials.length, ...s.specials);
     this.globals.splice(0, this.globals.length, ...s.globals);
+    Object.assign(this.force, s.force);
+    s.particles.forEach((r, i) => Object.assign(this.particles[i]!, r));
     Object.assign(this.checkpoint, { triggered: true, flashAlpha: 0.6, flashStep: -0.02 });
-    for (const p of this.players) doveInit(p);
+    for (const p of this.players) {
+      doveInit(p);
+      p.fillHistory();
+    }
     this.lives = lives - 1;
     this.score = score;
     this.save(0);
@@ -994,6 +1155,7 @@ export class World {
   /** Ein Tick; `inputs` je Spieler. */
   step(inputs: readonly PlayerInput[] = []): void {
     if (this.state !== 0) return;
+    this.inputs = inputs;
     this.fx.beginTick();
     this.noFlash = false;
     for (const p of this.players) p.startEnergy = p.energy;
@@ -1012,10 +1174,9 @@ export class World {
     this.checkpointPass(0);
     const pw = this.playerWorld();
     for (const p of this.players) updatePlayer(p, inputs[p.index] ?? NO_INPUT, pw);
-    for (const p of this.players)
-      firePrimary(p, inputs[p.index] ?? NO_INPUT, this.playerShots, false);
-    const sh = this.shotHost();
-    moveShots(this.playerShots[0], sh);
+    moveParticles(this.companionWorld(), this.companionKeys);
+    fireWeapons(this.weaponWorld(), this.fireState, inputs);
+    moveShots(this.playerShots[0], 0, this.shotHost(), this.shotBox, this.fx.lists.shots0);
     this.fx.moveSparks(0, this.level.gravity);
     this.moveSpecials();
     this.moveDove();
@@ -1023,7 +1184,8 @@ export class World {
     this.fx.moveBubbles(this.effectWorld(), this.background !== 0);
     this.anims.move(4, this.level, this.layers);
     this.layers[3]!.move(this.surfaces, this.groupFrames);
-    moveShots(this.playerShots[1], sh);
+    stepParticles(this.companionWorld(), this.fx.lists.particles);
+    moveShots(this.playerShots[1], 1, this.shotHost(), this.shotBox, this.fx.lists.shots1);
     this.anims.move(3, this.level, this.layers);
     const sw = this.shotWorld();
     this.fire.stepEmitters(sw, {
@@ -1039,6 +1201,7 @@ export class World {
     this.fx.moveSparks(1, this.level.gravity);
     this.fx.moveBig(this.effectWorld());
     this.fire.stepShots(sw);
+    stepForce(this.companionWorld(), this.companionKeys, this.fx.lists.force);
     this.fx.movePopups();
     this.checkpointPass(1);
     this.layers[6]!.move(this.surfaces, this.groupFrames);
@@ -1094,10 +1257,13 @@ export class World {
     this.radio.stepTicker();
   }
 
-  /** Wirkung eines Power-ups (Waffen-Slots und Satelliten folgen mit den Spielerwaffen). */
+  /** Wirkung eines Power-ups (`SpielMoveSpezialObjekt` `0x4D1910`). */
   private pickup(p: Player, s: Special): void {
     this.events.push({ kind: "pickup", player: p.index, subtype: s.subtype, item: s.item });
-    if (s.subtype !== 3) return;
+    if (s.subtype !== 3 || s.item <= 1) {
+      pickupCompanion(this.companionWorld(), p, s.subtype, s.item);
+      return;
+    }
     switch (s.item) {
       case 2:
         p.speed = f32(p.speed + 1);
@@ -1135,7 +1301,17 @@ export class World {
         continue;
       }
       for (const p of this.players) {
-        const own = s.subtype === 0 ? p.shipType === 0 : s.subtype === 4 ? p.shipType === 1 : true;
+        // Satellitenwaffen, neue Plätze und Schilde nur für den D-Tonator, Force-Kapseln für den D-Phyton
+        const own =
+          s.subtype === 0
+            ? p.shipType === 0
+            : s.subtype === 4
+              ? p.shipType === 1
+              : s.subtype === 3 && s.item === 0
+                ? p.shipType === 0
+                : s.subtype === 3 && s.item === 1
+                  ? p.shipType === 0 && p.selected > -1
+                  : true;
         if (!own || !p.alive) continue;
         const [x1, y1, x2, y2] = p.hitbox();
         if (x1 < s.x + 48 && x2 > s.x + 16 && y1 < s.y + 48 && y2 > s.y + 16) {

@@ -68,6 +68,16 @@ export class Player {
   glide = false;
   animFrame = 0;
   fireCooldown = 0;
+  /** Abklingzeit der Zweitwaffe (`P.30`). */
+  secondaryCooldown = 0;
+  /** Position zu Tickbeginn (`Me.B64[p + 20]`, Mündungsfunken). */
+  prevX: number;
+  prevY: number;
+  /** Verlauf `Me.B64`: Positionen der letzten 11 Tickanfänge, [0] vor 10 Ticks (Force-Rückruf). */
+  readonly histX: number[];
+  readonly histY: number[];
+  /** Gewählter Partikel-Platz −1…3 (`P.58`, nur D-Tonator). */
+  selected = 0;
   /** Schussstärke 1–3, 0: kann nicht feuern. */
   shotPower = 1;
   extraWeapon = 0;
@@ -91,6 +101,16 @@ export class Player {
   ) {
     this.x = START_X;
     this.y = (2 * index - (players - 1)) * 32 + 260;
+    this.prevX = this.x;
+    this.prevY = this.y;
+    this.histX = Array.from({ length: 11 }, () => this.x);
+    this.histY = Array.from({ length: 11 }, () => this.y);
+  }
+
+  /** `VariabelnLösch`: den ganzen Verlauf mit der aktuellen Position füllen. */
+  fillHistory(): void {
+    this.histX.fill(this.x);
+    this.histY.fill(this.y);
   }
 
   get alive(): boolean {
@@ -192,6 +212,12 @@ function keys(p: Player, input: PlayerInput, w: PlayerWorld): void {
 /** `SpielKeysDove` für einen Spieler. */
 export function updatePlayer(p: Player, input: PlayerInput, w: PlayerWorld): void {
   if (!p.alive) return;
+  p.prevX = p.x;
+  p.prevY = p.y;
+  p.histX.shift();
+  p.histY.shift();
+  p.histX.push(p.x);
+  p.histY.push(p.y);
   if (p.exitState >= 1) {
     exitFlight(p);
     return;

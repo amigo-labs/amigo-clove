@@ -97,9 +97,27 @@ export function spanHit(
   x2: number,
   y2: number,
 ): boolean {
-  if (s.topRow < 0) return false;
-  if (s.left + ox >= x2 || s.right + ox <= x1) return false;
-  if (s.topRow + oy >= y2 || s.bottomRow + oy <= y1) return false;
+  const e = spanEdges(s, ox, oy, x1, y1, x2, y2);
+  return e !== undefined && e[0] < x2 && e[1] > x1;
+}
+
+/**
+ * Rechteck-Vortest und vereinigte Zeilenspannen wie `spanHit`, als
+ * Bildschirmkanten [links, rechts]; `undefined`, wenn der Vortest scheitert.
+ * `CheckWhereColisionRight/Left` suchen damit die nächste Kante.
+ */
+export function spanEdges(
+  s: Surface,
+  ox: number,
+  oy: number,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+): [number, number] | undefined {
+  if (s.topRow < 0) return undefined;
+  if (s.left + ox >= x2 || s.right + ox <= x1) return undefined;
+  if (s.topRow + oy >= y2 || s.bottomRow + oy <= y1) return undefined;
   const r0 = Math.max(y1 - oy, s.topRow);
   const r1 = Math.min(y2 - oy, s.bottomRow);
   let minL = 10000;
@@ -111,5 +129,5 @@ export function spanHit(
     const rr = s.spans[r * 2 + 1] as number;
     if (rr > maxR) maxR = rr;
   }
-  return minL + ox < x2 && maxR + ox > x1;
+  return [minL + ox, maxR + ox];
 }

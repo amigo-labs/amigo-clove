@@ -101,14 +101,24 @@ export const DRAW_SLOTS = [
   "gate0",
   /** Abgasflamme (`SpielKeysDove`), vor den Spielerschüssen. */
   "exhaust",
+  /** Blitze der Partikelwaffe (`SpielSchieß`). */
+  "weapons",
+  /** Spielerschüsse Ebene 0 (`SpielMoveSchuss(0)`, unter Schiff und Gegnern). */
+  "shots0",
   /** Kleine Partikel Ebene 0 (vor Schiff und Gegnern). */
   "sparks0",
   /** Linien, Trümmer und Glut aus den Todeszuständen (`SpielMoveEnemy`). */
   "enemies",
   "bubbles",
+  /** Partikel des D-Tonator (`SpielPartikel`, über der Landschaft). */
+  "particles",
+  /** Spielerschüsse Ebene 1 (`SpielMoveSchuss(1)`, über der Landschaft). */
+  "shots1",
   /** Kleine Partikel Ebene 1 (nach der Landschaft). */
   "sparks1",
   "big",
+  /** Force des D-Phyton (`SpielSateliet`, nach den Gegnerschüssen). */
+  "force",
   "popups",
   /** Checkpoint-Tor, vordere Hälfte (vor Ebene 6). */
   "gate1",
@@ -338,6 +348,42 @@ export class Effects {
     }
   }
 
+  /** `Add1Partikel` (`0x4EA610`): ein kleiner Partikel mit festen Werten, ohne `Rnd`. */
+  addSpark1(
+    layer: 0 | 1,
+    x: number,
+    y: number,
+    vx: number,
+    vy: number,
+    r: number,
+    g: number,
+    b: number,
+    size: number,
+    life: number,
+  ): void {
+    const pool = this.sparks[layer];
+    for (let i = pool.hint; i < SPARK_SLOTS; i++) {
+      const p = pool.items[i]!;
+      if (p.active) continue;
+      Object.assign(p, {
+        active: true,
+        x: f32(x),
+        y: f32(y),
+        vx: f32(vx),
+        vy: f32(vy),
+        r: f32(r),
+        g: f32(g),
+        b: f32(b),
+        size,
+        life,
+        initLife: life,
+      });
+      pool.take(i);
+      pool.hint = i + 1;
+      return;
+    }
+  }
+
   /** `AddCircle` (`0x4EA360`): Funkenring aus `(cx, cy)`, je `step` Grad einer. */
   addCircle(layer: 0 | 1, step: number, r0: number, cx: number, cy: number, life: number): void {
     const pool = this.sparks[layer];
@@ -556,8 +602,10 @@ export class Effects {
   }
 
   /**
-   * `Blitz` (`0x5353A0`) ohne Saat: Zickzack aus `nSeg + 1` Balken, je
-   * Zwischenpunkt ein `Rnd` für den Versatz quer zur Richtung.
+   * `Blitz` (`0x5353A0`): Zickzack aus `nSeg + 1` Balken, je Zwischenpunkt
+   * ein `Rnd` für den Versatz quer zur Richtung. Mit `seed` zieht er die
+   * Versätze aus einer eigenen Folge (`Rnd(−1)`, `Randomize seed`) und sät die
+   * Hauptfolge danach mit dem zuerst gezogenen Wert neu.
    */
   lightning(
     out: DrawList,
@@ -572,9 +620,15 @@ export class Effects {
     g: number,
     b: number,
     additive: boolean,
+    seed?: number,
   ): void {
     const rnd = this.rnd;
-    rnd.next();
+    const saved = vbInt(rnd.next() * 10000);
+    if (seed !== undefined) {
+      rnd.negative(-1);
+      rnd.randomize(vbInt(seed));
+      rnd.next();
+    }
     const n = nSeg + 1;
     const angle = cint(winkelInGrad(x2 - x1, y2 - y1));
     const cos = COS_DEG[degIndex(angle - 90)] ?? 0;
@@ -593,6 +647,11 @@ export class Effects {
       out.line(px, py, qx, qy, w, c, c, additive);
       px = qx;
       py = qy;
+    }
+    if (seed !== undefined) {
+      rnd.negative(-1);
+      rnd.randomize(saved);
+      rnd.next();
     }
   }
 

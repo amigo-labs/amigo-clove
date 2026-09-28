@@ -969,9 +969,16 @@ export class Enemies {
     damage: number,
     player: number,
     w: EnemyWorld,
-    opts: { exclude?: number; pierce?: boolean; sparks?: boolean } = {},
+    opts: {
+      exclude?: number;
+      pierce?: boolean;
+      sparks?: boolean;
+      /** Ausgaben `TeilOut`/`PanzerOut`: getroffener Gegner, Teil gepanzert. */
+      out?: { enemy: number; armored: boolean };
+    } = {},
   ): number {
     const exclude = opts.exclude ?? -1;
+    const out = opts.out;
     for (let i = 0; i <= this.high; i++) {
       const e = this.items[i];
       if (!e?.alive || e.inState || i === exclude) continue;
@@ -982,6 +989,10 @@ export class Enemies {
         if (!s) continue;
         const [x, y] = this.partPos(e, p);
         if (!spanHit(s, cint(x), cint(y), x1, y1, x2, y2)) continue;
+        if (out) {
+          out.enemy = i;
+          out.armored = p.def.armored !== 0;
+        }
         if (damage < 0) return 0;
         let ret = e.def.armorPassThrough <= 0 || !opts.pierce ? 0 : damage;
         if (p.def.armored !== 0) return ret;
