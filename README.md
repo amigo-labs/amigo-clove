@@ -97,7 +97,7 @@ Assets, kein Worker-Skript): `wrangler.jsonc` im Wurzelverzeichnis baut mit
 | `packages/core/`  | `@clove/core` — mechanikfreie Bausteine: Takt, Q16.16, Rng, Hash, Replay, Assets, i18n, Spielstanddatei, `GameModule` |
 | `packages/pixi-kit/` | `@clove/pixi-kit` — Pixi-Adapter: ganzzahliges Scaling, Texturen |
 | `packages/game-dove/` | `@clove/game-dove` — DOVE: Simulation (`src/sim`, Pixi-frei), Renderer, Replays |
-| `packages/game-dovez/` | `@clove/game-dovez` — DoveZ: bisher die Asset-Ansicht (Engine ab M8) |
+| `packages/game-dovez/` | `@clove/game-dovez` — DoveZ (M8 im Aufbau): `#/dovez?level=…&from=…` spielt ein Level, Esc Pause, ohne Leben Continue (`screen=continue\|pause` zur Sichtprüfung); Debug-Ansichten |
 | `packages/shell/` | `@clove/shell` — Launcher (Vite): Routing, Einstellungen, Gamepad, Spielstände, Service Worker |
 | `packages/assetkit/` | `@clove/assetkit` — Asset-Pipeline (Bun, sharp) |
 | `assets/dove/`, `assets/dovez/` | generierte Assets + `manifest.json`, nie von Hand ändern |
