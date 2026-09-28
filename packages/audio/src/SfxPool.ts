@@ -49,11 +49,16 @@ export class SfxPool {
     return this.buffers.has(id);
   }
 
+  /** Länge des Sounds in Sekunden (0, wenn nicht geladen). */
+  duration(id: string): number {
+    return this.buffers.get(id)?.duration ?? 0;
+  }
+
   /**
-   * Spielt `id` ab; `pan` −1…1, `volume` 0…1, `rate` Abspieltempo (Tonhöhe).
-   * Liefert `false`, wenn unterdrückt.
+   * Spielt `id` ab; `pan` −1…1, `volume` 0…1, `rate` Abspieltempo (Tonhöhe),
+   * `offset` Startposition in Sekunden. Liefert `false`, wenn unterdrückt.
    */
-  play(id: string, pan = 0, volume = 1, rate = 1): boolean {
+  play(id: string, pan = 0, volume = 1, rate = 1, offset = 0): boolean {
     const buffer = this.buffers.get(id);
     if (!buffer || buffer.length === 0) return false;
     const now = this.context.currentTime;
@@ -80,15 +85,20 @@ export class SfxPool {
     const panner = this.context.createStereoPanner();
     panner.pan.value = Math.max(-1, Math.min(1, pan));
     source.connect(gain).connect(panner).connect(this.output);
-    source.start();
-    this.voices.push({ id, source, started: now });
+    source.start(0, offset);
+    this.voices.push({ id, source, started: now - offset });
     return true;
   }
 
   /** Endlosschleife (z. B. der blaue Laser); liefert die Stopp-Funktion. */
   loop(id: string, volume = 1, rate = 1): () => void {
+    return this.loopHandle(id, volume, rate).stop;
+  }
+
+  /** Endlosschleife mit veränderlicher Abspielrate (z. B. der Ladeton des Beams). */
+  loopHandle(id: string, volume = 1, rate = 1): { stop(): void; setRate(rate: number): void } {
     const buffer = this.buffers.get(id);
-    if (!buffer || buffer.length === 0) return () => {};
+    if (!buffer || buffer.length === 0) return { stop: () => {}, setRate: () => {} };
     const source = this.context.createBufferSource();
     source.buffer = buffer;
     source.loop = true;
@@ -97,9 +107,14 @@ export class SfxPool {
     gain.gain.value = volume;
     source.connect(gain).connect(this.output);
     source.start();
-    return () => {
-      source.stop();
-      gain.disconnect();
+    return {
+      stop: () => {
+        source.stop();
+        gain.disconnect();
+      },
+      setRate: (r) => {
+        source.playbackRate.value = r;
+      },
     };
   }
 

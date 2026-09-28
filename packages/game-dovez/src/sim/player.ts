@@ -32,6 +32,8 @@ export interface PlayerInput {
   switchBeam: boolean;
   rotate: boolean;
   nova: boolean;
+  /** F11: Hupe (`SpielHupe`, nur Spieler 1). */
+  horn?: boolean;
 }
 
 export const NO_INPUT: Readonly<PlayerInput> = {
@@ -68,6 +70,19 @@ export class Player {
   glide = false;
   animFrame = 0;
   fireCooldown = 0;
+  /** Abklingzeit der Zweitwaffe (`P.30`). */
+  secondaryCooldown = 0;
+  /** Position zu Tickbeginn (`Me.B64[p + 20]`, Mündungsfunken). */
+  prevX: number;
+  prevY: number;
+  /** Verlauf `Me.B64`: Stand der letzten 11 Tickanfänge, [0] vor 10 Ticks (Force-Rückruf, Nachbilder, Tönung). */
+  readonly histX: number[];
+  readonly histY: number[];
+  readonly histEnergy: number[];
+  readonly histTilt: number[];
+  readonly histFrame: number[];
+  /** Gewählter Partikel-Platz −1…3 (`P.58`, nur D-Tonator). */
+  selected = 0;
   /** Schussstärke 1–3, 0: kann nicht feuern. */
   shotPower = 1;
   extraWeapon = 0;
@@ -77,12 +92,12 @@ export class Player {
   energy = MAX_ENERGY;
   maxEnergy = MAX_ENERGY;
   invulnerable = SPAWN_INVULNERABLE;
-  /** 0 Spiel, 1–3 Levelausflug. */
+  /** 0 Spiel, 1–3 Levelausflug, 5 von einem Spezialablauf gesteuert (`B.5C`). */
   exitState = 0;
   /** Energie zu Tickbeginn (Unverwundbarkeit setzt sie zurück). */
   startEnergy = MAX_ENERGY;
-  /** Zähler für den Rauch unter halber Energie (`G.538`). */
-  smoke = 0;
+  /** Drehung in Grad (`B.18`), nur in der Tutorial-Startsequenz ≠ 0. */
+  rotation = 0;
 
   constructor(
     readonly index: number,
@@ -91,6 +106,36 @@ export class Player {
   ) {
     this.x = START_X;
     this.y = (2 * index - (players - 1)) * 32 + 260;
+    this.prevX = this.x;
+    this.prevY = this.y;
+    this.histX = Array.from({ length: 11 }, () => this.x);
+    this.histY = Array.from({ length: 11 }, () => this.y);
+    this.histEnergy = Array.from({ length: 11 }, () => this.energy);
+    this.histTilt = Array.from({ length: 11 }, () => this.tilt);
+    this.histFrame = Array.from({ length: 11 }, () => this.animFrame);
+  }
+
+  /** `VariabelnLösch`: den ganzen Verlauf mit dem aktuellen Stand füllen. */
+  fillHistory(): void {
+    this.histX.fill(this.x);
+    this.histY.fill(this.y);
+    this.histEnergy.fill(this.energy);
+    this.histTilt.fill(this.tilt);
+    this.histFrame.fill(this.animFrame);
+  }
+
+  /** `SpielKeysDove`: Verlauf um einen Tick schieben, der Stand zu Tickbeginn kommt hinten an. */
+  pushHistory(): void {
+    for (const [a, v] of [
+      [this.histX, this.x],
+      [this.histY, this.y],
+      [this.histEnergy, this.energy],
+      [this.histTilt, this.tilt],
+      [this.histFrame, this.animFrame],
+    ] as const) {
+      a.shift();
+      a.push(v);
+    }
   }
 
   get alive(): boolean {
@@ -191,7 +236,11 @@ function keys(p: Player, input: PlayerInput, w: PlayerWorld): void {
 
 /** `SpielKeysDove` für einen Spieler. */
 export function updatePlayer(p: Player, input: PlayerInput, w: PlayerWorld): void {
-  if (!p.alive) return;
+  // ab Zustand 5 steuert ein Spezialablauf das Schiff (`0x507E78`), auch ohne Verlauf
+  if (!p.alive || p.exitState >= 5) return;
+  p.prevX = p.x;
+  p.prevY = p.y;
+  p.pushHistory();
   if (p.exitState >= 1) {
     exitFlight(p);
     return;

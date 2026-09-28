@@ -27,7 +27,27 @@ export class VbRnd {
     this.seed = (Math.imul(this.seed, 0x43fd43fd) + 0xc39ec3) & 0xffffff;
     return this.seed / 0x1000000;
   }
+
+  /** `Rnd(x)` mit x < 0: Saat aus den Bits von `CSng(x)`, dann ein Schritt (`Rnd(−1)` = 0,224007). */
+  negative(x: number): number {
+    F32[0] = x;
+    const b = U32[0]!;
+    this.seed = (b + (b >>> 24)) & 0xffffff;
+    return this.next();
+  }
+
+  /** `Randomize n`: die oberen 32 Bit von `CDbl(n)` gefaltet in die mittleren Saatbits. */
+  randomize(n: number): void {
+    F64[0] = n;
+    const h = U32H[1]!;
+    this.seed = (this.seed & 0xff0000ff) | (((h ^ (h >>> 16)) & 0xffff) << 8);
+  }
 }
+
+const F32 = new Float32Array(1);
+const U32 = new Uint32Array(F32.buffer);
+const F64 = new Float64Array(1);
+const U32H = new Uint32Array(F64.buffer);
 
 /** `Me.4B0`: π als Single. */
 export const PI = f32(Math.atan(1) * 4);

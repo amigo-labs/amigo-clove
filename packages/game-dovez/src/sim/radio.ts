@@ -81,6 +81,11 @@ export class Radio {
     events.push({ kind: "voiceStop" });
   }
 
+  /** Alle Laufband-Einträge (`Me.A50`), älteste zuerst — das Funkprotokoll der Pause. */
+  get log(): readonly string[] {
+    return this.messages;
+  }
+
   /** `AddMsg`. */
   addMessage(m: string): void {
     if (this.dry) {
