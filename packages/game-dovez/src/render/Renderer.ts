@@ -1,6 +1,7 @@
 import type { AtlasJson, AtlasSprite } from "@clove/core";
 import type { TextureRegistry } from "@clove/pixi-kit";
 import { Container, Graphics, Rectangle, Text, Texture } from "pixi.js";
+import type { DrawList, DrawSlot } from "../sim/effects";
 import type { Enemy } from "../sim/enemies";
 import { LAYER_COUNT } from "../sim/layers";
 import type { Surface } from "../sim/surfaces";
@@ -9,17 +10,27 @@ import { SpriteBatch } from "./SpriteBatch";
 
 /**
  * Zeichnet den DoveZ-Weltzustand in der Reihenfolge von `SpielLoop`:
- * Hintergrund → Ebenen 0, 1, 2, 5 (je mit ihren Animationen) → Spielerschüsse
- * Ebene 0 → Power-ups → Schiff → Gegner → Animationen 4 → Landschaft 3 →
- * Spielerschüsse 1 → Animationen 3 → Gegnerschüsse → Ebene 6 → HUD.
+ * Hintergrund → Ebenen 0, 1, 2, 5 (je mit ihren Animationen) → Abgas →
+ * Spielerschüsse Ebene 0 → Funken 0 → Power-ups → Schiff → Gegner (mit den
+ * Linien und Trümmern ihrer Todeszustände) → Blasen → Animationen 4 →
+ * Landschaft 3 → Spielerschüsse 1 → Animationen 3 → Funken 1 → große
+ * Partikel → Gegnerschüsse → Punkte-Popups → Ebene 6 → Wackeln → HUD.
+ * Die Effekte kommen als Zeichenlisten aus der Simulation (`sim/effects.ts`).
  */
 
 interface AtlasRef {
   readonly json: AtlasJson;
 }
 
+/** Balken-Textur (`Balken.bmp`, 128²) für `Linie` und `Blitz`. */
+const BAR = "balken";
+/** Farbverlauf einer Linie in so vielen Stücken. */
+const GRADIENT_STEPS = 4;
+
 export class Renderer {
   readonly root = new Container();
+  /** Spielfeld (ohne HUD); das Wackeln verschiebt es. */
+  private readonly field = new Container();
   private readonly batches = new Map<string, SpriteBatch>();
   private readonly frames = new Map<string, Texture>();
   private readonly overlay = new Graphics();
@@ -38,7 +49,8 @@ export class Renderer {
     /** Level-Atlas zuerst, dann `spiel`, `standart`. */
     private readonly atlases: readonly AtlasRef[],
   ) {
-    this.root.addChild(this.bgFill);
+    this.root.addChild(this.field);
+    this.field.addChild(this.bgFill);
     for (const name of [
       "background",
       "layer0",
@@ -49,24 +61,30 @@ export class Renderer {
       "anim2",
       "layer5",
       "anim5",
+      "fx:exhaust",
       "shots0",
+      "fx:sparks0",
       "specials",
       "player",
       "enemies",
+      "fx:enemies",
+      "fx:bubbles",
       "anim4",
       "layer3",
       "shots1",
       "anim3",
+      "fx:sparks1",
+      "fx:big",
       "eshots",
+      "fx:popups",
       "layer6",
       "anim6",
-      "fx",
     ]) {
       const c = new Container();
-      this.root.addChild(c);
+      this.field.addChild(c);
       this.batches.set(name, new SpriteBatch(c));
     }
-    this.root.addChild(this.overlay);
+    this.field.addChild(this.overlay);
     this.root.addChild(this.fade);
     this.hud.position.set(8, 556);
     this.root.addChild(this.hud);
@@ -128,6 +146,8 @@ export class Renderer {
     this.drawPlayers();
     this.drawEnemies();
     this.drawEnemyShots();
+    for (const [slot, list] of Object.entries(w.fx.lists)) this.drawList(slot as DrawSlot, list);
+    this.field.position.set(-w.fx.shakeX, -w.fx.shakeY);
     // Abblenden in den letzten 50 Ticks
     const left = w.level.levelLength - w.tick;
     this.fade.alpha = left < 50 ? (50 - left) / 50 : 0;
@@ -233,12 +253,52 @@ export class Renderer {
         const flash = p.flash > 0 && !dying && p.def.armored === 0;
         b.put(tex, Math.floor(x), Math.floor(y), flash ? { red: 1, green: 0.5, blue: 0.5 } : {});
       }
-      if (dying && e.deathState === 6) {
-        // Zustand 6: grüne Zielerfassung (Geometrie vereinfacht)
-        const t = e.stateTimer;
-        this.overlay
-          .rect(x - t / 2, y - t / 2, tex.frame.width + t, tex.frame.height + t)
-          .stroke({ color: 0x33ff33, width: 2, alpha: 1 - t / 50 });
+    }
+  }
+
+  /** Zeichenliste der Effekte: gestreckte Rechtecke und Balken-Linien. */
+  private drawList(slot: DrawSlot, list: DrawList): void {
+    const b = this.batch(`fx:${slot}`);
+    for (const q of list.quads) {
+      const tex = q.surface ? this.surfaceTexture(q.surface) : this.texture(q.key);
+      if (!tex) continue;
+      const fw = tex.frame.width;
+      const fh = tex.frame.height;
+      b.put(tex, (q.x1 + q.x2) / 2 - fw / 2, (q.y1 + q.y2) / 2 - fh / 2, {
+        red: q.r,
+        green: q.g,
+        blue: q.b,
+        alpha: q.a,
+        scaleX: (q.x2 - q.x1) / fw,
+        scaleY: (q.y2 - q.y1) / fh,
+        rotation: q.rot,
+        additive: q.additive,
+      });
+    }
+    const bar = this.texture(BAR);
+    if (!bar) return;
+    for (const l of list.segments) {
+      const dx = l.x2 - l.x1;
+      const dy = l.y2 - l.y1;
+      const len = Math.hypot(dx, dy);
+      if (len === 0) continue;
+      const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+      const step = len / GRADIENT_STEPS;
+      for (let k = 0; k < GRADIENT_STEPS; k++) {
+        const f = (k + 0.5) / GRADIENT_STEPS;
+        const mix = (i: 0 | 1 | 2 | 3) => l.c1[i] + (l.c2[i] - l.c1[i]) * f;
+        const cx = l.x1 + dx * f;
+        const cy = l.y1 + dy * f;
+        b.put(bar, cx - bar.frame.width / 2, cy - bar.frame.height / 2, {
+          red: mix(0),
+          green: mix(1),
+          blue: mix(2),
+          alpha: mix(3),
+          scaleX: step / bar.frame.width,
+          scaleY: (2 * l.w) / bar.frame.height,
+          rotation: angle,
+          additive: l.additive,
+        });
       }
     }
   }

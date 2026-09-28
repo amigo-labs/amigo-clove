@@ -7,8 +7,9 @@ import {
   type RouteEffect,
   type RouteHost,
 } from "./route";
+import type { Effects } from "./effects";
 import { spanHit, type Surface } from "./surfaces";
-import { cint, f32, vbInt, winkelInGrad } from "./vb";
+import { COS_DEG, SIN_DEG, cint, degIndex, f32, idiv, vbInt, winkelInGrad } from "./vb";
 
 /**
  * Gegner-Instanzen (`[0x588110]`, 101 × 0xF0) und `SpielMoveEnemy`
@@ -17,8 +18,9 @@ import { cint, f32, vbInt, winkelInGrad } from "./vb";
  * Treffer: `CheckColisionWithEnemy` (`0x4C3E10`). Befund:
  * `docs/measurements/dovez-runtime.md`.
  *
- * Die Todeszustände 1–5 und 7 sind noch vereinfacht (Dauer und Ende, ohne
- * ihre Effekte); Zustand 6 (normaler Abschuss, 50 Ticks) ist vollständig.
+ * Todeszustände: 3 (Wrack), 5 (Sprengkörper), 6 (normaler Abschuss) und
+ * 7 (Kettenexplosion) sind vollständig; 1 (Beam-Spaltung), 2 (Nova) und
+ * 4 (Boss-Finale) laufen nur ihre Dauer ab und zerplatzen am Ende.
  */
 
 export const ENEMY_CAPACITY = 101;
@@ -67,23 +69,35 @@ export interface Enemy {
   inState: boolean;
   deathState: number;
   stateTimer: number;
+  /** Umriss über die sichtbaren Teile (Zustand 6, `e+0x80…0x8C`): links, oben, Breite, Höhe. */
+  bbox: [number, number, number, number];
+  /** Wrackteile (Zustand 3): Flugwinkel (0 = fertig), Bild, Bildzeit. */
+  pieces: { angle: number; frame: number; timer: number }[];
 }
 
 /** Was Gegner von der Welt brauchen. */
 export interface EnemyWorld {
   readonly tick: number;
   readonly playersMinus1: number;
-  readonly players: { x: number; y: number }[];
+  readonly players: { x: number; y: number; energy: number; alive: boolean }[];
   readonly globals: number[];
   readonly rnd: RouteHost["rnd"];
   readonly surfaces: readonly Surface[][];
+  readonly fx: Effects;
+  readonly gravity: number;
   terrain(x1: number, y1: number, x2: number, y2: number, excludeEnemy: number): boolean;
   /** Route-Effekte (Waffen, Animationen, Ebenen, Töne); `enemy` ist der ausführende Gegner. */
   effect(enemy: number, e: RouteEffect): void;
   /** Teil feuert (Feuermodus): Waffe oder Kind-Gegner. */
   partFires(enemy: number, part: number): void;
-  addScore(points: number, player: number): void;
-  killed(enemy: Enemy, how: "explode" | "silent"): void;
+  /** `AddPunkte`: Punkte, Wackeln, Popup bei (x, y) mit Steiggeschwindigkeit `vy`. */
+  addPoints(points: number, x: number, y: number, vy: number, player: number): void;
+  /** `KillGegnerSchussErzeuger` für alle Waffen des Gegners. */
+  killEmitters(enemy: number): void;
+  /** Effekt-Ton aus `Sound.d2p` (Name wie das Asset `sound/<name>`). */
+  sound(name: string): void;
+  /** Druckwelle `AddGegnerS(−1, …)` um (cx, cy) mit Lebensdauer `life`. */
+  shockwave(cx: number, cy: number, life: number, target: number): void;
 }
 
 export class Enemies {
@@ -184,6 +198,8 @@ export class Enemies {
       inState: false,
       deathState: 0,
       stateTimer: 0,
+      bbox: [0, 0, 0, 0],
+      pieces: [],
     };
     if (i > this.high) this.high = i;
     this.hint = i + 1;
@@ -240,32 +256,36 @@ export class Enemies {
     };
   }
 
+  /** `KillEnemy` samt den Waffen des Gegners. */
+  private destroy(i: number, w: EnemyWorld): void {
+    w.killEmitters(i);
+    this.kill(i);
+  }
+
   private stepNormal(i: number, e: Enemy, w: EnemyWorld): void {
     const host = this.host(i, e, w);
     const route = this.level.routes[e.route];
     if (!route || stepRoute(route, e.actor, host)) {
-      this.kill(i);
-      w.killed(e, "silent");
+      // Route zu Ende (meist aus dem Bild): still, ohne Punkte
+      this.destroy(i, w);
       return;
     }
     if (e.actor.hp < 0) {
-      // Selbstzerstörung durch die Route: keine Punkte, kein Todes-Spawn
-      if (e.def.bigDeath > 0) this.enterState(e, DeathState.chain);
-      else if (e.def.wreckGroup > 0) this.enterState(e, DeathState.wreck);
-      else {
-        w.killed(e, "explode");
-        this.kill(i);
-      }
+      this.selfDestruct(i, e, w);
       return;
     }
-    let destroy = false;
-    for (let j = 0; j < e.parts.length && !destroy; j++) {
+    let crash = false;
+    for (let j = 0; j < e.parts.length && !crash; j++) {
       const p = e.parts[j]!;
       if (!p.visible) continue;
       const pr = p.def.hasRoute !== 0 ? this.level.routes[p.def.route] : undefined;
       if (p.actor && pr) {
         if (stepRoute(pr, p.actor, host)) p.visible = false;
-        if (p.actor.hp < 0) p.visible = false;
+        if (p.actor.hp < 0) {
+          w.sound(p.score > 1499 ? "explosion2" : "explosion1");
+          this.burstPart(e, p, w, 150, 0, false);
+          p.visible = false;
+        }
       }
       if (!p.visible) continue;
       if (e.def.directionalFrames > 0) {
@@ -293,19 +313,116 @@ export class Enemies {
       if (e.def.collidesWithTerrain > 0 && s) {
         // rechter Rand aus `red` (+0x10) statt der Kontur — so im Original (0x4C21AC)
         if (
-          w.terrain(cint(x + s.left), cint(y + s.topRow), cint(x + p.red), cint(y + s.bottomRow), i)
+          w.terrain(cint(x + s.minX), cint(y + s.topRow), cint(x + p.red), cint(y + s.bottomRow), i)
         ) {
-          destroy = true;
+          crash = true;
           break;
         }
       }
+      if (e.def.ramsEnemies > 0 && s) {
+        // Rammen: Restschaden wird die eigene Energie; ein Treffer ohne Abschuss kostet alles
+        const k = e.def.ramsEnemies - 1;
+        const rem = this.hit(
+          cint(x + s.minX + k),
+          cint(y + s.topRow + k),
+          cint(x + s.maxX - k),
+          cint(y + s.bottomRow - k),
+          cint(e.actor.hp),
+          -1,
+          w,
+          { exclude: i, sparks: true },
+        );
+        if (rem !== e.actor.hp) e.actor.hp = f32(rem);
+        if (e.actor.hp <= 0) {
+          crash = true;
+          break;
+        }
+      }
+      if (!e.alive) return;
       if (p.flash > 0) p.flash--;
       if (this.shouldFire(p, w)) w.partFires(i, j);
     }
-    if (destroy) {
-      w.killed(e, "explode");
-      this.kill(i);
+    if (crash) this.crash(i, e, w);
+  }
+
+  /** §2.5: an Landschaft zerschellt oder beim Rammen gestorben — keine Punkte, kein Wrack. */
+  private crash(i: number, e: Enemy, w: EnemyWorld): void {
+    this.deathSpawn(e, w);
+    for (const p of e.parts) if (p.visible) this.burstPart(e, p, w, 500, 0, false);
+    w.sound("explosion2");
+    this.destroy(i, w);
+  }
+
+  /** §2.2: Route setzt die Energie unter 0. Keine Punkte, kein Todes-Spawn. */
+  private selfDestruct(i: number, e: Enemy, w: EnemyWorld): void {
+    if (e.def.deathShockwave > 0) this.shockwave(e, w);
+    if (e.def.bigDeath > 0) {
+      this.enterState(e, DeathState.chain);
+      w.sound("spalt");
+      return;
     }
+    w.sound(e.score > 1499 ? "explosion2" : "explosion1");
+    for (const p of e.parts) if (p.visible) this.burstPart(e, p, w, 150, 0, true);
+    if (e.def.wreckGroup > 0) this.enterState(e, DeathState.wreck);
+    else this.destroy(i, w);
+  }
+
+  /** Kind-Gegner beim Tod (`deathSpawn`: Anzahl−1 · Typ · Route). */
+  private deathSpawn(e: Enemy, w: EnemyWorld): void {
+    const a9 = e.def.deathSpawn;
+    if (a9 <= 0) return;
+    const type = Math.trunc((a9 % 1000) / 10);
+    const child = this.level.enemies[type];
+    if (!child) return;
+    const c = this.box(child);
+    const { w: bw, h: bh } = this.box(e.def);
+    for (let n = 0; n <= a9 % 10; n++) {
+      this.add(
+        type,
+        Math.trunc(a9 / 1000),
+        w.tick,
+        cint(e.actor.y + idiv(bh, 2) - idiv(c.h, 2)),
+        cint(e.actor.x + idiv(bw, 2) - idiv(c.w, 2)),
+        w.rnd,
+      );
+    }
+  }
+
+  /** §6.4: Druckwelle (Spielwirkung bei der Welt) und ihr Ring (große Partikel Art 13). */
+  private shockwave(e: Enemy, w: EnemyWorld): void {
+    const { w: bw, h: bh } = this.box(e.def);
+    const cx = e.actor.x + idiv(bw, 2);
+    const cy = e.actor.y + idiv(bh, 2);
+    w.shockwave(cx, cy, e.def.deathShockwave, e.actor.player);
+    const r = w.rnd.next();
+    w.fx.addBig(cx - 32, cy - 32, 0, 0, 1, 1, 1, 64, 0, e.def.deathShockwave, 13, r * 359);
+  }
+
+  /**
+   * „Part burst“: Funken und Explosion über der Kontur eines Teils,
+   * senkrecht um `dy` gestreckt (Zustand 6 mit t = 50: ein Fehler des
+   * Originals, übernommen); optional Wackeln und Ton.
+   */
+  private burstPart(
+    e: Enemy,
+    p: PartState,
+    w: EnemyWorld,
+    count: number,
+    dy: number,
+    shake: boolean,
+    sound = false,
+  ): void {
+    const s = this.surface(p);
+    if (!s) return;
+    const [px, py] = this.partPos(e, p);
+    const x1 = px + s.minX;
+    const x2 = px + s.maxX;
+    const y1 = py - dy + s.topRow;
+    const y2 = py + dy + s.bottomRow;
+    w.fx.addSparks(1, count, cint(x1 + 5), cint(y1 + 5), cint(x2 - 5), cint(y2 - 5), false);
+    w.fx.addExplosion(x1, y1, x2, y2);
+    if (shake) w.fx.shake += idiv(p.score, 500) + 1;
+    if (sound) w.sound(p.score > 1499 ? "explosion2" : "explosion1");
   }
 
   private shouldFire(p: PartState, w: EnemyWorld): boolean {
@@ -335,27 +452,264 @@ export class Enemies {
   }
 
   private stepDeath(i: number, e: Enemy, w: EnemyWorld): void {
+    switch (e.deathState) {
+      case DeathState.normal:
+        this.stepNormalKill(i, e, w);
+        return;
+      case DeathState.wreck:
+        this.stepWreck(i, e, w);
+        return;
+      case DeathState.explosive:
+        this.stepExplosive(i, e, w);
+        return;
+      case DeathState.chain:
+        this.stepChain(i, e, w);
+        return;
+    }
     const t = e.stateTimer++;
+    if (t === 0) w.killEmitters(i);
     const end =
-      e.deathState === DeathState.normal
-        ? 50
-        : e.deathState === DeathState.split
-          ? 30
-          : e.deathState === DeathState.nova
-            ? 40
-            : e.deathState === DeathState.explosive
-              ? 15
-              : e.deathState === DeathState.chain
-                ? 10 * e.parts.length
-                : e.deathState === DeathState.wreck
-                  ? 160
-                  : e.deathState === DeathState.boss
-                    ? 570
-                    : Infinity;
+      e.deathState === DeathState.split
+        ? 30
+        : e.deathState === DeathState.nova
+          ? 40
+          : e.deathState === DeathState.boss
+            ? 570
+            : Infinity;
     if (t >= end) {
-      w.killed(e, "explode");
+      for (const p of e.parts) if (p.visible) this.burstPart(e, p, w, 150, 0, true, true);
       this.kill(i);
     }
+  }
+
+  /** Zustand 6 (`0x4BDFEB`): 50 Ticks grüne Zielerfassung, dann zerplatzen. */
+  private stepNormalKill(i: number, e: Enemy, w: EnemyWorld): void {
+    const t = e.stateTimer;
+    const out = w.fx.lists.enemies;
+    if (t === 0) {
+      w.killEmitters(i);
+      let l0 = 10000;
+      let l1 = 10000;
+      let r = -10000;
+      let b = -10000;
+      for (const p of e.parts) {
+        const s = this.surface(p);
+        if (!p.visible || !s) continue;
+        const [px, py] = this.partPos(e, p);
+        l0 = Math.min(l0, px + s.minX);
+        l1 = Math.min(l1, py + s.topRow);
+        r = Math.max(r, px + s.maxX);
+        b = Math.max(b, py + s.bottomRow);
+      }
+      e.bbox = [l0, l1, r - l0, b - l1];
+    }
+    const [l0, l1, bw, bh] = e.bbox;
+    if (t < 50) {
+      const q = bw / bh;
+      const q2 = 1 / q;
+      const st = 4 * t;
+      const c1 = [0, 1, 0, 1] as const;
+      const c2 = [0.3, 1, 0.3, 0] as const;
+      out.line(l0, l1 + bh, l0 + q * st, l1 + bh - q2 * st, 5, c1, c2);
+      out.line(l0 + bw, l1 + bh, l0 + bw - q * st, l1 + bh - q2 * st, 5, c1, c2);
+      out.line(l0, l1, l0 + q * st, l1 + q2 * st, 5, c1, c2);
+      out.line(l0 + bw, l1, l0 + bw - q * st, l1 + q2 * st, 5, c1, c2);
+      if (t > 20) {
+        const cx = idiv(bw, 2) + l0;
+        const cy = idiv(bh, 2) + l1;
+        const px = cint(cx);
+        const py = cint(cy);
+        w.fx.addSparks(1, 10, px, py, px, py, false);
+        const rad = 20 * (50 - t);
+        const at = (k: number) => degIndex(10 * (t + 9 * k));
+        const c = [0.5, 1, 0.5, 1] as const;
+        for (const [ka, kb] of [
+          [0, 1],
+          [1, 2],
+          [2, -1],
+          [-1, 0],
+        ] as const) {
+          const a = at(ka);
+          const bIdx = at(kb);
+          out.line(
+            cx + (SIN_DEG[a] ?? 0) * rad,
+            cy + (COS_DEG[a] ?? 0) * rad,
+            cx + (SIN_DEG[bIdx] ?? 0) * rad,
+            cy + (COS_DEG[bIdx] ?? 0) * rad,
+            10,
+            c,
+            c,
+          );
+        }
+      }
+    }
+    if (t === 50) {
+      for (const p of e.parts) if (p.visible) this.burstPart(e, p, w, 150, 50, true, true);
+      this.kill(i);
+    }
+    e.stateTimer++;
+  }
+
+  /** Zustand 3 (`0x4B8117`): sechs Trümmer fliegen im Bogen, rauchen und zerplatzen. */
+  private stepWreck(i: number, e: Enemy, w: EnemyWorld): void {
+    const g = e.def.wreckGroup - 1;
+    const group = this.level.groups[g];
+    const { w: bw, h: bh } = this.box(e.def);
+    const cx = e.actor.x + idiv(bw, 2);
+    const cy = e.actor.y + idiv(bh, 2);
+    if (e.stateTimer === 0) {
+      w.killEmitters(i);
+      for (const p of e.parts) p.visible = false;
+      e.pieces = [];
+      for (let k = 0; k < 6; k++) {
+        const angle = cint(w.rnd.next() * 358) + 1;
+        const frame = vbInt(w.rnd.next() * (group?.frames.length ?? 1));
+        const st = { frame, timer: 9999 };
+        doAni(group, st);
+        e.pieces.push({ angle, frame: st.frame, timer: 0 });
+      }
+    }
+    const t = ++e.stateTimer;
+    let any = false;
+    for (const piece of e.pieces) {
+      if (piece.angle <= 0) continue;
+      const a = degIndex(cint(piece.angle));
+      const py = cint(cy + (SIN_DEG[a] ?? 0) * 5 * t + 0.5 * w.gravity * t * t);
+      if (py > 550) {
+        piece.angle = 0;
+        continue;
+      }
+      const px = cint(cx + (COS_DEG[a] ?? 0) * 5 * t);
+      doAni(group, piece);
+      any = true;
+      const s = this.surfaces[g]?.[piece.frame];
+      const rw = s?.rect.w ?? 0;
+      const rh = s?.rect.h ?? 0;
+      if (t % 2 === 0) {
+        const sz = cint((rw + rh) / 2);
+        const r1 = w.rnd.next();
+        const r2 = w.rnd.next();
+        w.fx.addBig(
+          px + idiv(rw - sz, 2),
+          py + idiv(rh - sz, 2),
+          r1 - 0.5,
+          r2 - 0.5,
+          1,
+          1,
+          1,
+          sz,
+          0,
+          12,
+          10,
+          0,
+        );
+      }
+      if (s) w.fx.lists.enemies.quad("", px, py, px + rw, py + rh, 1, 1, 1, 1, false, 0, s);
+      let hit = s
+        ? w.terrain(px + s.left, py + s.rect.y, px + s.right, py + s.rect.y + s.rect.h, -1)
+        : false;
+      if (!hit && s) {
+        for (const pl of w.players) {
+          if (!pl.alive) continue;
+          if (
+            px + s.right > pl.x &&
+            px + s.left < pl.x + 64 &&
+            py + s.bottomRow > pl.y + 17 &&
+            py + s.topRow < pl.y + 54
+          ) {
+            pl.energy = f32(pl.energy - 0.1);
+            hit = true;
+          }
+        }
+      }
+      if (hit || t === 160) {
+        const x2 = px + (s ? s.maxX - s.minX : 0);
+        const y2 = py + (s ? s.bottomRow - s.topRow : 0);
+        w.fx.addExplosion(px, py, x2, y2);
+        w.fx.addSparks(1, 150, px, py, x2, y2, false);
+        w.sound("explosion2");
+        piece.angle = 0;
+      }
+    }
+    if (t === 160 || !any) this.kill(i);
+  }
+
+  /** Zustand 5 (`0x4BCF9B`): Zündung mit rotem Blitz, nach 15 Ticks Flächenexplosion mit Kettenreaktion. */
+  private stepExplosive(i: number, e: Enemy, w: EnemyWorld): void {
+    const { w: bw, h: bh } = this.box(e.def);
+    const x = e.actor.x;
+    const y = e.actor.y;
+    if (e.stateTimer === 0) {
+      w.killEmitters(i);
+      for (let k = 0; k < 3; k++) w.fx.addBig(x, y, 0, 0, 1, 0.2, 0.1, bh, 0, 10, 0, bw);
+    }
+    const t = ++e.stateTimer;
+    if (t !== 15) return;
+    const a11 = e.def.explosionSpec;
+    const r = Math.trunc(a11 / 10) % 1000;
+    const [x1, y1, x2, y2] = [x - r, y - r, x + bw + r, y + bh + r];
+    w.fx.addExplosion(x1, y1, x2, y2);
+    const dp = (a11 % 10) - 1;
+    if (dp > 0) {
+      for (const pl of w.players) {
+        if (!pl.alive) continue;
+        if (pl.x + 60 > x1 && pl.x + 5 < x2 && pl.y + 45 > y1 && pl.y + 20 < y2) {
+          w.sound("hit");
+          pl.energy = f32(pl.energy - dp * 10);
+        }
+      }
+    }
+    let dmg = Math.trunc(a11 / 10000);
+    for (;;) {
+      const rem = this.hit(cint(x1), cint(y1), cint(x2), cint(y2), dmg, -1, w, {
+        exclude: i,
+        pierce: true,
+      });
+      const prev = dmg;
+      dmg = rem;
+      if (rem === prev || rem <= 0) break;
+    }
+    for (const p of e.parts) if (p.visible) this.burstPart(e, p, w, 150, 0, true, true);
+    this.kill(i);
+  }
+
+  /** Zustand 7 (`0x4BFF78`): alle 10 Ticks fliegt ein Teil ab, vom letzten zum ersten. */
+  private stepChain(i: number, e: Enemy, w: EnemyWorld): void {
+    if (e.stateTimer === 0) w.killEmitters(i);
+    e.stateTimer--;
+    let flag = 0;
+    for (let j = e.parts.length - 1; j >= 0; j--) {
+      const p = e.parts[j]!;
+      if (!p.visible) continue;
+      if (flag === 0) flag = 1;
+      const s = this.surface(p);
+      const [px, py] = this.partPos(e, p);
+      const rw = s?.rect.w ?? 0;
+      const rh = s?.rect.h ?? 0;
+      if (flag === 2)
+        for (let k = 0; k < 3; k++) w.fx.addBig(px, py, 0, 0, 0, 0, 1, rw, 0, 30, 0, rh);
+      if (e.stateTimer <= 0) {
+        flag = 2;
+        p.visible = false;
+        e.stateTimer = 10;
+        if (s) {
+          w.fx.addSparks(
+            1,
+            150,
+            cint(px + s.minX + 5),
+            cint(py + s.topRow + 5),
+            cint(px + s.maxX - 5),
+            cint(py + s.bottomRow - 5),
+            false,
+          );
+        }
+        const d = w.fx.addBig(px, py, 0.2, -0.1, 1, 1, 1, 0, 0, 100, 12, idiv(rw, 2) - 10);
+        if (d) Object.assign(d, { group: p.def.group, frame: p.frame, timer: p.timer, rot: 0 });
+        w.fx.shake += idiv(p.score, 500) + 1;
+        w.sound(p.score > 1499 ? "explosion2" : "explosion1");
+      }
+    }
+    if (flag === 0) this.kill(i);
   }
 
   /**
@@ -365,7 +719,8 @@ export class Enemies {
    * `damage` ohne Treffer, 0 wenn der Treffer verbraucht wird, bei einem
    * Abschuss der Überschuss (der Schuss fliegt damit weiter). Gepanzerte Teile
    * nehmen keinen Schaden; nur ein durchschlagender Aufrufer gegen einen Typ
-   * mit `armorPassThrough` behält dann den vollen Schaden.
+   * mit `armorPassThrough` behält dann den vollen Schaden. `sparks`: zehn
+   * blauweiße Funken je Treffer auf ein ungepanzertes Teil (Spielerschüsse, Rammen).
    */
   hit(
     x1: number,
@@ -375,7 +730,7 @@ export class Enemies {
     damage: number,
     player: number,
     w: EnemyWorld,
-    opts: { exclude?: number; pierce?: boolean } = {},
+    opts: { exclude?: number; pierce?: boolean; sparks?: boolean } = {},
   ): number {
     const exclude = opts.exclude ?? -1;
     for (let i = 0; i <= this.high; i++) {
@@ -391,34 +746,87 @@ export class Enemies {
         if (damage < 0) return 0;
         let ret = e.def.armorPassThrough <= 0 || !opts.pierce ? 0 : damage;
         if (p.def.armored !== 0) return ret;
+        const hx = cint(x);
+        const hy = cint(y);
+        if (opts.sparks) {
+          w.fx.addSparks(1, 10, hx + s.left, hy + s.topRow, hx + s.right, hy + s.bottomRow, true);
+        }
         if (e.def.hitFlash === 1) p.flash = 2;
         else if (e.def.hitFlash >= 2) for (const q of e.parts) q.flash = 2;
         if (p.def.damagesBody !== 0) {
           e.actor.hp = f32(e.actor.hp - damage);
           if (e.actor.hp > 0) return 0;
           ret = cint(-e.actor.hp);
-          this.killBy(e, player, w);
+          this.killBy(i, e, hx, hy, player, exclude, w);
           return ret;
         }
         p.hp = f32(p.hp - damage);
         if (p.hp > 0) return ret;
         ret = cint(-p.hp);
         p.visible = false;
-        w.addScore(p.score, player);
-        if (p.def.vital !== 0 || !e.parts.some((q) => q.visible)) this.killBy(e, player, w);
+        // Teil zerstört: Funken, Punkte am Teil, Ton
+        w.fx.addSparks(1, 100, hx + s.minX, hy + s.topRow, hx + s.maxX, hy + s.bottomRow, false);
+        w.addPoints(p.score, hx + idiv(s.rect.w, 2), hy + idiv(s.rect.h, 2), -1, player);
+        w.sound("explosion");
+        if (p.def.vital !== 0 || !e.parts.some((q) => q.visible)) {
+          this.killBy(i, e, hx, hy, player, exclude, w);
+        }
         return ret;
       }
     }
     return damage;
   }
 
-  /** Abschuss durch einen Spieler (Zustandswahl §4, ohne Beam/Nova). */
-  private killBy(e: Enemy, player: number, w: EnemyWorld): void {
-    w.addScore(e.score, player);
-    if (e.def.explosionSpec > 0) this.enterState(e, DeathState.explosive);
-    else if (e.def.bigDeath > 0) this.enterState(e, DeathState.chain);
-    else if (e.def.boss > 0) this.enterState(e, DeathState.boss);
-    else this.enterState(e, DeathState.normal);
+  /** Abschuss (§4): Todes-Spawn, dann Zustandswahl; `(hx, hy)` ist das getroffene Teil. */
+  private killBy(
+    i: number,
+    e: Enemy,
+    hx: number,
+    hy: number,
+    player: number,
+    exclude: number,
+    w: EnemyWorld,
+  ): void {
+    this.deathSpawn(e, w);
+    const { w: bw, h: bh } = this.box(e.def);
+    const cx = idiv(bw, 2) + hx;
+    const cy = idiv(bh, 2) + hy;
+    const d = e.def;
+    if (d.explosionSpec > 0 || d.bigDeath > 0) {
+      if (d.deathShockwave > 0) this.shockwave(e, w);
+      w.addPoints(e.score, cx, cy, 0, player);
+      this.enterState(e, d.explosionSpec > 0 ? DeathState.explosive : DeathState.chain);
+      w.sound("spalt");
+      return;
+    }
+    if (exclude !== -1) {
+      // „plain“: sofort zerplatzen (von einem anderen Gegner getötet)
+      if (d.deathShockwave > 0) this.shockwave(e, w);
+      w.sound(e.score > 1499 ? "explosion2" : "explosion1");
+      for (const p of e.parts) {
+        const s = this.surface(p);
+        if (!p.visible || !s) continue;
+        const [x, y] = this.partPos(e, p);
+        const px = cint(x);
+        const py = cint(y);
+        w.fx.addSparks(
+          1,
+          150,
+          px + s.minX + 5,
+          py + s.topRow + 5,
+          px + s.maxX - 5,
+          py + s.bottomRow - 5,
+          false,
+        );
+        w.fx.addExplosion(px + s.minX, py + s.topRow, px + s.maxX, py + s.bottomRow);
+      }
+      if (d.wreckGroup > 0) this.enterState(e, DeathState.wreck);
+      else this.destroy(i, w);
+      return;
+    }
+    w.addPoints(e.score, cx, cy, 0, player);
+    this.enterState(e, d.boss > 0 ? DeathState.boss : DeathState.normal);
+    w.sound("spalt");
   }
 }
 
