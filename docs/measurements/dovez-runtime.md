@@ -128,6 +128,15 @@ erscheinen Waffen-Power-ups nur für das gewählte Schiff.
   Neustart, Leben −1 (Start 3); Leben 0 → Continue (Punkte ÷ 3). Zwei Spieler:
   gemeinsame Leben (6), Wiedereinstieg nach 100 Ticks an der Position des
   Partners; ohne Leben oder im Bosskampf stirbt der Partner mit.
+- **Zeichnen** (`SpielMoveDove` `0x509110`, Schritt 6, nur lebende Spieler):
+  ab dem Levelausflug elf Nachbilder aus dem Verlauf `Me.B64` (α 1/12 … 1/2);
+  Schild (`a_kreis2` innen und außen, je ein grauer Blitz, 12 `Rnd` je Tick),
+  solange die Unverwundbarkeit > 10 oder ungerade ist — das Schiff selbst
+  blinkt nicht; das Schiff; in der 2P-Kraftphase elf additive Kopien; eine
+  additive Tönung (rot `1 − E/Emax`, grün bei mehr Energie als vor 10 Ticks,
+  blau bei vollem Beam in geraden Ticks); ein magenta Blitz (10 `Rnd`), solange
+  die Energie unter der von vor 10 Ticks liegt oder die Kraftphase läuft;
+  Rauch unter halber Energie (ein Zähler für beide Spieler).
 - **Punkte** (`AddPunkte` `0x50F750`): `score = CLng(Kombo · Punkte / (1 + 0,5 ·
   zwei Spieler) + score)`; der Kombo-Multiplikator wirkt auf alle Punkte des
   Spielers, solange er > 1 ist („Beam und Kombo“). Extraleben bei 200 000,
