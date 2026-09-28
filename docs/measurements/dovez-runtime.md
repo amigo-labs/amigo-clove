@@ -287,7 +287,6 @@ erscheinen Waffen-Power-ups nur für das gewählte Schiff.
   Teile vom letzten zum ersten, Konturtest wie bei der Landschaft; je Aufruf
   höchstens ein Teil. Rückgabe ist der **Restschaden**: ohne Treffer der volle,
   bei verbrauchtem Treffer 0, bei einem Abschuss der Überschuss (der Schuss
-<<<<<<< HEAD
   fliegt damit weiter). Gepanzerte Teile nehmen keinen Schaden; mit Schaden −1
   prüft der Aufruf nur, ob etwas überlappt (Force).
   `CheckWhereColisionRight/Left` (`0x4C6A60`/`0x4C64B0`) suchen die nächste
@@ -350,12 +349,6 @@ Ladung). Schaden `CLng(L^1,6 · Stufe)`, voll `8500 · Stufe` (+1500 Schiff 1).
   bei einem entkommenen Gegner (außer `noComboReset`/`solid`), am Ende der
   Kraftphase und im Nachglühen. Anzeige nur für Spieler 1: `combo` bei
   (730, 520) mit Zähler und Bonus, am Ende „Combo: N Hit B“ im Laufband.
-=======
-  fliegt damit weiter). Gepanzerte Teile nehmen keinen Schaden.
-- Zweitwaffen (Bombe, Fallrakete, Zielsuchrakete), Partikel (Schiff 0), Force
-  (Schiff 1), Beam (Aufladen 0,9 je Tick bis 165) und Super-Nova (eigener
-  Abschnitt) sind im Port umgesetzt.
->>>>>>> worktree-agent-a6289ba1d320e1b28
 
 ## Gegner-Laufzeit `SpielMoveEnemy` (`0x4B5850`)
 
@@ -376,7 +369,6 @@ Gegner geht nur, wenn seine Route endet oder er stirbt. Je Gegner:
 Aufblitzen als zweiter additiver Durchgang. DirectDraw-Gruppen als
 Colorkey-Blit, beim Aufblitzen das Negativ `_i`.
 
-<<<<<<< HEAD
 **Todeszustand** beim Abschuss (`0x4C4C8F`…`0x4C5A5F`): `explosionSpec` → 5,
 `bigDeath` → 7. Sonst zerplatzt der Gegner **sofort** (mit Punkten, Popup
 steigt, `Explosion1/2`), wenn ein anderer Gegner ihn getötet hat oder der
@@ -388,17 +380,8 @@ Punkte auch). Dauern: 1 30 Ticks, 2 40, 3 bis 160 (Trümmer mit Schwerkraft),
 4 570 (Boss-Finale), 5 15 (Zündung, blauer Blitz), 7 10 je Teil. Im 1P
 wackelt der Bildschirm beim Zerplatzen nicht, solange die Kraftphase läuft.
 Im Port vollständig: 1, 3, 4, 5 (mit Kettenreaktion über
-`CheckColisionWithEnemy` mit `exclude`), 6 und 7; 2 läuft seine Dauer ab und
-zerplatzt (Nova fehlt noch). Zustand 6 im Einzelnen: vier grüne Linien
-=======
-**Todeszustand** beim Abschuss: `explosionSpec` → 5, `bigDeath` → 7, durch
-einen anderen Gegner getötet → sofort Explosion, sonst **6** (normaler Abschuss,
-50 Ticks grüne Zielerfassung, dann Explosion); überschrieben zu 1 während des
-Beams, 2 während Nova, 4 für Bosse. Dauern: 1 30 Ticks, 2 40, 3 bis 160
-(Trümmer mit Schwerkraft), 4 570 (Boss-Finale), 5 15 (Zündung), 7 10 je Teil.
-Im Port vollständig: alle Zustände, 5 mit Kettenreaktion über
-`CheckColisionWithEnemy` mit `exclude`; 0, 2 und −1 im Abschnitt „Super-Nova“. Zustand 6 im Einzelnen: vier grüne Linien
->>>>>>> worktree-agent-a6289ba1d320e1b28
+`CheckColisionWithEnemy` mit `exclude`), 6 und 7; 0, 2 und −1 im Abschnitt
+„Super-Nova“. Zustand 6 im Einzelnen: vier grüne Linien
 wachsen aus den Ecken des Umrisses über die sichtbaren Teile, ab t = 21 je
 Tick zehn Funken aus der Mitte und ein rotierendes, schrumpfendes Quadrat
 (Radius 20·(50 − t)), bei t = 50 zerplatzt jedes Teil — mit einem um ±50 px
