@@ -722,7 +722,9 @@ Publisher (magnussoft), was Rechte weiter verteilt.
 
 Für die private Entwicklung im privaten Repo ist das unkritisch. **Eine
 Veröffentlichung setzt eine schriftliche Freigabe voraus** — zu klären vor M9,
-nicht danach.
+nicht danach. *(M8: Repository und Site sind seit dem 28.09.2026 auf Entscheidung
+des Repository-Inhabers öffentlich; Auslieferung über Cloudflare Workers Builds,
+`wrangler.jsonc`.)*
 
 ---
 

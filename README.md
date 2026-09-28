@@ -79,7 +79,13 @@ mit relativen Pfaden — sie läuft unter jedem Unterpfad ohne Server-Rewrite
 (Hash-Routing). Für den Service Worker braucht es HTTPS (oder `localhost`).
 Spielassets sind content-gehasht und dürfen unbegrenzt gecacht werden
 (`Cache-Control: immutable`); `index.html`, `sw.js` und die
-`manifest.json`-Dateien nicht. Veröffentlichen nur mit Freigabe, siehe unten.
+`manifest.json`-Dateien nicht. Der Build schreibt diese Regeln als `_headers`.
+
+Öffentlich ausgeliefert wird über **Cloudflare Workers Builds** (nur statische
+Assets, kein Worker-Skript): `wrangler.jsonc` im Wurzelverzeichnis baut mit
+`bun install --frozen-lockfile && bun run build` und lädt
+`packages/shell/dist/` hoch; jeder PR bekommt eine Vorschau. Lokal prüfen:
+`npx wrangler dev` (liefert die Site samt `_headers` unter `localhost:8787`).
 
 ## Verzeichnisse
 
@@ -113,6 +119,6 @@ bun scripts/originals-crlf.ts restore <DOVE-Ordner> <DoveZ-Ordner>
 
 Für beide Spiele liegt **keine** Freeware- oder Weitergabe-Erlaubnis vor; bei
 DoveZ ist Vervielfältigung ohne schriftliche Genehmigung ausdrücklich untersagt.
-Dieses Repository ist deshalb **privat**. Eine Veröffentlichung setzt eine
-schriftliche Freigabe des Autors voraus. Details im Abschnitt „Rechtlicher
-Befund" der Design-Spec.
+Repository und Site sind seit dem 28.09.2026 auf Entscheidung des
+Repository-Inhabers **öffentlich**. Der rechtliche Befund (Abschnitt
+„Rechtlicher Befund" der Design-Spec) bleibt davon unberührt.
