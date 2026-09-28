@@ -870,6 +870,6 @@ beendet sofort; danach `FadeOut(1, False)` und Musik in ~0,18 s aus. Port:
 Sichtprüfung `#/dovez?screen=save|credits`.
 
 Offen: Hauptmenü (Namen, Schiffwahl, „Spiel laden“, Optionen) und Intro,
-Drohnen (`Me.B04`), das Byte-Layout des Beam-Blocks im `.sav`, ob die
+das Byte-Layout des Beam-Blocks im `.sav`, ob die
 `Take`-Bilder wirklich gestreckt werden.
 
