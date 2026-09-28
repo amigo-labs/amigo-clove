@@ -50,10 +50,12 @@ const failures: string[] = [];
 function watch(page: Page, label: string): void {
   page.on("pageerror", (e) => failures.push(`${label} pageerror: ${e.message}`));
   page.on("console", (m) => {
-    if (m.type() === "error" && !m.text().includes("favicon"))
-      failures.push(`${label} console: ${m.text()}`);
+    if (m.type() === "error") failures.push(`${label} console: ${m.text()} (${m.location().url})`);
   });
   page.on("requestfailed", (r) => failures.push(`${label} request: ${r.url()}`));
+  page.on("response", (r) => {
+    if (r.status() >= 400) failures.push(`${label} HTTP ${r.status()}: ${r.url()}`);
+  });
 }
 
 /** DOVE Level 1 ab Tick 2100 direkt starten und prüfen, dass HUD und Spielfeld rendern. */
