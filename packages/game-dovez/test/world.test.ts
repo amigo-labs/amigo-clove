@@ -87,15 +87,15 @@ describe("Welt", () => {
   });
 });
 
-describe("Checkpoint", () => {
-  /** Steuert zum Tor, solange eines offen ist. */
-  const toGate = (w: World): PlayerInput => {
-    const p = w.players[0]!;
-    const c = w.checkpoint;
-    const open = c.active && !c.triggered;
-    return { ...fire, up: open && p.y + 35 > c.y + 5, down: open && p.y + 35 < c.y - 5 };
-  };
+/** Steuert zum Tor, solange eines offen ist. */
+function toGate(w: World): PlayerInput {
+  const p = w.players[0]!;
+  const c = w.checkpoint;
+  const open = c.active && !c.triggered;
+  return { ...fire, up: open && p.y + 35 > c.y + 5, down: open && p.y + 35 < c.y - 5 };
+}
 
+describe("Checkpoint", () => {
   test("Durchflug: 1000 Punkte und Schnappschuss; Tod setzt dorthin zurück", async () => {
     const { level, sprites } = await loadTestLevel("level1-1_skyfight");
     const w = new World(level, sprites);
