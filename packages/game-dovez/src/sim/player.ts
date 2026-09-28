@@ -32,6 +32,8 @@ export interface PlayerInput {
   switchBeam: boolean;
   rotate: boolean;
   nova: boolean;
+  /** F11: Hupe (`SpielHupe`, nur Spieler 1). */
+  horn?: boolean;
 }
 
 export const NO_INPUT: Readonly<PlayerInput> = {
@@ -90,10 +92,12 @@ export class Player {
   energy = MAX_ENERGY;
   maxEnergy = MAX_ENERGY;
   invulnerable = SPAWN_INVULNERABLE;
-  /** 0 Spiel, 1–3 Levelausflug. */
+  /** 0 Spiel, 1–3 Levelausflug, 5 von einem Spezialablauf gesteuert (`B.5C`). */
   exitState = 0;
   /** Energie zu Tickbeginn (Unverwundbarkeit setzt sie zurück). */
   startEnergy = MAX_ENERGY;
+  /** Drehung in Grad (`B.18`), nur in der Tutorial-Startsequenz ≠ 0. */
+  rotation = 0;
 
   constructor(
     readonly index: number,
@@ -232,7 +236,8 @@ function keys(p: Player, input: PlayerInput, w: PlayerWorld): void {
 
 /** `SpielKeysDove` für einen Spieler. */
 export function updatePlayer(p: Player, input: PlayerInput, w: PlayerWorld): void {
-  if (!p.alive) return;
+  // ab Zustand 5 steuert ein Spezialablauf das Schiff (`0x507E78`), auch ohne Verlauf
+  if (!p.alive || p.exitState >= 5) return;
   p.prevX = p.x;
   p.prevY = p.y;
   p.pushHistory();

@@ -1,6 +1,7 @@
 import type { DovezLevel, DovezTimelineEntry, RadioTexts } from "@clove/formats";
 import { AnimPool, prepareAnim } from "./anims";
 import { Effects, type EffectWorld } from "./effects";
+import { Environment, type EnvSaved, type EnvWorld } from "./environment";
 import type { FrameState } from "./doAni";
 import { doAni } from "./doAni";
 import { EVENT_LAYER, LayerState, SCREEN_W, TERRAIN_LAYER, TILE_CAPACITY } from "./layers";
@@ -53,7 +54,7 @@ import {
   type WeaponWorld,
 } from "./weapons";
 import { COS_DEG, SIN_DEG, VbRnd, cint, degIndex, f32, idiv, vbInt, winkelInGrad } from "./vb";
-import { newNovaState, novaBackground, novaFlash, stepNova, type NovaWorld } from "./nova";
+import { newNovaState, stepNova, type NovaWorld } from "./nova";
 
 /**
  * Weltzustand eines DoveZ-Levels und der Tick in der Reihenfolge von
@@ -94,7 +95,7 @@ export interface Checkpoint {
   /** 0 bis zum Durchflug, dann +10 je Tick; über 800 ist das Tor weg. */
   grow: number;
   triggered: boolean;
-  /** Weißer Blitz über dem Spielfeld und seine Änderung je Tick. */
+  /** Überblendung des Standbilds (`Me.CE8`) und ihre Änderung je Tick (`Me.CEC`). */
   flashAlpha: number;
   flashStep: number;
 }
@@ -118,6 +119,7 @@ interface Saved {
   readonly globals: number[];
   readonly force: Force;
   readonly particles: Particle[];
+  readonly env: EnvSaved;
 }
 
 /** Ereignisse für Ton, Funk und Engine-Teile, die noch fehlen; die Engine leert sie je Frame. */
@@ -132,8 +134,8 @@ export type WorldEvent =
       readonly sfx?: boolean;
     }
   | { readonly kind: "stopSound"; readonly sound: number }
-  /** Effekt-Ton der Engine aus `Sound.d2p` (`sound/<name>`), SFX-Pegel. */
-  | { readonly kind: "sfx"; readonly name: string }
+  /** Effekt-Ton der Engine aus `Sound.d2p` (`sound/<name>`), SFX-Pegel, optional mit Abspielrate. */
+  | { readonly kind: "sfx"; readonly name: string; readonly rate?: number }
   /** Effekt-Ton als Schleife starten (`on`) bzw. anhalten. */
   | {
       readonly kind: "sfxLoop";
@@ -203,7 +205,7 @@ export class World {
   lifePulse = 0;
   /** Angezeigte, hochzählende Punkte (`Me.574`). */
   shownScore = [0, 0];
-  /** `Me.50C`: in diesem Tick kein Blitz. */
+  /** `Me.50C`: in diesem Tick das Standbild erfassen, kein Blitz. */
   private noFlash = false;
   private saved: Saved | undefined;
   private shared: WeakSet<object> | undefined;
@@ -238,6 +240,8 @@ export class World {
   readonly fx: Effects;
   /** Funk und Laufband. */
   readonly radio: Radio;
+  /** Hintergrund, Wetter, Wasser, Overlays, Spezialabläufe (`environment.ts`). */
+  readonly env: Environment;
   /** Beam je Spieler (`Me.CB0[p]`) und die gemeinsamen Beam-Globalen. */
   readonly beams: Beam[] = [newBeam(), newBeam()];
   private readonly beamShared = newBeamShared();
@@ -283,7 +287,8 @@ export class World {
     this.enemies = new Enemies(level, this.surfaces, this.playersMinus1);
     this.fire = new EnemyFire(level, this.surfaces);
     this.fx = new Effects(this.rnd, level.waterHeight);
-    this.fx.style = this.background === 3 ? 1 : level.weatherParticles >= 500 ? 3 : 0;
+    // `Me.520` setzen Hintergrund 3/5 und `SpielRegen` jeden Tick selbst
+    this.fx.style = 0;
     this.radio = new Radio(level.radio, opts.radioTexts);
     // `AddGegnerS`: Schusston des Typs beim Abschuss
     this.fire.onFire = (shot) => {
@@ -300,6 +305,7 @@ export class World {
     const q = tonator(this.companionWorld());
     if (q) resetParticles(this.particles, q);
     this.tick = opts.startTick ?? 0;
+    this.env = new Environment(level, this.envWorld());
     this.preroll();
     this.save(0);
   }
@@ -458,6 +464,38 @@ export class World {
         this.comboHits[p] = (this.comboHits[p] ?? 0) + 1;
       },
     };
+  }
+
+  /** Die Umgebung liest und schreibt einige Weltfelder live (`Me.584`, `Me.7CC`, `Me.7C8`). */
+  private envWorld(): EnvWorld {
+    const host = {
+      rnd: this.rnd,
+      fx: this.fx,
+      players: this.players,
+      playersMinus1: this.playersMinus1,
+      overlays: this.overlays,
+      checkpoint: this.checkpoint,
+      enemies: this.enemies,
+      beams: this.beams,
+      force: this.force,
+      particles: this.particles,
+      spriteSize: (key: string) => this.sprites.size(key),
+      terrain: (x1: number, y1: number, x2: number, y2: number) => this.hitsTerrain(x1, y1, x2, y2),
+      sound: (name: string, rate?: number) =>
+        this.events.push({ kind: "sfx", name, ...(rate !== undefined ? { rate } : {}) }),
+      loop: (name: string, on: boolean) => this.loopSfx(name, on),
+      saveCheckpoint: () => this.save(0),
+    };
+    return Object.defineProperties(host, {
+      tick: { get: () => this.tick, set: (v: number) => void (this.tick = v) },
+      levelLength: { get: () => this.level.levelLength },
+      layer0Speed: { get: () => this.layers[0]!.speed },
+      background: { get: () => this.background, set: (v: number) => void (this.background = v) },
+      backgroundX: { get: () => this.backgroundX, set: (v: number) => void (this.backgroundX = v) },
+      nova: { get: () => this.nova },
+      stillCapture: { get: () => this.noFlash },
+      horn: { get: () => this.inputs[0]?.horn === true },
+    }) as typeof host & EnvWorld;
   }
 
   private effectWorld(): EffectWorld {
@@ -706,7 +744,9 @@ export class World {
       sound: (name) => this.sfx(name),
       soundOff: () => this.soundOff(),
       noFlash: () => {
+        // `Blenden`: Standbild erfassen, im nächsten Tick ausblenden (`OverlayEffekte`)
         this.noFlash = true;
+        this.env.blenden();
       },
     };
   }
@@ -834,14 +874,16 @@ export class World {
           true,
         );
       };
-      if (shield) {
+      // gedreht (`B.18`, Tutorial-Start): ohne Schild, nur das Schiff
+      if (shield && p.rotation === 0) {
         out.quad("a_kreis2", x - 15, y - 5, x + 79, y + 69, 0.6, 1, 0.6, 0.4, true);
         shieldBolt();
       }
       const img = key(p.tilt, p.animFrame);
       const sx = cint(x);
       const sy = cint(y);
-      out.quad(img, sx, sy, sx + 64, sy + 64);
+      out.quad(img, sx, sy, sx + 64, sy + 64, 1, 1, 1, 1, false, p.rotation);
+      if (p.rotation !== 0) continue;
       const beam = this.beams[p.index];
       let tint: [number, number, number, number] = [sx, sy, sx + 64, sy + 64];
       if (beam?.power && this.playersMinus1 === 1) {
@@ -1022,21 +1064,6 @@ export class World {
     },
   };
 
-  /**
-   * `OverlayEffekte` (`0x538260`), Overlays A und B: additiv über dem
-   * Spielfeld, A leicht vergrößert auf (−50, −50)–(850, 600). Das Original
-   * kopiert dafür den Backbuffer in die Surface `blur`; der Port zeichnet das
-   * geladene `blur`-Bild (Näherung).
-   */
-  private stepOverlays(): void {
-    const o = this.overlays;
-    o.alphaA = o.a ? Math.min(0.5, f32(o.alphaA + 0.025)) : Math.max(0, f32(o.alphaA - 0.05));
-    o.alphaB = o.b ? Math.min(0.5, f32(o.alphaB + 0.025)) : Math.max(0, f32(o.alphaB - 0.05));
-    const out = this.fx.lists.flash;
-    if (o.alphaA > 0) out.quad("blur", -50, -50, 850, 600, 1, 1, 1, o.alphaA, true);
-    if (o.alphaB > 0) out.quad("blur", 0, 0, 800, 550, 1, 1, 1, o.alphaB, true);
-  }
-
   /** `SaveCheckpoint(p)` (`0x51EA00`): ein Schnappschuss, jeder neue ersetzt den alten. */
   private save(p: number): void {
     if (!this.players.some((q) => q.alive)) return;
@@ -1076,6 +1103,7 @@ export class World {
       globals: c(this.globals),
       force: c(this.force),
       particles: c(this.particles),
+      env: this.env.save(),
     };
   }
 
@@ -1120,6 +1148,7 @@ export class World {
     this.globals.splice(0, this.globals.length, ...s.globals);
     Object.assign(this.force, s.force);
     s.particles.forEach((r, i) => Object.assign(this.particles[i]!, r));
+    this.env.load(s.env);
     Object.assign(this.checkpoint, { triggered: true, flashAlpha: 0.6, flashStep: -0.02 });
     for (const p of this.players) {
       doveInit(p);
@@ -1167,7 +1196,7 @@ export class World {
    * `SpielCheckpoint(pass)` (`0x51FAA0`): ein atmender, drehender Ring aus
    * 18 Glutpunkten, Pass 0 hinter dem Schiff, Pass 1 davor. Pass 1 bewegt
    * das Tor mit der Landschaft und löst beim Durchflug aus: sichern, dann
-   * +50 Energie, 1000 Punkte, Ton, weißer Blitz.
+   * +50 Energie, 1000 Punkte, Ton, Standbild-Überblendung.
    */
   private checkpointPass(pass: 0 | 1): void {
     const c = this.checkpoint;
@@ -1211,18 +1240,6 @@ export class World {
         this.addPoints(1000, c.x, c.y, -1, p.index);
       }
     }
-  }
-
-  /** Blitz nach Checkpoint oder Wiedergeburt (`OverlayEffekte` `0x5388A7`). */
-  private flash(): void {
-    const c = this.checkpoint;
-    if (!c.triggered || c.flashStep === 0 || this.noFlash) return;
-    c.flashAlpha = f32(c.flashAlpha + c.flashStep);
-    if (c.flashAlpha <= 0) {
-      c.flashStep = 0;
-      c.flashAlpha = 0;
-    }
-    this.fx.lists.flash.quad("blur3", 0, 0, 800, 550, 1, 1, 1, c.flashAlpha);
   }
 
   /**
@@ -1336,6 +1353,12 @@ export class World {
       case Op.AddFunction:
         this.radio.trigger(cint(a[0] ?? 0));
         return;
+      case Op.AddFade:
+        this.env.addNoise(a[0] ?? 0);
+        return;
+      case Op.SetSpecial:
+        this.env.setSpecial(a);
+        return;
       default:
         this.events.push({ kind: "effect", effect: fx });
     }
@@ -1351,6 +1374,7 @@ export class World {
     if (this.state !== 0) return;
     this.inputs = inputs;
     this.fx.beginTick();
+    this.env.beginTick();
     this.noFlash = false;
     for (const p of this.players) p.startEnergy = p.energy;
     this.level.groups.forEach((g, i) => doAni(g, this.groupFrames[i]!));
@@ -1360,21 +1384,19 @@ export class World {
       if (this.tick >= this.level.levelLength - 50) this.musicStep = -2;
       this.timeline();
     }
-    if (this.background === 1) {
-      this.backgroundX = f32(this.backgroundX - this.layers[0]!.speed);
-      if (this.backgroundX <= -SCREEN_W) this.backgroundX = f32(this.backgroundX + SCREEN_W);
-    }
-    novaBackground(this.novaState, this.rnd, this.background);
-    // [2] Ebenen 0, 1, 2, 5, Checkpoint, Steuerung
+    // Hintergrund auch in der Nova (dort −1/−2 mit Nachzieh-Schleier)
+    this.env.moveBackground();
+    // [2] Ebenen 0, 1, 2, 5, Spezial-Pass 0, Checkpoint, Steuerung
     if (!this.nova) {
       for (const l of [0, 1, 2, 5]) {
         this.layers[l]!.move(this.surfaces, this.groupFrames);
         this.anims.move(l, this.level, this.layers);
+        if (l === 0) this.env.stepSpecial(0);
       }
       this.checkpointPass(0);
       const pw = this.playerWorld();
       for (const p of this.players) updatePlayer(p, inputs[p.index] ?? NO_INPUT, pw);
-      if (this.players.some((p) => p.exitState >= 1)) this.afterimages = true;
+      if (this.players.some((p) => p.exitState >= 1 && p.exitState < 5)) this.afterimages = true;
     }
     moveParticles(this.companionWorld(), this.companionKeys);
     // [3] Abfeuern, Spielerschüsse Ebene 0
@@ -1418,18 +1440,21 @@ export class World {
     if (!this.nova) this.fire.stepShots(this.shotWorld());
     stepForce(this.companionWorld(), this.companionKeys, this.fx.lists.force);
     this.fx.movePopups();
-    // [8] Checkpoint, Ebene 6
+    this.env.hupe();
+    // [8] Regen, Checkpoint, Ebene 6, Wasser, Schnee
     if (!this.nova) {
+      this.env.rain();
       this.checkpointPass(1);
       this.layers[6]!.move(this.surfaces, this.groupFrames);
       this.anims.move(6, this.level, this.layers);
+      this.env.water();
+      this.env.snow();
     }
+    this.env.stepSpecial(1);
     this.fx.stepShake();
     // [10] Kontakt ([9] Schrifteffekt und [11] Abblende: Renderer)
     if (!this.nova) this.contact();
-    this.stepOverlays();
-    this.flash();
-    novaFlash(this.novaState, this.fx.lists.flash, this.noFlash);
+    this.env.overlay();
     this.display();
   }
 

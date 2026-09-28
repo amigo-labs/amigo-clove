@@ -4,18 +4,21 @@ import {
   Container,
   Graphics,
   Rectangle,
+  Sprite,
   Text,
   Texture,
   type Renderer as PixiRenderer,
 } from "pixi.js";
 import type { DrawList, DrawSlot } from "../sim/effects";
+import type { EnvSlot } from "../sim/envDraw";
 import { DeathState, type Enemy } from "../sim/enemies";
 import { LAYER_COUNT } from "../sim/layers";
 import type { Surface } from "../sim/surfaces";
 import { cint, idiv } from "../sim/vb";
 import type { World } from "../sim/world";
-import { NovaScreen } from "./NovaScreen";
+import { Compositor, type PlanItem } from "./Compositor";
 import { SpriteBatch } from "./SpriteBatch";
+import type { StripTexture } from "./StripMesh";
 
 /**
  * Zeichnet den DoveZ-Weltzustand in der Reihenfolge von `SpielLoop`:
@@ -23,8 +26,11 @@ import { SpriteBatch } from "./SpriteBatch";
  * Spielerschüsse Ebene 0 → Funken 0 → Power-ups → Schiff → Gegner (mit den
  * Linien und Trümmern ihrer Todeszustände) → Blasen → Animationen 4 →
  * Landschaft 3 → Spielerschüsse 1 → Animationen 3 → Funken 1 → große
- * Partikel → Gegnerschüsse → Punkte-Popups → Ebene 6 → Wackeln → HUD.
- * Die Effekte kommen als Zeichenlisten aus der Simulation (`sim/effects.ts`).
+ * Partikel → Gegnerschüsse → Punkte-Popups → Hupe → Regen → Ebene 6 →
+ * Wasser → Wetter → Spezial → Overlays → Wackeln → HUD.
+ * Die Effekte kommen als Zeichenlisten aus der Simulation (`sim/effects.ts`,
+ * Umgebung `sim/envDraw.ts`); alles bis auf Abblende und HUD geht wie im
+ * Original in einen nie gelöschten Backbuffer (`Compositor`).
  */
 
 interface AtlasRef {
@@ -72,13 +78,73 @@ const BAR = "balken";
 /** Farbverlauf einer Linie in so vielen Stücken. */
 const GRADIENT_STEPS = 4;
 
+/** Zeichenstellen in der Reihenfolge von `SpielLoop`; `env:*` sind Umgebungslisten. */
+const ORDER = [
+  "env:bg",
+  "layer0",
+  "anim0",
+  "env:special0",
+  "layer1",
+  "anim1",
+  "layer2",
+  "anim2",
+  "layer5",
+  "anim5",
+  "fx:gate0",
+  "fx:exhaust",
+  "fx:weapons",
+  "fx:shots0",
+  "fx:sparks0",
+  "specials",
+  "fx:ship",
+  "enemies",
+  "fx:enemies",
+  "fx:bubbles",
+  "anim4",
+  "layer3",
+  "fx:particles",
+  "fx:shots1",
+  "anim3",
+  "fx:beam",
+  "nova:blits",
+  "fx:nova",
+  "fx:sparks1",
+  "fx:big",
+  "eshots",
+  "fx:force",
+  "fx:popups",
+  "env:hupe",
+  "env:rain",
+  "fx:gate1",
+  "layer6",
+  "anim6",
+  "env:water",
+  "env:weather",
+  "env:special1",
+  "hint",
+  "fx:flash",
+  "env:overlay",
+] as const;
+
+export interface RendererOptions {
+  /** Spielsprache Deutsch (Tastenhinweis „Drücke:“ statt „Press:“). */
+  readonly german?: boolean;
+  /** Tastenname einer Aktion (Index der Belegungstabelle) für Satz 0 (1P) bzw. 1/2. */
+  readonly keyLabel?: (action: number, set: number) => string;
+}
+
 export class Renderer {
   readonly root = new Container();
-  /** Spielfeld (ohne HUD); das Wackeln verschiebt es. */
-  private readonly field = new Container();
   private readonly batches = new Map<string, SpriteBatch>();
+  private readonly layers = new Map<string, Container>();
   private readonly frames = new Map<string, Texture>();
-  private readonly overlay = new Graphics();
+  private readonly compositor: Compositor;
+  /** Backbuffer auf dem Bildschirm; das Wackeln verschiebt ihn. */
+  private readonly screen: Sprite;
+  /** Tastenhinweis (`SpielSpezial` Typ 1): je Zeile zwei Schatten und der Text. */
+  private readonly hint = new Container();
+  private readonly hintTexts: Text[] = [];
+  private lastFrame = -1;
   /** HUD (`SpielDisplay`) über dem Spielfeld, nicht gewackelt, nicht abgeblendet. */
   private readonly hud: SpriteBatch;
   /** Laufband (`ShowMSGS`): Courier 12, RGB(64, 255, 64), GDI nach dem HUD. */
@@ -86,66 +152,28 @@ export class Renderer {
     text: "",
     style: { fill: 0x40ff40, fontSize: 12, fontFamily: "Courier New, Courier, monospace" },
   });
-  private readonly bgFill = new Graphics();
   /** Abblende-Schwarz über dem Spielfeld (Alpha je Frame). */
   private readonly fade = new Graphics().rect(0, 0, 800, 550).fill(0x000000);
   private frameNo = 0;
   /** Bildbruch der Super-Nova (braucht den Pixi-Renderer für die Zwischenbilder). */
-  private readonly novaScreen: NovaScreen | undefined;
 
   constructor(
     private readonly textures: TextureRegistry,
     private readonly world: World,
     /** Level-Atlas zuerst, dann `spiel`, `standart`. */
     private readonly atlases: readonly AtlasRef[],
-    pixi?: PixiRenderer,
+    pixi: PixiRenderer,
+    private readonly opts: RendererOptions = {},
   ) {
-    this.root.addChild(this.field);
-    this.field.addChild(this.bgFill);
-    for (const name of [
-      "background",
-      "layer0",
-      "anim0",
-      "layer1",
-      "anim1",
-      "layer2",
-      "anim2",
-      "layer5",
-      "anim5",
-      "fx:gate0",
-      "fx:exhaust",
-      "fx:weapons",
-      "fx:shots0",
-      "fx:sparks0",
-      "specials",
-      "fx:ship",
-      "enemies",
-      "fx:enemies",
-      "fx:bubbles",
-      "anim4",
-      "layer3",
-      "fx:particles",
-      "fx:shots1",
-      "anim3",
-      "fx:beam",
-      "fx:nova",
-      "fx:sparks1",
-      "fx:big",
-      "eshots",
-      "fx:force",
-      "fx:popups",
-      "fx:gate1",
-      "layer6",
-      "anim6",
-      "fx:flash",
-    ]) {
+    this.compositor = new Compositor(pixi);
+    this.screen = new Sprite(this.compositor.bb);
+    this.root.addChild(this.screen);
+    for (const name of ORDER) {
+      if (name.startsWith("env:") || name === "hint" || name === "nova:blits") continue;
       const c = new Container();
-      this.field.addChild(c);
+      this.layers.set(name, c);
       this.batches.set(name, new SpriteBatch(c));
     }
-    this.field.addChild(this.overlay);
-    const nova = this.batches.get("fx:nova");
-    this.novaScreen = pixi && nova ? new NovaScreen(pixi, this.field, nova.layer) : undefined;
     this.root.addChild(this.fade);
     const hud = new Container();
     this.root.addChild(hud);
@@ -200,12 +228,12 @@ export class Renderer {
 
   draw(): void {
     const w = this.world;
+    // ohne neuen Tick bleibt das Bild (der Backbuffer darf nicht erneut verschleiert werden)
+    if (w.env.frame === this.lastFrame) return;
+    this.lastFrame = w.env.frame;
     this.frameNo++;
     for (const b of this.batches.values()) b.begin();
     this.hud.begin();
-    this.overlay.clear();
-    this.drawBackground();
-    this.drawNovaVeil();
     for (let l = 0; l < LAYER_COUNT; l++) this.drawTiles(l);
     for (let l = 0; l < LAYER_COUNT; l++) this.drawAnims(l);
     this.drawSpecials();
@@ -214,7 +242,8 @@ export class Renderer {
     for (const [slot, list] of Object.entries(w.fx.lists)) {
       if (slot !== "radio") this.drawList(this.batch(`fx:${slot as DrawSlot}`), list);
     }
-    this.field.position.set(-w.fx.shakeX, -w.fx.shakeY);
+    this.drawHint();
+    this.screen.position.set(-w.fx.shakeX, -w.fx.shakeY);
     // Abblenden in den letzten 50 Ticks
     const left = w.level.levelLength - w.tick;
     this.fade.alpha = left < 50 && !w.nova ? (50 - left) / 50 : 0;
@@ -224,39 +253,95 @@ export class Renderer {
     this.ticker.text = w.radio.ticker;
     for (const b of this.batches.values()) b.end();
     this.hud.end();
-    this.novaScreen?.apply(w.novaState.blits);
+    this.compose();
   }
 
-  private drawBackground(): void {
-    const w = this.world;
-    this.bgFill.clear();
-    const color = w.background === 5 ? 0x6b87b3 : w.background === 3 ? 0x999aad : 0x000000;
-    this.bgFill.rect(0, 0, 800, 550).fill(color);
-    if (w.background !== 1) return;
-    const key = w.level.background.toLowerCase().replace(/\.bmp$/, "");
-    const t = this.texture(key);
-    if (!t) return;
-    const b = this.batch("background");
-    const x = Math.trunc(w.backgroundX);
-    b.put(t, x, 0);
-    if (x !== 0) b.put(t, x + 800, 0);
+  /** Ebenen und Umgebungslisten der Reihe nach in den Backbuffer (`Compositor`). */
+  private compose(): void {
+    const c = this.compositor;
+    const lists = this.world.env.lists;
+    c.begin();
+    const plan: PlanItem[] = [];
+    for (const name of ORDER) {
+      if (name === "hint") plan.push(this.hint);
+      else if (name === "nova:blits") this.novaBlits(plan);
+      else if (name.startsWith("env:")) {
+        const slot = name.slice(4) as EnvSlot;
+        c.expand(lists[slot], (key) => this.stripTexture(key), plan);
+      } else plan.push(this.layers.get(name)!);
+    }
+    c.play(plan);
   }
 
   /**
-   * Schleier der Nova-Hintergründe (`SpielMoveHintergrund`): −1 `weiss`
-   * rgba(1, Rnd/2, 0, 0,1), −2 weiß. Das Original übermalt das stehende Bild
-   * je Tick mit 10 % (kein Flip bei Hintergrund ≤ 0, Nachzieh-Spuren); der
-   * Port füllt mit der Endfarbe (Näherung).
+   * Bildbruch der Super-Nova (Varianten 3 und 4): `BltFast` des Backbuffers
+   * auf sich selbst, erst senkrecht, dann waagerecht (`NovaState.blits`, je
+   * `dx, dy, sx, sy, w, h`). Da der Backbuffer bleibt, sammeln sich die
+   * Versätze wie im Original über die Ticks an.
    */
-  private drawNovaVeil(): void {
-    const w = this.world;
-    if (w.background !== -1 && w.background !== -2) return;
-    const g = w.background === -2 ? 255 : Math.round((w.novaState.bgRnd / 2) * 255);
-    const b = w.background === -2 ? 255 : 0;
-    this.bgFill
-      .clear()
-      .rect(0, 0, 800, 550)
-      .fill((255 << 16) | (g << 8) | b);
+  private novaBlits(plan: PlanItem[]): void {
+    for (const b of this.world.novaState.blits) {
+      const rects: [number, number, number, number, number, number][] = [];
+      for (let i = 0; i + 5 < b.length; i += 6)
+        rects.push([b[i + 2]!, b[i + 3]!, b[i + 4]!, b[i + 5]!, b[i]!, b[i + 1]!]);
+      if (rects.length > 0) plan.push({ op: "copy", rects });
+    }
+  }
+
+  /** Streifen-Textur zu einem Schlüssel: Render-Ziel oder Atlas-Sprite (`@noise` mit Wiederholung). */
+  private stripTexture(key: string): StripTexture | undefined {
+    if (key === "@blur" || key === "@still")
+      return this.compositor.targetTexture(key === "@blur" ? "blur" : "still");
+    const wrap = key === "@noise";
+    const t = this.texture(wrap ? "noise" : key);
+    if (!t) return undefined;
+    const s = t.source;
+    const f = t.frame;
+    return {
+      // der Ausschnitt geht als Uniform an den Shader: je Bild ein eigenes Mesh
+      id: `${wrap ? "~" : ""}${s.uid}|${f.x},${f.y},${f.width},${f.height}`,
+      texture: t,
+      frame: [f.x / s.width, f.y / s.height, f.width / s.width, f.height / s.height],
+      wrap,
+    };
+  }
+
+  /**
+   * Tastenhinweis (`SpielSpezial` Typ 1, GDI Arial 70): „Drücke: “ + Taste,
+   * zwei schwarze Schatten bei (10, y) und (12, y + 2), Text in Grau v bei
+   * (11, y + 1); 1P y = 450, 2P je Spieler y = 360 und 450.
+   */
+  private drawHint(): void {
+    const h = this.world.env.hint;
+    const lines = h ? (this.world.playersMinus1 === 1 ? [1, 2] : [0]) : [];
+    const need = lines.length * 3;
+    while (this.hintTexts.length < need) {
+      const t = new Text({
+        text: "",
+        style: { fontFamily: "Arial", fontSize: 70, fill: 0xffffff },
+      });
+      this.hintTexts.push(t);
+      this.hint.addChild(t);
+    }
+    this.hintTexts.forEach((t, i) => (t.visible = i < need));
+    if (!h) return;
+    const prefix = this.opts.german === false ? "Press: " : "Drücke: ";
+    lines.forEach((set, n) => {
+      const y = lines.length === 2 && n === 0 ? 360 : 450;
+      const text = prefix + (this.opts.keyLabel?.(h.action, set) ?? "?");
+      const v = Math.max(0, Math.min(255, h.grey));
+      const parts: [number, number, number][] = [
+        [10, y, 0],
+        [12, y + 2, 0],
+        [11, y + 1, (v << 16) | (v << 8) | v],
+      ];
+      parts.forEach(([x, py, color], k) => {
+        const t = this.hintTexts[3 * n + k]!;
+        t.text = text;
+        t.style.fill = color;
+        t.position.set(x, py);
+      });
+    });
   }
 
   private drawTiles(l: number): void {
@@ -628,9 +713,11 @@ export class Renderer {
   }
 
   destroy(): void {
-    this.novaScreen?.destroy();
     for (const t of this.frames.values()) t.destroy(false);
     this.frames.clear();
+    for (const c of this.layers.values()) c.destroy({ children: true });
+    this.hint.destroy({ children: true });
+    this.compositor.destroy();
     this.root.destroy({ children: true });
   }
 }

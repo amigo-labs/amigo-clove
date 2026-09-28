@@ -65,7 +65,7 @@ export class DovezAudio {
       seen.add(key);
       switch (e.kind) {
         case "sfx":
-          this.sfx.play(`sound/${e.name}`, 0, SFX_GAIN);
+          this.sfx.play(`sound/${e.name}`, 0, SFX_GAIN, e.rate ?? 1);
           break;
         case "sfxLoop": {
           const loop = this.sfxLoops.get(e.name);

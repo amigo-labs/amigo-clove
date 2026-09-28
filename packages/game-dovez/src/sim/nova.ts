@@ -53,16 +53,12 @@ export interface NovaState {
   g6A0: number;
   /** Nova-Taste des letzten Spielers dieses Ticks (`[ebp−0xE0]`, Variante 8). */
   keyHeld: boolean;
-  /** `Rnd` des Hintergrunds −1 in diesem Tick (`SpielMoveHintergrund`). */
-  bgRnd: number;
   /**
    * Bildbruch dieses Ticks (`BltFast` des Backbuffers auf sich selbst):
    * erst senkrechte, dann waagerechte Streifen, je sechs Zahlen
    * `dx, dy, sx, sy, w, h`.
    */
   readonly blits: [number[], number[]];
-  /** `Blenden` (`Me.514/518`): weißer Blitz, fällt um 0,05 je Tick. */
-  flash: number;
 }
 
 export const newNovaState = (): NovaState => ({
@@ -81,9 +77,7 @@ export const newNovaState = (): NovaState => ({
   g698: 0,
   g6A0: 0,
   keyHeld: false,
-  bgRnd: 0,
   blits: [[], []],
-  flash: 0,
 });
 
 /** Was die Nova von der Welt braucht. */
@@ -112,7 +106,7 @@ export interface NovaWorld {
   sound(name: string): void;
   /** `SpielSoundOFF`. */
   soundOff(): void;
-  /** `Me.50C`: in diesem Tick kein Blitz. */
+  /** `Blenden` (`0x4A9FA0`): Standbild erfassen und ausblenden (`OverlayEffekte`). */
   noFlash(): void;
 }
 
@@ -172,23 +166,6 @@ export function stepNova(w: NovaWorld, st: NovaState): void {
   }
 }
 
-/** `Rnd` des Hintergrunds −1 (`SpielMoveHintergrund`, je gezeichnetem Tick, früh im Tick). */
-export function novaBackground(st: NovaState, rnd: VbRnd, background: number): void {
-  if (background === -1) st.bgRnd = rnd.next();
-}
-
-/**
- * Weißer Blitz nach `Blenden` in `OverlayEffekte`: im Tick des Blendens
- * (`Me.50C`) nichts, danach von 0,95 in Schritten von 0,05 abwärts.
- * Näherung (Blendkurve im Befund *mittel*).
- */
-export function novaFlash(st: NovaState, out: DrawList, noFlash: boolean): void {
-  if (noFlash || st.flash <= 0) return;
-  st.flash = f32(st.flash - 0.05);
-  if (st.flash <= 0) st.flash = 0;
-  else out.quad("blur3", 0, 0, 800, 550, 1, 1, 1, st.flash);
-}
-
 // --- Auslösen ---------------------------------------------------------------
 
 /** §4: Taste, Riegel, Voraussetzungen, Verbrauch, Gegnerschüsse weg, Töne. */
@@ -196,8 +173,8 @@ function trigger(w: NovaWorld, st: NovaState): void {
   const en = w.enemies;
   for (let i = 0; i <= w.playersMinus1; i++) {
     const p = w.players[i];
-    // die Sperre `B48[0].5C` setzt nur `SpielSpezial`, das der Port nicht hat
-    const pressed = w.inputs[i]?.nova ?? false;
+    // Sperre `B48[0].5C` (Levelausflug, Spezialabläufe): immer Spieler 1
+    const pressed = (w.inputs[i]?.nova ?? false) && (w.players[0]?.exitState ?? 0) === 0;
     st.keyHeld = pressed;
     if (!pressed) {
       st.latch = false;
@@ -341,7 +318,6 @@ function explosion2x2(w: NovaWorld, st: NovaState): void {
 
 function blend(w: NovaWorld, st: NovaState): void {
   if (st.counter !== 1) return;
-  st.flash = 1;
   w.noFlash();
 }
 

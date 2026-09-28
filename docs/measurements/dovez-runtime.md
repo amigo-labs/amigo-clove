@@ -7,7 +7,8 @@ am laufenden Original gemessen. Konfidenz *hoch*, wo nicht anders vermerkt.
 Umsetzung: `packages/game-dovez/src/sim/` (`world.ts` Tick, `layers.ts`,
 `anims.ts`, `enemies.ts`, `enemyFire.ts`, `player.ts`, `playerShots.ts`,
 `weapons.ts`, `companions.ts`, `beam.ts`, `effects.ts`, `radio.ts`,
-`snapshot.ts`), Ton in `src/audio/DovezAudio.ts`.
+`snapshot.ts`, `environment.ts`/`special.ts` Umgebung), Ton in
+`src/audio/DovezAudio.ts`, Backbuffer in `src/render/Compositor.ts`.
 
 **Methodennamen:** Die Namensliste im VB-Objektkopf steht nicht in
 vtable-Reihenfolge. Bis etwa `LadeDaten` passt sie, danach ist der echte Name
@@ -34,8 +35,9 @@ an ihrer Stelle ab; die Nova schaltet in Schritt 9 mitten im Tick um (Abschnitt
    Bildzähler der Kacheln).
 2. außer Nova: Musik-Fade; Zeitleiste (`0x50C9F0`), am Ende `Me.584 += 1` und
    Levelende-Prüfungen. Gegner, die in Tick T spawnen, bewegen sich noch in T.
-3. Hintergrund.
-4. außer Nova: Ebenen 0, 1, 2, 5 je mit ihren Animationen; Checkpoint;
+3. Hintergrund (`SpielMoveHintergrund` `0x50D490`, auch in der Nova).
+4. außer Nova: Ebene 0 mit Animationen, `SpielSpezial(0)`, Ebenen 1, 2, 5 je
+   mit ihren Animationen; Checkpoint;
    Spielereingabe und -bewegung (`SpielKeysDove` `0x507DB0`).
 5. Partikel; Drohnen; außer Nova: Abfeuern (`SpielSchieß` `0x4E2C20`),
    Spielerschüsse Ebene 0; Funken 0; außer Nova: Power-ups.
@@ -45,10 +47,11 @@ an ihrer Stelle ab; die Nova schaltet in Schritt 9 mitten im Tick um (Abschnitt
    Schiff gezeichnet)**.
 8. außer Nova: Spielerschüsse Ebene 1, Animationen 3, Emitter, Beam.
 9. **Super-Nova** (`SpielNova` `0x52A230`, jeden Tick), Partikel; außer Nova:
-   **Gegnerschüsse**; Satelliten, Punkteanzeigen.
-10. außer Nova: Wetter, Checkpoint, **Ebene 6** mit Animationen, Wasser.
+   **Gegnerschüsse**; Satelliten, Punkteanzeigen, Hupe.
+10. außer Nova: Regen, Checkpoint, **Ebene 6** mit Animationen, Wasser,
+    Schnee/Wolken/Regenschleier; `SpielSpezial(1)` (prüft die Nova selbst).
 11. Erschütterung; außer Nova: **Kontakt** (`SpielFeindberührung` `0x50B710`);
-    Overlays; außer Nova: Abblenden in den letzten 50 Ticks; HUD.
+    Overlays mit Rauschen; außer Nova: Abblenden in den letzten 50 Ticks; HUD.
 
 Zeichenreihenfolge der Ebenen damit 0, 1, 2, 5, [Schiff, Gegner], 4, 3, 6.
 
@@ -80,8 +83,105 @@ vorhandenen. Kacheln animieren über den **globalen** Bildzähler ihrer Gruppe.
 
 Hintergrund (`Me.7CC`): Bild (Feld `background` ist ein Dateiname) wird mit
 Periode 800 gekachelt und scrollt mit Ebene 0; Zahlen wählen prozedurale
-Varianten: 2 Sternenfeld, 3 grauer Schleier, 5 Himmel mit Wolken, 6 Sterne
-mit wachsendem Tempo (Details *mittel*; im Port bisher Farbflächen).
+Varianten (Abschnitt „Hintergründe“).
+
+## Hintergründe (`SpielMoveHintergrund` `0x50D490`, `environment.ts`)
+
+**Der Backbuffer wird nie gelöscht** (kein Clear in `RenderStart`/`Flip`);
+jede Variante übermalt das vorige Bild ganz oder nur mit einem Schleier. Der
+Port bildet das mit einer dauerhaften Render-Textur nach, in die jeder Frame
+ohne Löschen zeichnet (`Compositor.ts`); gezeichnet wird nur nach einem
+neuen Tick. Sprungtabelle über `Me.7CC + 2`, Sterne/Flecken in `Me.10C0`
+(101 × 0x1C, im Checkpoint gesichert; `Me.10CC` legt sie neu aus):
+
+| Modus | Level | Bild | `Rnd` |
+|---|---|---|---|
+| 1 Bild | die meisten | schwarz, Bild bei `CLng(x)` und `CLng(x + 800)` (bei x = 0 einmal) | – |
+| 2 Sternfeld | 2-x, Bonus, Epilog | schwarz; 10 `feuer0`-Nebel (α 0,15, Farbe aus der Wanduhr `GetTickCount`) in die Ecke 64 × 64, nach `blur` erfasst, bilinear auf 800 × 600; 101 Sternschweife (`balken`, 2 px, nach rechts ausblendend, Tempo 0,1…10,1) | 303 beim Auslegen, 1 je umlaufendem Stern |
+| 3 Eis | 6-1, 6-2 | nur ein Schleier (0,6/0,6/0,68, α 0,5) über dem vorigen Bild → Schlieren; `Me.520 = 1` | – |
+| 4 Plasma | nur Speicherbildschirm | rote `a_kreis2`-Flecken über `blur` | 505 beim Auslegen |
+| 5 Himmel | Skyfight | 101 weiße `feuer0`-Flecken (α ≤ 0,1) auf Dunkelblau in 64 × 64, bilinear auf 800 × 550; Abendrot (`balken` 1/0,5/0,25, α 2T/Länge); **jeden Tick `Me.520 = 2`** | 505 beim Auslegen |
+| 6 Warp | 7-5 | schwarz, Schweife mit Tempo `(T − 50) \ 4`, begrenzt 1…8/10/12/14 | 202 beim Auslegen, 1 je Umlauf |
+| 0 | Beam-Spur, Nova | 10 % schwarz über dem vorigen Bild, bei `Me.520 = 2` das alte Bild 8 px nach links | – |
+| −1 / −2 | Nova | 10 % rgba(1, Rnd/2, 0) bzw. weiß über dem vorigen Bild | −1: 1 je Tick |
+
+Damit hat **Skyfight den weißen Explosionsstil** (`AddExplosionsPartikel`
+prüft nur `Me.520 ≠ 0`). Der Nebel läuft im Original mit der Wanduhr; der Port
+nimmt 16 ms je Tick (*Näherung*, ohne `Rnd`). Die 16-Bit-Variante von Modus 5
+(flaches Blau 0x6B87B3) nutzt der Port nicht. Mehrere Ticks in einem Frame
+zeichnen nur den letzten (Schleier dann schwächer als im Original).
+
+## Wetter (`SpielRegen` `0x536970`, `SpielSchnee` `0x537150`)
+
+**Regen** bei `0 < weatherParticles < 500` (3-1: 16, 4-1: 10, 5-2: 12
+Tropfen, außer Nova): Tropfen `Me.10D0[0…N]` fallen 8…10 px je Tick, frisch
+4 `Rnd`, Neustart oben 3 `Rnd`; an Wasserlinie, Schiff (ohne Lebend-Prüfung)
+oder Landschaft 7 graue Spritzer (`Add1Partikel`, je 1 `Rnd`, nur bei
+`Me.7CC > 0`). Gezeichnet als 4 × 19 px `balken` quer, α 0,2. Ab 500 (3-2)
+nur `Me.520 = 3`.
+
+**`SpielSchnee`** nur bei `Me.520 > 0` und `Me.7CC > 0`: zuerst 1 `Rnd` für
+den zufällig wandernden Windwinkel, dann je Stil 60 Datensätze `Me.10E4`
+(nicht gesichert, nach jedem Neustart neu ausgelegt): 1 Schnee (6-1, 6-2)
+`schnee1–3` additiv α 0,8 in drei Tempi, seitlich vom Wind; 2 Wolken
+(Skyfight) 60 `feuer0`-Schwaden α 0,3, 240 `Rnd` beim Auslegen, 3 je
+Neustart rechts; 3 Regenschleier (3-2) `regen1` additiv α 0,4 mit Ton `rain`
+in Schleife.
+
+## Wasser (`SpielWasser` `0x533390`)
+
+Bei `waterHeight` W > 0 (5-1: 550, 5-2: 275, 5-3: 71, 7-2: 81, 8-1: 57),
+außer Nova; im Original alles nur beim Zeichnen, im Port jeden Tick. W > 100:
+das bisherige Bild unter der Wasserlinie in Streifen von 10…14 px (1 `Rnd` je
+Streifen) um `CLng(k·SinusB(y + 2T))` verschoben (k = 5 bei W = 550, sonst
+1/0/−1 … nach Tiefe \ 50). Ab hier nur bei `Me.7CC ≠ 0`: Oberfläche aus zwei
+wogenden Verlaufsbändern (`waterTop` → `waterBottom`, α 0,4); an Schiffen,
+die die Linie schneiden, Spritzer (additive Glut, 3 `Rnd`) und Ton
+`water touch` in Schleife; Blasen mit 1 % (1 + 2 `Rnd`) an Schiffen und nicht
+festen Gegnern, Spritzer an Drohnen, Force, Gegnern und Beam 1; alle 3 Ticks
+`W \ 20 + 1` Schwebeteilchen (4 `Rnd`, Blau versehentlich aus `top.g`).
+
+## Overlays (`OverlayEffekte` `0x538260`, `MakeSomeNoise` `0x4FEBC0`)
+
+Glühen (`Me.508`) und Unschärfe (`Me.506`) steigen um 0,025 bis 0,5 und fallen
+um 0,05; gezeichnet wird das auf 64 × 64 erfasste Bild (`blur`), additiv auf
+(−50, −50)–(850, 600) bzw. normal, **mit Rückkopplung**: am Ende des Ticks
+wird das Bild erneut erfasst (`Me.50A`), gezeichnet im nächsten. Der
+**Checkpoint-„Blitz“ ist ein Standbild**: im Auslöse-Tick (bzw. am Ende der
+Todessequenz, `Me.50C`) kopiert `OverlayEffekte` das Spielfeld nach `Me.774`
+(`blur3`), danach blendet es die Kopie von α 1 in 20 Ticks (nach dem Neustart
+0,6 in 30) aus — kein Weiß. `Blenden` (`0x4A9FA0`, Tutorial, Nova) tut
+dasselbe mit α 1 → 0 in Schritten von 0,05. Rauschen: bei `Me.6D0 > 0` 4 × 3
+Kacheln `noise` mit zufälligem, gespiegeltem Ausschnitt, **48 `Rnd`**, nur
+beim Zeichnen. `Me.6D0` ist je Tick 0; **Route op 41 („AddFade“) addiert
+Rauschen** (auf 0…1 geklemmt; 7-1, 7-2), dazu Spezial 7 und der Beam von
+Schiff 2 (fehlt im Port). Der Port rendert nach einem Tod erst das Todesbild,
+dann startet er neu (für das Standbild).
+
+## Spezialabläufe (`SpielSpezial` `0x538CF0`, `special.ts`)
+
+Route op 42 (`SetSpecial`): Typ und vier Parameter, aktiv bis der Ablauf sich
+beendet oder ersetzt wird; nicht in der Nova. Pass 0 nach Ebene 0 (Typen 2, 3),
+Pass 1 nach dem Wetter.
+
+| Typ | Level | Ablauf | `Rnd` |
+|---|---|---|---|
+| 0 | Tutorial | Startsequenz 201 Ticks: Schiffe (Zustand 5, gedreht 270°) steigen mit Triebwerksglut auf, fliegen von links ein, weiße Blende, `SaveCheckpoint(0)`, `Blenden` | je Tick und Schiff |
+| 1 | Tutorial, Skyfight, 7-4, Jungle | Tastenhinweis „Drücke: “ + Taste (GDI Arial 70), 300 Ticks | – |
+| 2 | Tutorial | obere Bildhälfte glüht in 21 Lagen | – |
+| 3 | 1-2, 3-2, 4-2 | Gewitter: Schleier α 0,5, je Tick 0,5 % Blitz (mit Ton 2× Donner mit Zufallsfrequenz, +1 `Rnd`); 49 Ticks Lichtkegel, zwei **gesäte** `Blitz` (`Rnd(−1)`, `Randomize`; danach ist die Folge eine Funktion eines gezogenen Werts), Glühen | Ruhe 1, Blitz 21 |
+| 4 | 7-3 | Bild über `blur` mit wogendem 20 × 20-Gitter, α 0,3, Unschärfe an | – |
+| 5 | Epilog | Abflug mit Triebwerksglut | 27 je Schiff |
+| 6 | 7-4 | `Me.584 = Me.588 − 300`, Schiffe gesteuert, Glühen und Unschärfe | – |
+| 7 | 7-5 | Flucht: Explosionen, rote Flammen, Donner bei T = 200 mit Rauschen, Blitze, „Schmelzen“ 600…690 (101 Spalten versetzt, 202 `Rnd`), Energie −0,1 links | viele, mit Ton mehr |
+
+Zustand 5 (`B48[p].5C`) überspringt `SpielKeysDove` ganz und sperrt Beam und
+Nova. Die `Rnd`, die von der Option „Ton an“ abhängen (Donnerfrequenz,
+Explosionstöne der Flucht), zieht der Port wie mit Ton. *Näherungen:* die
+Texturkoordinaten von Typ 4 (bis 800/257) sind auf das erfasste Bild
+umgerechnet; die Felder `Me.BCC`/`Me.B8C` bei t = 200 von Typ 0 sind offen und
+entfallen; `SpielHupe` (F11, `hupe` 40 Ticks, auch in der Nova) ist umgesetzt,
+Browser fangen F11 aber meist ab.
 
 ## Terrain-Kollision `CheckColisionWithLandschaft3` (`0x4C5EE0`)
 
@@ -310,7 +410,7 @@ Funke, jeden zweiten eine 64er-Explosion und eine Blur-Blase, ein `Rnd` jeden
 Tick (Ton `endgegnerw3` mit 20 % bei t 131…159); t = 120 Strahlenkranz, 160…230
 Explosionsellipsen, ab T = 325 sieben implodierende Wellen, T = 430 rote Glut und
 Wackeln + 70, zwei weiße Vollbildblitze; Overlays A/B (Glühen, Unschärfe;
-Port-Näherung mit `blur`), `endgegnerw1…7` (W5 und W2 als Schleife). T = 1:
+Abschnitt „Overlays“), `endgegnerw1…7` (W5 und W2 als Schleife). T = 1:
 beide Spieler 600 Ticks unverwundbar, im 1P endet ein laufender Beam 2; T = 2
 bis 500 Hintergrund 0; T = 500 zerplatzen die Teile; **T = 520: `Me.584 =
 Me.588 − 151`** (Levelausflug im nächsten Tick); T = 570 ist der Boss weg.
@@ -370,15 +470,13 @@ Gegner noch; ab `SpielNova` ruhen schon Gegnerschüsse, Ebene 6, Kontakt und
 Abblende. Im End-Tick laufen diese wieder, ab dem Folgetick alles. Der Spieler
 ist damit während der Nova unverwundbar; `Me.584` (Tick) steht.
 
-**Bild:** Hintergrund −1 rgba(1, Rnd/2, 0) (1 `Rnd` je Tick, früh im Tick),
-−2 weiß; Overlays A/B wie beim Boss; `Blenden` (C = 1) als weißer Blitz über
-`blur3`. *Näherungen:* Das Original flippt bei Hintergrund ≤ 0 nicht und
-übermalt das stehende Bild je Tick mit 10 % (Nachzieh-Spuren); der Port füllt
-mit der Endfarbe. Den Bildbruch (Varianten 3/4, `BltFast` des Backbuffers auf
-sich selbst, senkrechte Streifen ±5 px mit einem Fehler bei den Zielkoordinaten,
-dann waagerechte ±10 px) spielt der Renderer als Kopie des Spielfelds ab
-(`NovaScreen.ts`), ohne das Ansammeln über die Ticks; die `Rnd` laufen exakt.
-Die Sperre `B48[0].5C` (nur `SpielSpezial`) fehlt im Port.
+**Bild:** Hintergrund −1 rgba(1, Rnd/2, 0) bzw. −2 weiß mit 10 % über dem
+vorigen Bild (Nachzieh-Spuren, Abschnitt „Hintergründe“); Overlays wie beim
+Boss; `Blenden` (C = 1) als Standbild-Überblendung. Den Bildbruch (Varianten
+3/4, `BltFast` des Backbuffers auf sich selbst, senkrechte Streifen ±5 px mit
+einem Fehler bei den Zielkoordinaten, dann waagerechte ±10 px) spielt der
+Renderer auf den dauerhaften Backbuffer; die Versätze sammeln sich wie im
+Original. Die Sperre `B48[0].5C` (Spezialabläufe, Levelausflug) gilt.
 
 ## Gegner-Instanz (`[0x588110]`, 101 × 0xF0)
 
@@ -501,8 +599,9 @@ nur ab. Damit bleibt die gemeinsame Zufallsfolge mit den Routen gleich.
 w×h: `N = CLng(2·w/64·h/64) + 1` Punkte, je Punkt zu 60 % Glut (64 px,
 orange, wartet `D` Ticks) sonst schwarzer Rauch, dazu `CLng(3·w/64·h/64) + 2`
 additive Feuerbälle. `D`/Leben 6/16 bei Kantenmittel ≤ 64, sonst 20/36.
-Weißer Stil (Eis-Hintergrund 3, starkes Wetter, im Original auch am
-24. Dezember — im Port ohne Datum) mit weißem Rauch und blauen Feuerbällen.
+Weißer Stil (`Me.520 ≠ 0`: Eis-Hintergrund 3, Himmel 5 in Skyfight,
+Starkregen, im Original auch am 24. Dezember — im Port ohne Datum) mit weißem
+Rauch und blauen Feuerbällen.
 
 **Treffer:** jeder Spielerschuss auf ein ungepanzertes Teil zehn blauweiße
 Funken im Teilrechteck (vor dem Schaden, 90 `Rnd`); der verbrauchte Schuss
@@ -530,7 +629,8 @@ Zeitleisten-Art 3 (nur 1P) bzw. 7 (nur 2P), x = `CLng(800 + p1\2 + scrollPos)`.
 drehenden Ellipse, Pass 0 hinter dem Schiff, Pass 1 davor; Pass 1 schiebt das
 Tor mit Ebene 3 und löst aus, wenn ein lebender Spieler die Mitte überdeckt:
 **erst sichern**, dann +50 Energie für beide, 1000 Punkte mit Popup,
-`Checkpoint.wav`, weißer Blitz (α 1 → 0 in 20 Ticks), das Tor weitet sich und
+`Checkpoint.wav`, Standbild-Überblendung (α 1 → 0 in 20 Ticks, Abschnitt
+„Overlays“), das Tor weitet sich und
 ist nach 80 Ticks weg.
 
 **Schnappschuss** `SaveCheckPointSub` (`0x51DF40`): ein Platz, jeder neue
@@ -546,7 +646,8 @@ unveränderlichen Daten (`snapshot.ts`).
 jeden Tick `SpielSoundOFF`; ohne Leben blendet die Musik aus). Danach
 `VariabelnLösch`, `LoadCheckpoint`, `DoveInit` beider Schiffe (volle
 Energie, 100 Ticks unverwundbar, Position bleibt), ein Leben weniger, Punkte
-und Kombo-Bestwerte vom Todeszeitpunkt, Blitz α 0,6, erneut sichern,
+und Kombo-Bestwerte vom Todeszeitpunkt, Überblendung des Todesbilds ab α 0,6,
+Sterne aus dem Schnappschuss, Wetter neu ausgelegt, erneut sichern,
 `SpielDoveWiedergeburt` (`0x50A620`: nur Partikel und `newborn1.wav`). Kein
 Vorlauf, die Musik läuft weiter, der Funk bricht ab. 2P mit Leben und ohne
 Boss: der Spieler ersteht allein beim Partner wieder, ohne Neustart; sonst
