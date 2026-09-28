@@ -20,8 +20,9 @@ import { COS_DEG, SIN_DEG, cint, degIndex, f32, idiv, vbInt, winkelInGrad } from
  *
  * Ein gewöhnlicher Abschuss lässt den Gegner sofort zerplatzen (`killBy`).
  * Todeszustände: 3 (Wrack), 5 (Sprengkörper), 6 (Abschuss durch den Beam)
- * und 7 (Kettenexplosion) sowie 4 (Boss-Finale) sind vollständig; 1
- * (Beam-Spaltung) und 2 (Nova) laufen nur ihre Dauer ab und zerplatzen am Ende.
+ * und 7 (Kettenexplosion) sowie 1 (Spaltung in der Kraftphase) und 4
+ * (Boss-Finale) sind vollständig; 2 (Nova) läuft nur seine Dauer ab und
+ * zerplatzt am Ende.
  */
 
 export const ENEMY_CAPACITY = 101;
@@ -105,6 +106,8 @@ export interface EnemyWorld {
   readonly nova: boolean;
   /** Kombo + 1 während der Kraftphase (`Me.59C`/`Me.5B8`). */
   comboUp(player: number): void;
+  /** Kombo zurücksetzen (Multiplikator 1, Treffer und Bonus 0). */
+  comboReset(player: number): void;
   /** Boss-Finale (Zustand 4): Hintergrund `Me.7CC`, Levelende, Overlays, Ton-Schleifen. */
   readonly boss: BossHooks;
 }
@@ -294,7 +297,10 @@ export class Enemies {
     const host = this.host(i, e, w);
     const route = this.level.routes[e.route];
     if (!route || stepRoute(route, e.actor, host)) {
-      // Route zu Ende (meist aus dem Bild): still, ohne Punkte
+      // Route zu Ende (meist aus dem Bild): still, ohne Punkte; ein entkommener Gegner beendet die Kombo
+      if (e.def.noComboReset === 0 && e.def.solid === 0) {
+        for (let p = 0; p <= w.playersMinus1; p++) if (w.beamPower(p)) w.comboReset(p);
+      }
       this.destroy(i, w);
       return;
     }
@@ -449,7 +455,9 @@ export class Enemies {
     const y2 = py + dy + s.bottomRow;
     w.fx.addSparks(1, count, cint(x1 + 5), cint(y1 + 5), cint(x2 - 5), cint(y2 - 5), false);
     w.fx.addExplosion(x1, y1, x2, y2);
-    if (shake) w.fx.shake += idiv(p.score, 500) + 1;
+    // keine Erschütterung, solange im 1P die Kraftphase läuft
+    if (shake && (!w.beamPower(0) || this.playersMinus1 === 1))
+      w.fx.shake += idiv(p.score, 500) + 1;
     if (sound) w.sound(p.score > 1499 ? "explosion2" : "explosion1");
   }
 
@@ -495,6 +503,9 @@ export class Enemies {
         return;
       case DeathState.boss:
         this.stepBoss(i, e, w);
+        return;
+      case DeathState.split:
+        this.stepSplit(i, e, w);
         return;
     }
     const t = e.stateTimer++;
@@ -717,6 +728,88 @@ export class Enemies {
     if (T === 570) {
       w.sound("endgegnerw7");
       for (let n = 0; n < 3; n++) fx.addBig(x, y, 0, 0, 0.1, 0.2, 1, bh, 0, 10, 0, bw);
+      this.kill(i);
+    }
+  }
+
+  /**
+   * Zustand 1, Spaltung (`0x4B5E8F`, Abschuss in der Beam-Kraftphase): weißer
+   * Ring, jedes Teil in zwei Hälften, die je Tick 1 px auseinandergehen, mit
+   * additivem Leuchtspalt; bei t = 30 zerplatzen die Teile, ohne Wrack.
+   */
+  private stepSplit(i: number, e: Enemy, w: EnemyWorld): void {
+    const out = w.fx.lists.enemies;
+    if (e.stateTimer === 0) {
+      w.killEmitters(i);
+      let [x1, y1, x2, y2] = [10000, 10000, -10000, -10000];
+      for (const p of e.parts) {
+        const s = this.surface(p);
+        if (!s) continue;
+        const [px, py] = this.partPos(e, p);
+        x1 = Math.min(x1, f32(px + s.minX));
+        y1 = Math.min(y1, f32(py + s.topRow));
+        x2 = Math.max(x2, f32(px + s.maxX));
+        y2 = Math.max(y2, f32(py + s.bottomRow));
+      }
+      const bw = x2 - x1;
+      const bh = y2 - y1;
+      const r = w.rnd.next();
+      const q = cint(bh + bw);
+      w.fx.addBig(
+        Math.trunc(cint(bw) / 2) + x1 - Math.trunc(q / 4),
+        Math.trunc(cint(bh) / 2) + y1 - Math.trunc(q / 4),
+        0,
+        0,
+        1,
+        1,
+        1,
+        Math.trunc(q / 2),
+        10,
+        20,
+        13,
+        r * 359,
+      );
+      e.actor.vx = 0;
+      e.actor.vy = 0;
+    }
+    const t = ++e.stateTimer;
+    for (const p of e.parts) {
+      const s = this.surface(p);
+      if (!p.visible || !s) continue;
+      const [px, py] = this.partPos(e, p);
+      const R = s.rect;
+      const half = Math.trunc(R.h / 2);
+      const col = [p.red, p.green, p.blue, p.alpha] as const;
+      const x = cint(px);
+      // obere Hälfte t px nach oben, untere t px nach unten (+ absoluter Quell-y, wie im Original)
+      out.quad("", x, cint(py - t), x + R.w, cint(py - t) + half, ...col, false, 0, s, [
+        0,
+        0,
+        R.w,
+        half,
+      ]);
+      const yb = cint(py + t + half + R.y);
+      out.quad("", x, yb, x + R.w, yb + R.h - half, ...col, false, 0, s, [
+        0,
+        half,
+        R.w,
+        R.h - half,
+      ]);
+      out.quad(
+        "a_kreis2",
+        cint(px + s.minX),
+        yb - 2 * t,
+        cint(px + s.maxX),
+        yb,
+        1,
+        1,
+        1,
+        0.9,
+        true,
+      );
+    }
+    if (t === 30) {
+      for (const p of e.parts) if (p.visible) this.burstPart(e, p, w, 150, 30, true, true);
       this.kill(i);
     }
   }

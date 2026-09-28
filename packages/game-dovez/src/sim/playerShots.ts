@@ -165,11 +165,13 @@ function initTrail(s: PlayerShot, n: number): void {
 /**
  * `Spur` (`0x536110`): additives Leuchtband aus `balken`-Vierecken, Alpha
  * steigt zum Kopf; `shift` schiebt erst (x, y) nach. Näherung: Balken je
- * Glied mit Farbverlauf, ohne die Winkelglättung an den Knicken.
+ * Glied mit Farbverlauf, ohne die Winkelglättung an den Knicken. `Y` darf
+ * dasselbe Feld wie `X` sein (der Beam übergibt beim Nachglühen beides gleich).
  */
-function trail(
+export function drawTrail(
   out: DrawList,
-  s: PlayerShot,
+  X: Float32Array,
+  Y: Float32Array,
   x: number,
   y: number,
   n: number,
@@ -179,9 +181,6 @@ function trail(
   b: number,
   shift: boolean,
 ): void {
-  const X = s.trailX;
-  const Y = s.trailY;
-  if (!X || !Y) return;
   const N = cint(n);
   if (shift) {
     for (let k = 0; k <= cint(n - 1); k++) {
@@ -206,6 +205,22 @@ function trail(
       true,
     );
   }
+}
+
+/** Leuchtband eines Schusses (Spur-Felder `+0x2C`/`+0x30`). */
+function trail(
+  out: DrawList,
+  s: PlayerShot,
+  x: number,
+  y: number,
+  n: number,
+  w: number,
+  r: number,
+  g: number,
+  b: number,
+  shift: boolean,
+): void {
+  if (s.trailX && s.trailY) drawTrail(out, s.trailX, s.trailY, x, y, n, w, r, g, b, shift);
 }
 
 /** Nächstes Ziel zur Mitte (x, y): Abstand `CLng(Sqr(dx² + dy²))` < bisher (Start 10000). */

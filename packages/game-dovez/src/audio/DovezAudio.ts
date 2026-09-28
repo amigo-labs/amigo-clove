@@ -18,8 +18,8 @@ const MUSIC_GAIN = 0.9;
 export class DovezAudio {
   /** Laufende Schleifen der Level-Töne je Index (`SpielSoundOFF` hält sie an). */
   private readonly loops = new Map<number, () => void>();
-  /** Laufende Schleifen der Engine-Effekte je Name (Boss-Finale, Waffen). */
-  private readonly sfxLoops = new Map<string, () => void>();
+  /** Laufende Schleifen der Engine-Effekte je Name (Boss-Finale, Waffen, Beam-Laden). */
+  private readonly sfxLoops = new Map<string, { stop(): void; setRate(rate: number): void }>();
   private voice: string | undefined;
 
   private constructor(
@@ -66,15 +66,21 @@ export class DovezAudio {
         case "sfx":
           this.sfx.play(`sound/${e.name}`, 0, SFX_GAIN);
           break;
-        case "sfxLoop":
+        case "sfxLoop": {
+          const loop = this.sfxLoops.get(e.name);
           if (e.on) {
-            if (!this.sfxLoops.has(e.name))
-              this.sfxLoops.set(e.name, this.sfx.loop(`sound/${e.name}`, SFX_GAIN));
+            if (loop) loop.setRate(e.rate ?? 1);
+            else
+              this.sfxLoops.set(
+                e.name,
+                this.sfx.loopHandle(`sound/${e.name}`, SFX_GAIN, e.rate ?? 1),
+              );
           } else {
-            this.sfxLoops.get(e.name)?.();
+            loop?.stop();
             this.sfxLoops.delete(e.name);
           }
           break;
+        }
         case "sound": {
           const file = world.level.sounds[e.sound]?.file;
           if (!file) break;
@@ -96,7 +102,7 @@ export class DovezAudio {
         case "soundOff":
           for (const stop of this.loops.values()) stop();
           this.loops.clear();
-          for (const stop of this.sfxLoops.values()) stop();
+          for (const loop of this.sfxLoops.values()) loop.stop();
           this.sfxLoops.clear();
           break;
         case "voice":
@@ -118,7 +124,7 @@ export class DovezAudio {
 
   dispose(): void {
     for (const stop of this.loops.values()) stop();
-    for (const stop of this.sfxLoops.values()) stop();
+    for (const loop of this.sfxLoops.values()) loop.stop();
     this.sfx.stopAll();
     this.music.dispose();
   }
