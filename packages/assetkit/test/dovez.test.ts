@@ -136,7 +136,10 @@ describe.if(hasAssets)("committete DoveZ-Assets", () => {
           continue;
         }
         const image = decodeBmp(e.data);
-        const mask = byName.get(maskName(name));
+        // `interface*_energyA` ist ein eigenes Bild, keine Maske (NOT_MASKS in config.ts)
+        const ownImage = /^interface\d_energy\.bmp$/.test(name);
+        const mask = ownImage ? undefined : byName.get(maskName(name));
+        expect([key, sprite.blend]).toEqual([key, mask ? "alpha" : "key"]);
         const expected = mask
           ? applyAlphaMask(
               image,
@@ -183,7 +186,8 @@ describe.if(hasAssets)("committete DoveZ-Assets", () => {
         }
       }
     }
-    expect(sprites).toBe(3232 - 83);
+    // 83 Dateien heißen wie Masken, vier davon (`interface*_energyA`) sind eigene Bilder
+    expect(sprites).toBe(3232 - 79);
     expect(contours).toBe(2587);
   }, 300_000);
 });

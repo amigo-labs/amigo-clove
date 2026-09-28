@@ -697,16 +697,16 @@
         "core"
       ],
       "kind": "atlas",
-      "file": "atlas/spiel.e8517a22.json",
-      "bytes": 21671,
-      "sha256": "e8517a22bf43594c354e414a219b28a38c3860b419e51d0be33280df9fdce36a",
+      "file": "atlas/spiel.418073fe.json",
+      "bytes": 21970,
+      "sha256": "418073fe7ecfce9f3dca87e48facdac0d47ce65f723fa6184ad90df0127f31cd",
       "sources": [
         {
           "path": "original-dovez/Data/Spiel.d2p",
           "sha256": "d21bf1ae75c53c3dfaabbb4b83e03483600867eec5d71c4e9fa454685ffab0b5"
         }
       ],
-      "optionsHash": "ec995c13ebbdf027",
+      "optionsHash": "71a4b66cbec63fa9",
       "converterVersion": 1,
       "pages": [
         "image/spiel/0"
@@ -2125,16 +2125,16 @@
         "core"
       ],
       "kind": "image",
-      "file": "image/spiel/0.d40c754c.webp",
-      "bytes": 657008,
-      "sha256": "d40c754ca5d2014351c787452f4c14f3406892a13faca0b5bca60e02d8dbbd14",
+      "file": "image/spiel/0.5085d605.webp",
+      "bytes": 654318,
+      "sha256": "5085d605ec225746b7f15a23df8d73ac9ca99daa5dd1451cf6b290b18edc00f4",
       "sources": [
         {
           "path": "original-dovez/Data/Spiel.d2p",
           "sha256": "d21bf1ae75c53c3dfaabbb4b83e03483600867eec5d71c4e9fa454685ffab0b5"
         }
       ],
-      "optionsHash": "ec995c13ebbdf027",
+      "optionsHash": "71a4b66cbec63fa9",
       "converterVersion": 1,
       "width": 2048,
       "height": 1961,

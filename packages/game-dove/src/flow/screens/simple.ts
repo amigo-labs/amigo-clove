@@ -201,23 +201,37 @@ export class LevelSelectScreen implements Screen<LevelSelectResult> {
 }
 
 /**
- * Menüpunkt „Info“ (`info` `0x490430`): Kopfzeilen mit Adressen und Credits.
- * Die Readme (`liesmich.txt`/`readme.txt`) liegt nicht als Asset vor.
+ * Info (`info` `0x490430`): Credits-Kopf, darunter die Readme je Sprache
+ * (`liesmich.txt` bzw. `readme.txt`), mit ↑/↓ scrollbar; ESC oder Bestätigen
+ * kehrt zum Titel zurück. Aufbau der Readme-Ansicht *geschätzt*.
  */
 export class InfoScreen implements Screen<true> {
   readonly images = ["image/logo", "image/text"];
   private readonly g: Gfx;
   readonly root: Container;
   private readonly logo = new LogoAnim();
+  private readonly lines: readonly string[];
+  private scroll = 0;
+  private t = 0;
 
-  constructor(private readonly env: FlowEnv) {
+  constructor(
+    private readonly env: FlowEnv,
+    readme = "",
+  ) {
     this.g = new Gfx(env.frames);
     this.root = this.g.root;
+    this.lines = [...INFO_LINES, ...wrapLines(readme, 78)];
   }
 
   update(): true | undefined {
     this.logo.tick();
+    this.t++;
     const k = this.env.keys;
+    const max = Math.max(0, this.lines.length - INFO_VISIBLE);
+    if (this.t % 3 === 0) {
+      if (k.held("down")) this.scroll = Math.min(max, this.scroll + 1);
+      if (k.held("up")) this.scroll = Math.max(0, this.scroll - 1);
+    }
     return k.hit("escape") || k.hit("confirm") ? true : undefined;
   }
 
@@ -225,13 +239,36 @@ export class InfoScreen implements Screen<true> {
     const g = this.g;
     g.begin();
     this.logo.draw(g, 0);
-    INFO_LINES.forEach((s, i) => g.text(0, s, 10, 130 + 16 * i));
+    this.lines
+      .slice(this.scroll, this.scroll + INFO_VISIBLE)
+      .forEach((s, i) => g.text(0, s, 10, 130 + 16 * i));
     g.end();
   }
 
   dispose(): void {
     this.g.destroy();
   }
+}
+
+/** Sichtbare Zeilen im Info-Bildschirm (y 130…466). */
+const INFO_VISIBLE = 22;
+
+/** Zeilen umbrechen (an Wortgrenzen, Tabs als Leerzeichen). */
+export function wrapLines(text: string, max: number): string[] {
+  const out: string[] = [];
+  for (const raw of text.replace(/\t/g, "    ").split("\n")) {
+    let line = "";
+    for (const word of raw.split(" ")) {
+      if (line.length > 0 && line.length + 1 + word.length > max) {
+        out.push(line);
+        line = word;
+      } else {
+        line = line.length > 0 ? `${line} ${word}` : word;
+      }
+    }
+    out.push(line);
+  }
+  return out;
 }
 
 /**

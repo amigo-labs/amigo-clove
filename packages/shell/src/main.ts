@@ -25,13 +25,18 @@ import { settingsView } from "./views/settings";
  * `#/dove?level=1` startet DOVE (URL-Optionen siehe `@clove/game-dove`).
  * Die Shell besitzt Canvas, AudioContext, Speicher, Eingabegeräte und Sprache.
  */
+interface DebugLink {
+  readonly path: string;
+  readonly label: TextKey;
+}
+
 interface GameInfo {
   readonly title: string;
   readonly subtitle: TextKey;
   /** Im Launcher startbar und offline installierbar. */
   readonly playable: boolean;
-  /** Unterpfad einer Debug-Ansicht, im Launcher verlinkt. */
-  readonly debug?: string;
+  /** Debug-Ansichten (Unterpfad und Beschriftung), im Launcher verlinkt. */
+  readonly debug?: readonly DebugLink[];
   load(): Promise<GameModule>;
 }
 
@@ -46,7 +51,10 @@ const GAMES: Readonly<Record<string, GameInfo>> = {
     title: "DoveZ",
     subtitle: "dovezSub",
     playable: false,
-    debug: "debug/assets",
+    debug: [
+      { path: "debug/assets", label: "debugAssets" },
+      { path: "debug/level", label: "debugLevel" },
+    ],
     load: async () => (await import("@clove/game-dovez")).default,
   },
 };
@@ -217,7 +225,9 @@ async function route(): Promise<void> {
             title: g.title,
             subtitle: t(g.subtitle),
             available: g.playable,
-            ...(g.debug ? { debug: g.debug } : {}),
+            ...(g.debug
+              ? { debug: g.debug.map((d) => ({ path: d.path, label: t(d.label) })) }
+              : {}),
           })),
         ),
         view.signal,
