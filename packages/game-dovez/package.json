@@ -7,6 +7,7 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
+    "@clove/audio": "workspace:*",
     "@clove/core": "workspace:*",
     "@clove/formats": "workspace:*",
     "@clove/pixi-kit": "workspace:*",
