@@ -6,7 +6,7 @@ import { bootGame } from "./game/Game";
 /**
  * DoveZ als `GameModule`. M8 im Aufbau: `#/dovez` spielt ein Level
  * (URL-Optionen `level=<slug>` Vorgabe `level1-1_skyfight`, `from=<Tick>` wie
- * die Kommandozeile `-Tick N` des Originals, `ship=0|1`, `invincible=1`).
+ * die Kommandozeile `-Tick N` des Originals, `ship=0|1`, `players=1|2`, `invincible=1`).
  * Debug-Ansichten: `#/dovez/debug/assets`, `#/dovez/debug/level`.
  */
 const dovez: GameModule = {
@@ -31,6 +31,7 @@ const dovez: GameModule = {
       from: Number(options["from"] ?? 0),
       ship: options["ship"] === "1" ? 1 : 0,
       invincible: options["invincible"] === "1",
+      players: options["players"] === "2" ? 2 : 1,
     });
   },
 };

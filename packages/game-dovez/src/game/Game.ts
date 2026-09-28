@@ -17,20 +17,65 @@ import { TICK_MS, World } from "../sim/world";
 export const SCREEN_WIDTH = 800;
 export const SCREEN_HEIGHT = 600;
 
-/** Standardbelegung Spieler 1 (Ein-Spieler-Konfiguration aus `InitKeyConfig`). */
-export function readInput(host: GameHost): PlayerInput {
-  const k = (c: string) => host.keys.isDown(c);
+/**
+ * Tastenbelegungen aus `InitKeyConfig` (`0x504BA0`, Schema 0), je Aktion eine
+ * oder zwei Tasten (DIK-Codes als `KeyboardEvent.code`): Satz 0 für ein
+ * Spieler, 1 und 2 für Spieler 1 und 2 im Zwei-Spieler-Spiel.
+ */
+const KEY_SETS: readonly Readonly<Record<keyof PlayerInput, readonly string[]>>[] = [
+  {
+    left: ["ArrowLeft"],
+    up: ["ArrowUp"],
+    right: ["ArrowRight"],
+    down: ["ArrowDown"],
+    fire: ["KeyS", "Space"],
+    beam: ["KeyA"],
+    switchWeapon: ["KeyD"],
+    switchBeam: ["KeyQ"],
+    rotate: ["KeyW"],
+    nova: ["KeyE"],
+  },
+  {
+    left: ["KeyJ", "ArrowLeft"],
+    up: ["KeyI", "ArrowUp"],
+    right: ["KeyL", "ArrowRight"],
+    down: ["KeyK", "ArrowDown"],
+    fire: ["KeyS"],
+    beam: ["KeyA"],
+    switchWeapon: ["KeyD"],
+    switchBeam: ["KeyQ"],
+    rotate: ["KeyW"],
+    nova: ["KeyE"],
+  },
+  {
+    left: ["Numpad4"],
+    up: ["Numpad8"],
+    right: ["Numpad6"],
+    down: ["Numpad5", "Numpad2"],
+    fire: ["End"],
+    beam: ["Delete"],
+    switchWeapon: ["PageDown"],
+    switchBeam: ["Insert"],
+    rotate: ["Home"],
+    nova: ["PageUp"],
+  },
+];
+
+/** Eingabe eines Spielers; `set` wie `KEY_SETS` (0 allein, 1/2 im Zwei-Spieler-Spiel). */
+export function readInput(host: GameHost, set = 0): PlayerInput {
+  const keys = KEY_SETS[set] ?? KEY_SETS[0]!;
+  const down = (codes: readonly string[]) => codes.some((c) => host.keys.isDown(c));
   return {
-    left: k("ArrowLeft"),
-    up: k("ArrowUp"),
-    right: k("ArrowRight"),
-    down: k("ArrowDown"),
-    fire: k("KeyS") || k("Space"),
-    beam: k("KeyA"),
-    switchWeapon: k("KeyD"),
-    switchBeam: k("KeyQ"),
-    rotate: k("KeyW"),
-    nova: k("KeyE"),
+    left: down(keys.left),
+    up: down(keys.up),
+    right: down(keys.right),
+    down: down(keys.down),
+    fire: down(keys.fire),
+    beam: down(keys.beam),
+    switchWeapon: down(keys.switchWeapon),
+    switchBeam: down(keys.switchBeam),
+    rotate: down(keys.rotate),
+    nova: down(keys.nova),
   };
 }
 
@@ -39,6 +84,7 @@ export interface GameOptions {
   readonly from: number;
   readonly ship: 0 | 1;
   readonly invincible: boolean;
+  readonly players: 1 | 2;
 }
 
 export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameInstance> {
@@ -68,6 +114,7 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
   const world = new World(pack.level, sprites, {
     startTick: opts.from,
     ship: opts.ship,
+    players: opts.players,
     ...(radioTexts ? { radioTexts } : {}),
   });
   const audio = host.audio
@@ -86,10 +133,11 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
     }
     const n = loop.frame(host.now());
     for (let i = 0; i < n && !over; i++) {
-      const input = readInput(host);
+      const inputs =
+        opts.players === 2 ? [readInput(host, 1), readInput(host, 2)] : [readInput(host), NO_INPUT];
       if (opts.invincible)
         for (const p of world.players) p.invulnerable = Math.max(p.invulnerable, 2);
-      world.step([input, NO_INPUT]);
+      world.step(inputs);
       // Tod: Neustart am Checkpoint; ohne Leben ist vorerst Schluss (Continue folgt)
       if (world.state === 1 && !world.respawn()) over = true;
       else if (world.state === 2) over = true;
