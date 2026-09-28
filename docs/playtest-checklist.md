@@ -48,6 +48,14 @@ laufenden Original (Referenzaufnahme mit OBS, 60 fps).
       nicht nur exaktes Schwarz. Der Port keyt exakt RGB(0,0,0) — fast
       schwarze Ränder an Sprites (z. B. Menügrafik in titel.spr) vergleichen.
 
+- [ ] **Menüs und Ablauf:** NEO-ARTS-Logo, Titel mit Rasterbalken (Farben
+      geschätzt), Optionen (Speichern, Punktefaktor), Levelauswahl
+      (Rahmenfarbe geschätzt), Info mit Readme (Aufbau und Scrollen
+      geschätzt), Abschiedsbild; Intro, Get Ready, Pause, Continue,
+      Highscore-Eingabe; Musik blendet vor dem Levelstart aus.
+- [ ] **Abspann:** Dia-Timings und Credits-Rasterbalken (Farben geschätzt),
+      Name von Platz 1 im Jubeltext.
+
 ## Stand M5 — Shell, auf echten Geräten prüfen
 
 Der Smoke-Test deckt Chromium headless ab (Kaltstart, Sprachwechsel,

@@ -161,6 +161,13 @@ export class Flow {
     if (this.live.delete(screen)) screen.dispose();
   }
 
+  /** Readme-Text je Sprache für den Info-Bildschirm (fehlt er, nur der Kopf). */
+  private async readme(): Promise<string> {
+    const id = this.env.german ? "data/liesmich" : "data/readme";
+    if (!this.env.host.assets.has(id)) return "";
+    return (await this.env.host.assets.json<{ text: string }>(id)).text;
+  }
+
   private music(id: string): void {
     void this.env.audio?.playMusic(id);
   }
@@ -209,7 +216,7 @@ export class Flow {
           await this.playGame(TUTORIAL_LEVEL);
           break;
         case MenuItem.Info:
-          await this.run(new InfoScreen(env));
+          await this.run(new InfoScreen(env, await this.readme()));
           break;
         case MenuItem.Options: {
           const o = await this.run(
@@ -256,7 +263,7 @@ export class Flow {
         await this.run(new LevelSelectScreen(env, { ...this.config, unlocked: [2, 3] }, 1));
         break;
       case "info":
-        await this.run(new InfoScreen(env));
+        await this.run(new InfoScreen(env, await this.readme()));
         break;
       case "farewell":
         await this.run(new FarewellScreen(env));
@@ -298,6 +305,8 @@ export class Flow {
       }
     }
     this.opts.onGameStart(first, this.opts.seed);
+    // `Spiel` blendet vor dem Levelstart die laufende Musik aus (Titel, Intro).
+    await this.env.audio?.fadeOutMusic();
     this.music(this.levelMusic(first));
     if (!debug && (await this.getReady(world)) === "abort") {
       await this.enterHighscore(world.score);

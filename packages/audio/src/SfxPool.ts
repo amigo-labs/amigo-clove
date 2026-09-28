@@ -103,6 +103,15 @@ export class SfxPool {
     };
   }
 
+  /** Hält alle laufenden Stimmen eines Sounds an (nicht die Schleifen aus `loop`). */
+  stop(id: string): void {
+    this.voices = this.voices.filter((v) => {
+      if (v.id !== id) return true;
+      v.source.stop();
+      return false;
+    });
+  }
+
   stopAll(): void {
     for (const v of this.voices) v.source.stop();
     this.voices = [];

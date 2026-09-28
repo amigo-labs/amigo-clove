@@ -1,35 +1,37 @@
 import type { GameHost, GameInstance, GameModule } from "@clove/core";
-import { VIEW_HEIGHT, VIEW_WIDTH, bootAssetViewer } from "./debug/AssetViewer";
+import { bootAssetViewer } from "./debug/AssetViewer";
+import { bootLevelViewer } from "./debug/LevelViewer";
+import { bootGame } from "./game/Game";
 
 /**
- * DoveZ als `GameModule`. Die Engine folgt ab M8; bis dahin gibt es nur die
- * Debug-Ansicht der Assets (`view=debug/assets`, Shell-Route
- * `#/dovez/debug/assets`) und einen Hinweis.
+ * DoveZ als `GameModule`. M8 im Aufbau: `#/dovez` spielt ein Level
+ * (URL-Optionen `level=<slug>` Vorgabe `level1-1_skyfight`, `from=<Tick>` wie
+ * die Kommandozeile `-Tick N` des Originals, `ship=0|1`, `invincible=1`).
+ * Debug-Ansichten: `#/dovez/debug/assets`, `#/dovez/debug/level`.
  */
 const dovez: GameModule = {
   id: "dovez",
   title: "DoveZ",
+  preload: ["core"],
+  // A Feuer, B Beam, X Wechsel, Y Drehen, Schultertasten Force/Beam-Modus und Nova, Start Pause
+  gamepad: {
+    0: ["KeyS"],
+    1: ["KeyA"],
+    2: ["KeyD"],
+    3: ["KeyW"],
+    4: ["KeyQ"],
+    5: ["KeyE"],
+    9: ["Escape"],
+  },
   async boot(host: GameHost, options = {}): Promise<GameInstance> {
     if (options["view"] === "debug/assets") return bootAssetViewer(host);
-    const canvas = host.canvas;
-    canvas.width = VIEW_WIDTH;
-    canvas.height = VIEW_HEIGHT;
-    const ctx = canvas.getContext("2d");
-    if (ctx) {
-      ctx.fillStyle = "#000";
-      ctx.fillRect(0, 0, VIEW_WIDTH, VIEW_HEIGHT);
-      ctx.fillStyle = "#fc6";
-      ctx.font = "16px monospace";
-      const german = host.locale.startsWith("de");
-      ctx.fillText(
-        german ? "DoveZ ist noch nicht spielbar." : "DoveZ is not playable yet.",
-        40,
-        60,
-      );
-      ctx.fillStyle = "#999";
-      ctx.fillText("#/dovez/debug/assets", 40, 90);
-    }
-    return { dispose() {} };
+    if (options["view"] === "debug/level") return bootLevelViewer(host);
+    return bootGame(host, {
+      level: options["level"] ?? "level1-1_skyfight",
+      from: Number(options["from"] ?? 0),
+      ship: options["ship"] === "1" ? 1 : 0,
+      invincible: options["invincible"] === "1",
+    });
   },
 };
 
