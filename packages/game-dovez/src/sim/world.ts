@@ -156,6 +156,23 @@ export type WorldEvent =
       readonly item: number;
     };
 
+/** Stand, der in der Kampagne ins nächste Level übergeht (und im Spielstand steht). */
+export interface Carry {
+  readonly lives: number;
+  readonly score: readonly number[];
+  readonly extraLifeAt: number;
+  readonly kills: number;
+  readonly players: readonly {
+    readonly shotPower: number;
+    readonly extraWeapon: number;
+    readonly speed: number;
+    readonly maxEnergy: number;
+    readonly selected: number;
+  }[];
+  readonly force: Readonly<Force>;
+  readonly particles: readonly Readonly<Particle>[];
+}
+
 export class World {
   readonly surfaces: Surface[][];
   readonly layers: LayerState[];
@@ -199,8 +216,8 @@ export class World {
   /** Musikpegel 0…100 (`Me.1C0`) und seine Änderung je Tick (`Me.1C4`). */
   musicVolume = 100;
   musicStep = 0;
-  /** Nächstes Extraleben bei `extraLifeAt` · 100 000 Punkten (`Me.524`). */
-  extraLifeAt = 2;
+  /** Nächstes Extraleben bei `extraLifeAt` · 100 000 Punkten (`Me.524`, `DoveReset`: 3). */
+  extraLifeAt = 3;
   /** Leuchten der Lebensziffer nach einem Extraleben, 50 → 1 (`Me.534`, für diesen Tick). */
   lifePulse = 0;
   /** Angezeigte, hochzählende Punkte (`Me.574`). */
@@ -274,6 +291,10 @@ export class World {
       ship?: 0 | 1;
       /** Funktexte in der Spielsprache (`radio/<Level>`); ohne: kein Funk. */
       radioTexts?: RadioTexts;
+      /** Stand aus dem vorigen Level der Kampagne (ohne: neues Spiel, `DoveReset`). */
+      carry?: Carry;
+      /** Zufallsfolge aus dem vorigen Level (VB hat nur eine, `Rnd` läuft durch). */
+      rnd?: VbRnd;
     } = {},
   ) {
     this.surfaces = buildSurfaces(level, sprites);
@@ -283,7 +304,7 @@ export class World {
     const bg = level.background.trim();
     this.background = /^\d+$/.test(bg) ? Number(bg) : 1;
     this.playersMinus1 = (opts.players ?? 1) - 1;
-    this.rnd = new VbRnd(opts.seed);
+    this.rnd = opts.rnd ?? new VbRnd(opts.seed);
     this.enemies = new Enemies(level, this.surfaces, this.playersMinus1);
     this.fire = new EnemyFire(level, this.surfaces);
     this.fx = new Effects(this.rnd, level.waterHeight);
@@ -304,10 +325,59 @@ export class World {
     this.lives = players === 1 ? 3 : 6;
     const q = tonator(this.companionWorld());
     if (q) resetParticles(this.particles, q);
+    if (opts.carry) this.applyCarry(opts.carry, q);
     this.tick = opts.startTick ?? 0;
     this.env = new Environment(level, this.envWorld());
     this.preroll();
     this.save(0);
+  }
+
+  /**
+   * Was von Level zu Level erhalten bleibt (alles außer `DovePosSetup`,
+   * `VariabelnLösch` und `DoveInit`): Leben, Punkte, Extraleben-Schwelle,
+   * Abschüsse, Waffen, Tempo, Max.-Energie, gewählter Partikel, Partikelplätze
+   * und Force.
+   */
+  carry(): Carry {
+    return {
+      lives: this.lives,
+      score: [...this.score],
+      extraLifeAt: this.extraLifeAt,
+      kills: this.kills,
+      players: this.players.map((p) => ({
+        shotPower: p.shotPower,
+        extraWeapon: p.extraWeapon,
+        speed: p.speed,
+        maxEnergy: p.maxEnergy,
+        selected: p.selected,
+      })),
+      force: { ...this.force },
+      particles: this.particles.map((r) => ({ ...r })),
+    };
+  }
+
+  private applyCarry(c: Carry, tonatorShip: Player | undefined): void {
+    this.lives = c.lives;
+    this.score = [...c.score];
+    this.shownScore = [...c.score];
+    this.extraLifeAt = c.extraLifeAt;
+    this.kills = c.kills;
+    c.players.forEach((s, i) => {
+      const p = this.players[i];
+      if (!p) return;
+      Object.assign(p, s);
+      // DoveInit: Energie = Maximum
+      p.energy = p.maxEnergy;
+      p.startEnergy = p.maxEnergy;
+      p.fillHistory();
+    });
+    Object.assign(this.force, c.force);
+    c.particles.forEach((r, i) => {
+      const t = this.particles[i]!;
+      Object.assign(t, r);
+      // DovePosSetup: auf die Schiffsmitte
+      if (tonatorShip) Object.assign(t, { x: cint(tonatorShip.x), y: cint(tonatorShip.y + 2) });
+    });
   }
 
   /** `SpielPastTicks`: Kacheln, die zum Start schon auf dem Bildschirm wären. */
@@ -1459,8 +1529,26 @@ export class World {
   }
 
   /**
+   * Speicherbildschirm (`SaveGame` `0x541010`) nach dem Level: `Me.10CC =
+   * True` (Sterne neu auslegen), `Me.7CC = 4` (rotes Plasma), `P[0].5C = 0`.
+   */
+  enterSaveScreen(): void {
+    this.env.starsInit = true;
+    this.background = 4;
+    for (const p of this.players) p.exitState = 0;
+  }
+
+  /** Ein Durchlauf des Speicherbildschirms: nur `SpielMoveHintergrund` und `SpielDisplay`. */
+  backdropTick(): void {
+    this.fx.beginTick();
+    this.env.beginTick();
+    this.env.moveBackground();
+    this.display();
+  }
+
+  /**
    * Logik von `SpielDisplay` (`0x510E10`), jeden Tick: Extraleben bei
-   * 200 000, 400 000, 800 000 … Punkten, hochzählende Punkteanzeige.
+   * 300 000, 600 000, 1 200 000 … Punkten, hochzählende Punkteanzeige.
    */
   private display(): void {
     if (this.lifePulse > 0) this.lifePulse--;
