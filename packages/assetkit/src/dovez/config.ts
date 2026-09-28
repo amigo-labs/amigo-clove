@@ -82,6 +82,15 @@ const MASK_OFFSETS: Readonly<Record<string, MaskOffset>> = {
   "level5-1_atlantis/atlantis_saule2": { x: 0, y: 0 },
 };
 
+/**
+ * Dateien, die wie eine Maske heißen, aber eigene Bilder sind: Das HUD zeichnet
+ * `interface{0–3}_energy` per DirectDraw mit Farbschlüssel (ohne Alpha) und
+ * `…_energyA` getrennt als Hintergrund des Balkens (`SpielDisplay` `0x510E10`).
+ */
+const NOT_MASKS: Readonly<Record<string, readonly string[]>> = {
+  spiel: [0, 1, 2, 3].map((i) => `interface${i}_energya.bmp`),
+};
+
 const usedMaskOffsets = new Set<string>();
 
 const inflate = (b: Uint8Array) => new Uint8Array(inflateSync(b));
@@ -122,11 +131,13 @@ const json = (value: unknown) => new TextEncoder().encode(`${JSON.stringify(valu
  */
 function atlasJob(path: string, slug: string, bundle: string, listing: readonly Listing[]): Job {
   const lower = new Set(listing.map((l) => l.name.toLowerCase()));
+  const notMasks = NOT_MASKS[slug] ?? [];
   const masks = new Set(
     listing
       .map((l) => l.name.toLowerCase())
       .filter((n) => n.endsWith(".bmp") && lower.has(maskName(n)))
-      .map(maskName),
+      .map(maskName)
+      .filter((m) => !notMasks.includes(m)),
   );
   const sprites = listing.filter((l) => ext(l.name) === "bmp" && !masks.has(l.name.toLowerCase()));
   for (const key of Object.keys(MASK_OFFSETS).filter((k) => k.startsWith(`${slug}/`))) {
@@ -175,6 +186,7 @@ function atlasJob(path: string, slug: string, bundle: string, listing: readonly 
     libwebp: LIBWEBP_VERSION,
     pageSize: ATLAS_PAGE_SIZE,
     padding: ATLAS_PADDING,
+    ...(notMasks.length ? { notMasks } : {}),
     maskOffsets: Object.fromEntries(
       Object.entries(MASK_OFFSETS).filter(([k]) => k.startsWith(`${slug}/`)),
     ),
@@ -193,7 +205,7 @@ function atlasJob(path: string, slug: string, bundle: string, listing: readonly 
           .filter((e) => ext(e.name) === "bmp" && !masks.has(e.name.toLowerCase()))
           .map((e) => {
             const key = dovezSpriteKey(e.name);
-            const mask = byName.get(maskName(e.name));
+            const mask = masks.has(maskName(e.name)) ? byName.get(maskName(e.name)) : undefined;
             const offset = MASK_OFFSETS[`${slug}/${key}`];
             return {
               name: key,

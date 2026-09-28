@@ -14,7 +14,7 @@ nichts, und `assets:check` kodiert Opus/Video nie neu (siehe „Ton, Musik, Vide
 
 | Art | Quelle | Ziel | Anzahl | Größe |
 |---|---|---|---:|---:|
-| `atlas` + `image` | 3149 BMPs + 83 Masken aus 33 Paketen | je Paket ein Atlas (JSON) + WebP-lossless-Seiten | 33 + 44 | 58,3 MB |
+| `atlas` + `image` | 3153 BMPs + 79 Masken aus 33 Paketen | je Paket ein Atlas (JSON) + WebP-lossless-Seiten | 33 + 44 | 58,3 MB |
 | `binary` | 2587 `.r`, 27 `.dat` | Kontur-Sidecar je Paket, Level-Skript unverändert | 27 + 27 | 1,9 MB |
 | `data` | Funktexte D/E, `Play.txt` | JSON | 16 + 1 | < 0,1 MB |
 | `sound` | 84 Effekte (`Sound.d2p`), 159 Funksprüche (`.dfp`) | Ogg Opus 64 kbit/s bzw. 48 kbit/s mono | 243 | 4,6 MB |
@@ -74,7 +74,8 @@ davon ab, bricht der Build ab.
 Sprite-Schlüssel sind die Dateinamen klein ohne `.bmp` (Level-Skripte
 referenzieren BMP-Namen). **Überblendung:** `key` — reines Schwarz wird
 durchsichtig, wie bei DOVE, auch für Vollbilder (über Schwarz gezeichnet ist
-das dasselbe wie opak); `alpha` — Alpha aus der Maske `XA.bmp`. Ein Test
+das dasselbe wie opak); `alpha` — Alpha aus der Maske `XA.bmp` (außer den vier
+`interface*_energyA`, die eigene Bilder sind, siehe `dovez-container.md`). Ein Test
 dekodiert jede Seite und vergleicht jedes Sprite pixelgenau mit dem gekeyten
 bzw. maskierten BMP.
 

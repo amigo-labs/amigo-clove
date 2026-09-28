@@ -66,10 +66,13 @@ Namens (u. a. `STARTER`, `360GRAD_DREH_14–16`).
 
 ## Alphamasken `X.bmp` + `XA.bmp`
 
-83 Sprites haben eine Maske gleichen Namens mit angehängtem `A`. Die Maske ist
-Alpha (0 = durchsichtig, 255 = deckend), 64 davon rein grau; als Alpha zählt der
-Mittelwert der drei Kanäle (*geschätzt* für die 19 nicht grauen). Gemaskte
-Sprites werden überblendet statt gekeyed (`blend: "alpha"` im Atlas).
+83 Sprites haben eine Datei gleichen Namens mit angehängtem `A`. 79 davon sind
+Masken: Alpha (0 = durchsichtig, 255 = deckend), 64 rein grau; als Alpha zählt
+der Mittelwert der drei Kanäle (*geschätzt* für die nicht grauen). Gemaskte
+Sprites werden überblendet statt gekeyed (`blend: "alpha"` im Atlas). *(M8)* Die
+übrigen vier, `interface{0–3}_energyA.bmp`, sind eigene Bilder: `SpielDisplay`
+blittet den Energiebalken `…_energy` mit Farbschlüssel und `…_energyA` getrennt
+als dessen Hintergrund (`NOT_MASKS` in `packages/assetkit/src/dovez/config.ts`).
 
 Einzige Maske mit abweichenden Maßen: `atlantis_saule2` (Bild 190×520, Maske
 200×540). Override in `packages/assetkit/src/dovez/config.ts`: Ausschnitt ab
