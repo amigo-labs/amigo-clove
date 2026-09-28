@@ -1,10 +1,11 @@
 import type { AtlasJson, AtlasSprite } from "@clove/core";
 import type { TextureRegistry } from "@clove/pixi-kit";
-import { Container, Graphics, Rectangle, Text, Texture } from "pixi.js";
+import { Container, Graphics, Rectangle, Texture } from "pixi.js";
 import type { DrawList, DrawSlot } from "../sim/effects";
 import type { Enemy } from "../sim/enemies";
 import { LAYER_COUNT } from "../sim/layers";
 import type { Surface } from "../sim/surfaces";
+import { idiv } from "../sim/vb";
 import type { World } from "../sim/world";
 import { SpriteBatch } from "./SpriteBatch";
 
@@ -22,6 +23,39 @@ interface AtlasRef {
   readonly json: AtlasJson;
 }
 
+/** HUD-Positionen (links oben) je Element, 1 Spieler. */
+const HUD_1P = {
+  score: [743, 578],
+  energy: [152, 556],
+  speed: [623, 565],
+  power: [587, 566],
+  extra: [647, 569],
+} as const;
+/** 2 Spieler: je Spieler eine Zeile mit den kleinen `interface3_*`-Bildern. */
+const HUD_2P = [
+  {
+    score: [740, 565],
+    energy: [158, 548],
+    speed: [626, 565],
+    power: [582, 566],
+    extra: [659, 566],
+  },
+  {
+    score: [740, 581],
+    energy: [158, 575],
+    speed: [626, 581],
+    power: [594, 583],
+    extra: [659, 583],
+  },
+] as const;
+/** Waffenfeld von Schiff 0 (vier Partikel-Slots). */
+const PARTICLE_SLOTS = [
+  [385, 559],
+  [385, 577],
+  [460, 559],
+  [460, 577],
+] as const;
+
 /** Balken-Textur (`Balken.bmp`, 128²) für `Linie` und `Blitz`. */
 const BAR = "balken";
 /** Farbverlauf einer Linie in so vielen Stücken. */
@@ -34,10 +68,8 @@ export class Renderer {
   private readonly batches = new Map<string, SpriteBatch>();
   private readonly frames = new Map<string, Texture>();
   private readonly overlay = new Graphics();
-  private readonly hud = new Text({
-    text: "",
-    style: { fill: 0xffffff, fontSize: 14, fontFamily: "monospace" },
-  });
+  /** HUD (`SpielDisplay`) über dem Spielfeld, nicht gewackelt, nicht abgeblendet. */
+  private readonly hud: SpriteBatch;
   private readonly bgFill = new Graphics();
   /** Abblende-Schwarz über dem Spielfeld (Alpha je Frame). */
   private readonly fade = new Graphics().rect(0, 0, 800, 550).fill(0x000000);
@@ -89,8 +121,9 @@ export class Renderer {
     }
     this.field.addChild(this.overlay);
     this.root.addChild(this.fade);
-    this.hud.position.set(8, 556);
-    this.root.addChild(this.hud);
+    const hud = new Container();
+    this.root.addChild(hud);
+    this.hud = new SpriteBatch(hud);
   }
 
   /** Alle Seiten-IDs der Atlanten. */
@@ -139,6 +172,7 @@ export class Renderer {
     const w = this.world;
     this.frameNo++;
     for (const b of this.batches.values()) b.begin();
+    this.hud.begin();
     this.overlay.clear();
     this.drawBackground();
     for (let l = 0; l < LAYER_COUNT; l++) this.drawTiles(l);
@@ -154,9 +188,9 @@ export class Renderer {
     // Abblenden in den letzten 50 Ticks
     const left = w.level.levelLength - w.tick;
     this.fade.alpha = left < 50 ? (50 - left) / 50 : 0;
-    this.overlay.rect(0, 550, 800, 50).fill(0x000000);
     this.drawHud();
     for (const b of this.batches.values()) b.end();
+    this.hud.end();
   }
 
   private drawBackground(): void {
@@ -309,13 +343,14 @@ export class Renderer {
   private drawEnemyShots(): void {
     const w = this.world;
     const b = this.batch("eshots");
-    const blink = this.frameNo % 4 < 2;
     for (const s of w.fire.shots) {
       if (!s.active) continue;
       const type = w.level.shots[s.shotType];
       const a = s.actor;
       if (!type || type.kind === 0) {
-        this.overlay.circle(a.x + 8, a.y + 8, 5).fill(blink ? 0xffee66 : 0xff6633);
+        // eingebaute Kugel (`GSchuss1/2`), Bild wechselt jeden Tick
+        const tex = this.texture(w.tick % 2 === 0 ? "gschuss1" : "gschuss2");
+        if (tex) b.put(tex, a.x, a.y);
         continue;
       }
       const tex = this.surfaceTexture(
@@ -383,14 +418,109 @@ export class Renderer {
     }
   }
 
+  /** Atlas-Bild mit Farbschlüssel an (x, y), optional nur der Ausschnitt (rx, ry, rw, rh). */
+  private hudPut(
+    key: string,
+    x: number,
+    y: number,
+    rx = 0,
+    ry = 0,
+    rw = -1,
+    rh = -1,
+    additive = false,
+  ): void {
+    const t = this.texture(key, rx, ry, rw, rh);
+    if (t) this.hud.put(t, x, y, { additive });
+  }
+
+  /** Ziffern `n0`–`n9` von rechts nach links; Ziffer k (0 = letzte) bei x + 4·Länge − 8k. */
+  private hudNumber(v: number, x: number, y: number): void {
+    const str = String(Math.max(0, Math.trunc(v)));
+    for (let k = 0; k < str.length; k++) {
+      this.hudPut(`n${str[str.length - 1 - k]}`, x + 4 * str.length - 8 * k, y);
+    }
+  }
+
+  /**
+   * `SpielDisplay` (`0x510E10`): Grundbild bei (0, 525), Lebensziffer,
+   * je Spieler Punkte, Energie-, Beam-, Tempo- und Schussstärke-Anzeige,
+   * Extrawaffe und das Waffenfeld. Tabellen: `docs/measurements/dovez-runtime.md` („HUD“).
+   */
   private drawHud(): void {
     const w = this.world;
-    const p = w.players[0]!;
-    const e = Math.max(0, p.energy) / p.maxEnergy;
-    this.overlay.rect(560, 560, 200, 12).stroke({ color: 0x668866, width: 1 });
-    this.overlay.rect(561, 561, 198 * e, 10).fill(e > 0.3 ? 0x44cc44 : 0xcc4444);
-    const score = Math.floor(w.score[0] ?? 0);
-    this.hud.text = `${w.level.title}   Punkte ${score}   Leben ${w.lives}   Tick ${w.tick}`;
+    const two = w.playersMinus1 === 1;
+    const set = two ? 3 : (w.players[0]?.shipType ?? 0);
+    const i = `interface${set}`;
+    const black = this.texture("weiss");
+    if (black) {
+      this.hud.put(black, 399, 574, { red: 0, green: 0, blue: 0, scaleX: 400, scaleY: 25 });
+      this.hud.put(black, 41, 569, { red: 0, green: 0, blue: 0, scaleX: 42, scaleY: 30 });
+    }
+    this.hudPut(`${i}_grund`, 0, 525);
+    const lives = Math.min(Math.max(w.lives, 0), 9);
+    this.hudPut(`leben${lives}`, 122, 555);
+    if (!two) this.hudPut(`${i}_spec1`, 122, 562, 0, 0, -1, -1, true);
+    if (w.lifePulse > 0) {
+      const g = 2 * (25 - idiv(w.lifePulse, 2));
+      const glow = this.texture("a_kreis2");
+      if (glow) {
+        this.hud.put(glow, 122 - 2 * g + (15 + 4 * g) / 2 - 32, 555 - g + (35 + 2 * g) / 2 - 32, {
+          scaleX: (15 + 4 * g) / 64,
+          scaleY: (35 + 2 * g) / 64,
+          alpha: (w.lifePulse * 0.5) / 50,
+          additive: true,
+        });
+      }
+      const digit = this.texture(`leben${lives}`);
+      if (digit && w.lifePulse > 25) {
+        const g2 = w.lifePulse - 25;
+        this.hud.put(
+          digit,
+          122 - g2 + (15 + 2 * g2) / 2 - 7.5,
+          555 - g2 + (35 + 2 * g2) / 2 - 17.5,
+          {
+            scaleX: (15 + 2 * g2) / 15,
+            scaleY: (35 + 2 * g2) / 35,
+          },
+        );
+      }
+    }
+    w.players.forEach((p, n) => {
+      const L = two ? HUD_2P[n]! : HUD_1P;
+      this.hudNumber(w.shownScore[n] ?? 0, L.score[0], L.score[1]);
+      const energy = this.sprite(`${i}_energy`)?.s;
+      if (energy) {
+        const right = Math.max(0, Math.min(energy.w, idiv(p.energy * energy.w, p.maxEnergy)));
+        if (right > 0) this.hudPut(`${i}_energy`, L.energy[0], L.energy[1], 0, 0, right, energy.h);
+      }
+      if (!two) {
+        this.hudPut(`${i}_spec0`, 175, 559, 0, 0, -1, -1, true);
+        this.hudPut(`${i}_spec0`, 195, 582, 0, 0, -1, -1, true);
+      }
+      const gauge = this.sprite(`${i}_s`)?.s;
+      if (gauge) {
+        const top = Math.max(0, Math.min(gauge.h, gauge.h - idiv((p.speed - 4) * gauge.h, 6)));
+        if (top < gauge.h)
+          this.hudPut(`${i}_s`, L.speed[0], L.speed[1] + top, 0, top, gauge.w, gauge.h - top);
+      }
+      const power = this.sprite(`${i}_p`)?.s;
+      if (power && p.shotPower >= 2) {
+        const right = idiv(power.w, 4 - Math.min(p.shotPower, 3));
+        this.hudPut(`${i}_p`, L.power[0], L.power[1], 0, 0, right, power.h);
+      }
+      if (p.extraWeapon > 0) {
+        this.hudPut(
+          two ? `interface3_extra${p.extraWeapon - 1}` : `interface_extra${p.extraWeapon - 1}`,
+          L.extra[0],
+          L.extra[1],
+        );
+      }
+      if (!two) {
+        this.hudPut(`${i}_spec2`, 648, 567, 0, 0, -1, -1, true);
+        // Partikel-Slots von Schiff 0 (Zweitwaffen folgen): leer
+        if (p.shipType === 0) for (const [x, y] of PARTICLE_SLOTS) this.hudPut("d0s", x, y);
+      }
+    });
   }
 
   destroy(): void {

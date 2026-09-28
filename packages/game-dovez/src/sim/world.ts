@@ -154,6 +154,12 @@ export class World {
   /** Musikpegel 0…100 (`Me.1C0`) und seine Änderung je Tick (`Me.1C4`). */
   musicVolume = 100;
   musicStep = 0;
+  /** Nächstes Extraleben bei `extraLifeAt` · 100 000 Punkten (`Me.524`). */
+  extraLifeAt = 2;
+  /** Leuchten der Lebensziffer nach einem Extraleben, 50 → 1 (`Me.534`, für diesen Tick). */
+  lifePulse = 0;
+  /** Angezeigte, hochzählende Punkte (`Me.574`). */
+  shownScore = [0, 0];
   /** `Me.50C`: in diesem Tick kein Blitz. */
   private noFlash = false;
   private saved: Saved | undefined;
@@ -949,6 +955,49 @@ export class World {
     this.fx.stepShake();
     this.contact();
     this.flash();
+    this.display();
+  }
+
+  /**
+   * Logik von `SpielDisplay` (`0x510E10`), jeden Tick: Extraleben bei
+   * 200 000, 400 000, 800 000 … Punkten, hochzählende Punkteanzeige.
+   */
+  private display(): void {
+    if (this.lifePulse > 0) this.lifePulse--;
+    let n = Math.trunc((this.score[0] ?? 0) / 100_000);
+    if (this.playersMinus1 === 1) n += Math.trunc((this.score[1] ?? 0) / 100_000);
+    if (n >= this.extraLifeAt && this.lifePulse === 0) {
+      this.lives++;
+      this.extraLifeAt *= 2;
+      this.lifePulse = 50;
+      this.sfx("liveup");
+    }
+    for (let p = 0; p <= this.playersMinus1; p++) {
+      const d = (this.score[p] ?? 0) - (this.shownScore[p] ?? 0);
+      const step =
+        d > 10000
+          ? 5111
+          : d > 1000
+            ? 511
+            : d > 100
+              ? 51
+              : d > 11
+                ? 11
+                : d > 0
+                  ? 1
+                  : d < -10000
+                    ? -9999
+                    : d < -1000
+                      ? -999
+                      : d < -100
+                        ? -99
+                        : d < -11
+                          ? -9
+                          : d < 0
+                            ? -1
+                            : 0;
+      this.shownScore[p] = (this.shownScore[p] ?? 0) + step;
+    }
   }
 
   /** Wirkung eines Power-ups (Waffen-Slots und Satelliten folgen mit den Spielerwaffen). */

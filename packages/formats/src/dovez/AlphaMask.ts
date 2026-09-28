@@ -1,10 +1,11 @@
 import type { BmpImage } from "../bmp/BmpDecoder";
 
 /**
- * DoveZ-Alphamasken: zu 83 Sprites `X.bmp` gibt es `XA.bmp` mit Graustufen-Alpha
+ * DoveZ-Alphamasken: zu 79 Sprites `X.bmp` gibt es `XA.bmp` mit Graustufen-Alpha
  * (0 = durchsichtig, 255 = deckend). Diese Sprites werden überblendet statt
  * gekeyed. 64 Masken sind rein grau; bei den übrigen zählt der Mittelwert der
- * drei Kanäle (*geschätzt*).
+ * drei Kanäle (*geschätzt*). Vier weitere `…A.bmp` (`interface*_energyA`) sind
+ * eigene Bilder, keine Masken.
  */
 
 export class AlphaMaskError extends Error {
