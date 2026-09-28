@@ -63,6 +63,8 @@ export interface ShotWorld extends Omit<RouteHost, "effect"> {
   terrain(x1: number, y1: number, x2: number, y2: number): boolean;
   /** Treffer auf Spieler; `true`: der Schuss vergeht. */
   hitPlayers?(shot: EnemyShot, piercing: boolean): boolean;
+  /** Zielpunkt einer gezielten Salve auf Spieler `t` (`CLng`, beim D-Phyton gestreut). */
+  aimPoint?(target: number): [number, number];
   /** Druckwelle mit Mittelpunkt (cx, cy) und Radius `r` wirkt auf die Spieler. */
   shockwave?(cx: number, cy: number, r: number): void;
 }
@@ -218,7 +220,11 @@ export class EnemyFire {
     shot.shockwave = false;
     if (s.aimed !== 0) {
       const p = world.players[e.target] ?? world.players[0];
-      const ang = winkel((p?.x ?? 0) + AIM_OFFSET_X - x, (p?.y ?? 0) + AIM_OFFSET_Y - y);
+      const [zx, zy] = world.aimPoint?.(e.target) ?? [
+        (p?.x ?? 0) + AIM_OFFSET_X,
+        (p?.y ?? 0) + AIM_OFFSET_Y,
+      ];
+      const ang = winkel(zx - x, zy - y);
       shot.vx = f32(Math.cos(ang) * s.speed);
       shot.vy = f32(Math.sin(ang) * s.speed);
       shot.route = -1;

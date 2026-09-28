@@ -100,7 +100,8 @@ export class Renderer {
       "anim5",
       "fx:gate0",
       "fx:exhaust",
-      "shots0",
+      "fx:weapons",
+      "fx:shots0",
       "fx:sparks0",
       "specials",
       "player",
@@ -109,11 +110,13 @@ export class Renderer {
       "fx:bubbles",
       "anim4",
       "layer3",
-      "shots1",
+      "fx:particles",
+      "fx:shots1",
       "anim3",
       "fx:sparks1",
       "fx:big",
       "eshots",
+      "fx:force",
       "fx:popups",
       "fx:gate1",
       "layer6",
@@ -186,8 +189,6 @@ export class Renderer {
     this.drawBackground();
     for (let l = 0; l < LAYER_COUNT; l++) this.drawTiles(l);
     for (let l = 0; l < LAYER_COUNT; l++) this.drawAnims(l);
-    this.drawPlayerShots(0, "shots0");
-    this.drawPlayerShots(1, "shots1");
     this.drawSpecials();
     this.drawPlayers();
     this.drawEnemies();
@@ -384,19 +385,6 @@ export class Renderer {
         rotation,
         additive: type.additive !== 0,
       });
-    }
-  }
-
-  private drawPlayerShots(layer: 0 | 1, batch: string): void {
-    const w = this.world;
-    const b = this.batch(batch);
-    const keys = ["ballschuss", "ballschuss2", "ballschuss3", "ballschuss4"];
-    for (let i = 0; i <= w.playerShots[layer].high; i++) {
-      const s = w.playerShots[layer].shots[i]!;
-      if (!s.active) continue;
-      const kind = s.type >= 0 ? s.type : Math.abs(s.type) + 1;
-      const tex = this.texture(keys[kind] ?? keys[0]!);
-      if (tex) b.put(tex, Math.floor(s.x), Math.floor(s.y));
     }
   }
 
