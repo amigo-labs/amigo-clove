@@ -205,7 +205,7 @@ Nicht im Skript und damit Bonus-Inhalt: `Level8-1 Jungle`,
   Details: `docs/formats/dovez-container.md`.
 - **BMP-Tiefen: 1, 8, 16, 24 und 32 bpp.** 16 bpp (RGB555) und 32 bpp (XRGB mit
   Müll-Alphabyte) brauchen eigene Decoder-Pfade.
-- **Alpha:** nur **83 Masken-Paare** (`X.bmp` + `XA.bmp`) gegenüber 3026 reinen
+- **Alpha:** nur **83 Masken-Paare** *(M8: 79; die vier `interface*_energyA` sind eigene Bilder)* (`X.bmp` + `XA.bmp`) gegenüber 3026 reinen
   Colorkey-Sprites. Genau eine Maske hat abweichende Maße:
   `atlantis_saule2.bmp` (190×520) vs. `atlantis_saule2A.bmp` (200×540) — das ist
   ein Pflicht-Override, kein Fall für stilles Skalieren.
@@ -615,7 +615,7 @@ Jeder hat genau ein überprüfbares Ergebnis.
 | **M5** | Shell echt: Menü, Routing, Settings, Gamepad, Save-Export, Cache-Bundles, Service Worker, i18n | 3–4 d | deploybare Site; DOVE aus kaltem Cache spielbar — *Stand: erledigt; statischer Build mit relativen Pfaden, Smoke-Test startet DOVE kalt und nach „Spieldaten installieren“ bei beendetem Server. Offen: Ressourcenzähler für `dispose()` in Dev-Builds, Savegames in IndexedDB (DOVE braucht nur Schlüssel/Wert in `localStorage`)* |
 | **M6** | DoveZ Container + Assets | 1 w | ~120 MB Assets; Debug-Seite rendert jedes Sprite mit überlagerter `.r`-Kontur — *Stand: erledigt; 147 MB (davon Musik 62 MB unverändert, Video 20 MB), 33 Atlanten auf 44 Seiten, `#/dovez/debug/assets`, siehe `docs/formats/dovez-assets.md`* |
 | **M7** | ⚠ **DoveZ `.dat` dekodieren** (Risikoblock) | 1–2 w | `opaque` unter 5 %; Debug-Ansicht zeichnet Routen und Schussmuster — *Stand: erledigt; Grammatik aus `LadeDaten`, 27/27 byte-identisch, **0 Byte offen** (benannt oder nachweislich ungelesen), Routen-Interpreter bitgleich zum Referenzsimulator, `#/dovez/debug/level`, siehe `docs/formats/dovez-level-dat.md`. Offen für M8: Abgleich am Original, Start-Tick vor 0 (`Me.560`)* |
-| **M8** | DoveZ Engine: Parallax, beide Schiffe, Coop, Funksystem, Bosse, Video, Kampagne | 3–5 w | Kampagne durchspielbar — *Stand: im Aufbau; Mechanik statisch aus der EXE (`docs/measurements/dovez-runtime.md`, Takt 16 ms). Spielbar über `#/dovez`: Zeitleiste mit Vorlauf, Ebenen und Landschaft, Effekt-Animationen, Gegner mit Routen, Teilen und Waffen, Schiff mit Hauptschuss, Treffer, Kontakt, Power-ups, Levelausflug; alle 27 Level laufen kopflos durch. Offen: Todeseffekte und Partikel, Ton, Funk, HUD-Grafik, Checkpoint-Neustart, Zweitwaffen, Partikel/Force/Beam/Nova, Coop-Eingabe, prozedurale Hintergründe, Video, Kampagne* |
+| **M8** | DoveZ Engine: Parallax, beide Schiffe, Coop, Funksystem, Bosse, Video, Kampagne | 3–5 w | Kampagne durchspielbar — *Stand: im Aufbau; Mechanik statisch aus der EXE (`docs/measurements/dovez-runtime.md`, Takt 16 ms). Spielbar über `#/dovez`: Zeitleiste mit Vorlauf, Ebenen und Landschaft, Effekt-Animationen, Gegner mit Routen, Teilen und Waffen, Schiff mit Hauptschuss, Treffer, Kontakt, Power-ups, Levelausflug; Todeszustände mit Funken, Explosionen, Popups und Wackeln; Checkpoint-Tor mit Schnappschuss und Neustart; HUD; Ton, Funk mit Laufband, gestreamte Musik; alle 27 Level laufen kopflos durch. Offen: Zweitwaffen, Partikel/Force/Beam/Nova, Bosse (Zustand 4), Druckwelle als Spielwirkung, Continue, Coop-Eingabe, prozedurale Hintergründe, Wetter, Video, Kampagne* |
 | **M9** | Politur, Performance, Barrierefreiheit, Deployment | 1 w | Release |
 
 **Kürzester Weg zum ersten spielbaren Level:** M0 → M1 (nur `LevelDat` +
