@@ -61,6 +61,7 @@ export class Renderer {
       "anim2",
       "layer5",
       "anim5",
+      "fx:gate0",
       "fx:exhaust",
       "shots0",
       "fx:sparks0",
@@ -77,8 +78,10 @@ export class Renderer {
       "fx:big",
       "eshots",
       "fx:popups",
+      "fx:gate1",
       "layer6",
       "anim6",
+      "fx:flash",
     ]) {
       const c = new Container();
       this.field.addChild(c);

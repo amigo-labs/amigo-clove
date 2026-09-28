@@ -9,7 +9,7 @@ import { TICK_MS, World } from "../sim/world";
 /**
  * Ein DoveZ-Level spielen (M8, erster Schnitt): Skript, Atlanten und
  * Konturen laden, Welt im 16-ms-Takt simulieren, zeichnen. Noch ohne
- * Kampagne, Ton, Funk, Checkpoint-Neustart (Tod startet das Level neu).
+ * Kampagne und Continue-Bildschirm.
  */
 
 export const SCREEN_WIDTH = 800;
@@ -61,14 +61,8 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
       return pack.contours.subarray(o, o + 4 + h * 2);
     },
   };
-  let lives = 3;
-  const newWorld = () => {
-    const w = new World(pack.level, sprites, { startTick: opts.from, ship: opts.ship });
-    w.lives = lives;
-    return w;
-  };
-  let world = newWorld();
-  let renderer = new Renderer(textures, world, atlases);
+  const world = new World(pack.level, sprites, { startTick: opts.from, ship: opts.ship });
+  const renderer = new Renderer(textures, world, atlases);
   app.stage.addChild(renderer.root);
   const loop = new FixedStepLoop(TICK_MS);
   let over = false;
@@ -85,19 +79,9 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
         for (const p of world.players) p.invulnerable = Math.max(p.invulnerable, 2);
       world.step([input, NO_INPUT]);
       world.events.length = 0;
-      if (world.state === 1) {
-        // Tod: vorerst Levelneustart statt Checkpoint
-        lives--;
-        if (lives < 0) {
-          over = true;
-          break;
-        }
-        app.stage.removeChild(renderer.root);
-        renderer.destroy();
-        world = newWorld();
-        renderer = new Renderer(textures, world, atlases);
-        app.stage.addChild(renderer.root);
-      } else if (world.state === 2) over = true;
+      // Tod: Neustart am Checkpoint; ohne Leben ist vorerst Schluss (Continue folgt)
+      if (world.state === 1 && !world.respawn()) over = true;
+      else if (world.state === 2) over = true;
     }
     renderer.draw();
     app.render();
