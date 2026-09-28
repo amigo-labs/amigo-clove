@@ -21,7 +21,10 @@ Gamepad), Spielstand-Export/-Import, Ladebildschirm mit Bundle-Vorladen und
 Offline-Betrieb per Service Worker. **M6** (DoveZ-Pakete und -Assets):
 Parser für Pakete, `.r`-Konturen, Masken, Funktexte und Kampagne,
 Asset-Pipeline mit Atlanten, Opus, Musik und Video, Debug-Seite
-`#/dovez/debug/assets`. Die Original-Tickrate (14 ms) ist aus der EXE hergeleitet:
+`#/dovez/debug/assets`. **M7** (DoveZ-`.dat` vollständig dekodiert) ist
+fertig. **M8** (DoveZ-Engine) ist im Aufbau: `#/dovez` spielt alle 27 Level
+mit Gegnern, Bossen, allen Waffen, Beam, Super-Nova, Coop, Continue/Pause,
+Hintergründen und Wetter. Es fehlen noch Video und Kampagne. Die Original-Tickrate (14 ms) ist aus der EXE hergeleitet:
 [`docs/measurements/tick-rate.md`](docs/measurements/tick-rate.md).
 
 - **Design-Spec:** [`docs/specs/2026-09-07-dove-dovez-browser-port.md`](docs/specs/2026-09-07-dove-dovez-browser-port.md)
