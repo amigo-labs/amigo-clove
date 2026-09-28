@@ -47,12 +47,23 @@ async function litShare(png: Buffer, x: number, y: number, w: number, h: number)
 const failures: string[] = [];
 
 /** Fehler der Seite sammeln; `requestfailed` nur, solange das Netz da sein soll. */
+/**
+ * Gestreamte Medien (Musik, Video): Chromium bricht eigene Anfragen ab und
+ * wechselt auf Range-Anfragen; das ist kein Fehler. HTTP-Fehler zählen weiter.
+ */
+function media(url: string): boolean {
+  return /\.(ogg|webm)$/.test(url);
+}
+
 function watch(page: Page, label: string): void {
   page.on("pageerror", (e) => failures.push(`${label} pageerror: ${e.message}`));
   page.on("console", (m) => {
-    if (m.type() === "error") failures.push(`${label} console: ${m.text()} (${m.location().url})`);
+    if (m.type() === "error" && !media(m.location().url))
+      failures.push(`${label} console: ${m.text()} (${m.location().url})`);
   });
-  page.on("requestfailed", (r) => failures.push(`${label} request: ${r.url()}`));
+  page.on("requestfailed", (r) => {
+    if (!media(r.url())) failures.push(`${label} request: ${r.url()}`);
+  });
   page.on("response", (r) => {
     if (r.status() >= 400) failures.push(`${label} HTTP ${r.status()}: ${r.url()}`);
   });

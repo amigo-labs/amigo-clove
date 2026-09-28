@@ -2,7 +2,7 @@
 import { describe, expect, test } from "bun:test";
 import { NO_INPUT, Player, updatePlayer, type PlayerInput } from "../src/sim/player";
 import { World } from "../src/sim/world";
-import { LEVEL_SLUGS, loadTestLevel } from "./assets";
+import { LEVEL_SLUGS, loadTestLevel, loadTestRadio } from "./assets";
 
 const fire: PlayerInput = { ...NO_INPUT, fire: true };
 
@@ -138,6 +138,36 @@ describe("Checkpoint", () => {
     expect(a.slice(0, 3)).toEqual([3, 0, 1]);
     expect(run()).toEqual(a);
   }, 30_000);
+});
+
+describe("Funk", () => {
+  test("Skyfight: Notruf mit Stimme, Untertitel im Laufband, höchstens einmal", async () => {
+    const { level, sprites } = await loadTestLevel("level1-1_skyfight");
+    const radio = (await loadTestRadio("level1-1_skyfight"))!;
+    const w = new World(level, sprites, { radioTexts: radio.de });
+    const voices: [number, string][] = [];
+    let ticker = "";
+    let portrait = 0;
+    for (let t = 0; t < 1200; t++) {
+      for (const p of w.players) p.invulnerable = 2;
+      w.step([fire]);
+      for (const e of w.events) if (e.kind === "voice") voices.push([w.tick, e.wav]);
+      w.events.length = 0;
+      if (w.radio.ticker.includes("Spacestation")) ticker = w.radio.ticker;
+      portrait += w.fx.lists.radio.quads.filter((q) => q.key.startsWith("frame")).length;
+    }
+    // Notruf: 4598 ms → 287 Ticks, danach Notruf2 mit zwei Gruppen
+    expect(voices.slice(0, 2)).toEqual([
+      [72, "SkyfightE_notruf.wav"],
+      [917, "SkyfightE_notruf2.wav"],
+    ]);
+    expect(ticker).toContain("Spacestation steht unter feindlichem Beschuss");
+    expect(portrait).toBeGreaterThan(200);
+    // maxPlays 1: ein zweiter Auslöser bleibt stumm
+    w.radio.trigger(0);
+    w.step([fire]);
+    expect(w.events.some((e) => e.kind === "voice")).toBe(false);
+  });
 });
 
 describe("Spieler", () => {

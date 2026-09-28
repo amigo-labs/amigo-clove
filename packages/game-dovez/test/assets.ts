@@ -1,7 +1,7 @@
 /** Level aus den gebauten Assets (`assets/dovez`) für Simulationstests, ohne Browser. */
 import { join } from "node:path";
 import type { AtlasJson, Manifest } from "@clove/core";
-import { parseDovezLevelDat, type DovezLevel } from "@clove/formats";
+import { parseDovezLevelDat, type DovezLevel, type RadioTexts } from "@clove/formats";
 import type { SpriteSource } from "../src/sim/surfaces";
 
 const ROOT = join(import.meta.dir, "../../../assets/dovez");
@@ -38,5 +38,16 @@ export async function loadTestLevel(
         return contours.subarray(o, o + 4 + h * 2);
       },
     },
+  };
+}
+
+/** Funktexte eines Levels (`radio/<slug>`), Deutsch und Englisch. */
+export async function loadTestRadio(
+  slug: string,
+): Promise<{ de: RadioTexts; en: RadioTexts } | undefined> {
+  if (!manifest.entries.some((e) => e.id === `radio/${slug}`)) return undefined;
+  return JSON.parse(new TextDecoder().decode(await file(`radio/${slug}`))) as {
+    de: RadioTexts;
+    en: RadioTexts;
   };
 }
