@@ -132,7 +132,7 @@ try {
   // 1b2. DoveZ spielen: Skyfight ab Tick 300, unverwundbar, feuern
   const game = await browser.newPage({ viewport: { width: 800, height: 600 } });
   watch(game, "dovez-game");
-  await game.goto(`${ORIGIN}/#/dovez?invincible=1&from=300`);
+  await game.goto(`${ORIGIN}/#/dovez?level=level1-1_skyfight&invincible=1&from=300`);
   await game.waitForSelector("body[data-game=dovez]", { timeout: 30_000 });
   await game.keyboard.down("KeyS");
   await game.waitForTimeout(2500);

@@ -83,6 +83,22 @@ export class DovezAudio {
     this.music.stop();
   }
 
+  /** Levelende: `SpielSoundOFF` (Schleifen aus) und `StopOgg`. */
+  stopLevel(): void {
+    for (const stop of this.loops.values()) stop();
+    this.loops.clear();
+    for (const loop of this.sfxLoops.values()) loop.stop();
+    this.sfxLoops.clear();
+    this.music.stop();
+  }
+
+  /** Speicherbildschirm: `Save_Screen.ogg` auf dem Musikpegel, Schleife. */
+  playSaveMusic(): void {
+    this.music.setVolume(MUSIC_GAIN);
+    if (this.assets.has("music/save_screen"))
+      this.music.play(this.assets.url("music/save_screen"), true);
+  }
+
   /** Engine-Effekt (−10 dB) oder mit `speech` auf Sprachpegel (0 dB), z. B. `speech.wav`. */
   effect(name: string, speech = false): void {
     this.sfx.play(`sound/${name}`, 0, speech ? SPEECH_GAIN : SFX_GAIN);

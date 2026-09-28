@@ -40,6 +40,14 @@ export class TextureRegistry {
     return t;
   }
 
+  /** Gibt einzelne Bilder frei (z. B. die Atlasseiten eines Levels beim Levelwechsel). */
+  unload(ids: readonly string[]): void {
+    for (const id of ids) {
+      if (!this.sources.delete(id)) continue;
+      void Assets.unload(this.assets.url(id));
+    }
+  }
+
   get size(): number {
     return this.sources.size + this.frames.length;
   }

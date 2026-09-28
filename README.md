@@ -22,9 +22,11 @@ Offline-Betrieb per Service Worker. **M6** (DoveZ-Pakete und -Assets):
 Parser für Pakete, `.r`-Konturen, Masken, Funktexte und Kampagne,
 Asset-Pipeline mit Atlanten, Opus, Musik und Video, Debug-Seite
 `#/dovez/debug/assets`. **M7** (DoveZ-`.dat` vollständig dekodiert) ist
-fertig. **M8** (DoveZ-Engine) ist im Aufbau: `#/dovez` spielt alle 27 Level
-mit Gegnern, Bossen, allen Waffen, Beam, Super-Nova, Coop, Continue/Pause,
-Hintergründen und Wetter. Es fehlen noch Video und Kampagne. Die Original-Tickrate (14 ms) ist aus der EXE hergeleitet:
+fertig. **M8** (DoveZ-Engine) ist im Aufbau: `#/dovez` spielt die Kampagne
+aus `Play.txt` mit Ladebildern, Zwischensequenzen, Speicherbildschirm und
+Spielständen, Outro, Abspann und Epilog; alle 27 Level mit Gegnern, Bossen,
+allen Waffen, Beam, Super-Nova, Coop, Continue/Pause, Hintergründen und
+Wetter. Es fehlen noch Hauptmenü und Intro. Die Original-Tickrate (14 ms) ist aus der EXE hergeleitet:
 [`docs/measurements/tick-rate.md`](docs/measurements/tick-rate.md).
 
 - **Design-Spec:** [`docs/specs/2026-09-07-dove-dovez-browser-port.md`](docs/specs/2026-09-07-dove-dovez-browser-port.md)
@@ -100,7 +102,7 @@ Assets, kein Worker-Skript): `wrangler.jsonc` im Wurzelverzeichnis baut mit
 | `packages/core/`  | `@clove/core` — mechanikfreie Bausteine: Takt, Q16.16, Rng, Hash, Replay, Assets, i18n, Spielstanddatei, `GameModule` |
 | `packages/pixi-kit/` | `@clove/pixi-kit` — Pixi-Adapter: ganzzahliges Scaling, Texturen |
 | `packages/game-dove/` | `@clove/game-dove` — DOVE: Simulation (`src/sim`, Pixi-frei), Renderer, Replays |
-| `packages/game-dovez/` | `@clove/game-dovez` — DoveZ (M8 im Aufbau): `#/dovez?level=…&from=…` spielt ein Level, Esc Pause, ohne Leben Continue (`screen=continue\|pause` zur Sichtprüfung); Debug-Ansichten |
+| `packages/game-dovez/` | `@clove/game-dovez` — DoveZ (M8 im Aufbau): `#/dovez` spielt die Kampagne (`step=<n>` ab Anweisung n, `load=<1…21>` Spielstand, `video=0` ohne Videos), `level=…&from=…` ein einzelnes Level; Esc Pause, ohne Leben Continue (`screen=continue\|pause\|save\|credits` zur Sichtprüfung); Debug-Ansichten |
 | `packages/shell/` | `@clove/shell` — Launcher (Vite): Routing, Einstellungen, Gamepad, Spielstände, Service Worker |
 | `packages/assetkit/` | `@clove/assetkit` — Asset-Pipeline (Bun, sharp) |
 | `assets/dove/`, `assets/dovez/` | generierte Assets + `manifest.json`, nie von Hand ändern |
