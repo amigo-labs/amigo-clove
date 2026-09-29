@@ -12,6 +12,7 @@ import {
 import { h } from "./dom";
 import { createPadState, startPadNavigation } from "./gamepad";
 import { createKeyState } from "./keys";
+import { DISPLAY_EVENT, createStage, toggleFullscreen, type Stage } from "./overlay";
 import { registerServiceWorker } from "./offline";
 import { parseRoute } from "./router";
 import { loadSettings, reducedMotion, saveSettings, type Settings } from "./settings";
@@ -69,6 +70,7 @@ let settings: Settings = loadSettings(storage);
 let locale: Locale = "en";
 let t: ShellText = translator(TEXTS, locale);
 let running: GameInstance | undefined;
+let stage: Stage | undefined;
 let bus: AudioBus | undefined;
 let view: AbortController | undefined;
 /** Zählt Routenwechsel; ein langsamer Spielstart nach einem Wechsel wird verworfen. */
@@ -89,6 +91,7 @@ function updateSettings(patch: Partial<Settings>): void {
   settings = { ...settings, ...patch };
   saveSettings(storage, settings);
   applyVolume();
+  window.dispatchEvent(new Event(DISPLAY_EVENT));
   if (languageChanged) {
     applyLocale();
     void route().then(() => document.getElementById("language")?.focus());
@@ -206,7 +209,9 @@ async function startGame(
     // Das Spiel zeichnet nur auf den Canvas: Name und Bedienung für Screenreader
     canvas.setAttribute("role", "application");
     canvas.setAttribute("aria-label", t("gameCanvas", { title: game.title }));
-    screen.replaceChildren(canvas);
+    const s = createStage(canvas, { t, scanlines: () => settings.scanlines });
+    stage = s;
+    screen.replaceChildren(s.root);
     const audio = audioHost(params);
     const instance = await module.boot(
       {
@@ -216,6 +221,7 @@ async function startGame(
         locale,
         rumble,
         rumblePads: () => rumblePads().length,
+        scaleMode: () => settings.scale,
         // folgt der Einstellung auch während des Spiels
         get reducedMotion() {
           return reducedMotion(settings.motion, motionQuery?.matches ?? false);
@@ -255,6 +261,8 @@ async function route(): Promise<void> {
   const gen = ++generation;
   running?.dispose();
   running = undefined;
+  stage?.dispose();
+  stage = undefined;
   view?.abort();
   view = new AbortController();
   delete document.body.dataset["game"];
@@ -314,5 +322,12 @@ async function route(): Promise<void> {
 
 applyLocale();
 window.addEventListener("hashchange", () => void route());
+// Alt+Enter wie in Windows-Spielen: F11 ist in DoveZ die Hupe, F/G sind in DOVE belegt
+window.addEventListener("keydown", (e) => {
+  if (e.code === "Enter" && e.altKey && !e.repeat) {
+    e.preventDefault();
+    toggleFullscreen();
+  }
+});
 void registerServiceWorker();
 void route();

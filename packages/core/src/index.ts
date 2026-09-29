@@ -65,4 +65,5 @@ export type {
   GamepadBindings,
   KeyState,
   KeyValueStore,
+  ScaleMode,
 } from "./shell/GameModule";

@@ -34,6 +34,12 @@ export interface KeyValueStore {
   set(key: string, value: string): void;
 }
 
+/**
+ * Skalierung des Canvas: `integer` ganzzahlig und scharf (Vorgabe, 1:1-Pixel),
+ * `fit` füllt bruchteilig und scharf, `smooth` füllt bruchteilig gefiltert.
+ */
+export type ScaleMode = "integer" | "fit" | "smooth";
+
 export interface GameHost {
   readonly canvas: HTMLCanvasElement;
   readonly audio?: AudioHost;
@@ -53,6 +59,8 @@ export interface GameHost {
    * Pad, 0 beendet sie. Fehlt, wenn der Browser oder die Einstellung keine Vibration erlaubt.
    */
   readonly rumble?: (pad: number, magnitude: number) => void;
+  /** Skalierung nach der Einstellung der Shell, bei jeder Größenänderung neu gelesen. */
+  readonly scaleMode?: () => ScaleMode;
   /** Anzahl der Pads mit Vibrationsmotor (für die Optionen des Spiels). */
   readonly rumblePads?: () => number;
   /** Monotone Zeit in ms (`performance.now` im Browser). */

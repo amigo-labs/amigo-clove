@@ -35,6 +35,7 @@ describe("Einstellungen", () => {
       sanitizeSettings({ language: "fr", volume: { master: 2, music: -1, sfx: "x" }, gamepad: 0 }),
     ).toEqual({ ...DEFAULT_SETTINGS, volume: { master: 1, music: 0, sfx: 1 } });
     expect(sanitizeSettings({ language: "de", volume: { music: 0.25 }, gamepad: false })).toEqual({
+      ...DEFAULT_SETTINGS,
       language: "de",
       volume: { master: 1, music: 0.25, sfx: 1 },
       gamepad: false,
@@ -42,6 +43,14 @@ describe("Einstellungen", () => {
     });
     expect(sanitizeSettings({ motion: "reduce" }).motion).toBe("reduce");
     expect(sanitizeSettings({ motion: "viel" }).motion).toBe("auto");
+    expect(sanitizeSettings({ scale: "smooth", scanlines: true })).toMatchObject({
+      scale: "smooth",
+      scanlines: true,
+    });
+    expect(sanitizeSettings({ scale: "riesig", scanlines: "ja" })).toMatchObject({
+      scale: "integer",
+      scanlines: false,
+    });
   });
 
   test("bewegungsarm: fest an oder aus, sonst nach dem System", () => {

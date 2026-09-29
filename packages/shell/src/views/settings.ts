@@ -74,6 +74,37 @@ function motionSection(c: SettingsContext): HTMLElement {
   );
 }
 
+function displaySection(c: SettingsContext): HTMLElement {
+  const select = h(
+    "select",
+    {
+      id: "scale",
+      "aria-describedby": "scale-help",
+      onchange: (e) =>
+        c.update({ scale: (e.target as HTMLSelectElement).value as Settings["scale"] }),
+    },
+    ...(
+      [
+        ["integer", c.t("scaleInteger")],
+        ["fit", c.t("scaleFit")],
+        ["smooth", c.t("scaleSmooth")],
+      ] as const
+    ).map(([v, label]) => h("option", { value: v, selected: c.settings().scale === v }, label)),
+  );
+  const scanlines = h("input", {
+    type: "checkbox",
+    id: "scanlines",
+    checked: c.settings().scanlines,
+    onchange: (e) => c.update({ scanlines: (e.target as HTMLInputElement).checked }),
+  });
+  return section(
+    c.t("display"),
+    h("label", { class: "row" }, h("span", {}, c.t("scale")), select),
+    h("label", { class: "row" }, scanlines, h("span", {}, c.t("scanlines"))),
+    h("p", { class: "hint", id: "scale-help" }, c.t("scaleHelp")),
+  );
+}
+
 function volumeSection(c: SettingsContext): HTMLElement {
   const rows = (["master", "music", "sfx"] as const).map((ch) => {
     const label = { master: "volumeMaster", music: "volumeMusic", sfx: "volumeSfx" } as const;
@@ -257,6 +288,7 @@ export function settingsView(c: SettingsContext): HTMLElement {
     h("h1", {}, c.t("settings")),
     languageSection(c),
     volumeSection(c),
+    displaySection(c),
     motionSection(c),
     gamepadSection(c),
     savesSection(c),
