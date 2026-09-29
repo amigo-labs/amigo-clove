@@ -56,6 +56,20 @@ describe("Welt", () => {
     expect(LEVEL_SLUGS.length).toBe(27);
   }, 60_000);
 
+  test("Start vor Tick 0 (`-Tick N` mit N < 0): läuft bis Tick 0 und weiter, ohne den Vorlauf zu stören", async () => {
+    const { level, sprites } = await loadTestLevel("level1-1_skyfight");
+    const w = new World(level, sprites, { startTick: -300 });
+    expect(w.tick).toBe(-300);
+    for (let t = 0; t < 400; t++) {
+      for (const p of w.players) p.invulnerable = 2;
+      w.step([fire]);
+      w.events.length = 0;
+    }
+    expect(w.tick).toBe(100);
+    expect(w.state).toBe(0);
+    expect(w.layers.some((l) => l.tiles.some((t) => t.active))).toBe(true);
+  });
+
   test("deterministisch: zwei Läufe mit gleichem Seed und gleicher Eingabe sind gleich", async () => {
     const { level, sprites } = await loadTestLevel("level1-1_skyfight");
     const run = () => {

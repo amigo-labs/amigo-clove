@@ -222,8 +222,10 @@ Ebene 3 ist die Landschaft, Ebene 4 die Ereignisse.
 | 4 | 1 | Ton: p2 0 spielen, 1 Schleife, 2 stoppen | Ton | Modus | — | M |
 | 4 | 2 | Funkspruch | Funk-Index | — | — | H |
 
-Offen bis M8: 118 Einträge haben negative Ticks; sie feuern nur, falls ein
-Level vor Tick 0 beginnt (`Me.584` startet mit `Me.560`).
+118 Einträge haben negative Ticks; sie feuern nur, falls ein Level vor Tick 0
+beginnt (`Me.584` startet mit `Me.560`, im Port die URL-Option `from=` mit
+negativem Wert; `world.test.ts` „Start vor Tick 0“). Im Spiel bleibt `Me.560`
+0, sie werden nur vom Vorlauf `SpielPastTicks` gelegt.
 
 ### Effekt-Animation (`0x588124`, 0x20 Byte)
 
