@@ -905,7 +905,7 @@ Hauptmenü und auf den Seiten 1 und 2 nur Esc. Töne: OK `dude`, Umschalten
 `plingding`, Sprachtest `speech`. Nach einem Spielstart `FadeOut(1, False)`;
 Game Over, EXIT und Skriptende führen zurück ins Menü (ohne Logos), „Exit“
 beendet das Programm (im Port: zurück zur Shell). Einen Credits-Eintrag gibt es
-nicht; das Osterei „LOV“ fehlt im Port.
+nicht; das Osterei „LOV“ steht im Abschnitt „Osterei LOV“.
 
 Port: `src/game/menu/` (`menuLogic.ts` Logik, `menuView.ts` Zeichnung,
 `menuScene.ts` Takt, Töne, Zeicheneingabe, `logos.ts` Logos), Optionen in
@@ -914,3 +914,129 @@ die Tastenseite zeigt die Belegung nur an (Umbelegen fehlt noch); Trägheit
 („Realistic“) lässt sich schalten, wirkt aber noch nicht (der Port kennt nur
 Arcade); keine Vibration. `#/dovez?nointro=1` startet ohne Logos und Intro.
 
+## Osterei LOV (`0x546C30`, Aufruf `Me+0x960` am Ende von `MenuLoop`)
+
+**Auslöser** (`0x55BD55`–`0x55BDB5`, Hauptmenü): sind L (DIK `0x26`), O (`0x18`)
+und V (`0x2F`) gleichzeitig gehalten (`[0x588300 + 2·DIK] ≠ 0`, alle drei), setzt
+`MenuLoop` `[0x588018] = 8` und verlässt die Schleife (es zählt jeder
+Durchlauf, ohne Flanke, nur auf der Hauptmenüseite). Am Schleifenende folgen
+bei „Ton an“ `StopOgg` (Stub `0x40D1CC`, die Menümusik endet) und `0x57A3C0`;
+der Zweig `cmp [0x588018], 8` (`0x56998D`) setzt `[0x588018] = 0`, ruft
+`Me.960` und danach `[0x588018] = 0xA` — **Programmende**, wie „Exit“. Die
+Funktion selbst kennt keinen Musik- und keinen Soundaufruf: das Osterei läuft
+still.
+
+**Aufbau** (einmal, vor der Schleife):
+
+1. `FadeOut(0, False)` (`Me.95C`, `0x545C70`) über dem Menübild (1 `Rnd`).
+2. `Me.83C` (`0x4FCB10`) lädt die Standardflächen: `Standart.d2p`, `Blur`,
+   `Blur3`, `Glitzer` (`Me.72C`), `A_KREIS2` (`Me.730`), `weiss` (`Me.758`).
+3. `Me.506 = False`, `Me.520 = 1` (Explosionsstil weiß), `Me.584 = 0`.
+4. **Schriftzug „JULIA“**: fünf Zeilen Pixelschrift `0x412CD4`, `0x412D04`,
+   `0x412D34`, `0x412D64`, `0x412D94` (je 21 Zeichen, `.` = Punkt; J, U, L, I,
+   A in 5 Zeilen Höhe). Zeilenweise (Zeile 0…4, Spalte 1…Länge) wird je `.` ein
+   Datensatz (0x18 Byte, `ReDim Preserve pts(0 To n)`, Felder `x` +0, `y` +4,
+   `vx` +8, `vy` +C, `tx` +10, `ty` +14) angelegt: Ziel `tx = 32 · Spalte + 10`,
+   `ty = 32 · Zeile + 180`, Start `x = Rnd · 1032 − 132`, dann
+   `y = Rnd · 832 − 132`, Tempo 0. Das sind **44 Punkte** (9/7/10/8/10 je
+   Zeile), **88 `Rnd`**, in der Zeilenreihenfolge.
+5. Danach werden die fünf Zeilen mit den Herzzeilen überschrieben (`0x412DC4`
+   ` ..  ..`, `0x412DD8` `........`, `0x412DFC` ` ......`, `0x412E10` `  ....`,
+   `0x412E24` `   ..`; die erste Kopie des Schriftzugs wird nicht mehr gebraucht).
+6. `Me.6DC…6E8 = (0, 0, 800, 600)` (Quellrechteck, hier unbenutzt);
+   schwarzes Vollbild-Rechteck auf `weiss` (ohne `RenderStart`, das erste
+   Schleifenbild deckt es ohnehin mit Schwarz ab); `Me.7CC = 4` (Hintergrund
+   4, rotes Plasma des Speicherbildschirms), `Me.10CC = True` (Flecken neu
+   auslegen), `Me.584 = 0`.
+7. `Wait 1000` (`Me.85C`): eine Sekunde Schwarz.
+
+**Schleife** (`Wait 18`, ≈ 55,6 Hz, jeder Durchlauf wird gezeichnet — `Me.4FE`
+hat hier keine Wirkung, die Zeichenaufrufe fragen `Me.4FC` nicht ab). Kopf:
+läuft, solange `[[0x588300] + 2] = 0` (Esc, DIK 1, aus dem **vorigen**
+Tastenlesen) und `[0x588018] = 0` (das setzen sonst andere Abschnitte, etwa
+beim Schließen des Fensters; in der Schleife schreibt niemand darauf). Je
+Durchlauf in dieser Reihenfolge:
+
+1. Tasten lesen (`0x5780C0`), `Me.584 += 1` (also `t = 1, 2, …`).
+2. `t = 400`: Herz (unten).
+3. `t > 600`: Glitzerpartikel (unten), **5 `Rnd`**.
+4. `Me.50A = Me.50C = False`; `RenderStart` (`Me.874`, `0x506EA0`);
+   `SpielMoveHintergrund` (`Me.8A8`, Modus 4, wie im Speicherbildschirm:
+   im ersten Durchlauf 505 `Rnd` für die 101 Flecken, danach keine; Schwarz,
+   101 rote `a_kreis2`-Flecken in die Ecke 64 × 64, nach `blur` erfasst und auf
+   800 × 600 gestreckt).
+5. `t < 100`: `weiss` (0, 0)–(800, 600) in Schwarz, α = `(100 − t) / 100`, normal
+   — Einblenden aus Schwarz über die ersten 99 Durchläufe.
+6. **Punkte**, `For i = 0 To n` (`n` = Zahl − 1, `Me.71C = i`):
+   `vx += (tx − x) / 10`, `vy += (ty − y) / 8`;
+   `x += vx + Sin(10 · (t + i)°)`, `y += vy + Cos(10 · (t + i)°)` (`Me.7D4`
+   `0x4E9DF0` = Tabelle `Me.4C4` Sinus, `Me.7D0` `0x4E9D50` = `Me.4E0` Kosinus,
+   ganzzahlige Grad); danach `vx, vy ·= 0,95` (alles `Single`). Je Punkt gleich
+   danach das rote Leuchten: `SetUpColor(A_KREIS2, 1, 0,2, 0,1, 0,7)`,
+   `SetUpRect(x, y, x + 64, y + 64)`, `Render(…, additiv)`.
+7. Zweiter Durchgang über dieselben Punkte: `SetUpColor(Glitzer, 1, 1, 1,
+   0,2)`, dasselbe Rechteck, additiv — ein weißer Stern auf jedem Punkt.
+8. `t > 750`: `RenderEnd` (`Me.878`), `GetDC` des Backbuffers (`Me.1E4`, +0x68),
+   `SetFont(hdc, "Arial", 28)` (`0x57DE40`), dreimal `Text` (`0x57DD50`,
+   transparent) „Ich liebe dich“ (`0x412E34`): Schwarz bei (620, 565),
+   Schwarz bei (622, 567), dann in `RGB(g, g, g)` bei (621, 566) mit
+   `g = min(t − 750, 128)`; `0x57DF40`, `ReleaseDC`, `RenderStart`.
+9. `MovePartikel(1)` (`Me.800`, leer — es entstehen keine kleinen Partikel),
+   `MoveBigPartikel` (`Me.7F8`): die Glitzer (über der Schrift). `Me.514`
+   (Standbild-Überblendung), `Me.50A`, `Me.50C` sind aus.
+10. `RenderEnd`, `Flip` (`Me.794`), `Wait 18`.
+
+**Herz** (`t = 400`, einmal): `n = −1`; Spalte 1…20 **außen**, Zeile 0…4 innen
+(anders als der Schriftzug!): ist `Len(Zeile) ≥ Spalte` und das Zeichen `.`, bekommt
+der nächste Datensatz (0, 1, 2, …) das Ziel `tx = 16 · Spalte + 300`,
+`ty = 16 · Zeile + 250`. Das Herz hat 24 Punkte; **`n` ist danach 23** — die
+Schleifen laufen nur noch über die ersten 24 Datensätze, die übrigen 20
+(Rest von J, U, L, I, A: Zeile 2…4) werden nicht mehr bewegt oder gezeichnet
+und verschwinden. Die 24 federn vom Schriftzug zum Herzen in der Bildmitte (Ziele
+`(316…428, 250…314)` sind linke obere Ecken der 64-px-Rechtecke, die Kreismitte
+liegt 32 px weiter rechts unten; Herzmitte ≈ (404, 314)).
+
+**Glitzerregen** (`t > 600`, je Durchlauf): fünf `Rnd` in der Reihenfolge
+`r1…r5`, dann `Add1BigPartikel(336, −128, r1 · 8 − 4, r2 · 10 + 5, 1,
+r3 · 0,5 + 0,5, r4 · 0,2, Größe 128, Verzögerung 0, Leben 50, Art 14,
+Wachstum r5 · 20 − 15)`: ein `glitzer` (Art 14, additiv, Drehung
+`(t mod 90) · 4°`) fällt oben aus (336, −128), ändert seine Größe um
+`Wachstum` je Tick (−15 … +5, meist Schrumpfen um die feste Mitte; die Größe wird
+negativ und spiegelt das Bild — D3D zeichnet ohne Culling, `RenderStart`
+setzt `CULLMODE = NONE`), Farbe Orange bis Gelb (Rot 1, Grün 0,5…1, Blau 0…0,2),
+Tempo `vx = −4…4`, `vy = 5…15` (fällt nach unten).
+
+**Ende:** Esc (nur Esc, ohne Loslassen abzuwarten; der Test am Schleifenkopf
+sieht den Zustand des vorigen Tastenlesens) → `FadeOut(0, False)` (nicht
+abbrechbar) → `if [0x588018] = 2 then [0x588018] = 0` (`0x548C29`, im Port ohne
+Wirkung) → Rückkehr in `MenuLoop`, das den Modus 0xA setzt (Programmende).
+Der Fehlerzweig ab `0x548C48` (`DDERR_SURFACELOST` `0x887601C2`: alle Flächen
+wiederherstellen und die Schleife fortsetzen, sonst Modus 0xA) ist DirectDraw
+und entfällt im Port.
+
+**Zeitlinie** (Durchlauf zu 18 ms, Zeiten ab Schleifenbeginn, davor 1 s Anlauf): 0–1,8 s Einblenden (die
+Punkte federn ab dem ersten Durchlauf aus zufälligen Orten herein, sie sind
+nach ≈ 3 s im Ziel), 7,2 s Herz (20 Punkte verschwinden), 10,8 s Glitzerregen,
+13,5 s Text erscheint (dunkel) und wird bis 15,8 s heller (Grau 128, halbe
+Helligkeit; schwarze Kanten), dann bleibt das Bild bis Esc.
+
+**Konfidenz:** Ablauf, Zahlen, Farben, Rechtecke und `Rnd`-Reihenfolge hoch
+(die Funktion ist vollständig gelesen, 44 Punkte und 24 Herzpunkte per Skript
+nachgezählt, Plasma und Partikel sind die des Speicherbildschirms bzw. des
+Abspanns). Mittel: die Schriftgröße (28 als GDI-Zellhöhe wie bei den anderen
+`SetFont`-Aufrufen), die tatsächliche Länge des `Wait 1000` (der Takt `Me.544`
+läuft seit dem letzten `Wait`, das Laden von `Me.83C` zählt mit), ob im
+Originalbild vom Menü übrig gebliebene Funken der Partikeltöpfe in die ersten
+Durchläufe hineinragen (der Port startet mit leeren Töpfen), und ob die
+Stille wirklich still ist (es gibt keine Klangaufrufe in `0x546C30`; ob `0x57A3C0`
+oder `StopOgg` am Schleifenende der Menümusik noch etwas anderes tun, wurde
+nicht geprüft). Nicht prüfbar ohne Original-Lauf: Kantenglättung der GDI-Schrift
+und die genauen Zeitabstände.
+
+Port: `src/game/love.ts` (Logik), `loveView.ts` (Zeichnung über den
+`Compositor`), `loveScene.ts` (Takt, Esc); Verdrahtung in `Game.ts`: nach dem
+Menüergebnis „love“ `FadeScene(FadeLogic(0, rnd))`, dann
+`LoveScene(host, app, textures, standart, new LoveLogic(rnd))`, danach
+`FadeScene(FadeLogic(0, rnd))` und zurück zur Shell wie bei „Exit“. Test:
+`test/love.test.ts` (unter anderem: `Rnd`-Zug je Durchlauf 88 / 505 / 0 / 5,
+Plasma gleich `Environment.moveBackground` im Speicherbildschirm).
