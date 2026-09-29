@@ -45,6 +45,23 @@ type Key =
   | "pointerUse"
   | "pointerHelp"
   | "touchBack"
+  | "hud"
+  | "hudModern"
+  | "hudOriginal"
+  | "hudHelp"
+  | "hudScore"
+  | "hudPlayer"
+  | "hudLives"
+  | "hudEnergy"
+  | "hudBeam"
+  | "hudShield"
+  | "hudSpeed"
+  | "hudPower"
+  | "hudBoss"
+  | "hudCombo"
+  | "hudBossAppears"
+  | "hudBossDefeated"
+  | "hudLifeLost"
   | "loadingBar"
   | "gameCanvas"
   | "saves"
@@ -115,6 +132,24 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
     pointerHelp:
       "Maus: das Schiff folgt dem Zeiger, links Feuer, rechts Beam, Rad Tempo (DOVE) bzw. Waffenwechsel (DoveZ). Touch: Finger ziehen lenkt und feuert, zweiter Finger lädt den Beam. Pfeiltasten übernehmen jederzeit.",
     touchBack: "Zurück / Pause",
+    hud: "Anzeige (HUD)",
+    hudModern: "modern (neben dem Spielfeld, mit Boss-Balken)",
+    hudOriginal: "Original (im Spielbild)",
+    hudHelp:
+      "Das moderne HUD zeigt Punkte, Leben, Energie, Beam und Waffen gut lesbar neben dem Spielfeld und die Lebenspunkte der Bosse; das Spielfeld wird dafür größer.",
+    hudScore: "Punkte",
+    hudPlayer: "Spieler",
+    hudLives: "Leben",
+    hudEnergy: "Energie",
+    hudBeam: "Beam",
+    hudShield: "Schild",
+    hudSpeed: "Tempo",
+    hudPower: "Stärke",
+    hudBoss: "Boss",
+    hudCombo: "Kombo {hits} · +{bonus}",
+    hudBossAppears: "Ein Boss greift an.",
+    hudBossDefeated: "Boss besiegt.",
+    hudLifeLost: "Ein Leben verloren.",
     loadingBar: "Ladefortschritt",
     gameCanvas: "{title}: Spielfläche. Bedienung mit Tastatur oder Gamepad, Esc pausiert.",
     saves: "Spielstände",
@@ -183,6 +218,24 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
     pointerHelp:
       "Mouse: the ship follows the pointer, left fires, right charges the beam, wheel changes speed (DOVE) or weapon (DoveZ). Touch: drag to steer and fire, a second finger charges the beam. Arrow keys take over at any time.",
     touchBack: "Back / pause",
+    hud: "HUD",
+    hudModern: "modern (beside the play field, with boss bar)",
+    hudOriginal: "original (inside the picture)",
+    hudHelp:
+      "The modern HUD shows score, lives, energy, beam and weapons legibly beside the play field, plus boss health; the play field gets bigger.",
+    hudScore: "Score",
+    hudPlayer: "Player",
+    hudLives: "Lives",
+    hudEnergy: "Energy",
+    hudBeam: "Beam",
+    hudShield: "Shield",
+    hudSpeed: "Speed",
+    hudPower: "Power",
+    hudBoss: "Boss",
+    hudCombo: "Combo {hits} · +{bonus}",
+    hudBossAppears: "A boss attacks.",
+    hudBossDefeated: "Boss defeated.",
+    hudLifeLost: "Life lost.",
     loadingBar: "Loading progress",
     gameCanvas: "{title}: play area. Controls: keyboard or gamepad, Esc pauses.",
     saves: "Saved games",
@@ -251,6 +304,24 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
     pointerHelp:
       "Мышь: корабль следует за указателем, левая кнопка — огонь, правая — луч, колесо — скорость (DOVE) или смена оружия (DoveZ). Касание: ведите пальцем для движения и огня, второй палец заряжает луч. Стрелки перехватывают управление в любой момент.",
     touchBack: "Назад / пауза",
+    hud: "Интерфейс (HUD)",
+    hudModern: "современный (рядом с полем, с полосой босса)",
+    hudOriginal: "оригинальный (в кадре)",
+    hudHelp:
+      "Современный HUD показывает очки, жизни, энергию, луч и оружие рядом с полем, а также здоровье боссов; игровое поле становится больше.",
+    hudScore: "Очки",
+    hudPlayer: "Игрок",
+    hudLives: "Жизни",
+    hudEnergy: "Энергия",
+    hudBeam: "Луч",
+    hudShield: "Щит",
+    hudSpeed: "Скорость",
+    hudPower: "Мощь",
+    hudBoss: "Босс",
+    hudCombo: "Комбо {hits} · +{bonus}",
+    hudBossAppears: "Атакует босс.",
+    hudBossDefeated: "Босс побеждён.",
+    hudLifeLost: "Жизнь потеряна.",
     loadingBar: "Ход загрузки",
     gameCanvas: "{title}: игровое поле. Управление: клавиатура или геймпад, Esc — пауза.",
     saves: "Сохранения",

@@ -11,6 +11,7 @@ import {
 } from "@clove/core";
 import { h } from "./dom";
 import { createPadState, startPadNavigation } from "./gamepad";
+import { HudView } from "./hud";
 import { createKeyState } from "./keys";
 import { DISPLAY_EVENT, createStage, toggleFullscreen, type Stage } from "./overlay";
 import { registerServiceWorker } from "./offline";
@@ -234,6 +235,7 @@ async function startGame(
         rumble,
         rumblePads: () => rumblePads().length,
         scaleMode: () => settings.scale,
+        hudMode: () => settings.hud,
         get pointer() {
           return settings.pointer ? pointer : undefined;
         },
@@ -255,6 +257,11 @@ async function startGame(
       return;
     }
     running = instance;
+    if (instance.hud) {
+      const hud = instance.hud.bind(instance);
+      const hudView = new HudView(s, t, hud, () => settings.hud === "modern");
+      s.onDispose(() => hudView.dispose());
+    }
     document.body.dataset["game"] = id;
   } catch (err) {
     if (gen !== generation) return;

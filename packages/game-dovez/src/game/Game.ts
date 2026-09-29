@@ -3,7 +3,7 @@ import { LoveScene } from "./loveScene";
 import type { AtlasJson, GameHost, GameInstance } from "@clove/core";
 import { StreamPlayer } from "@clove/audio";
 import { dovezSlug, type PlayStep } from "@clove/formats";
-import { TextureRegistry, createScreen } from "@clove/pixi-kit";
+import { TextureRegistry, createScreen, setView } from "@clove/pixi-kit";
 import type { Texture } from "pixi.js";
 import { Renderer } from "../render/Renderer";
 import { VbRnd, vbInt } from "../sim/vb";
@@ -15,6 +15,7 @@ import { FadeLogic, FadeScene } from "./fadeOut";
 import { atlasTexture } from "./gdi";
 import { parseHighscores, HIGHSCORE_KEY } from "./highscore";
 import { codeOfDik, keyText, okKey, pauseKey, readInput, useKeys } from "./input";
+import { atlasSprites, dovezHud } from "./hud";
 import { resolveLang } from "./lang";
 import { type GameContext, LevelScene, levelBundles } from "./level";
 import { LoadingScene } from "./loadingScreen";
@@ -50,6 +51,8 @@ import { VideoScene } from "./videoScene";
 
 export const SCREEN_WIDTH = 800;
 export const SCREEN_HEIGHT = 600;
+/** Spielfeld ohne HUD-Leiste. */
+const FIELD_H = 550;
 
 export { keyLabel, readInput } from "./input";
 
@@ -163,7 +166,9 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
     if (disposed) return;
     const s = scene;
     if (s && s.frame(host.now())) finish?.();
-    if (!disposed) app.render();
+    if (disposed) return;
+    setView(host.canvas, s instanceof LevelScene && s.fieldOnly ? FIELD_H : null);
+    app.render();
   };
   app.ticker.add(frame);
   app.ticker.start();
@@ -514,7 +519,13 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
       if (!disposed) host.exit();
     });
 
+  const hudSprite = atlasSprites(host.assets, globals[0]);
   return {
+    hud() {
+      const level = current;
+      if (!level || scene !== level || !level.playing) return null;
+      return dovezHud(level.world, hudSprite, lang);
+    },
     dispose() {
       disposed = true;
       app.ticker.remove(frame);
