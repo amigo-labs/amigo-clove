@@ -85,6 +85,33 @@ Offline-Start bei beendetem Server). Von Hand:
       Schnitten, Ton synchron).
 - [ ] **Safari:** Ogg Opus per `decodeAudioData` und Ogg-Vorbis-Streaming.
 
+## Stand M8 — DoveZ am Original abgleichen
+
+Die Mechanik ist statisch aus `DoveZ.exe` hergeleitet (`docs/measurements/dovez-runtime.md`);
+nichts davon ist am laufenden Original gemessen. Was ein Vergleich am echten Spiel
+klären müsste:
+
+- [ ] **Takt:** 16 ms je Tick (`Wait(16 + Me.1C8)`); Steuerung und Scrolltempo fühlen
+      sich wie im Original an (Frames überspringen bei Last).
+- [ ] **Trägheit „Realistic“:** Ausgleiten nach dem Loslassen (×0,85 je Tick, ab 10
+      Ticks Tastendruck) — Reihenfolge im Tick und Länge des Ausgleitens.
+- [ ] **Tastenkonfiguration:** Aufnahme (höchste gehaltene Taste, weitere Taste
+      während des Haltens ersetzt), Blinkfarbe Gelb alle 3 Durchläufe, Übernehmen und
+      Zurück; Tastennamen (deutsche Beschriftung: DIK `0x15` = „Z“).
+- [ ] **Super-Nova:** alle zehn Varianten (Dauer, Zeitpunkt der Kills, Rauschen),
+      Abschusszähler `B48[0].54`.
+- [ ] **Bosse:** Zustandsmaschinen und Finale (Zustand 4), Druckwelle als Spielwirkung.
+- [ ] **Beam und Kombo:** Ladezeit (0,9 je Tick), Kraftphase, Kombo-Wertung.
+- [ ] **Hintergründe, Wetter, Wasser, Overlays:** prozedurale Effekte (Partikelzahlen,
+      Farben, Blendmodi) gegen Aufnahmen.
+- [ ] **Videos und Ladebilder:** `Loading.d2p` auf 800 × 600 gestreckt (*mittel*),
+      Zwischensequenzen, Abspann-Timing (1 px je 25 ms).
+- [ ] **Menü:** Punktketten, Knopfgleiten (/4 je Durchlauf), Hangar-Vereisung und
+      Rauschen ab Durchlauf 100.
+- [ ] **Level vor Tick 0** (`-Tick N` mit N < 0): die 118 Einträge mit negativem Tick.
+- [ ] **Vibration:** Stärke und Dauer je Quelle (siehe „Vibration“ in
+      `dovez-runtime.md`), Gamepad-Motoren der Browser statt DirectInput-Kräfte.
+
 ## Nicht testbar, nur dokumentieren
 
 - Audio-Äquivalenz: BASS 0.8 und libopenmpt mischen unterschiedlich.
