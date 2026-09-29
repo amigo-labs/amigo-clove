@@ -1,6 +1,6 @@
 # DoveZ — Pakete, Konturen, Masken, Funktexte, Kampagne
 
-Stand: M6. Parser in `packages/formats/src/dovez/`, geprüft von
+Stand: M6 (Russisch: M8). Parser in `packages/formats/src/dovez/`, geprüft von
 `packages/formats/test/dovez.test.ts` gegen **alle** Originale in
 `original-dovez/Data`. Das Level-Skript `<Level>.dat` (M7) beschreibt
 [`dovez-level-dat.md`](dovez-level-dat.md); es wird unverändert ausgeliefert und
@@ -99,9 +99,17 @@ Zeile). Sprecher ist `Frame` (Funkbild, Schreibweise gemischt) oder `0`
   `ms: null`, leerer Text.
 - `Spacestation2 [Asteroids]` vertauscht Dauer und WAV (`0; 1489; …wav; Text`);
   der Parser korrigiert und markiert `swapped: true`.
-- `R.txt` ist CP1251 (`decodeCp1251`), verweist auf `…RU_*.wav`, die in keiner
-  `.dfp` liegen, und enthält `;` im Untertitel — nicht eindeutig parsebar und
-  ohne Ton ohnehin nicht nutzbar. Die Pipeline übernimmt nur D und E.
+- `R.txt` ist CP1251 (`decodeCp1251`) und verweist auf `…RU_*.wav`, die in keiner
+  `.dfp` liegen (nur die drei gleichnamigen `Escape_*.wav`): russisch gibt es
+  nur Untertitel, der Ton bleibt aus (`docs/measurements/dovez-runtime.md`,
+  „Sprachen“). Die Abschnitte entsprechen `E.txt` bis auf `[Bombers]`
+  (Spacestation II, fehlt) und `[Credits]` im Epilog (12 statt 13 Gruppen).
+  **Ein `;` steckt im Untertitel** (`Industry1R.txt` [Harbor]:
+  `…Кровавый ад;они прибыли до нас.;;0;`); der Parser erkennt Gruppen an
+  Sprecher + WAV, fügt den Untertitel mit „; “ zusammen und verwirft `;;0;` am
+  Ende (`parseRadioText`). Die Abschnittsnamen der R-Dateien sind CP1252-Bytes wie
+  in den Level-Skripten (`Drohnen schießen`, in CP1251 „…Я…“): `parseRadioTextRu`.
+  Die Pipeline schreibt `radio/<slug>` = `{ de, en, ru }`.
 
 ## Kampagne `Play.txt`
 
