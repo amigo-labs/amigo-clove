@@ -2,13 +2,16 @@ import { DrawList, Effects, type EffectWorld } from "../../sim/effects";
 import { COS_DEG, SIN_DEG, cint, degIndex, f32, vbInt, type VbRnd } from "../../sim/vb";
 import type { DovezConfig } from "../config";
 import { DEFAULT_NAME, type HighscoreEntry, NAME_MAX } from "../highscore";
+import type { Lang } from "../lang";
+import { type MenuTexts, menuTexts } from "./menuTexts";
 
 /**
  * Hauptmenü `MenuLoop` (`0x559630`) als Logik: je Durchlauf (`Wait 18`) die
  * Seite aufbauen, `ShowMenu` (`0x558890`: Punktketten mit `Rnd`, Knopfversatz,
  * dann ↑/↓), Tafel, `ShowList` (`0x558500`), OK und Zurück mit Flanke, dann
  * Gleiten der Knopfleiste und Einschub der Tafel. Befund:
- * `docs/measurements/dovez-runtime.md` („Hauptmenü“). Russisch fehlt im Port.
+ * `docs/measurements/dovez-runtime.md` („Hauptmenü“). Die Texte je Sprache
+ * (Deutsch, Englisch, Russisch) stehen in `menuTexts.ts`.
  */
 
 export type MenuPage = 1 | 2 | 3 | 10 | 20 | 30 | 31 | 32 | 33 | 40 | 50;
@@ -108,6 +111,10 @@ interface ListState {
 }
 
 const DASHES = (n: number) => "-".repeat(n);
+const menuArgs = (m: { title: string; entries: readonly string[] }): [string, string[]] => [
+  m.title,
+  [...m.entries],
+];
 const sinD = (a: number) => SIN_DEG[degIndex(a)] ?? 0;
 const cosD = (a: number) => COS_DEG[degIndex(a)] ?? 0;
 
@@ -144,7 +151,7 @@ export function rollNoise(rnd: VbRnd): [number, number, number, number][] {
 export const BONUS_LEVELS = ["Level8-1 Jungle", "Spacestation Bonus", "Level Bleistift"] as const;
 
 export interface MenuOptions {
-  readonly german: boolean;
+  readonly lang: Lang;
   readonly rnd: VbRnd;
   /** Geschaffte Durchgänge (`[0x588080]`). */
   readonly passes: number;
@@ -222,8 +229,12 @@ export class MenuLogic {
     this.fx = new Effects(o.rnd, 0);
   }
 
-  private get de(): boolean {
-    return this.o.german;
+  private get t(): MenuTexts {
+    return menuTexts(this.o.lang);
+  }
+
+  get lang(): Lang {
+    return this.o.lang;
   }
 
   /** `Blenden` (`0x4A9FA0`): Überblende vom fertigen Bild dieses Durchlaufs. */
@@ -272,7 +283,7 @@ export class MenuLogic {
   private runPage(
     k: MenuKeys,
   ): Omit<MenuDraw, "frame" | "frozen" | "noise" | "blend" | "noiseTiles"> {
-    const de = this.de;
+    const t = this.t;
     // Seiten 2 und 32 zeichnen die Tafel vor der Knopfleiste
     const panelFirst = this.page === 2 || this.page === 32;
     let locked = true;
@@ -283,27 +294,19 @@ export class MenuLogic {
     let fillList: (() => void) | undefined;
     switch (this.page) {
       case 3:
-        this.setMenu(
-          de ? "MENÜ" : "MENU",
-          de
-            ? ["Neu", "Laden", "Optionen", "Highscore", "Exit"]
-            : ["NEW", "LOAD", "OPTIONS", "SCORE", "EXIT"],
-        );
+        this.setMenu(...menuArgs(t.main(this.o.passes !== 0)));
         this.zx = 155;
         this.zy = 165;
         locked = false;
         break;
       case 10:
-        this.setMenu(
-          de ? "NEU" : "NEW",
-          de ? ["1 Spieler", "2 Spieler", "Zurück"] : ["1 PLAYER", "2 PLAYER", "BACK"],
-        );
+        this.setMenu(...menuArgs(t.players));
         this.zx = 155;
         this.zy = 195;
         locked = false;
         break;
       case 1:
-        this.setMenu("SHIP", ["D-Tonator", "D-Phyton", de ? "Zurück" : "BACK"]);
+        this.setMenu(...menuArgs(t.ship));
         this.zx = 10;
         this.zy = 165;
         locked = false;
@@ -314,7 +317,7 @@ export class MenuLogic {
           const p = this.p;
           const cursor = this.frame % 2 === 0 ? "_" : "";
           this.setList(520, 305, 1, [
-            [de ? `Name für Spieler ${p + 1}:` : `Please insert Name, player ${p + 1}:`, false],
+            [t.namePrompt(p + 1), false],
             [this.names[p]! + cursor, true],
           ]);
         };
@@ -323,58 +326,26 @@ export class MenuLogic {
         this.zx = 10;
         panel = [420 + this.off, 10, 800, 585];
         break;
-      case 30: {
-        const bonus = this.o.passes !== 0;
-        this.setMenu(
-          de ? "OPTIONEN" : "OPTIONS",
-          de
-            ? ["Grundeins.", "Lautstärke", "Tastenkon.", ...(bonus ? ["Bonus"] : []), "Zurück"]
-            : ["GAME", "SOUND", "KEYS", ...(bonus ? ["BONUS"] : []), "BACK"],
-        );
+      case 30:
+        this.setMenu(...menuArgs(t.options(this.o.passes !== 0)));
         this.zx = 5;
         this.zy = 165;
         locked = false;
         break;
-      }
       case 31:
         panel = [330 + this.off, 245, 800, 505];
         fillList = () => {
           const c = this.config;
-          const onOff = (b: boolean) => (de ? (b ? "Ein" : "Aus") : b ? "On" : "Off");
+          const g = t.game;
           this.setList(385, 255, this.list.sel, [
-            [de ? "Grundeinstellungen" : "Game settings", false],
-            [DASHES(de ? 26 : 19), false],
+            [g.title, false],
+            [DASHES(g.dashes), false],
             ["", false],
-            [
-              de
-                ? c.qNormal
-                  ? "Force Modus Taste wird normal benutzt"
-                  : "Force Modus Taste wirkt als Beamwechsel"
-                : c.qNormal
-                  ? "Force Mode Key: Normal"
-                  : "Force Mode Key: Beam Alternation",
-              true,
-            ],
-            [
-              de
-                ? c.autoArrange
-                  ? "D-Tonator: Automatische Waffenanordnung"
-                  : "D-Tonator: Manuelle Waffenanordnung"
-                : c.autoArrange
-                  ? "D-Tonator Particles: Auto-Arrange"
-                  : "D-Tonator Particles: Manual-Arrange",
-              true,
-            ],
-            [
-              de
-                ? `Trägheit: ${onOff(c.realistic)}`
-                : c.realistic
-                  ? "Ship Movements: Realistic"
-                  : "Ship Movements: Arcade",
-              true,
-            ],
+            [g.forceKey(c.qNormal), true],
+            [g.arrange(c.autoArrange), true],
+            [g.inertia(c.realistic), true],
             ["", false],
-            [de ? "Zurück" : "Back", true],
+            [t.back, true],
           ]);
         };
         break;
@@ -382,15 +353,16 @@ export class MenuLogic {
         panel = [480 + this.off, 245, 800, 445];
         fillList = () => {
           const c = this.config;
+          const v = t.volume;
           this.setList(540, 255, this.list.sel, [
-            [de ? "Lautstärkeeinstellungen" : "Volume Control", false],
+            [v.title, false],
             [DASHES(32), false],
             ["", false],
-            [`${de ? "Musik" : "Music"}: ${c.music}`, true],
-            [`Sound: ${volumeLevel(c.sfx)}`, true],
-            [`${de ? "Sprache" : "Voices"}: ${volumeLevel(c.speech)}`, true],
+            [`${v.music}: ${c.music}`, true],
+            [`${v.sound}: ${volumeLevel(c.sfx)}`, true],
+            [`${v.voices}: ${volumeLevel(c.speech)}`, true],
             ["", false],
-            [de ? "Zurück" : "Back", true],
+            [t.back, true],
           ]);
         };
         break;
@@ -398,59 +370,26 @@ export class MenuLogic {
         panel = [300 + this.off, 110, 800, 595];
         fillList = () => {
           const set = this.keySet;
-          const who = de
-            ? ["Einzelspieler", "Zweispielermodus: Spieler 1", "Zweispielermodus: Spieler 2"][set]
-            : ["Singleplayer", "Multiplayer: Player 1", "Multiplayer: Player 2"][set];
-          const labels = de
-            ? [
-                "Links",
-                "Hoch",
-                "Rechts",
-                "Runter",
-                "Schießen",
-                "Beam",
-                "Satelliet/Partikel wechseln",
-                "Force Modus",
-                "Partikel drehen",
-                "Supernova",
-              ]
-            : [
-                "Left",
-                "Up",
-                "Right",
-                "Down",
-                "Shoot",
-                "Beam",
-                "Force Control/Particles",
-                "Force Mode",
-                "Rotation of Particles",
-                "Supernova",
-              ];
+          const kt = t.keys;
           const rows: [string, boolean][] = [
-            [de ? "Tastenkonfiguration" : "Key Config", false],
-            [DASHES(de ? 26 : 19), false],
+            [kt.title, false],
+            [DASHES(kt.dashes), false],
             ["", false],
-            [`${de ? "Steuerung für " : ""}${who!}`, true],
-            [`${de ? "Gerät" : "Controller"}: ${de ? "Tastatur" : "Keyboard"}`, false],
+            [`${kt.whoPrefix}${kt.who[set]!}`, true],
+            [`${kt.device}: ${kt.keyboard}`, false],
             ["", false],
           ];
           // Im Port nur zur Ansicht: die Belegung kommt aus `input.ts` (Umbelegen fehlt noch)
-          labels.forEach((l, a) => rows.push([`${l}: ${this.o.keyText(set, a)}`, false]));
-          rows.push(
-            ["", false],
-            ["", false],
-            ["", false],
-            ["", false],
-            [de ? "Zurück" : "Back", true],
-          );
+          kt.labels.forEach((l, a) => rows.push([`${l}: ${this.o.keyText(set, a)}`, false]));
+          rows.push(["", false], ["", false], ["", false], ["", false], [t.back, true]);
           this.setList(390, 130, this.list.sel, rows);
         };
         break;
       case 40: {
         const n = Math.min(this.o.passes, 3);
         const entries: string[] = ["JUNGLE", "SPACE", "STIFT"].slice(0, n);
-        entries.push("BACK");
-        this.setMenu("BONUS", entries);
+        entries.push(t.bonus.back);
+        this.setMenu(t.bonus.title, entries);
         this.zx = 155;
         this.zy = 215;
         locked = false;
@@ -498,7 +437,7 @@ export class MenuLogic {
           `${i + 1}. ${e.name.padEnd(16, " ")}`,
           false,
         ]);
-        rows.push(["", false], [de ? "Zurück" : "Back", true]);
+        rows.push(["", false], [t.scoreBack, true]);
         this.setList(410, 245, 11, rows);
         scores = this.o.highscores.map((e) => String(e.score));
       }
@@ -535,9 +474,9 @@ export class MenuLogic {
 
   /** Liste der Seite 20, einmal beim Betreten gebaut; Vorauswahl „Zurück“. */
   private buildLoadList(): void {
-    const de = this.de;
+    const t = this.t;
     const rows: [string, boolean][] = [
-      [de ? "Spiel laden" : "Load Game", false],
+      [t.load.title, false],
       [DASHES(20), false],
       ["", false],
     ];
@@ -545,7 +484,7 @@ export class MenuLogic {
       const s = this.o.slots[i];
       rows.push(s === undefined ? ["---", false] : [s, true]);
     }
-    rows.push(["", false], [de ? "Zurück" : "Back", true]);
+    rows.push(["", false], [t.back, true]);
     this.setList(475, 35, 25, rows);
   }
 

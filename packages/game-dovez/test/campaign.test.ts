@@ -19,10 +19,10 @@ const steps = (await Bun.file(join(ROOT, playFile)).json()) as PlayStep[];
 /** Alle Aktionen bis zum Skriptende, `credits` mit Epilog wie der Ablauf in `Game.ts`. */
 function drain(c: Campaign): CampaignAction[] {
   const out: CampaignAction[] = [];
-  for (let a = c.next(true); ;) {
+  for (let a = c.next("de"); ;) {
     out.push(a);
     if (a.kind === "end") return out;
-    a = a.kind === "credits" && a.epilog ? c.epilog() : c.next(true);
+    a = a.kind === "credits" && a.epilog ? c.epilog() : c.next("de");
   }
 }
 
@@ -68,12 +68,12 @@ describe("Kampagne (LevelSkript)", () => {
       name: "Spacestation Bonus",
       loading: "",
     });
-    expect(c.next(true)).toEqual({ kind: "end" });
+    expect(c.next("de")).toEqual({ kind: "end" });
   });
 
   test("Spielstand-Index: nach „Save“ geht es mit dem Zwischenvideo weiter", () => {
     const c = new Campaign(steps, { step: 5 });
-    expect(c.next(false)).toEqual({ kind: "video", id: videoId("Missing_in_space.avi") });
+    expect(c.next("en")).toEqual({ kind: "video", id: videoId("Missing_in_space.avi") });
     expect(videoId("Missing_in_space.avi")).toBe("video/missing_in_space");
   });
 });
@@ -182,10 +182,10 @@ describe("Speicherbildschirm (SaveGame)", () => {
     expect(savePlaces([3, 3])).toEqual([4, 3]);
     expect(savePlaces([2, 5])).toEqual([2, 5]);
     const d = new Date(2026, 8, 28);
-    expect(saveLabel(1, 0, 1, "Level1-2 Zeppelin Boss", d, true)).toBe(
+    expect(saveLabel(1, 0, 1, "Level1-2 Zeppelin Boss", d, "de")).toBe(
       "P1S1A - Level1-2  28.09.2026",
     );
-    expect(saveLabel(2, 1, 30, "Level7-4 finalboss", d, false)).toBe("P2S2Z - Level7-4  9/28/2026");
+    expect(saveLabel(2, 1, 30, "Level7-4 finalboss", d, "en")).toBe("P2S2Z - Level7-4  9/28/2026");
   });
 
   test("Spielstand: Serialisieren und Prüfen", async () => {

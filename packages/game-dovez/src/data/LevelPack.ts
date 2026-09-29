@@ -14,7 +14,14 @@ export interface LevelPack {
   /** Konturen des Pakets (Int16, Layout siehe `AtlasJson.contours`). */
   readonly contours: Int16Array;
   /** Funktexte je Sprache (`radio/<slug>`), fehlt bei Levels ohne Funk. */
-  readonly radio: { readonly de: RadioTexts; readonly en: RadioTexts } | undefined;
+  readonly radio: LevelRadio | undefined;
+}
+
+/** Funktexte eines Levels: Deutsch, Englisch, Russisch (`<Name>D/E/R.txt`). */
+export interface LevelRadio {
+  readonly de: RadioTexts;
+  readonly en: RadioTexts;
+  readonly ru: RadioTexts;
 }
 
 /** Schlüssel eines BMP im Atlas (klein, ohne Endung). */
@@ -41,9 +48,7 @@ export async function loadLevelPack(assets: AssetStore, slug: string): Promise<L
     ),
   );
   const radioId = `radio/${slug}`;
-  const radio = assets.has(radioId)
-    ? await assets.json<{ de: RadioTexts; en: RadioTexts }>(radioId)
-    : undefined;
+  const radio = assets.has(radioId) ? await assets.json<LevelRadio>(radioId) : undefined;
   return { slug, level: parseDovezLevelDat(bytes), atlasId, atlas, contours, radio };
 }
 

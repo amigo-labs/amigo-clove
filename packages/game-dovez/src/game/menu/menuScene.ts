@@ -3,6 +3,7 @@ import { FixedStepLoop, type GameHost } from "@clove/core";
 import type { DovezConfig } from "../config";
 import { dbGain } from "../config";
 import { okKey, pauseKey, readInput } from "../input";
+import { isCyrillic } from "../lang";
 import type { Scene } from "../scene";
 import type { MenuKeys, MenuLogic } from "./menuLogic";
 import type { MenuView } from "./menuView";
@@ -76,8 +77,8 @@ export class MenuScene implements Scene {
     else if (e.key === "Backspace") this.chars.push(8);
     else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
       const c = e.key.charCodeAt(0);
-      // ANSI: nur Zeichen bis 255
-      if (c >= 32 && c <= 255) this.chars.push(c);
+      // ANSI: nur Zeichen bis 255; auf Russisch (CP1251) dazu die kyrillischen Buchstaben
+      if (c >= 32 && (c <= 255 || (this.logic.lang === "ru" && isCyrillic(c)))) this.chars.push(c);
     }
   };
 
