@@ -57,7 +57,7 @@ describe("Welt", () => {
   }, 60_000);
 
   test("Start vor Tick 0 (`-Tick N` mit N < 0): läuft bis Tick 0 und weiter, ohne den Vorlauf zu stören", async () => {
-    const { level, sprites } = await loadTestLevel("level1-1_skyfight");
+    const { level, sprites } = await loadTestLevel("level2-1_spacestation_i");
     const w = new World(level, sprites, { startTick: -300 });
     expect(w.tick).toBe(-300);
     for (let t = 0; t < 400; t++) {
