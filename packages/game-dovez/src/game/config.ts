@@ -1,4 +1,5 @@
 import type { KeyValueStore } from "@clove/core";
+import { DEFAULT_KEYS, isKeyCode } from "./input";
 
 /**
  * DoveZ-Optionen aus dem Menü (`config.cfg`, `SaveConfig` `0x505770`):
@@ -17,6 +18,8 @@ export interface DovezConfig {
   readonly autoArrange: boolean;
   /** `Me.510`: Trägheit („Realistic“): Schiff gleitet nach dem Loslassen aus. */
   readonly realistic: boolean;
+  /** Zweite Tasten der Tastenkonfiguration (`0x588174`, Block 3…5): 3 Sätze × 10 Aktionen, `""` = keine. */
+  readonly keys: readonly string[];
 }
 
 export const CONFIG_KEY = "config";
@@ -28,6 +31,7 @@ export const DEFAULT_CONFIG: DovezConfig = {
   qNormal: false,
   autoArrange: true,
   realistic: false,
+  keys: DEFAULT_KEYS,
 };
 
 const num = (v: unknown, d: number, lo: number, hi: number) =>
@@ -46,6 +50,10 @@ export function parseConfig(json: string | null): DovezConfig {
       qNormal: bool(o.qNormal, d.qNormal),
       autoArrange: bool(o.autoArrange, d.autoArrange),
       realistic: bool(o.realistic, d.realistic),
+      keys:
+        Array.isArray(o.keys) && o.keys.length === d.keys.length && o.keys.every(isKeyCode)
+          ? (o.keys as string[])
+          : d.keys,
     };
   } catch {
     return DEFAULT_CONFIG;

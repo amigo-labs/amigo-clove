@@ -12,7 +12,7 @@ import { CreditsLogic, CreditsScene, creditsMask } from "./credits";
 import { FadeLogic, FadeScene } from "./fadeOut";
 import { atlasTexture } from "./gdi";
 import { parseHighscores, HIGHSCORE_KEY } from "./highscore";
-import { keyText, okKey, pauseKey, readInput } from "./input";
+import { codeOfDik, keyText, okKey, pauseKey, readInput, useKeys } from "./input";
 import { type GameContext, LevelScene, levelBundles } from "./level";
 import { LoadingScene } from "./loadingScreen";
 import { LogoGlitch, LogoShow, LogoTunnel } from "./menu/logos";
@@ -115,6 +115,7 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
   /** Die eine `Rnd`-Folge des Programms (Menü, Logos, alle Level). */
   const rnd = new VbRnd();
   let config: DovezConfig = loadConfig(host.storage);
+  useKeys(config.keys);
   const menuAudio = await MenuAudio.create(host);
   /** Spieler aus dem letzten Spiel der Sitzung (`Me.1288.7B4`, `P[p].68`, `P[p].6C`). */
   let lastPlayers: 1 | 2 = opts.players;
@@ -408,11 +409,13 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
       names: lastNames,
       ids: lastIds,
       keyText,
+      codeOfDik,
     });
     app.stage.addChild(view.root);
     await play(
       new MenuScene(host, logic, view, menuAudio, (c) => {
         config = c;
+        useKeys(c.keys);
         if (persist) saveConfig(host.storage, c);
       }),
     );

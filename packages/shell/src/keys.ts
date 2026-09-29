@@ -17,6 +17,7 @@ export function createKeyState(target: Window): KeyState & { dispose(): void } {
   target.addEventListener("blur", onBlur);
   return {
     isDown: (code) => down.has(code),
+    held: () => [...down],
     dispose() {
       target.removeEventListener("keydown", onDown);
       target.removeEventListener("keyup", onUp);
