@@ -1,5 +1,5 @@
 import { Container } from "pixi.js";
-import { readInput } from "../../input";
+import { DoveInput } from "../../input";
 import { Renderer } from "../../render/Renderer";
 import { DEATH_END, DEATH_STEP } from "../../sim/constants";
 import { step } from "../../sim/step";
@@ -37,6 +37,7 @@ export class GameScreen implements Screen<GameResult> {
   readonly root = new Container();
   private readonly renderer: Renderer;
   private readonly overlay: Gfx;
+  private readonly input: DoveInput;
   private paused = false;
   private panel = 0;
   private marker = 3;
@@ -48,6 +49,7 @@ export class GameScreen implements Screen<GameResult> {
     private readonly record: TickRecorder,
   ) {
     this.images = Renderer.imageIds(world);
+    this.input = new DoveInput(env.host.keys, () => env.host.pointer);
     this.renderer = new Renderer(
       env.textures,
       world,
@@ -60,7 +62,7 @@ export class GameScreen implements Screen<GameResult> {
   }
 
   update(): GameResult | undefined {
-    const { keys, host, audio } = this.env;
+    const { keys, audio } = this.env;
     const w = this.world;
     if (this.paused) return this.updatePause();
     // Pause nur, wenn der Todeszähler nicht läuft
@@ -75,7 +77,7 @@ export class GameScreen implements Screen<GameResult> {
     // Leben < 0 nach diesem Tick? Dann setzt die Simulation Punkte und Leben zurück.
     const gameOver = w.dead !== 0 && w.lives === 0 && w.deathCounter + DEATH_STEP >= DEATH_END;
     const score = w.score;
-    const input = readInput(host.keys);
+    const input = this.input.read({ x: w.px, y: w.py });
     step(w, input);
     this.record(input, w);
     if (gameOver) return { kind: "gameover", score };

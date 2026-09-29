@@ -126,6 +126,11 @@ describe("Replay-Eingaben", () => {
     expect(encodeInput([])).toEqual([]);
   });
 
+  test("Masken über 16 Bit (Zeigerziel) bleiben erhalten", () => {
+    const big = (1 << 28) | (479 << 19) | 0x1ff;
+    expect([...decodeInput(encodeInput([big, big, 3]))]).toEqual([big, big, 3]);
+  });
+
   test("firstDivergence", () => {
     expect(firstDivergence([1, 2, 3], [1, 2, 3])).toBe(-1);
     expect(firstDivergence([1, 2, 3], [1, 9, 3])).toBe(1);

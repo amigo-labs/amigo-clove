@@ -12,6 +12,8 @@ export interface Settings {
   readonly scale: ScaleMode;
   /** Rasterlinien über dem Spielbild (reine CSS-Schicht). */
   readonly scanlines: boolean;
+  /** Maus und Touch steuern das Schiff (Erweiterung; ohne Zeigerbewegung wie das Original). */
+  readonly pointer: boolean;
 }
 
 export const MOTION_PREFERENCES = ["auto", "reduce", "full"] as const;
@@ -26,6 +28,7 @@ export const DEFAULT_SETTINGS: Settings = {
   motion: "auto",
   scale: "integer",
   scanlines: false,
+  pointer: true,
 };
 
 /** Ist die bewegungsarme Darstellung aktiv? „auto“ folgt `prefers-reduced-motion`. */
@@ -60,6 +63,7 @@ export function sanitizeSettings(raw: unknown): Settings {
     motion: MOTION_PREFERENCES.find((m) => m === r["motion"]) ?? d.motion,
     scale: SCALE_MODES.find((m) => m === r["scale"]) ?? d.scale,
     scanlines: typeof r["scanlines"] === "boolean" ? r["scanlines"] : d.scanlines,
+    pointer: typeof r["pointer"] === "boolean" ? r["pointer"] : d.pointer,
   };
 }
 

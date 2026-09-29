@@ -14,6 +14,7 @@ import { createPadState, startPadNavigation } from "./gamepad";
 import { createKeyState } from "./keys";
 import { DISPLAY_EVENT, createStage, toggleFullscreen, type Stage } from "./overlay";
 import { registerServiceWorker } from "./offline";
+import { createPointerState } from "./pointer";
 import { parseRoute } from "./router";
 import { loadSettings, reducedMotion, saveSettings, type Settings } from "./settings";
 import { storageFor, webStorage } from "./storage";
@@ -212,6 +213,8 @@ async function startGame(
     const s = createStage(canvas, { t, scanlines: () => settings.scanlines });
     stage = s;
     screen.replaceChildren(s.root);
+    const pointer = createPointerState(canvas, s.root);
+    s.onDispose(() => pointer.dispose());
     const audio = audioHost(params);
     const instance = await module.boot(
       {
@@ -222,6 +225,9 @@ async function startGame(
         rumble,
         rumblePads: () => rumblePads().length,
         scaleMode: () => settings.scale,
+        get pointer() {
+          return settings.pointer ? pointer : undefined;
+        },
         // folgt der Einstellung auch während des Spiels
         get reducedMotion() {
           return reducedMotion(settings.motion, motionQuery?.matches ?? false);

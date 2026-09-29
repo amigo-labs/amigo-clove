@@ -27,6 +27,7 @@ export {
   type LocalePreference,
   type Translate,
 } from "./i18n/i18n";
+export { PointerSteer, type PointerSample } from "./input/PointerSteer";
 export { FixedStepLoop } from "./loop/FixedStepLoop";
 export {
   FX_HALF,
@@ -65,5 +66,6 @@ export type {
   GamepadBindings,
   KeyState,
   KeyValueStore,
+  PointerState,
   ScaleMode,
 } from "./shell/GameModule";
