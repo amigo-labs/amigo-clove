@@ -231,6 +231,13 @@ erscheinen Waffen-Power-ups nur für das gewählte Schiff.
   Tick, bis nichts mehr trifft); Landschaft oder feste Gegner töten sofort;
   Energie < 0 tötet. Unverwundbar 100 Ticks nach jedem Spawn, 200 mit Schild,
   500 beim Levelausflug (Schaden wird im selben Tick zurückgesetzt).
+- **Abschusszähler** `B48[0].54` (`Carry.kills`): +1 bei jeder Explosion eines
+  Gegnerteils in den Sterbezuständen (sechs Stellen in `0x4B5850`, dieselben, die
+  `Punkte \ 500 + 1` als Erschütterung addieren: Teilzerplatzen mit Wackeln,
+  Zustand 5, Boss-Finale) und je zerplatzender Gegnerbox der Super-Nova
+  (`0x4C3E10`, Schleife über `Me.1288.1A8`); gelesen wird er nur beim Speichern
+  (`0x53FDFF`), geladen bei `0x54007D`, zurückgesetzt in `0x4A6912` (neues Spiel).
+  Er ist immer der von Spieler 0, auch im Coop; keine Spielwirkung.
 - **Tod** (`KillDove` `0x50B0D0`): 99 Ticks Sequenz; ein Spieler: Checkpoint-
   Neustart, Leben −1 (Start 3); Leben 0 → Continue (Punkte ÷ 3). Zwei Spieler:
   gemeinsame Leben (6), Wiedereinstieg nach 100 Ticks an der Position des
