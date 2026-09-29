@@ -12,6 +12,7 @@ import { Flow, type DebugStart, type FlowOptions } from "./flow/Flow";
 import { FrameCache } from "./flow/gfx";
 import { KeyEdges } from "./flow/input";
 import type { FlowEnv } from "./flow/screen";
+import { doveHud, spriteSheet } from "./hud";
 import { VbRnd } from "./sim/VbRnd";
 import type { SimOptions, World } from "./sim/world";
 
@@ -137,7 +138,12 @@ const dove: GameModule = {
     app.ticker.start();
     flow.main().catch((e: unknown) => console.error("DOVE-Ablauf abgebrochen:", e));
 
+    const ss = spriteSheet(host.assets, "image/ss");
     return {
+      hud() {
+        const w = flow.playing;
+        return w ? doveHud(w, ss, env.german) : null;
+      },
       replay: () => ({
         version: 1,
         game: "dove",

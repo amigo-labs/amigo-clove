@@ -97,8 +97,24 @@ function displaySection(c: SettingsContext): HTMLElement {
     checked: c.settings().scanlines,
     onchange: (e) => c.update({ scanlines: (e.target as HTMLInputElement).checked }),
   });
+  const hud = h(
+    "select",
+    {
+      id: "hud",
+      "aria-describedby": "hud-help",
+      onchange: (e) => c.update({ hud: (e.target as HTMLSelectElement).value as Settings["hud"] }),
+    },
+    ...(
+      [
+        ["modern", c.t("hudModern")],
+        ["original", c.t("hudOriginal")],
+      ] as const
+    ).map(([v, label]) => h("option", { value: v, selected: c.settings().hud === v }, label)),
+  );
   return section(
     c.t("display"),
+    h("label", { class: "row" }, h("span", {}, c.t("hud")), hud),
+    h("p", { class: "hint", id: "hud-help" }, c.t("hudHelp")),
     h("label", { class: "row" }, h("span", {}, c.t("scale")), select),
     h("label", { class: "row" }, scanlines, h("span", {}, c.t("scanlines"))),
     h("p", { class: "hint", id: "scale-help" }, c.t("scaleHelp")),

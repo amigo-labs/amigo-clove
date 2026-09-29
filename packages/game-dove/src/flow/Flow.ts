@@ -1,4 +1,5 @@
 import { FixedStepLoop } from "@clove/core";
+import { setView } from "@clove/pixi-kit";
 import type { DoveIntro } from "@clove/formats";
 import type { Container } from "pixi.js";
 import { DoveAudio } from "../audio/DoveAudio";
@@ -117,6 +118,12 @@ export class Flow {
       }
     }
     screen.render();
+    setView(this.env.host.canvas, screen.viewHeight?.() ?? null);
+  }
+
+  /** Die Welt des laufenden Levels (auch in der Pause), sonst `undefined`. */
+  get playing(): World | undefined {
+    return this.current instanceof GameScreen ? this.current.world : undefined;
   }
 
   private finish(result: unknown): void {

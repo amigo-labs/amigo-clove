@@ -1,7 +1,7 @@
 import { Container } from "pixi.js";
 import { DoveInput } from "../../input";
 import { Renderer } from "../../render/Renderer";
-import { DEATH_END, DEATH_STEP } from "../../sim/constants";
+import { DEATH_END, DEATH_STEP, FIELD_H } from "../../sim/constants";
 import { step } from "../../sim/step";
 import type { World } from "../../sim/world";
 import { Gfx } from "../gfx";
@@ -55,6 +55,7 @@ export class GameScreen implements Screen<GameResult> {
       world,
       env.german,
       () => env.host.reducedMotion === true,
+      () => this.modernHud(),
     );
     this.root.addChild(this.renderer.root);
     this.overlay = new Gfx(env.frames);
@@ -103,6 +104,15 @@ export class GameScreen implements Screen<GameResult> {
       audio?.pause(false);
     }
     return undefined;
+  }
+
+  /** HTML-HUD der Shell statt der Konsole: nur das Spielfeld zeigen. */
+  private modernHud(): boolean {
+    return this.env.host.hudMode?.() === "modern";
+  }
+
+  viewHeight(): number | null {
+    return this.modernHud() ? FIELD_H : null;
   }
 
   render(): void {

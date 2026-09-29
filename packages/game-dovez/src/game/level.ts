@@ -181,6 +181,7 @@ export class LevelScene implements Scene {
       lang,
       keyLabel,
       calm: () => host.reducedMotion === true,
+      modernHud: () => host.hudMode?.() === "modern",
     });
     // Seiten, die nur dieses Level braucht (die globalen bleiben geladen)
     const shared = new Set(Renderer.pageIds(globals.map((json) => ({ json }))));
@@ -341,6 +342,16 @@ export class LevelScene implements Scene {
       } else break;
     }
     flush();
+  }
+
+  /** Das Spielfeld läuft (keine Pause, kein Continue, nicht fertig). */
+  get playing(): boolean {
+    return this.mode.kind === "play" && this.result === undefined;
+  }
+
+  /** Mit dem HTML-HUD zeigt der laufende Level nur das Spielfeld (800 × 550). */
+  get fieldOnly(): boolean {
+    return this.playing && this.ctx.host.hudMode?.() === "modern";
   }
 
   /** Levelname wie im Original (`[0x5880C4]`). */

@@ -84,6 +84,11 @@ export interface GameHost {
    * Pad, 0 beendet sie. Fehlt, wenn der Browser oder die Einstellung keine Vibration erlaubt.
    */
   readonly rumble?: (pad: number, magnitude: number) => void;
+  /**
+   * `modern`: die Shell zeigt das HUD (`GameInstance.hud`), das Spiel lässt
+   * sein Original-HUD weg und zeigt nur das Spielfeld. Live gelesen.
+   */
+  readonly hudMode?: () => HudMode;
   /** Skalierung nach der Einstellung der Shell, bei jeder Größenänderung neu gelesen. */
   readonly scaleMode?: () => ScaleMode;
   /** Anzahl der Pads mit Vibrationsmotor (für die Optionen des Spiels). */
@@ -92,9 +97,68 @@ export interface GameHost {
   now(): number;
 }
 
+/** HUD der Shell statt des Original-HUDs (Vorgabe) oder das Original im Canvas. */
+export type HudMode = "modern" | "original";
+
+/** Ausschnitt eines Original-Bildes (für Symbole im HTML-HUD). */
+export interface HudSprite {
+  readonly url: string;
+  readonly x: number;
+  readonly y: number;
+  readonly w: number;
+  readonly h: number;
+  /** Größe des ganzen Bildes (für die Skalierung per CSS). */
+  readonly sheetW: number;
+  readonly sheetH: number;
+}
+
+export interface HudMeter {
+  /** Art der Anzeige; die Shell beschriftet sie. */
+  readonly id: "energy" | "beam" | "shield" | "speed" | "power";
+  readonly value: number;
+  readonly max: number;
+  /** Voll geladen (blinkt). */
+  readonly full?: boolean;
+  /** Variante, z. B. Beam-Typ; ändert die Farbe. */
+  readonly variant?: number;
+}
+
+export interface HudIcon {
+  /** Bild aus den Original-Assets, sonst `text`. */
+  readonly sprite?: HudSprite;
+  readonly text?: string;
+  /** So oft nebeneinander (z. B. Waffenstufe). */
+  readonly count?: number;
+  /** Hervorgehoben (gewählter Slot) bzw. blass (leerer Slot). */
+  readonly selected?: boolean;
+  readonly dim?: boolean;
+  /** Kurzer Name für Screenreader und Tooltip. */
+  readonly label?: string;
+}
+
+export interface HudPlayer {
+  readonly score: number;
+  readonly meters: readonly HudMeter[];
+  readonly icons: readonly HudIcon[];
+}
+
+/**
+ * Was das Original-HUD zeigt, als Daten für das HTML-HUD der Shell. Rein
+ * lesend aus dem Weltzustand, einmal pro Bild abgefragt.
+ */
+export interface HudSnapshot {
+  readonly lives: number;
+  readonly players: readonly HudPlayer[];
+  /** Lebenspunkte des Bosses, solange einer kämpft. */
+  readonly boss?: { readonly hp: number; readonly max: number };
+  readonly combo?: { readonly hits: number; readonly bonus: number };
+}
+
 export interface GameInstance {
   /** Muss hart aufräumen: Ticker, Texturen, Listener. Danach ist der Canvas frei. */
   dispose(): void;
+  /** HUD-Daten, solange ein Level läuft (sonst `null`); fehlt bei Spielen ohne HTML-HUD. */
+  hud?(): HudSnapshot | null;
 }
 
 /**

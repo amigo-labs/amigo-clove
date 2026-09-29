@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { combineKeys, createPadState, padKeys, type PadSnapshot } from "../src/gamepad";
+import { hudLayout } from "../src/hud";
 import { parseRoute } from "../src/router";
 import { DEFAULT_SETTINGS, loadSettings, reducedMotion, sanitizeSettings } from "../src/settings";
 import { collectSaves, restoreSaves, storageFor } from "../src/storage";
@@ -47,6 +48,12 @@ describe("Einstellungen", () => {
       scale: "smooth",
       scanlines: true,
     });
+    expect(sanitizeSettings({}).hud).toBe("modern");
+    expect(sanitizeSettings({ hud: "original", pointer: false })).toMatchObject({
+      hud: "original",
+      pointer: false,
+    });
+    expect(sanitizeSettings({ hud: "bunt" }).hud).toBe("modern");
     expect(sanitizeSettings({ scale: "riesig", scanlines: "ja" })).toMatchObject({
       scale: "integer",
       scanlines: false,
@@ -187,5 +194,15 @@ describe("Texte", () => {
     for (const k of Object.keys(TEXTS.de) as (keyof typeof TEXTS.de)[]) {
       expect(vars(TEXTS.en[k])).toEqual(vars(TEXTS.de[k]));
     }
+  });
+});
+
+const rect = (x: number, y: number, w: number, hh: number) => ({ x, y, w, h: hh, px: 1 });
+
+describe("HUD-Layout", () => {
+  test("neben dem Spielfeld, darunter oder darin — nach dem freien Platz", () => {
+    expect(hudLayout(rect(320, 155, 640, 410), 1280, 720)).toBe("side");
+    expect(hudLayout(rect(0, 35, 640, 410), 640, 480)).toBe("inside");
+    expect(hudLayout(rect(0, 0, 640, 410), 640, 600)).toBe("below");
   });
 });

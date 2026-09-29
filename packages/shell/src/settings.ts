@@ -1,4 +1,4 @@
-import { LOCALES, type LocalePreference, type ScaleMode } from "@clove/core";
+import { LOCALES, type HudMode, type LocalePreference, type ScaleMode } from "@clove/core";
 
 /** Einstellungen der Shell, spielübergreifend. */
 export interface Settings {
@@ -14,10 +14,14 @@ export interface Settings {
   readonly scanlines: boolean;
   /** Maus und Touch steuern das Schiff (Erweiterung; ohne Zeigerbewegung wie das Original). */
   readonly pointer: boolean;
+  /** HUD der Shell (Vorgabe) oder das Original-HUD im Spielbild. */
+  readonly hud: HudMode;
 }
 
 export const MOTION_PREFERENCES = ["auto", "reduce", "full"] as const;
 export type MotionPreference = (typeof MOTION_PREFERENCES)[number];
+
+export const HUD_MODES = ["modern", "original"] as const satisfies readonly HudMode[];
 
 export const SCALE_MODES = ["integer", "fit", "smooth"] as const satisfies readonly ScaleMode[];
 
@@ -29,6 +33,7 @@ export const DEFAULT_SETTINGS: Settings = {
   scale: "integer",
   scanlines: false,
   pointer: true,
+  hud: "modern",
 };
 
 /** Ist die bewegungsarme Darstellung aktiv? „auto“ folgt `prefers-reduced-motion`. */
@@ -64,6 +69,7 @@ export function sanitizeSettings(raw: unknown): Settings {
     scale: SCALE_MODES.find((m) => m === r["scale"]) ?? d.scale,
     scanlines: typeof r["scanlines"] === "boolean" ? r["scanlines"] : d.scanlines,
     pointer: typeof r["pointer"] === "boolean" ? r["pointer"] : d.pointer,
+    hud: HUD_MODES.find((m) => m === r["hud"]) ?? d.hud,
   };
 }
 
