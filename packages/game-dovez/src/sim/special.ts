@@ -396,7 +396,7 @@ function escape(env: SpecialEnv): void {
   for (const p of w.players) {
     if (!(p.x < 150)) continue;
     p.energy = f32(p.energy - 0.1);
-    // `AddForce(5, 1, p)`: Force-Feedback, im Browser ohne Wirkung
+    w.vibrate?.(5, 1, p.index); // `AddForce(5, 1, p)` (`0x53C36F`)
     if (fx.shake === 0) fx.shake = 1;
   }
 }

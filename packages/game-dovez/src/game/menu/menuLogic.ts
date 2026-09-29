@@ -2,13 +2,16 @@ import { DrawList, Effects, type EffectWorld } from "../../sim/effects";
 import { COS_DEG, SIN_DEG, cint, degIndex, f32, vbInt, type VbRnd } from "../../sim/vb";
 import type { DovezConfig } from "../config";
 import { DEFAULT_NAME, type HighscoreEntry, NAME_MAX } from "../highscore";
+import type { Lang } from "../lang";
+import { type MenuTexts, menuTexts } from "./menuTexts";
 
 /**
  * Hauptmenü `MenuLoop` (`0x559630`) als Logik: je Durchlauf (`Wait 18`) die
  * Seite aufbauen, `ShowMenu` (`0x558890`: Punktketten mit `Rnd`, Knopfversatz,
  * dann ↑/↓), Tafel, `ShowList` (`0x558500`), OK und Zurück mit Flanke, dann
  * Gleiten der Knopfleiste und Einschub der Tafel. Befund:
- * `docs/measurements/dovez-runtime.md` („Hauptmenü“). Russisch fehlt im Port.
+ * `docs/measurements/dovez-runtime.md` („Hauptmenü“). Die Texte je Sprache
+ * (Deutsch, Englisch, Russisch) stehen in `menuTexts.ts`.
  */
 
 export type MenuPage = 1 | 2 | 3 | 10 | 20 | 30 | 31 | 32 | 33 | 40 | 50;
@@ -26,6 +29,8 @@ export interface MenuKeys {
   readonly focus: boolean;
   /** Letztes `KeyAscii` (Namenseingabe), 0 = keins. */
   readonly char: number;
+  /** Gehaltene Tasten als DIK-Codes aufsteigend (Tastenaufnahme, `Keys(k)`). */
+  readonly held: readonly number[];
 }
 
 export type MenuResult =
@@ -39,6 +44,8 @@ export type MenuResult =
       readonly bonus: string | undefined;
     }
   | { readonly kind: "load"; readonly slot: number }
+  /** Osterei: L, O und V gleichzeitig im Hauptmenü (`Me.588018 = 8`). */
+  | { readonly kind: "love" }
   | { readonly kind: "exit" };
 
 export type MenuSound =
@@ -108,6 +115,10 @@ interface ListState {
 }
 
 const DASHES = (n: number) => "-".repeat(n);
+const menuArgs = (m: { title: string; entries: readonly string[] }): [string, string[]] => [
+  m.title,
+  [...m.entries],
+];
 const sinD = (a: number) => SIN_DEG[degIndex(a)] ?? 0;
 const cosD = (a: number) => COS_DEG[degIndex(a)] ?? 0;
 
@@ -144,7 +155,7 @@ export function rollNoise(rnd: VbRnd): [number, number, number, number][] {
 export const BONUS_LEVELS = ["Level8-1 Jungle", "Spacestation Bonus", "Level Bleistift"] as const;
 
 export interface MenuOptions {
-  readonly german: boolean;
+  readonly lang: Lang;
   readonly rnd: VbRnd;
   /** Geschaffte Durchgänge (`[0x588080]`). */
   readonly passes: number;
@@ -158,8 +169,12 @@ export interface MenuOptions {
   readonly names: readonly string[];
   /** Spiel-IDs aus dem letzten Spiel (`P[p].6C`, Eindeutigkeit gegen den anderen Spieler). */
   readonly ids: readonly number[];
-  /** Tastenzeilen der Tastenkonfiguration je Satz (Aktion 0…9, Text). */
-  readonly keyText: (set: number, action: number) => string;
+  /** Tastenzeile der Tastenkonfiguration (`GetKeyText`): Satz, Aktion 0…9, zweite Tasten. */
+  readonly keyText: (set: number, action: number, keys: readonly string[]) => string;
+  /** Anzahl der Gamepads mit Vibrationsmotor. */
+  readonly pads?: () => number;
+  /** DIK → `KeyboardEvent.code` (`""` unbekannt). */
+  readonly codeOfDik?: (dik: number) => string;
   /** Bildzähler beim Start (`Me.584` läuft vom Spiel bzw. den Logos weiter). */
   readonly frame?: number;
 }
@@ -201,6 +216,23 @@ export class MenuLogic {
   private p = 0;
   /** Tastenkonfiguration: Satz 0…2. */
   private keySet = 0;
+  /**
+   * Tastenkonfiguration: Arbeitsstand der zweiten Tasten (`0x588174` Block 3…5) seit dem
+   * Betreten von Seite 33; `config.keys` ist der zuletzt übernommene Stand (`[ebp-0x138]`).
+   */
+  private working: string[] | undefined;
+  /**
+   * Tastenaufnahme (`[ebp-0x13c]`): `wait` bis OK losgelassen ist, `scan` wartet auf eine Taste
+   * (Zeile blinkt), `hold` nimmt weitere Tasten auf, solange die erste gehalten wird, `esc`
+   * wartet auf das Loslassen von Esc (Abbruch).
+   */
+  private capture:
+    | { state: "wait" | "scan" | "esc" }
+    | { state: "hold"; dik: number; index: number }
+    | undefined;
+  private captureIndex = 0;
+  /** Probeimpuls der Vibrationszeilen: Pad, Stärke 0…1, Durchläufe bis zum Ende (`[ebp-0x14c]`). */
+  pulse: { pad: number; magnitude: number; ticks: number } | undefined;
   private okFree = false;
   private backFree = false;
   private menuDownFree = false;
@@ -222,8 +254,12 @@ export class MenuLogic {
     this.fx = new Effects(o.rnd, 0);
   }
 
-  private get de(): boolean {
-    return this.o.german;
+  private get t(): MenuTexts {
+    return menuTexts(this.o.lang);
+  }
+
+  get lang(): Lang {
+    return this.o.lang;
   }
 
   /** `Blenden` (`0x4A9FA0`): Überblende vom fertigen Bild dieses Durchlaufs. */
@@ -272,7 +308,7 @@ export class MenuLogic {
   private runPage(
     k: MenuKeys,
   ): Omit<MenuDraw, "frame" | "frozen" | "noise" | "blend" | "noiseTiles"> {
-    const de = this.de;
+    const t = this.t;
     // Seiten 2 und 32 zeichnen die Tafel vor der Knopfleiste
     const panelFirst = this.page === 2 || this.page === 32;
     let locked = true;
@@ -283,27 +319,22 @@ export class MenuLogic {
     let fillList: (() => void) | undefined;
     switch (this.page) {
       case 3:
-        this.setMenu(
-          de ? "MENÜ" : "MENU",
-          de
-            ? ["Neu", "Laden", "Optionen", "Highscore", "Exit"]
-            : ["NEW", "LOAD", "OPTIONS", "SCORE", "EXIT"],
-        );
+        this.setMenu(...menuArgs(t.main(this.o.passes !== 0)));
         this.zx = 155;
         this.zy = 165;
         locked = false;
+        // L (DIK 0x26), O (0x18) und V (0x2F) zugleich gehalten: das Osterei
+        if (!this.result && [38, 24, 47].every((d) => k.held.includes(d)))
+          this.result = { kind: "love" };
         break;
       case 10:
-        this.setMenu(
-          de ? "NEU" : "NEW",
-          de ? ["1 Spieler", "2 Spieler", "Zurück"] : ["1 PLAYER", "2 PLAYER", "BACK"],
-        );
+        this.setMenu(...menuArgs(t.players));
         this.zx = 155;
         this.zy = 195;
         locked = false;
         break;
       case 1:
-        this.setMenu("SHIP", ["D-Tonator", "D-Phyton", de ? "Zurück" : "BACK"]);
+        this.setMenu(...menuArgs(t.ship));
         this.zx = 10;
         this.zy = 165;
         locked = false;
@@ -314,7 +345,7 @@ export class MenuLogic {
           const p = this.p;
           const cursor = this.frame % 2 === 0 ? "_" : "";
           this.setList(520, 305, 1, [
-            [de ? `Name für Spieler ${p + 1}:` : `Please insert Name, player ${p + 1}:`, false],
+            [t.namePrompt(p + 1), false],
             [this.names[p]! + cursor, true],
           ]);
         };
@@ -323,58 +354,26 @@ export class MenuLogic {
         this.zx = 10;
         panel = [420 + this.off, 10, 800, 585];
         break;
-      case 30: {
-        const bonus = this.o.passes !== 0;
-        this.setMenu(
-          de ? "OPTIONEN" : "OPTIONS",
-          de
-            ? ["Grundeins.", "Lautstärke", "Tastenkon.", ...(bonus ? ["Bonus"] : []), "Zurück"]
-            : ["GAME", "SOUND", "KEYS", ...(bonus ? ["BONUS"] : []), "BACK"],
-        );
+      case 30:
+        this.setMenu(...menuArgs(t.options(this.o.passes !== 0)));
         this.zx = 5;
         this.zy = 165;
         locked = false;
         break;
-      }
       case 31:
         panel = [330 + this.off, 245, 800, 505];
         fillList = () => {
           const c = this.config;
-          const onOff = (b: boolean) => (de ? (b ? "Ein" : "Aus") : b ? "On" : "Off");
+          const g = t.game;
           this.setList(385, 255, this.list.sel, [
-            [de ? "Grundeinstellungen" : "Game settings", false],
-            [DASHES(de ? 26 : 19), false],
+            [g.title, false],
+            [DASHES(g.dashes), false],
             ["", false],
-            [
-              de
-                ? c.qNormal
-                  ? "Force Modus Taste wird normal benutzt"
-                  : "Force Modus Taste wirkt als Beamwechsel"
-                : c.qNormal
-                  ? "Force Mode Key: Normal"
-                  : "Force Mode Key: Beam Alternation",
-              true,
-            ],
-            [
-              de
-                ? c.autoArrange
-                  ? "D-Tonator: Automatische Waffenanordnung"
-                  : "D-Tonator: Manuelle Waffenanordnung"
-                : c.autoArrange
-                  ? "D-Tonator Particles: Auto-Arrange"
-                  : "D-Tonator Particles: Manual-Arrange",
-              true,
-            ],
-            [
-              de
-                ? `Trägheit: ${onOff(c.realistic)}`
-                : c.realistic
-                  ? "Ship Movements: Realistic"
-                  : "Ship Movements: Arcade",
-              true,
-            ],
+            [g.forceKey(c.qNormal), true],
+            [g.arrange(c.autoArrange), true],
+            [g.inertia(c.realistic), true],
             ["", false],
-            [de ? "Zurück" : "Back", true],
+            [t.back, true],
           ]);
         };
         break;
@@ -382,15 +381,16 @@ export class MenuLogic {
         panel = [480 + this.off, 245, 800, 445];
         fillList = () => {
           const c = this.config;
+          const v = t.volume;
           this.setList(540, 255, this.list.sel, [
-            [de ? "Lautstärkeeinstellungen" : "Volume Control", false],
+            [v.title, false],
             [DASHES(32), false],
             ["", false],
-            [`${de ? "Musik" : "Music"}: ${c.music}`, true],
-            [`Sound: ${volumeLevel(c.sfx)}`, true],
-            [`${de ? "Sprache" : "Voices"}: ${volumeLevel(c.speech)}`, true],
+            [`${v.music}: ${c.music}`, true],
+            [`${v.sound}: ${volumeLevel(c.sfx)}`, true],
+            [`${v.voices}: ${volumeLevel(c.speech)}`, true],
             ["", false],
-            [de ? "Zurück" : "Back", true],
+            [t.back, true],
           ]);
         };
         break;
@@ -398,50 +398,29 @@ export class MenuLogic {
         panel = [300 + this.off, 110, 800, 595];
         fillList = () => {
           const set = this.keySet;
-          const who = de
-            ? ["Einzelspieler", "Zweispielermodus: Spieler 1", "Zweispielermodus: Spieler 2"][set]
-            : ["Singleplayer", "Multiplayer: Player 1", "Multiplayer: Player 2"][set];
-          const labels = de
-            ? [
-                "Links",
-                "Hoch",
-                "Rechts",
-                "Runter",
-                "Schießen",
-                "Beam",
-                "Satelliet/Partikel wechseln",
-                "Force Modus",
-                "Partikel drehen",
-                "Supernova",
-              ]
-            : [
-                "Left",
-                "Up",
-                "Right",
-                "Down",
-                "Shoot",
-                "Beam",
-                "Force Control/Particles",
-                "Force Mode",
-                "Rotation of Particles",
-                "Supernova",
-              ];
+          const kt = t.keys;
           const rows: [string, boolean][] = [
-            [de ? "Tastenkonfiguration" : "Key Config", false],
-            [DASHES(de ? 26 : 19), false],
+            [kt.title, false],
+            [DASHES(kt.dashes), false],
             ["", false],
-            [`${de ? "Steuerung für " : ""}${who!}`, true],
-            [`${de ? "Gerät" : "Controller"}: ${de ? "Tastatur" : "Keyboard"}`, false],
+            [`${kt.whoPrefix}${kt.who[set]!}`, true],
+            [`${kt.device}: ${kt.keyboard}`, true],
             ["", false],
           ];
-          // Im Port nur zur Ansicht: die Belegung kommt aus `input.ts` (Umbelegen fehlt noch)
-          labels.forEach((l, a) => rows.push([`${l}: ${this.o.keyText(set, a)}`, false]));
+          const keys = this.working ?? this.config.keys;
+          kt.labels.forEach((l, a) => rows.push([`${l}: ${this.o.keyText(set, a, keys)}`, true]));
+          // Zeilen 17 und 18 gibt es nur mit einem Gamepad mit Motor (im Original: Joystick mit Force Feedback)
+          const pad = set === 2 ? 1 : 0;
+          const has = (this.o.pads?.() ?? 0) > pad;
+          const c = this.config;
+          const strength = (c.vibrationStrength[pad]! / 1000).toFixed(1).replace(".", kt.decimal);
           rows.push(
             ["", false],
+            has ? [`${kt.vibration}: ${kt.bool[c.vibration[pad] ? 0 : 1]}`, true] : ["", false],
+            has ? [`${kt.strength}: ${strength}`, true] : ["", false],
             ["", false],
-            ["", false],
-            ["", false],
-            [de ? "Zurück" : "Back", true],
+            [kt.apply, true],
+            [t.back, true],
           );
           this.setList(390, 130, this.list.sel, rows);
         };
@@ -449,8 +428,8 @@ export class MenuLogic {
       case 40: {
         const n = Math.min(this.o.passes, 3);
         const entries: string[] = ["JUNGLE", "SPACE", "STIFT"].slice(0, n);
-        entries.push("BACK");
-        this.setMenu("BONUS", entries);
+        entries.push(t.bonus.back);
+        this.setMenu(t.bonus.title, entries);
         this.zx = 155;
         this.zy = 215;
         locked = false;
@@ -498,13 +477,20 @@ export class MenuLogic {
           `${i + 1}. ${e.name.padEnd(16, " ")}`,
           false,
         ]);
-        rows.push(["", false], [de ? "Zurück" : "Back", true]);
+        rows.push(["", false], [t.scoreBack, true]);
         this.setList(410, 245, 11, rows);
         scores = this.o.highscores.map((e) => String(e.score));
       }
       fillList?.();
-      if (this.page === 2 || this.page === 20 || this.page === 50 || fillList)
-        list = this.showList(k, this.page === 2);
+      if (this.page === 2 || this.page === 20 || this.page === 50 || fillList) {
+        const capturing = this.page === 33 && this.capture !== undefined;
+        // Tastenseite: die Zeile der Aufnahme blinkt gelb, alle 3 Durchläufe wechselnd
+        const blink =
+          this.page === 33 &&
+          this.capture?.state === "scan" &&
+          Math.trunc(this.frame / 3) % 2 === 0;
+        list = this.showList(k, this.page === 2 || capturing, blink);
+      }
     }
     this.actions(k);
     return {
@@ -535,9 +521,9 @@ export class MenuLogic {
 
   /** Liste der Seite 20, einmal beim Betreten gebaut; Vorauswahl „Zurück“. */
   private buildLoadList(): void {
-    const de = this.de;
+    const t = this.t;
     const rows: [string, boolean][] = [
-      [de ? "Spiel laden" : "Load Game", false],
+      [t.load.title, false],
       [DASHES(20), false],
       ["", false],
     ];
@@ -545,7 +531,7 @@ export class MenuLogic {
       const s = this.o.slots[i];
       rows.push(s === undefined ? ["---", false] : [s, true]);
     }
-    rows.push(["", false], [de ? "Zurück" : "Back", true]);
+    rows.push(["", false], [t.back, true]);
     this.setList(475, 35, 25, rows);
   }
 
@@ -619,15 +605,15 @@ export class MenuLogic {
 
   // --- ShowList -----------------------------------------------------------
 
-  /** Auf der Tastenseite blinkt im Original die Zeile der Tastenaufnahme (im Port ohne Aufnahme). */
-  private showList(k: MenuKeys, locked: boolean): MenuDraw["list"] {
+  /** `blink`: die gewählte Zeile bekommt statt Weiß Gelb (Farbe −1, Tastenaufnahme). */
+  private showList(k: MenuKeys, locked: boolean, blink = false): MenuDraw["list"] {
     const l = this.list;
     const rows: ListRow[] = [];
     l.rows.forEach((text, i) => {
       if (text.length === 0) return;
       const f = l.selectable[i] ? -1 : 0;
       const color = qbColor(f + 8);
-      const top = qbColor(f + 8 + (i === l.sel ? 8 : 0));
+      const top = qbColor(f + 8 + (i === l.sel ? 8 + (blink ? -1 : 0) : 0));
       rows.push({ index: i, text, color, top });
     });
     const draw = { x: l.x, y: l.y, rows };
@@ -726,6 +712,7 @@ export class MenuLogic {
     const page = this.page;
     const n = this.entries.length - 1;
     const sel = this.sel;
+    if (page === 33 && this.stepCapture(k)) return;
     if (page === 2) {
       this.nameInput(k);
       if (this.backEdge(k.pause)) {
@@ -817,6 +804,8 @@ export class MenuLogic {
             this.off = [460, 320, 700][sel]!;
             this.list.sel = 3;
             this.keySet = 0;
+            // Seite 33 sichert die Belegung (`CopyBytes`) und arbeitet auf einer Kopie
+            if (sel === 2) this.working = [...this.config.keys];
             this.goto(([31, 32, 33] as const)[sel]!);
           } else if (sel === 3) {
             this.sound("dude");
@@ -836,10 +825,40 @@ export class MenuLogic {
           if (l === 3) {
             this.sound("plingding");
             this.keySet = (this.keySet + 1) % 3;
+          } else if (l === 4) {
+            // Gerät weiterschalten: ohne DirectInput-Joystick bleibt es bei der Tastatur
+            this.sound("plingding");
+          } else if (l >= 6 && l <= 15) {
+            // OK startet die Aufnahme, gewartet wird, bis OK losgelassen ist
+            this.sound("dude");
+            this.captureIndex = this.keySet * 10 + (l - 6);
+            this.capture = { state: "wait" };
+          } else if (l === 17 || l === 18) {
+            // Vibration an/aus bzw. Stärke +500 (über 10000 zurück auf 500), dann ein Probeimpuls
+            const pad = this.keySet === 2 ? 1 : 0;
+            if ((this.o.pads?.() ?? 0) <= pad) break;
+            this.sound("plingding");
+            const c = this.config;
+            if (l === 17) {
+              const on: [boolean, boolean] = [c.vibration[0], c.vibration[1]];
+              on[pad] = !on[pad];
+              this.config = { ...c, vibration: on };
+              this.pulse = { pad, magnitude: 1, ticks: 20 };
+            } else {
+              const s: [number, number] = [c.vibrationStrength[0], c.vibrationStrength[1]];
+              let v = s[pad]! + 500;
+              if (v > 10000) v = 500;
+              s[pad] = v;
+              this.config = { ...c, vibrationStrength: s };
+              this.pulse = { pad, magnitude: v / 10000, ticks: 20 };
+            }
+          } else if (l === 20) {
+            // „Einstellungen übernehmen“: der Arbeitsstand wird der gesicherte
+            this.sound("dude");
+            this.config = { ...this.config, keys: [...this.keyMap] };
           } else if (l === 21) {
             this.sound("dude");
-            this.blend();
-            this.goto(30);
+            this.leaveKeys();
           }
           break;
         }
@@ -895,9 +914,11 @@ export class MenuLogic {
         break;
       case 31:
       case 32:
-      case 33:
         this.blend();
         this.goto(30);
+        break;
+      case 33:
+        this.leaveKeys();
         break;
       case 40:
         this.blend();
@@ -905,6 +926,66 @@ export class MenuLogic {
         this.goto(30);
         break;
     }
+  }
+
+  /** Belegung, die Menü und Spiel gerade benutzen (`0x588174`, zweite Tasten). */
+  get keyMap(): readonly string[] {
+    return this.working ?? this.config.keys;
+  }
+
+  /** Seite 33 verlassen: nicht übernommene Änderungen verfallen (`CopyBytes` aus der Sicherung). */
+  private leaveKeys(): void {
+    this.working = undefined;
+    this.capture = undefined;
+    this.blend();
+    this.goto(30);
+  }
+
+  /**
+   * Tastenaufnahme (Seite 33, `[ebp-0x13c]`). Das Original wartet in Schleifen innerhalb eines
+   * Durchlaufs; hier geschieht dasselbe Durchlauf für Durchlauf. Tasten, die dabei gehalten
+   * werden, lösen weder OK noch Zurück aus. Wahr, solange eine Aufnahme läuft.
+   */
+  private stepCapture(k: MenuKeys): boolean {
+    const c = this.capture;
+    if (!c) return false;
+    // im Original absorbieren die Schleifen die Tasten: OK und Zurück erst nach dem Loslassen wieder frei
+    this.okFree = false;
+    this.backFree = false;
+    const held = k.held.filter((d) => d !== 1);
+    switch (c.state) {
+      case "wait":
+        if (!k.ok) this.capture = { state: "scan" };
+        break;
+      case "scan":
+        if (k.pause) this.capture = { state: "esc" };
+        else if (held.length > 0) {
+          // die höchste gehaltene DIK-Nummer gewinnt (Schleife 1…211 ohne Abbruch)
+          const dik = held[held.length - 1]!;
+          this.setKey(this.captureIndex, dik);
+          this.capture = { state: "hold", dik, index: this.captureIndex };
+          this.stepCapture(k);
+        }
+        break;
+      case "hold": {
+        // solange die erste Taste gehalten wird, ersetzt jede weitere die Belegung
+        const others = held.filter((d) => d !== c.dik);
+        if (others.length > 0) this.setKey(c.index, others[others.length - 1]!);
+        if (!k.held.includes(c.dik)) this.capture = undefined;
+        break;
+      }
+      case "esc":
+        if (!k.pause) this.capture = undefined;
+        break;
+    }
+    return true;
+  }
+
+  private setKey(index: number, dik: number): void {
+    const code = this.o.codeOfDik?.(dik) ?? "";
+    const keys = [...this.keyMap];
+    keys[index] = code;
+    this.working = keys;
   }
 
   private options31(): void {

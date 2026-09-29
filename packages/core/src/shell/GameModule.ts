@@ -12,6 +12,8 @@ import type { AssetStore } from "../asset/AssetStore";
 /** Gehaltene Tasten als `KeyboardEvent.code` (layoutunabhängig, z. B. `KeyS`, `ArrowLeft`). */
 export interface KeyState {
   isDown(code: string): boolean;
+  /** Alle gerade gehaltenen Tasten der Tastatur (für die Tastenaufnahme); fehlt bei reinen Pads. */
+  held?(): readonly string[];
 }
 
 /**
@@ -41,6 +43,18 @@ export interface GameHost {
   readonly assets: AssetStore;
   readonly keys: KeyState;
   readonly locale: string;
+  /**
+   * Bewegungsarme Darstellung (Einstellung der Shell, Vorgabe die des Systems): kein
+   * Bildschirmwackeln, abgeschwächte Vollbildblitze. Die Simulation bleibt gleich.
+   */
+  readonly reducedMotion?: boolean;
+  /**
+   * Gamepad-Vibration (Force Feedback des Originals): Stärke 0…1 für das n-te angeschlossene
+   * Pad, 0 beendet sie. Fehlt, wenn der Browser oder die Einstellung keine Vibration erlaubt.
+   */
+  readonly rumble?: (pad: number, magnitude: number) => void;
+  /** Anzahl der Pads mit Vibrationsmotor (für die Optionen des Spiels). */
+  readonly rumblePads?: () => number;
   /** Monotone Zeit in ms (`performance.now` im Browser). */
   now(): number;
 }

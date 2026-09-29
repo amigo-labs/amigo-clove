@@ -1,7 +1,7 @@
 /**
- * Windows-1251 (Kyrillisch) — nur Dekodierung. Die russischen DoveZ-Funktexte
- * (`<Level>R.txt`) sind so kodiert. 0x98 ist unbelegt und wird wie im
- * WHATWG-Encoding-Standard zu U+0098.
+ * Windows-1251 (Kyrillisch). Die russischen DoveZ-Funktexte (`<Level>R.txt`)
+ * sind so kodiert. 0x98 ist unbelegt und wird wie im WHATWG-Encoding-Standard
+ * zu U+0098; damit ist `encode(decode(bytes))` für jede Bytefolge die Identität.
  */
 const HIGH: readonly number[] = [
   0x0402, 0x0403, 0x201a, 0x0453, 0x201e, 0x2026, 0x2020, 0x2021, 0x20ac, 0x2030, 0x0409, 0x2039,
@@ -18,6 +18,26 @@ export function decodeCp1251(bytes: Uint8Array): string {
     out += String.fromCharCode(
       b < 0x80 ? b : b < 0xc0 ? (HIGH[b - 0x80] as number) : 0x0410 + (b - 0xc0),
     );
+  }
+  return out;
+}
+
+const REVERSE = new Map<number, number>(HIGH.map((cp, i) => [cp, 0x80 + i]));
+
+/** Umkehrung von `decodeCp1251`; nicht darstellbare Zeichen sind ein Fehler. */
+export function encodeCp1251(text: string): Uint8Array {
+  const out = new Uint8Array(text.length);
+  for (let i = 0; i < text.length; i++) {
+    const cp = text.charCodeAt(i);
+    const high = REVERSE.get(cp);
+    if (cp < 0x80) out[i] = cp;
+    else if (high !== undefined) out[i] = high;
+    else if (cp >= 0x0410 && cp <= 0x044f) out[i] = 0xc0 + (cp - 0x0410);
+    else {
+      throw new RangeError(
+        `Zeichen U+${cp.toString(16).padStart(4, "0")} ist in CP1251 nicht darstellbar`,
+      );
+    }
   }
   return out;
 }

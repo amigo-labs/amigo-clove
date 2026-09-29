@@ -14,7 +14,7 @@ import { createPadState, startPadNavigation } from "./gamepad";
 import { createKeyState } from "./keys";
 import { registerServiceWorker } from "./offline";
 import { parseRoute } from "./router";
-import { loadSettings, saveSettings, type Settings } from "./settings";
+import { loadSettings, reducedMotion, saveSettings, type Settings } from "./settings";
 import { storageFor, webStorage } from "./storage";
 import { TEXTS, mb, type ShellText, type TextKey } from "./texts";
 import { launcherView } from "./views/launcher";
@@ -50,7 +50,7 @@ const GAMES: Readonly<Record<string, GameInfo>> = {
   dovez: {
     title: "DoveZ",
     subtitle: "dovezSub",
-    playable: false,
+    playable: true,
     debug: [
       { path: "debug/assets", label: "debugAssets" },
       { path: "debug/level", label: "debugLevel" },
@@ -62,6 +62,8 @@ const GAMES: Readonly<Record<string, GameInfo>> = {
 const screen = document.getElementById("screen") as HTMLDivElement;
 const errorBox = document.getElementById("error") as HTMLDivElement;
 const keyboard = createKeyState(window);
+/** Systemwunsch nach weniger Bewegung (`prefers-reduced-motion`). */
+const motionQuery = window.matchMedia?.("(prefers-reduced-motion: reduce)");
 const storage = webStorage();
 let settings: Settings = loadSettings(storage);
 let locale: Locale = "en";
@@ -118,15 +120,47 @@ function audioHost(params: Readonly<Record<string, string>>): AudioHost | undefi
   };
 }
 
+/** Pads mit Vibrationsmotor in der Reihenfolge, in der der Browser sie meldet. */
+function rumblePads(): Gamepad[] {
+  if (!settings.gamepad) return [];
+  return [...(navigator.getGamepads?.() ?? [])].filter(
+    (p): p is Gamepad => p !== null && p.mapping === "standard" && p.vibrationActuator != null,
+  );
+}
+
+/** Kurze Motorimpulse, jeden Tick erneuert: 0 beendet, sonst starker Motor voll, schwacher zu 60 %. */
+function rumble(pad: number, magnitude: number): void {
+  const actuator = rumblePads()[pad]?.vibrationActuator;
+  if (!actuator) return;
+  if (magnitude <= 0) {
+    void actuator.reset().catch(() => undefined);
+    return;
+  }
+  const m = Math.min(1, magnitude);
+  void actuator
+    .playEffect("dual-rumble", {
+      startDelay: 0,
+      duration: 48,
+      strongMagnitude: m,
+      weakMagnitude: 0.6 * m,
+    })
+    .catch(() => undefined);
+}
+
 /** Tastatur plus Pad; das Pad lässt sich in den Einstellungen abschalten. */
 function keysFor(module: GameModule): KeyState {
   if (!module.gamepad || !navigator.getGamepads) return keyboard;
+  const held = () => keyboard.held?.() ?? [];
   const pad = createPadState(
     () => navigator.getGamepads(),
     () => performance.now(),
     module.gamepad,
   );
-  return { isDown: (code) => keyboard.isDown(code) || (settings.gamepad && pad.isDown(code)) };
+  // aufgenommen werden nur Tastaturtasten: das Pad zeigt der Aufnahme keine Stick-Ausschläge
+  return {
+    isDown: (code) => keyboard.isDown(code) || (settings.gamepad && pad.isDown(code)),
+    held,
+  };
 }
 
 function showPage(page: HTMLElement, signal: AbortSignal): void {
@@ -146,9 +180,13 @@ async function startGame(
 ): Promise<void> {
   const game = GAMES[id];
   if (!game) return;
-  const label = h("p", {}, t("loading", { title: game.title, loaded: "0", total: "…" }));
-  const bar = h("progress", { max: "1", value: "0" });
-  screen.replaceChildren(h("div", { id: "loading" }, label, bar));
+  const label = h(
+    "p",
+    { role: "status" },
+    t("loading", { title: game.title, loaded: "0", total: "…" }),
+  );
+  const bar = h("progress", { max: "1", value: "0", "aria-label": t("loadingBar") });
+  screen.replaceChildren(h("div", { id: "loading", "aria-busy": "true" }, label, bar));
   document.title = `${game.title} — amigo-clove`;
   try {
     const assets = await AssetStore.load(`${import.meta.env.BASE_URL}${id}/manifest.json`, (u) =>
@@ -165,6 +203,9 @@ async function startGame(
     });
     if (gen !== generation) return;
     const canvas = document.createElement("canvas");
+    // Das Spiel zeichnet nur auf den Canvas: Name und Bedienung für Screenreader
+    canvas.setAttribute("role", "application");
+    canvas.setAttribute("aria-label", t("gameCanvas", { title: game.title }));
     screen.replaceChildren(canvas);
     const audio = audioHost(params);
     const instance = await module.boot(
@@ -173,6 +214,12 @@ async function startGame(
         assets,
         keys: keysFor(module),
         locale,
+        rumble,
+        rumblePads: () => rumblePads().length,
+        // folgt der Einstellung auch während des Spiels
+        get reducedMotion() {
+          return reducedMotion(settings.motion, motionQuery?.matches ?? false);
+        },
         now: () => performance.now(),
         storage: storageFor(storage, id),
         exit: () => {

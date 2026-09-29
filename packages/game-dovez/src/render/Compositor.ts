@@ -12,7 +12,9 @@ import { StripMesh, type StripTexture } from "./StripMesh";
  * Erfassungs- und Kopierbefehle der Umgebung (`sim/envDraw.ts`).
  */
 
-export type PlanItem = Container | Capture | Copy;
+/** Erfassen mit aufgelöstem Überblit-Bild (`a_kreis3`). */
+export type PlanCapture = Capture & { readonly tex?: StripTexture | undefined };
+export type PlanItem = Container | PlanCapture | Copy;
 
 const W = 800;
 const H = 600;
@@ -23,6 +25,7 @@ export class Compositor {
   /** `Me.770` `blur` (64×64, gestreckt bilinear gezeichnet) und `Me.774` Standbild (`blur3`). */
   private readonly targets: Record<RenderTarget, RenderTexture> = {
     blur: RenderTexture.create({ width: 64, height: 64, scaleMode: "linear" }),
+    lens: RenderTexture.create({ width: 64, height: 64, scaleMode: "linear" }),
     still: RenderTexture.create({ width: W, height: H, scaleMode: "nearest" }),
   };
   /** Kopie für `BltFast` Backbuffer → Backbuffer. */
@@ -51,7 +54,13 @@ export class Compositor {
   }
 
   /** Befehlsliste in Ebenen (je eine Folge von Streifen-Meshes) und Erfassen/Kopieren zerlegen. */
-  expand(list: EnvList, resolve: (key: string) => StripTexture | undefined, out: PlanItem[]): void {
+  expand(
+    list: EnvList,
+    resolve: (key: string) => StripTexture | undefined,
+    out: PlanItem[],
+    /** Deckkraft der gezeichneten Ebenen (bewegungsarme Darstellung schwächt Blitze ab). */
+    alpha = 1,
+  ): void {
     let run: Container | undefined;
     let mesh: StripMesh | undefined;
     let key = "";
@@ -60,7 +69,8 @@ export class Compositor {
         mesh?.finish();
         mesh = undefined;
         run = undefined;
-        out.push(c);
+        if (c.op === "capture" && c.overlay) out.push({ ...c, tex: resolve(c.overlay) });
+        else out.push(c);
         continue;
       }
       const tex = resolve(c.key);
@@ -69,6 +79,7 @@ export class Compositor {
       if (!run) {
         run = this.runs[this.runsUsed] ?? new Container();
         this.runs[this.runsUsed++] = run;
+        run.alpha = alpha;
         out.push(run);
       }
       if (!mesh || k !== key) {
@@ -116,15 +127,25 @@ export class Compositor {
   }
 
   /** `blur.Blt(blur.rect, Backbuffer, src)` bzw. `Me.774.BltFast(…)`: Ausschnitt gestreckt ins Ziel. */
-  private capture(c: Capture): void {
+  private capture(c: PlanCapture): void {
     const target = this.targets[c.target];
     const [x, y, w, h] = c.src;
     const s = new Sprite(this.frame(x, y, w, h));
-    if (c.target === "blur") s.scale.set(64 / w, 64 / h);
+    if (c.target !== "still") s.scale.set(64 / w, 64 / h);
     this.one.addChild(s);
     this.pixi.render({ container: this.one, target, clear: true });
     this.one.removeChildren();
     s.destroy();
+    if (c.tex) {
+      // `BltFast(0, 0, a_kreis3, Farbschlüssel)`: das Bild deckt das ganze Ziel
+      const o = new Sprite(c.tex.texture);
+      o.width = target.width;
+      o.height = target.height;
+      this.one.addChild(o);
+      this.pixi.render({ container: this.one, target, clear: false });
+      this.one.removeChildren();
+      o.destroy();
+    }
   }
 
   /** `BltFast` Backbuffer → Backbuffer über eine Kopie (WebGL liest und schreibt nicht dieselbe Textur). */
@@ -160,6 +181,7 @@ export class Compositor {
     this.bb.destroy(true);
     this.tmp.destroy(true);
     this.targets.blur.destroy(true);
+    this.targets.lens.destroy(true);
     this.targets.still.destroy(true);
   }
 }

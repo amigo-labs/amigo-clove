@@ -1,5 +1,6 @@
 import { cint, f32 } from "../sim/vb";
 import { NOT_RANKED, addHighscore, type HighscoreEntry } from "./highscore";
+import type { Lang } from "./lang";
 
 /**
  * Continue-Bildschirm (`Continue` `0x521790`), reine Logik ohne Pixi:
@@ -180,18 +181,22 @@ export function continueRanks(
   return { list: out, ranks };
 }
 
-/** Rang-Zeilen (Arial 24, zentriert um x = 400, y = 490 + 20·p), nur Platz 1…10. */
+/**
+ * Rang-Zeilen (Arial 24, zentriert um x = 400, y = 490 + 20·p), nur Platz 1…10.
+ * Das Original (`0x5232B3`) unterscheidet nur „D“; Russisch zeigt den englischen Text.
+ */
 export function rankTexts(
   names: readonly string[],
   ranks: readonly number[],
-  german: boolean,
+  lang: Lang,
 ): { readonly text: string; readonly player: number }[] {
   const out: { text: string; player: number }[] = [];
   ranks.forEach((rank, p) => {
     if (rank >= NOT_RANKED) return;
     const name = names[p] ?? "";
     out.push({
-      text: german ? `${name} landet auf Platz ${rank}!` : `${name} ranked at place ${rank}!`,
+      text:
+        lang === "de" ? `${name} landet auf Platz ${rank}!` : `${name} ranked at place ${rank}!`,
       player: p,
     });
   });

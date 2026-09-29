@@ -85,9 +85,15 @@ export {
   serializeContourR,
   type DovezContour,
 } from "./dovez/Contour";
-export { decodeCp1251 } from "./text/cp1251";
+export { decodeCp1251, encodeCp1251 } from "./text/cp1251";
 export { AlphaMaskError, applyAlphaMask, maskName, type MaskOffset } from "./dovez/AlphaMask";
-export { RadioTextError, parseRadioText, type RadioLine, type RadioTexts } from "./dovez/RadioText";
+export {
+  RadioTextError,
+  parseRadioText,
+  parseRadioTextRu,
+  type RadioLine,
+  type RadioTexts,
+} from "./dovez/RadioText";
 export { PlayScriptError, parsePlayScript, type PlayStep } from "./dovez/PlayScript";
 export { dovezSlug, dovezSpriteKey } from "./dovez/slug";
 export {

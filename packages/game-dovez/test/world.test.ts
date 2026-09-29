@@ -56,6 +56,20 @@ describe("Welt", () => {
     expect(LEVEL_SLUGS.length).toBe(27);
   }, 60_000);
 
+  test("Start vor Tick 0 (`-Tick N` mit N < 0): läuft bis Tick 0 und weiter, ohne den Vorlauf zu stören", async () => {
+    const { level, sprites } = await loadTestLevel("level2-1_spacestation_i");
+    const w = new World(level, sprites, { startTick: -300 });
+    expect(w.tick).toBe(-300);
+    for (let t = 0; t < 400; t++) {
+      for (const p of w.players) p.invulnerable = 2;
+      w.step([fire]);
+      w.events.length = 0;
+    }
+    expect(w.tick).toBe(100);
+    expect(w.state).toBe(0);
+    expect(w.layers.some((l) => l.tiles.some((t) => t.active))).toBe(true);
+  });
+
   test("deterministisch: zwei Läufe mit gleichem Seed und gleicher Eingabe sind gleich", async () => {
     const { level, sprites } = await loadTestLevel("level1-1_skyfight");
     const run = () => {
@@ -187,6 +201,26 @@ describe("Spieler", () => {
     expect([p.x, p.y]).toEqual([736, 496]);
     for (let i = 0; i < 200; i++) updatePlayer(p, { ...NO_INPUT, left: true, up: true }, open);
     expect([p.x, p.y]).toEqual([0, -17]);
+  });
+
+  const glideRun = (realistic: boolean) => {
+    const p = new Player(0, 0, 1);
+    const w = { ...open, realistic };
+    for (let i = 0; i < 12; i++) updatePlayer(p, { ...NO_INPUT, right: true }, w);
+    const x0 = p.x;
+    updatePlayer(p, NO_INPUT, w);
+    const first = p.x - x0;
+    for (let i = 0; i < 60; i++) updatePlayer(p, NO_INPUT, w);
+    return { first, total: p.x - x0 };
+  };
+
+  test("Realistic: gleitet nach dem Loslassen mit ×0,85 je Tick aus, Arcade bleibt stehen", () => {
+    const arcade = glideRun(false);
+    expect(arcade.total).toBe(0);
+    const real = glideRun(true);
+    expect(real.first).toBeCloseTo(6 * 0.85, 4);
+    expect(real.total).toBeGreaterThan(real.first);
+    expect(real.total).toBeLessThan((6 * 0.85) / (1 - 0.85) + 0.01);
   });
 
   test("Neigung: sofort beim Drücken, dann alle 6 Ticks; zurück zur Mitte", () => {

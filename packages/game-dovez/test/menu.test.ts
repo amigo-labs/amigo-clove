@@ -1,3 +1,4 @@
+import { codeOfDik, keyText } from "../src/game/input";
 import { describe, expect, test } from "bun:test";
 import { DEFAULT_CONFIG, dbGain, parseConfig } from "../src/game/config";
 import { emptyHighscores } from "../src/game/highscore";
@@ -20,11 +21,12 @@ const none: MenuKeys = {
   pause: false,
   focus: true,
   char: 0,
+  held: [],
 };
 
 function menu(o: Partial<MenuOptions> = {}): MenuLogic {
   return new MenuLogic({
-    german: true,
+    lang: "de",
     rnd: new VbRnd(1),
     passes: 0,
     highscores: emptyHighscores(),
@@ -33,7 +35,8 @@ function menu(o: Partial<MenuOptions> = {}): MenuLogic {
     playersMinus1: 0,
     names: [],
     ids: [],
-    keyText: () => "?",
+    keyText: (set, a, keys) => keyText(set, a, keys),
+    codeOfDik,
     ...o,
   });
 }
@@ -207,6 +210,123 @@ describe("Hauptmenü (MenuLoop)", () => {
     press(m, { ok: true });
     m.step({ ...none, char: 13 });
     expect(m.result).toMatchObject({ kind: "new", bonus: "Spacestation Bonus" });
+  });
+
+  test("Tastenkonfiguration: Aufnahme setzt die zweite Taste, übernehmen sichert, Zurück verwirft", () => {
+    const m = menu();
+    m.step(none);
+    press(m, { down: true });
+    press(m, { down: true });
+    press(m, { ok: true });
+    press(m, { down: true });
+    press(m, { down: true });
+    press(m, { ok: true });
+    expect(m.page).toBe(33);
+    for (let i = 0; i < 20; i++) m.step(none);
+    // 3 „Steuerung für“, 4 „Gerät“, 5 leer, 6 „Links“
+    press(m, { down: true });
+    press(m, { down: true });
+    // OK lösen, dann die Taste Y (DIK 21) halten: Aufnahme, Loslassen beendet sie
+    m.step({ ...none, ok: true });
+    m.step(none);
+    m.step({ ...none, held: [21] });
+    expect(m.keyMap[0]).toBe("KeyY");
+    expect(m.config.keys[0]).toBe("");
+    m.step(none);
+    m.step(none);
+    // gehaltene Taste + weitere: die weitere gewinnt
+    press(m, { ok: true });
+    m.step({ ...none, held: [44] });
+    m.step({ ...none, held: [44, 45] });
+    m.step(none);
+    expect(m.keyMap[0]).toBe("KeyX");
+    m.step(none);
+    // Esc bricht ab und lässt die Belegung, wie sie war
+    press(m, { ok: true });
+    m.step({ ...none, pause: true });
+    m.step(none);
+    expect(m.keyMap[0]).toBe("KeyX");
+    expect(m.page).toBe(33);
+    m.step(none);
+    expect(m.page).toBe(33);
+    // Zurück ohne Übernehmen verwirft
+    press(m, { back: true });
+    expect(m.page).toBe(30);
+    expect(m.keyMap[0]).toBe("");
+  });
+
+  test("Tastenkonfiguration: Übernehmen sichert den Arbeitsstand in der Konfiguration", () => {
+    const m = menu();
+    m.step(none);
+    press(m, { down: true });
+    press(m, { down: true });
+    press(m, { ok: true });
+    press(m, { down: true });
+    press(m, { down: true });
+    press(m, { ok: true });
+    for (let i = 0; i < 20; i++) m.step(none);
+    press(m, { down: true });
+    press(m, { down: true });
+    m.step({ ...none, ok: true });
+    m.step(none);
+    m.step({ ...none, held: [21] });
+    m.step(none);
+    // Zeile 20 „Einstellungen übernehmen“: ↑ von 6 läuft über 4 und 3 zu 21, dann 20
+    press(m, { up: true });
+    press(m, { up: true });
+    press(m, { up: true });
+    press(m, { up: true });
+    press(m, { ok: true });
+    expect(m.config.keys[0]).toBe("KeyY");
+    press(m, { back: true });
+    expect(m.page).toBe(30);
+    expect(m.keyMap[0]).toBe("KeyY");
+    expect(parseConfig(JSON.stringify(m.config)).keys[0]).toBe("KeyY");
+  });
+
+  test("Vibrationszeilen (17, 18) nur mit Gamepad: Schalter, Stärke in 500ern, Probeimpuls", () => {
+    const go = (pads: number) => {
+      const m = menu({ pads: () => pads });
+      m.step(none);
+      press(m, { down: true });
+      press(m, { down: true });
+      press(m, { ok: true });
+      press(m, { down: true });
+      press(m, { down: true });
+      press(m, { ok: true });
+      for (let i = 0; i < 20; i++) m.step(none);
+      return m;
+    };
+    const none0 = go(0);
+    for (let i = 0; i < 12; i++) press(none0, { down: true });
+    // ohne Pad überspringt die Auswahl die leeren Zeilen 17 und 18 und landet auf 20
+    press(none0, { ok: true });
+    expect(none0.config.vibration).toEqual([true, true]);
+    const m = go(1);
+    for (let i = 0; i < 12; i++) press(m, { down: true });
+    press(m, { ok: true });
+    expect(m.config.vibration).toEqual([false, true]);
+    expect(m.pulse).toMatchObject({ pad: 0, ticks: 20 });
+    press(m, { down: true });
+    press(m, { ok: true });
+    expect(m.config.vibrationStrength[0]).toBe(3000);
+    expect(m.pulse?.magnitude).toBeCloseTo(0.3, 5);
+    expect(parseConfig(JSON.stringify(m.config)).vibrationStrength[0]).toBe(3000);
+  });
+
+  test("Osterei: L, O und V zugleich im Hauptmenü, nicht auf anderen Seiten", () => {
+    const a = menu();
+    a.step(none);
+    a.step({ ...none, held: [38, 24] });
+    expect(a.result).toBeUndefined();
+    a.step({ ...none, held: [24, 38, 47] });
+    expect(a.result).toEqual({ kind: "love" });
+    const b = menu();
+    b.step(none);
+    press(b, { ok: true });
+    expect(b.page).toBe(10);
+    b.step({ ...none, held: [24, 38, 47] });
+    expect(b.result).toBeUndefined();
   });
 
   test("Grundeinstellungen schalten die drei Optionen um", () => {

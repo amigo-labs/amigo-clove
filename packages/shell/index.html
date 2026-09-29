@@ -4,8 +4,19 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>amigo-clove</title>
-    <!-- Kein Favicon: verhindert die 404-Anfrage auf /favicon.ico. -->
-    <link rel="icon" href="data:," />
+    <meta
+      name="description"
+      content="Browser-Port der Arcade-Shooter DOVE und DoveZ von Markus Madeja — ein Launcher, zwei Spiele, offline spielbar."
+    />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#000000" />
+    <!-- Nur eigene Quellen; Pixi erzeugt Shader-Code zur Laufzeit (unsafe-eval), libopenmpt läuft als WebAssembly. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob: data:; connect-src 'self' data: blob:; worker-src 'self' blob:; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"
+    />
+    <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="./manifest.webmanifest" />
     <style>
       html,
       body {
@@ -140,8 +151,11 @@
     </style>
   </head>
   <body>
-    <div id="screen"></div>
-    <div id="error"></div>
+    <main id="screen"></main>
+    <div id="error" role="alert"></div>
+    <noscript>
+      <p style="padding: 2rem">amigo-clove braucht JavaScript. / amigo-clove needs JavaScript.</p>
+    </noscript>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

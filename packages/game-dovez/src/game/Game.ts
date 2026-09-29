@@ -1,3 +1,5 @@
+import { LoveLogic } from "./love";
+import { LoveScene } from "./loveScene";
 import type { AtlasJson, GameHost, GameInstance } from "@clove/core";
 import { StreamPlayer } from "@clove/audio";
 import { dovezSlug, type PlayStep } from "@clove/formats";
@@ -6,13 +8,14 @@ import type { Texture } from "pixi.js";
 import { Renderer } from "../render/Renderer";
 import { VbRnd, vbInt } from "../sim/vb";
 import type { Carry } from "../sim/world";
-import { Campaign, type CampaignAction } from "./campaign";
+import { Campaign, type CampaignAction, languageVideo } from "./campaign";
 import { type DovezConfig, loadConfig, saveConfig } from "./config";
 import { CreditsLogic, CreditsScene, creditsMask } from "./credits";
 import { FadeLogic, FadeScene } from "./fadeOut";
 import { atlasTexture } from "./gdi";
 import { parseHighscores, HIGHSCORE_KEY } from "./highscore";
-import { keyText, okKey, pauseKey, readInput } from "./input";
+import { codeOfDik, keyText, okKey, pauseKey, readInput, useKeys } from "./input";
+import { resolveLang } from "./lang";
 import { type GameContext, LevelScene, levelBundles } from "./level";
 import { LoadingScene } from "./loadingScreen";
 import { LogoGlitch, LogoShow, LogoTunnel } from "./menu/logos";
@@ -54,7 +57,8 @@ export interface GameOptions {
   /** Einzellevel (Slug) ohne Menü. */
   readonly level?: string | undefined;
   readonly from: number;
-  readonly ship: 0 | 1;
+  /** 0 D-Tonator, 1 D-Phyton, 2 Debug-Schiff (nur URL `ship=2`). */
+  readonly ship: 0 | 1 | 2;
   readonly invincible: boolean;
   readonly players: 1 | 2;
   /** Kampagne ab dieser Anweisung (`Me.115C`, zum Testen), ohne Menü. */
@@ -66,7 +70,9 @@ export interface GameOptions {
   /** Logos und Intro vor dem ersten Menü. */
   readonly intro: boolean;
   /** Sichtprüfung: Bildschirm gleich nach dem ersten Bild zeigen (nichts wird gespeichert). */
-  readonly screen?: "continue" | "pause" | "save" | "credits" | undefined;
+  readonly screen?: "continue" | "pause" | "save" | "credits" | "love" | undefined;
+  /** URL-Option `lang=de|en|ru`: Sprache erzwingen (sonst aus `host.locale`). */
+  readonly lang?: string | undefined;
 }
 
 /** Höchster geschaffter Durchgang (`[0x588080]` in `config.cfg`). */
@@ -87,7 +93,7 @@ function levelName(host: GameHost, slug: string): string {
 /** Wie ein Spiel beginnt: neu (Kampagne oder Bonus), per Spielstand oder direkt (URL). */
 interface Start {
   readonly players: 1 | 2;
-  readonly ship: 0 | 1;
+  readonly ship: 0 | 1 | 2;
   readonly names?: readonly string[] | undefined;
   readonly ids?: readonly number[] | undefined;
   readonly saved?: SaveFile | undefined;
@@ -108,13 +114,15 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
   )) as [AtlasJson, AtlasJson, AtlasJson];
   await textures.load(Renderer.pageIds(globals.map((json) => ({ json }))));
   const standart = globals[1];
-  const german = host.locale.toLowerCase().startsWith("de");
+  /** `Me.588070`: `lang=` der URL, sonst die Locale des Hosts (`de`, `ru`, sonst Englisch). */
+  const lang = resolveLang(opts.lang, host.locale);
   const persist = opts.screen === undefined;
   const targets = new ScreenTargets(app.renderer);
   const mosaic = new Mosaic(host.storage, persist);
   /** Die eine `Rnd`-Folge des Programms (Menü, Logos, alle Level). */
   const rnd = new VbRnd();
   let config: DovezConfig = loadConfig(host.storage);
+  useKeys(config.keys);
   const menuAudio = await MenuAudio.create(host);
   /** Spieler aus dem letzten Spiel der Sitzung (`Me.1288.7B4`, `P[p].68`, `P[p].6C`). */
   let lastPlayers: 1 | 2 = opts.players;
@@ -171,7 +179,7 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
       textures,
       globals,
       targets,
-      german,
+      lang,
       profile: new Profile(
         host.storage,
         players,
@@ -213,6 +221,7 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
         standart,
         image ?? (await mosaic.texture()),
         isMosaic,
+        lang,
       );
       const shown = play(loading);
       const bundles = levelBundles(a.slug).filter((b) => host.assets.bundle(b).length > 0);
@@ -256,7 +265,7 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
         textures,
         standart,
         {
-          german,
+          lang,
           level: level.name,
           scores: level.world.score.slice(0, players),
           places: ranks,
@@ -281,7 +290,7 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
       if (slot !== undefined && persist) {
         const file: SaveFile = {
           version: 1,
-          label: saveLabel(players, ship, campaign.pass, level.name, new Date(), german),
+          label: saveLabel(players, ship, campaign.pass, level.name, new Date(), lang),
           step: campaign.step,
           pass: campaign.pass,
           players,
@@ -300,7 +309,7 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
 
     let action: CampaignAction = start.single
       ? { ...campaign.single(start.single.name), slug: start.single.slug }
-      : campaign.next(german);
+      : campaign.next(lang);
     let first = true;
     for (;;) {
       if (disposed) return;
@@ -309,10 +318,10 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
           const level = await playLevel(action, first);
           first = false;
           if (!level) return;
-          let next = campaign.next(german);
+          let next = campaign.next(lang);
           if (opts.screen === "save" || next.kind === "save") {
             await saveScreen(level);
-            if (next.kind === "save") next = campaign.next(german);
+            if (next.kind === "save") next = campaign.next(lang);
           }
           current = undefined;
           level.destroy();
@@ -321,17 +330,17 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
         }
         case "save":
           // Speicherbildschirm ohne geschafftes Level (Einstieg per `step`): übergehen
-          action = campaign.next(german);
+          action = campaign.next(lang);
           break;
         case "video":
-          if (opts.videos) await play(new VideoScene(host, app, action.id));
-          action = campaign.next(german);
+          if (opts.videos) await play(new VideoScene(host, app, action.id, lang));
+          action = campaign.next(lang);
           break;
         case "credits":
           ctx.profile.addAll(carry?.score ?? []);
           if (persist) host.storage.set(PASSES_KEY, String(campaign.passesDone));
           await credits(action.outro);
-          action = action.epilog ? campaign.epilog() : campaign.next(german);
+          action = action.epilog ? campaign.epilog() : campaign.next(lang);
           break;
         case "end":
           // Skriptende: Highscore, Hauptmenü
@@ -343,7 +352,7 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
 
   /** Outro, Abspann, Abblende, Musik aus. */
   const credits = async (outro: string) => {
-    if (opts.videos) await play(new VideoScene(host, app, outro));
+    if (opts.videos) await play(new VideoScene(host, app, outro, lang));
     const logoAtlas = await host.assets.json<AtlasJson>("atlas/logo");
     await textures.load(logoAtlas.pages);
     const mask = await creditsMask(host, logoAtlas);
@@ -398,7 +407,7 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
       h?.destroy(false);
     }
     const logic = new MenuLogic({
-      german,
+      lang,
       rnd,
       passes: passes(),
       highscores: parseHighscores(host.storage.get(HIGHSCORE_KEY)),
@@ -408,16 +417,22 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
       names: lastNames,
       ids: lastIds,
       keyText,
+      codeOfDik,
+      pads: () => host.rumblePads?.() ?? 0,
     });
     app.stage.addChild(view.root);
     await play(
       new MenuScene(host, logic, view, menuAudio, (c) => {
         config = c;
+        useKeys(c.keys);
         if (persist) saveConfig(host.storage, c);
       }),
     );
     // `mode = 1` → `FadeOut 1, False` über dem letzten Menübild
-    if (logic.result && logic.result.kind !== "exit")
+    // Osterei: `FadeOut(0, False)` statt `FadeOut(1, False)` über dem Menübild
+    if (logic.result?.kind === "love")
+      await play(new FadeScene(app, targets, new FadeLogic(0, rnd)));
+    else if (logic.result && logic.result.kind !== "exit")
       await play(new FadeScene(app, targets, new FadeLogic(1, rnd)));
     view.destroy();
     textures.unload(atlas.pages);
@@ -433,11 +448,17 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
       if (first && opts.intro) {
         await logos();
         if (opts.videos)
-          await play(new VideoScene(host, app, `video/intro${german ? "d" : "e"}`, false));
+          await play(new VideoScene(host, app, languageVideo("intro", lang), lang, false));
       }
       const r = await menu(first, hangar);
       first = false;
       if (!r || r.kind === "exit") return;
+      if (r.kind === "love") {
+        // L + O + V im Hauptmenü (`0x546C30`): Osterei, danach wie „Exit“ zurück zur Shell
+        await play(new LoveScene(host, app, textures, standart, new LoveLogic(rnd)));
+        await play(new FadeScene(app, targets, new FadeLogic(0, rnd)));
+        return;
+      }
       if (r.kind === "load") {
         const saved = parseSave(host.storage.get(saveKey(r.slot)));
         if (!saved) continue;
@@ -459,7 +480,12 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
   /** Ohne Menü (URL-Optionen `level`, `step`, `load`, Sichtprüfung des Abspanns). */
   const directFlow = async () => {
     if (opts.screen === "credits") {
-      await credits(`video/outro${german ? "d" : "e"}`);
+      await credits(languageVideo("outro", lang));
+      return;
+    }
+    if (opts.screen === "love") {
+      // Sichtprüfung des Osterei ohne Menü
+      await play(new LoveScene(host, app, textures, standart, new LoveLogic(rnd)));
       return;
     }
     const saved =

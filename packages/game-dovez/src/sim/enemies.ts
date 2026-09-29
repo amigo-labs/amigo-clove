@@ -97,12 +97,16 @@ export interface EnemyWorld {
   partFires(enemy: number, part: number): void;
   /** `AddPunkte`: Punkte, Wackeln, Popup bei (x, y) mit Steiggeschwindigkeit `vy`. */
   addPoints(points: number, x: number, y: number, vy: number, player: number): void;
+  /** Abschusszähler `B48[0].54`: +1 je Explosion eines Teils (wandert in den Spielstand). */
+  addKill(): void;
   /** `KillGegnerSchussErzeuger` für alle Waffen des Gegners. */
   killEmitters(enemy: number): void;
   /** Effekt-Ton aus `Sound.d2p` (Name wie das Asset `sound/<name>`). */
   sound(name: string): void;
   /** Druckwelle `AddGegnerS(−1, …)` um (cx, cy) mit Lebensdauer `life`. */
   shockwave(cx: number, cy: number, life: number, target: number): void;
+  /** `AddForce` (`0x529870`): Joystick-Vibration, reine Ausgabe. */
+  vibrate?(strength: number, ticks: number, player: number): void;
   /** Beam-Kraftphase des Spielers (`Me.CB0[p]+0x2E`). */
   beamPower(player: number): boolean;
   /** Super-Nova läuft (`Me.D6C`). */
@@ -458,6 +462,7 @@ export class Enemies {
     const y2 = py + dy + s.bottomRow;
     w.fx.addSparks(1, count, cint(x1 + 5), cint(y1 + 5), cint(x2 - 5), cint(y2 - 5), false);
     w.fx.addExplosion(x1, y1, x2, y2);
+    if (shake) w.addKill();
     // keine Erschütterung, solange im 1P die Kraftphase läuft
     if (shake && (!w.beamPower(0) || this.playersMinus1 === 1))
       w.fx.shake += idiv(p.score, 500) + 1;
@@ -570,6 +575,7 @@ export class Enemies {
         false,
       );
       fx.addExplosion(ox + s.left, oy + s.topRow, ox + s.right, oy + s.bottomRow);
+      w.addKill();
       if (!w.beamPower(0) || this.playersMinus1 === 1) fx.shake += idiv(p.score, 500) + 1;
       w.sound(p.score > 1499 ? "explosion2" : "explosion1");
     }
@@ -778,6 +784,7 @@ export class Enemies {
           f32(bx + s.right),
           f32(by + s.bottomRow),
         );
+        w.addKill();
         if (!w.beamPower(0) || this.playersMinus1 === 1) fx.shake += idiv(p.score, 500) + 1;
         w.sound(p.score > 1499 ? "explosion2" : "explosion1");
       }
@@ -1196,6 +1203,8 @@ export class Enemies {
     w: EnemyWorld,
   ): void {
     this.deathSpawn(e, w);
+    // `AddForce(1, 20, Spieler)` (`0x4C4A87`), sobald der Gegner stirbt
+    w.vibrate?.(1, 20, player);
     const { w: bw, h: bh } = this.box(e.def);
     const cx = idiv(bw, 2) + hx;
     const cy = idiv(bh, 2) + hy;

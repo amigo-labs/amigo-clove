@@ -52,6 +52,8 @@ an ihrer Stelle ab; die Nova schaltet in Schritt 9 mitten im Tick um (Abschnitt
     Schnee/Wolken/Regenschleier; `SpielSpezial(1)` (prüft die Nova selbst).
 11. Erschütterung; außer Nova: **Kontakt** (`SpielFeindberührung` `0x50B710`);
     Overlays mit Rauschen; außer Nova: Abblenden in den letzten 50 Ticks; HUD.
+12. Zuletzt, auch in der Nova: Laufband (`0x50FCC0`), `0x4D0D80` und
+    die **Vibration** (`0x5299B0`, `SpielLoop` `0x53F614`), siehe „Vibration“.
 
 Zeichenreihenfolge der Ebenen damit 0, 1, 2, 5, [Schiff, Gegner], 4, 3, 6.
 
@@ -154,8 +156,8 @@ Todessequenz, `Me.50C`) kopiert `OverlayEffekte` das Spielfeld nach `Me.774`
 dasselbe mit α 1 → 0 in Schritten von 0,05. Rauschen: bei `Me.6D0 > 0` 4 × 3
 Kacheln `noise` mit zufälligem, gespiegeltem Ausschnitt, **48 `Rnd`**, nur
 beim Zeichnen. `Me.6D0` ist je Tick 0; **Route op 41 („AddFade“) addiert
-Rauschen** (auf 0…1 geklemmt; 7-1, 7-2), dazu Spezial 7 und der Beam von
-Schiff 2 (fehlt im Port). Der Port rendert nach einem Tod erst das Todesbild,
+Rauschen** (auf 0…1 geklemmt; 7-1, 7-2), dazu Spezial 7 und die Ladung des
+Beams von Schiff 2 (`World.env.addNoise`). Der Port rendert nach einem Tod erst das Todesbild,
 dann startet er neu (für das Standbild).
 
 ## Spezialabläufe (`SpielSpezial` `0x538CF0`, `special.ts`)
@@ -213,7 +215,10 @@ erscheinen Waffen-Power-ups nur für das gewählte Schiff.
   Q, W, E. Zwei Spieler: IJKL bzw. Ziffernblock mit eigener Belegung.
 - **Bewegung „Arcade“ (Vorgabe):** keine Trägheit, `CLng(speed)` px je Achse
   (Start 6, unter Wasser −3, mindestens 1), Diagonalen nicht normiert.
-  „Realistisch“ gleitet nach dem Loslassen mit ×0,85 je Tick aus.
+  „Realistisch“ gleitet nach dem Loslassen (nach ≥ 10 Ticks Tastendruck) mit
+  ×0,85 je Tick aus, bis beide Geschwindigkeiten unter 1 fallen; der Port
+  addiert dazu die abklingende Geschwindigkeit auf die Position
+  (`PlayerWorld.realistic`, gesetzt aus `Me.510`).
 - Grenzen x 0…736, y −17…496; **Hitbox (0, 17)–(64, 54)** für alle Typen.
   Wände sperren achsenweise (Rücksprung auf die Position zu Tickbeginn);
   Landschaft voraus schiebt mit der Scrollgeschwindigkeit nach links, bei
@@ -221,13 +226,21 @@ erscheinen Waffen-Power-ups nur für das gewählte Schiff.
 - Start (100, 260), mit zwei Spielern (100, 228) und (100, 292). Neigung 0–4
   (2 waagerecht), wechselt sofort und dann alle 6 Ticks.
 - **Schiffstypen** (`A.A8`, auch `Var` 32784): 0 „D-Tonator“ (Partikel), 1
-  „D-Phyton“ (Force); 2 nur per Debug. Mit zwei Spielern bekommt Spieler 2 den
-  anderen Typ. Sprites `dove{Typ}{Neigung+1}{Bild+1}` (64 × 64).
+  „D-Phyton“ (Force); 2 „Debug-Schiff“ nur per Kommandozeile/Debug-Dialog (im
+  Port `?ship=2`, siehe „Debug-Schiff 2 und Drohnen“). Mit zwei Spielern bekommt
+  Spieler 2 den anderen Typ. Sprites `dove{Typ}{Neigung+1}{Bild+1}` (64 × 64).
 - **Schaden:** Gegnerschuss überlappt (x+5, y+20)–(x+60, y+45) → Energie −
   Schaden; Kontakt je Durchgang −2, der Gegner nimmt 15 (Schleife im selben
   Tick, bis nichts mehr trifft); Landschaft oder feste Gegner töten sofort;
   Energie < 0 tötet. Unverwundbar 100 Ticks nach jedem Spawn, 200 mit Schild,
   500 beim Levelausflug (Schaden wird im selben Tick zurückgesetzt).
+- **Abschusszähler** `B48[0].54` (`Carry.kills`): +1 bei jeder Explosion eines
+  Gegnerteils in den Sterbezuständen (sechs Stellen in `0x4B5850`, dieselben, die
+  `Punkte \ 500 + 1` als Erschütterung addieren: Teilzerplatzen mit Wackeln,
+  Zustand 5, Boss-Finale) und je zerplatzender Gegnerbox der Super-Nova
+  (`0x4C3E10`, Schleife über `Me.1288.1A8`); gelesen wird er nur beim Speichern
+  (`0x53FDFF`), geladen bei `0x54007D`, zurückgesetzt in `0x4A6912` (neues Spiel).
+  Er ist immer der von Spieler 0, auch im Coop; keine Spielwirkung.
 - **Tod** (`KillDove` `0x50B0D0`): 99 Ticks Sequenz; ein Spieler: Checkpoint-
   Neustart, Leben −1 (Start 3); Leben 0 → Continue (Punkte ÷ 3). Zwei Spieler:
   gemeinsame Leben (6), Wiedereinstieg nach 100 Ticks an der Position des
@@ -279,8 +292,9 @@ erscheinen Waffen-Power-ups nur für das gewählte Schiff.
   `Rnd`), 5 Abpraller (Zünder 15…27, zerfällt in drei), 6–10 Laser der Force
   rot/blau/gelb/violett/grün mit Leuchtband (`Spur` `0x536110`; nach einem
   Treffer steht der Kopf, die Spur läuft aus), 11–13 Zweitwaffen, 14
-  Beam-Suchgeschoss. Typ 2 hat keinen Erzeuger, Typ 15 (Debug-Drohnen) wird nie
-  bewegt und belegt seinen Slot bis zum nächsten Leeren. Die Typen 6, 7, 9, 10
+  Beam-Suchgeschoss (Erzeuger: Beam-Nachwirkung von Schiff 2). Typ 2 hat keinen Erzeuger, Typ 15 (Sonderwaffe
+  2 der Debug-Drohnen, dort unerreichbar) wird nie bewegt und belegt seinen Slot
+  bis zum nächsten Leeren. Die Typen 6, 7, 9, 10
   setzen den gemeinsamen Kasten `L.304…L.310` nicht und erben im Außentest
   dessen Maße vom zuletzt bearbeiteten Schuss (im Port mitgeführt).
 - **Treffer** `CheckColisionWithEnemy` (`0x4C3E10`): Gegner in Slotreihenfolge,
@@ -319,8 +333,9 @@ halbiert sich je Treffer und wächst sonst um 25; sie schluckt Gegnerkugeln
 (nach deren Bewegung). Schüsse je Farbe in `SpielSchieß` (angedockt nur ab
 Stufe 1 oder in der Kraftphase; frei ein Fächer nach Stufe). Gegner zielen auf
 einen D-Phyton gestreut über Schiff bzw. Force (1–2 `Rnd`) und runden den
-Zielpunkt mit `CLng`. `AddForce`/`DoForce` sind Joystick-Vibration, nicht die
-Force. Drohnen (`SpielDWeapons`) gibt es nur beim Debug-Schiff 2 (im Port nicht).
+Zielpunkt mit `CLng`. `AddForce`/`DoForce` sind Joystick-Vibration (Abschnitt
+„Vibration“), nicht die Force. Drohnen (`SpielDWeapons`) gibt es nur beim
+Debug-Schiff 2, siehe „Debug-Schiff 2 und Drohnen“.
 
 ## Beam und Kombo
 
@@ -345,10 +360,108 @@ Ladung). Schaden `CLng(L^1,6 · Stufe)`, voll `8500 · Stufe` (+1500 Schiff 1).
   unter Wasser; jeder Abschuss spaltet den Gegner (Zustand 1) und zählt die
   Kombo (`Multiplikator = Treffer · 0,1 + 1` vor dem Zählen). Danach klingt der
   Balken in 825 Ticks aus, so lange ist kein Neuladen möglich.
+- **Beam Schiff 2** (Debug): eigener Ablauf, siehe „Debug-Schiff 2 und Drohnen“.
 - **Kombo** (`Me.59C` Multiplikator, `Me.5B8` Treffer, `Me.5D4` Bonus): Reset
   bei einem entkommenen Gegner (außer `noComboReset`/`solid`), am Ende der
   Kraftphase und im Nachglühen. Anzeige nur für Spieler 1: `combo` bei
   (730, 520) mit Zähler und Bonus, am Ende „Combo: N Hit B“ im Laufband.
+
+## Debug-Schiff 2 und Drohnen
+
+Nur statisch aus der EXE (kein Spielversuch). Schiffstyp 2 (`Me.A7C[p]+0xA8`)
+ist im Original nur über die Kommandozeile bzw. den Debug-Dialog erreichbar
+(Zeichenketten „Debug INIT“, „-Level“, „Schiff Nummer?“ um `0x413500`); das Menü
+bietet nur 0 und 1. Im Port wählt die URL-Option **`?ship=2`** (Spieler 1) den
+Typ; das Menü bleibt bei 0/1 (`index.ts` → `Game` → `World`, Option `ship`).
+Code: `sim/drones.ts`, `sim/beam.ts` (`flight2`, `aftermath`, `chargeGraphics2`),
+`sim/effects.ts` (Art 17), `sim/envDraw.ts`, `render/Compositor.ts`; Tests
+`test/ship2.test.ts`, `test/ship2Beam.test.ts`. Schiff 0/1 bleibt bit-identisch
+(Regressionslauf mit Zustands-Hash vor/nach der Änderung).
+
+Was Typ 2 im Original anders macht (alle Stellen aus einer Suche nach `+0xA8`):
+
+- **Sprites** `dove2<Neigung+1><Bild+1>` (Gleiches Schema wie 0/1), Auspuff,
+  Neugeburt, `KillDove`, Wasser, HUD, Power-ups, Nova, Hauptschuss und
+  Gegnerzielen behandeln Typ 2 wie Typ 0/1 (im Port schon vorhanden).
+- **Drohnen** (`SpielDWeapons` `0x4E0ED0`, Array `Me.B04`, 2 × 0x70 Byte,
+  `ReDim 0 To 1`), je Tick und Typ-2-Spieler, nach den Partikeln
+  (Schritt 5 von `SpielLoop`), auch in der Nova; ohne Prüfung auf Leben:
+  1. *Kette:* Drohne 0 folgt (Schiff + 16, +16), Drohne 1 dem Verlaufsende der
+     vorigen; Verlauf 11 Werte, die Drohne liegt 10 Ticks zurück; steht das
+     Ziel (gleiche Position wie der neueste Wert), passiert nichts außer
+     Drehung mit 1° zurück auf 0°. Sonst Drehung höchstens 10° je Tick zum
+     Winkel `WinkelInGrad(dx, dy) − 360` (`CLng`), Zielwinkel um 360 nach oben
+     an den aktuellen herangerückt. Zeichnen: Glutfleck `a_kreis2` 64 × 64
+     (0,2 / 0,1 / 0,1 / 0,8) normal und additiv, Richtungsstrich 3 px additiv.
+  2. *Zielsuche* (`Me.B08`, Start True): nächste Teil-Mitte im Umkreis
+     `Me.724` = 170 um (Schiff + 64, +32) (`CLng(Sqr(dx²+dy²))`, strikt `<`,
+     Gleichstand: das erste; alle Teile lebender, nicht fester Gegner mit
+     Kontur, auch unsichtbare, gepanzerte nicht). Vier `Blitz` (zwei Paare, rot 10
+     px / schwarz 5 px, Startpunkt ± 5 · cos(2 · Tick) in y, Anzahl Segmente 4,
+     Streuung 30, Startwert `CLng(Rnd · 10000)` je Paar = **1 `Rnd` je Paar**),
+     dann 10 Schaden auf 2 × 2 px um die Mitte (mit Funken).
+  3. *Kugeln* (`Me.B0A`, Feuer `Me.B0C`): zwei Sprites `dw1-<Int(Tick/3) mod
+     10>` 32 × 32 auf der Bahn (Schiff + 32 + cos(φ + 8 · Tick) · 60,
+     Schiff + 32 + sin(9 · Tick + φ) · 55), φ = 0°/180°; Treffer 20 Schaden.
+     Je Kugel 2 `Rnd` (5-%-Wurf, Richtung); nur bei Treffer beider Bedingungen
+     und gehaltenem Feuer (Aktion 4, gesperrt im Levelausflug) ein Paar
+     Schüsse Typ −2 (Tempo ±9, Ebene 1, Schaden `40 · Stufe + 50`).
+  4. *Sonderwaffen* `Me.B14[k]` (Vorrat 30 / 4 / 0 aus `DoveReset`
+     `0x4A6D50`/`0x4A6E97`, Pause `Me.B20[k]`), D-Taste, Modus `Me.B2C`: 0
+     Fallrakete Typ 12 (Schaden 1500, `Rnd`, Pause 8, `rocketlaunch`), 1
+     zwölf Zielsuchraketen Typ 13 im 30°-Ring (Pause 100), 2 21 Schüsse Typ 15
+     „Debug-Drohnen“. **`Me.B2C` wird nirgends geschrieben**, 1 und 2 sind im
+     Original unerreichbar (im Port trotzdem nachgebaut, Feld `Drones.mode`).
+- **Drohnen-Schüsse** (`SpielSchieß` `0x4E3D0F`, bei gehaltenem Feuer, an
+  Stelle des Zweigs für Typ 0/1): je Drohne alle 8 Ticks (`Me.B04[i].6C` = 7)
+  ein Schuss Typ 0, Tempo 9 in Blickrichtung, Ebene 1, ab Mitte + 8, Schaden
+  `20 · Stufe + 50`.
+- **Aufstellung** `DovePosSetup` `0x4A6BF6`: alle Drohnen samt Verlauf auf
+  Spieler 1 + (16, 16), auch wenn Spieler 1 kein Typ-2-Schiff fliegt.
+- **Beam** (`SpielBeam` `0x514EDC`/`0x51A89B`), mit `Schaden = CLng(L^1,6 ·
+  Stufe)`, voll `8500 · Stufe` (ohne die +1500 des D-Phyton):
+  - *Laden* (`chargeGraphics2`): Rauschen `Me.6D0 += Ladung · 0,05 / 165`;
+    Linse vor der Nase (Mitte Schiff + 96, +32, Radius `Ladung · 27/165 + 5`):
+    Ausschnitt des Spielfelds mit Überlagerung `a_kreis3` in ein 64 × 64
+    Ziel (`@lens`), darin ein bunter Blitzpartikel (Art 0, Größe 2r, drei
+    `Rnd` für die Farbe); bei voller Ladung zwei Geisterbilder `dove2<n>` mit
+    α 0,2 und keine Einsaug-Funken mehr (sonst Art 16, fünf `Rnd` je Funke).
+    Einsaug-Ziel ist (Schiff + 96, +32) statt der Nase der anderen Typen.
+  - *Flug* (`flight2`): erst ab `fired ≥ 10`; 20 px je Tick; Körper aus einem
+    erfassten Streifen (`@blur`) plus `balken` additiv 0,3, Linse am Kopf
+    (`@lens`, `a_kreis2` additiv 0,3); bei voller Ladung 5 `Rnd` je Tick und
+    Regenbogenstriche (Art 4, ab Stufe 3 Art 2, ab Stufe 2 Spiralspuren); am
+    Rand (x > 800) Ende (Kombo zurück). Treffertest mit `Schaden − 2100`, Durchschlag
+    nur beim vollen Beam; Landschaft stoppt nicht sofort, sondern löst die
+    Nachwirkung aus. Je Treffer `glow = −100`, Kombo `+0,5`, `Schaden = Rest + 2100`;
+    Rest 0 → Blitz und Ausbruch.
+  - *Nachwirkung* (`aftermath`, `glow` −100 → 0): voller Beam schickt acht
+    Suchgeschosse Typ 14 (Winkel 110…250 in 20°, Tempo 20, Schaden
+    `Schaden \ 7`) und zwei Wellen (Linse Art 17, Glut Art 16); kleiner Beam
+    blendet in `Int(Breite)` Ticks aus. Danach ist der Beam frei.
+- **Art 17** (`MoveBigPartikel`, Stoßlinse): erfasst den Ausschnitt unter dem
+  Partikel (`@lens`, Überlagerung `a_kreis3`) und zeichnet ihn um `k = Alter ·
+  p38` vergrößert; Alter = Startleben − Leben (aus der Registerbelegung
+  geschlossen).
+- **Zwei Spieler:** `LoadSpielSurfaces` (`0x4F7290`/`0x4F77A0`) gibt dem
+  zweiten Spieler mit Schiff 2 als Vorgabe den Typ −1 (`1 − 2`), also kein
+  gültiges Sprite (das Original bricht dort ab). Der Port gibt Spieler 2 dann
+  den D-Tonator.
+
+Port-Anbindung: die Drohnen zeichnen in die DrawList-Ebene `drones` (zwischen
+`exhaust` und `weapons`), der Beam nutzt die EnvList-Ebenen `beam` und `big`
+(Erfassen und Streifen nach `Compositor`, dritter Zielspeicher `@lens`). Rnd-
+Reihenfolge wie im Original (Drohnen unmittelbar nach den Partikeln, dann
+Schießen, dann Beam).
+
+Konfidenz: Drohnenlogik (Kette, Zielsuche, Kugeln, Schüsse, Sonderwaffe 0)
+hoch; Beam-Simulation (Schaden, Treffer, Nachwirkung, Suchgeschosse) hoch;
+Ladegrafik mittel bis hoch; genaue Bildzusammensetzung der Linsen
+(Überlagerung `a_kreis3`, Alter der Art 17) mittel. Abweichungen und
+Unbekanntes: die Flags `Me.4FC`/`Me.4F8` (Zeichnen der Drohnen) werden ignoriert
+(Zeichnen immer an), Töne der Sonderwaffen 1/2 (`PlaySound`-Offsets 0/200) durch
+zwei gleichzeitige Ereignisse angenähert, Erfassen außerhalb des Bildschirms
+wird geklemmt (das Original meldet einen DirectDraw-Fehler).
 
 ## Gegner-Laufzeit `SpielMoveEnemy` (`0x4B5850`)
 
@@ -403,9 +516,138 @@ nur vom 2P-Wiedereinstieg und von `KillDove` (Force). Einen Boss-Balken gibt es
 nicht. Ein Boss, der anders als durch einen Spielertreffer stirbt, beendet das
 Bosslevel nie.
 
+### Level 7-4 „Final Boss“ (`level7-4_finalboss`, Länge 99999)
+
+*Befund (Datenanalyse + `Var` `0x4AC970`), Konfidenz hoch für die Ursache, mittel
+für die Spielabsicht.* Der Endboss ist **kein `boss`-Gegner**: Der einzige Typ
+(`spider`, 8 Teile, HP 100000, `boss = 0`, `bigDeath = 1`) erzeugt weder das
+Flag „Boss lebt“ (`[0x5882A8]`) noch den Boss-Tod (Zustand 4) noch die Ausflug-
+Kette bei T = 520. Alle Teile sind `armored` (Spielerschüsse und Beam bleiben
+ohne Wirkung). Das Level endet stattdessen über die Route und ein Spezialablauf:
+
+1. Zeitleiste Ebene 4, Tick 220: Typ 0 auf Route 3 („äh“), y = −53.
+2. Route 3: `Set HP = 100000`, `SetPos(800 + 200, Spawn-y)`, dann je Tick `Step(−1, 0)`,
+   solange x > 230. Bei x ≤ 230: `SetLayerScroll(0…6, 0)` (alle Ebenen stehen) und
+   `SetSpecial(1, 9, 0, 0, 0)` = Tastenhinweis „Drücke: <Taste der Aktion 9>“, das ist
+   die **Super-Nova** (Aktionen 0…9, Abschnitt „Tastenkonfiguration“), 300 Ticks.
+3. Danach wartet die Route in `Label 0; If HP == 100000: Wait 1; Goto 0`. Nur die
+   Super-Nova verändert die HP (pauschal −10000 je Treffer, Abschnitt „Super-Nova“;
+   gepanzerte Teile stoppen Schüsse, die Nova kennt keine Panzerung).
+4. Weicht die HP ab: `Set HP = −1`, `SetSpecial(6)` (`Me.584 = Me.588 − 300`,
+   Schiffe gesteuert, Glühen und Unschärfe; Abschnitt „Spezialabläufe“), `Wait 1`.
+   Im selben Tick zerstört sich die Spinne selbst (`HP < 0` nach der Route:
+   Selbstzerstörung ohne Punkte, `bigDeath`); 150 Ticks später verlässt das Schiff
+   das Bild, `Me.584` erreicht den Levelausflug wie in jedem Bosslevel
+   (Zustand 2 im Port, danach `Play.txt` weiter zu 7-5).
+
+**Ursache im Port:** `Var` (`0x4AC970`) liefert für Beträge **über 32784 den
+Betrag selbst** (Fall `0x4ACC1A` → `0x4ACC3C`: der Wert bleibt in `[ebp−0x18]`,
+den `0x4AC9E6` mit dem Betrag vorbelegt hat; die Codes 32748…32784 sind
+Variablen, alles darunter und darüber Literal). `route.ts` gab dort 0 zurück. Die
+Marke 100000 (Route 3: `Set`, zwei `If`) war für den Port daher 0: `Set HP =
+100000` setzte 0, und `If HP == 100000` (also 0 == 0) war bis zum ersten Schaden
+wahr — die Spinne lief also ein und wartete wie im Original, nur mit HP 0. Der
+Bot sieht das als „lebt endlos mit HP 0“. Die Nova zog aber 10000 von 0 ab
+(−10000 ≤ 0): die Nova-Zustandsmaschine tötete die Spinne (`KillEnemy`, Punkte),
+bevor die Route je wieder lief — `Set HP = −1` und `SetSpecial(6)` kamen nie, das
+Level blieb auch für einen Spieler mit Nova stehen. Mit 100000 bleibt die HP
+nach dem Treffer bei 90000 > 0, die Route läuft nach der Nova weiter und beendet
+das Level. Alle anderen 26 Level haben **kein** Argument über 32784 (geprüft),
+nichts anderes ändert sich. Fix: `varValue` gibt dort `c` zurück.
+
+Der Bot (Dauerfeuer, unverwundbar) schafft das Level nur, wenn er auf den Hinweis
+die Nova drückt (`test/boss-7-4.test.ts`); mit Schüssen allein bleibt es bei der
+Wartestellung (wie im Original, das keinen anderen Weg vorsieht; Konfidenz
+mittel — die Wartestellung ist aus Route und Panzerung gelesen, ein Lauf des
+Originals liegt nicht vor). Verpasst der Spieler den Hinweis (300 Ticks), steht
+das Level still, bis er die Nova auslöst; sie braucht hier keinen Partikel
+(Streuung mit Schild).
+
 **Explosion:** Funken (`AddPartikel`), Glut, Rauch und Feuerbälle
 (`AddExplosionsPartikel`, Größe nach Rechteck), Ton `Explosion1.wav` bzw.
 `Explosion2.wav` ab 1500 Punkten, `spalt.wav` beim animierten Abschuss.
+
+### Level 5-3 „Rumbler“ (Bosskampf, `boss-5-3.test.ts`)
+
+**Ergebnis: Der Port ist richtig, der Kampf ist zu gewinnen; der Bot zielte
+falsch.** Das Symptom („Hauptteil verliert nie HP, Dampfer langsam, Typ 6 fast
+gar nicht“) ist die Levelmechanik, nicht verlorener Schaden. Bei
+Spielerschaden `40 · (Stufe + 2)` = 80 je Schuss (Abklingzeit 6) sind das
+≈ 13 HP je Tick; jeder Schuss auf ein ungepanzertes Teil zieht seinen vollen
+Schaden ab (gemessen: Dampfer_unten 35000 → 13040 in 1500 Ticks).
+Konfidenz **H** für die Mechanik (Daten und Code), **M** für „so gedacht“.
+
+*Aufbau* (Zeitleiste Ebene 4, alle bei Tick 0): vier Dampfer und der Boss.
+
+| Typ | Name | HP | Ort | Route | Todes-Kind (`deathSpawn`) | Wurf (`spawnSpec`) |
+|---|---|---|---|---|---|---|
+| 1 | Dampfer_unten | 35000 | (262, 419) | 6 | 12011: 2 × Typ 1 auf Route 12 | 14007: Stalagmit (7) |
+| 2 | Dampfer_oben | 35000 | (262, 75) | 4 | 10020: 1 × Typ 2 auf Route 10 | 8003: Meteor (3) |
+| 5 | Dampfer_oben2 | 40000 | (451, 75) | 5 | 11051: 2 × Typ 5 auf Route 11 | 9004: Rotor (4) |
+| 6 | Dampfer_unten2 | 40000 | (451, 419) | 7 | 13061: 2 × Typ 6 auf Route 13 | 16008: Vulkan (8) |
+| 0 | Boss (`boss = 1`) | 40000 | (800 → 521, 130) | 3 | – | – |
+
+*Boss* (9 Teile, alle `damagesBody`): **nur Teil 4 („Kern“, `boss_innen`,
+Versatz (24, 115), sichtbar bei (545…644, 245…344)) ist ungepanzert**, die
+anderen acht haben `armored = −1`. Teil 8 („Schild“, `boss_schutz`, Versatz
+(0, 52), Konturspannen (524…659, 195…396)) liegt vor dem Kern und wird als
+letztes Teil zuerst geprüft; ein Schuss auf einen gepanzerten Teil ist
+verbraucht (Rückgabe 0, außer durchschlagend gegen `armorPassThrough`), ein
+Schuss von links erreicht den Kern also nur durch eine Lücke des Schilds.
+Das Schildbild 0 schließt den Kern ganz; Bild 2…5 (`schutz1…4`, je 6 Ticks)
+öffnen ihn, Bild 6 (`schutz5`, Dauer 9999) bleibt stehen (linke Kante 577 in
+den Kernzeilen; der Kern beginnt bei 545). Der Kern ist der einzige Ort, an
+dem der Boss Schaden nimmt; die Kern-`hitPoints` (500) sind wegen
+`damagesBody` bedeutungslos.
+
+*Ablauf* (Route 3 „Main“, `DoRoute` `0x4ACC70`, Op-Nummern nach
+`dovez-level-dat.md`): Ops 0…6 stellen die Ebenen 1…6 still (Op 25) und Ebene
+3 auf Tempo 1 (Op 24); der Boss fliegt von x = 800 bis 521 (Op 3 mit a = −0,4,
+Tempo 15) und wartet 200 Ticks. Dann die Schleife (Label 0): Die vier Globalen
+0…3 (`Me.A64`) sind je Dampfer 0 = bereit, 1 = greift an, 2 = tot. Steht
+keines auf 1 und nicht alle auf 2, wählt der Boss zufällig (Op 10, 1…4) einen
+Dampfer mit Global 0, setzt ihn auf 1 und **wartet 500 Ticks**. Die
+Dampferrouten 4…7 warten auf ihr Global = 1, spielen dann Ton, Rumpeln (Op
+31) und feuern (`Fire` mit −1 = `spawnSpec`) Stalagmiten, Meteore, Rotoren
+bzw. Vulkane, setzen ihr Global wieder auf 0 und beenden den Ton (Op 30).
+**Stirbt ein Dampfer**, entsteht sein Todes-Kind (`deathSpawn`) auf Route
+10…13; die liest das Global (war es 1: Rumpeln aus, Ton aus), setzt es auf
+**2** und endet (Kind ohne Punkte, ohne Wirkung; es hat nur diesen Zweck).
+Sind alle vier auf 2 (Summe 8, Op 29), springt der Boss zu Label 2 (**Phase
+2**): Global 4 = 1, Teil 8 auf Bild 2, dann animieren (Op 7 mit −1) — der
+Schild öffnet sich —, und in Label 3 alle 50 + HP/500 Ticks (bei 40000 HP
+130, bei 20000 90) mit 50 % ein Strahlenkranz (Op 33), immer Waffe 6 („Kern“)
+am Kern, mit 50 % zusätzlich Waffe 5 („Einknick“) an den Teilen 0 und 1. Der Kern-Abschuss
+ist der Boss-Abschuss (Zustand 4, Finale, `Me.584 = Me.588 − 151`). Ein
+Boss-Abschuss vor dem Tod der Dampfer ist nicht möglich (Schild zu, kein
+anderes ungepanzertes Teil); Global 4 liest nichts, der Schild öffnet sich
+allein über die Route.
+
+*Bot:* `botInput` zielt auf `y + 30` des Gegners (hier 160), das trifft am Boss
+nur gepanzerte Teile (1, 2, 5, dahinter 8) (Boss-HP nie verändert; der Bot stand nach
+dem Tod der Dampfer bei y = 117 still). Die vier Dampfer bekam er nach
+≈ 10 800 Ticks, weil er dem nächstliegenden Ziel folgt und die Stalagmiten
+(gepanzert, ohne Wirkung) nicht ausschließt. `botVulnerable.ts` zielt auf die
+Konturmitte eines ungepanzerten Teils: alle vier Dampfer tot nach 2899, 4634,
+8208, 16770 Ticks, Phase 2 bei 17266 (Wartezeit 500), Boss-Finale bei 19280,
+`state = 2` bei 19952 Ticks, 222200 Punkte. `runLevel(slug, maxTicks, input)`
+nimmt die Zielwahl als dritten Parameter (Vorgabe unverändert).
+
+*Im Original geprüft* (`CheckColisionWithEnemy` `0x4C3E10`): Teile von hinten
+nach vorn (`0x4C4176` zählt herunter); ein gepanzertes Teil (`[Teil+0x2E]`,
+`0x4C424A`) setzt `PanzerOut = −1` und beendet den Aufruf ohne Schaden
+(Rückgabe 0 bei `armorPassThrough ≤ 0` oder nicht durchschlagend, `0x4C4241`);
+`damagesBody` (`[Teil+0x24]`, `0x4C4350`) zieht `damage` von der
+Gegner-HP `[Gegner+0xC]` ab (`fisub` `0x4C43FF`), der Abschuss läuft ab
+`0x4C4A4A` (`AddForce(1, 20)`, Todes-Spawn aus `[Gegner+0x44]`, `0x4C4AC0`).
+`SetGlobal` (`0x4AEEB0`) legt das Feld `Me.A64` (Single, Obergrenze `Me.A68`,
+anfangs −1) bei Bedarf mit `ReDim Preserve` an (`0x4AEF24`), negative
+Indizes tut es nicht; `GetGlobal` (`0x4AF020`) liefert 0 über der Obergrenze
+(`0x4AF073`); gelöscht wird das Feld beim Levelstart (`0x4A672E`). Der Port
+macht alles so (`enemies.ts` `hit`, `route.ts`). *Offen (M):* ob die
+Kampfdauer (≈ 20 000 Ticks für einen Spieler ohne Verstärkungen) im Original
+wie hier sein soll, hängt an Spielerschaden und Extras — das Level hat nur ein
+Power-up (Ebene 3, Tick 12, y = 253, Untertyp 4: Force des D-Phyton).
 
 ## Super-Nova (`SpielNova` `0x52A230`)
 
@@ -494,6 +736,91 @@ Todeszustände (`+0xE4`): −1 versteckt (Nova), 0 eingefroren (Nova), 1
 Spaltung (Beam), 2 Nova-Tod, 3 Trümmer (`wreckGroup`), 4 Boss, 5 explosiv
 (`explosionSpec`, nach 15 Ticks), 6 normale Explosion (Punkte, Kombo + 1),
 7 Kettenexplosion (`bigDeath`).
+
+### Level 3-3 „Saw Machine“ (Bossverifikation)
+
+Länge 99999, Ende über den Boss-Tod. **Befund: Der Port war richtig, es ist keine
+Simulationsänderung nötig.** Der einfache Bot (`test/bot.ts`: Dauerfeuer aus x = 100
+auf den nächsten lebenden Gegner) scheitert an der Bauart des Kampfes, nicht an einem
+Fehler: Gepanzerte Teile schlucken jeden Schuss, und der Kampf verlangt, dass der
+Spieler den Sägen ausweicht und aus der Nähe eine freie Bahn wählt. Konfidenz **H**
+(Mechanik aus Daten und Code, Bot-Lauf schließt ab); wie ein Mensch es im Original
+spielt, ist nicht gegen das laufende Original geprüft.
+
+**Die Schuss-Regeln** (`CheckColisionWithEnemy` `0x4C3E10`, Teilschleife
+`0x4C3F1D…0x4C4176`): Teile eines Gegners von **hinten nach vorn**
+(`0x4C416B`: Index − 1), nur sichtbare (`+0x44`), Kontur wie beim Landschaftstest
+(`SpanHit`, vereinigte Zeilenspannen, kein Pixeltest). Der erste Treffer beendet den
+Aufruf: `damage < 0` gibt 0 zurück (`0x4C4200`, ein Fühler ohne Wirkung); ein Teil mit
+`armored ≠ 0` (`0x4C424A`, Wort `+0x2E`) setzt `PanzerOut` = −1 (`0x4C4251`) und gibt
+Rückgabe 0 zurück — der Schuss ist verbraucht, ohne Schaden (`0x4C4243`; nur ein
+durchschlagender Aufrufer gegen `armorPassThrough > 0` behält den Schaden). Ein
+gepanzertes Teil wirkt also als **Schild für alles dahinter**, solange seine Kontur
+die Bahn deckt. Das Bild ist ein Schalter: `SetPartFrame` auf ein 1×1-Bild
+(`Schwarz.bmp`, Kontur praktisch leer) „schaltet den Schild ab“, das Teil bleibt
+gepanzert und sichtbar. Die Sägeblätter (255 × 255, Kreiskontur) decken zusammen jede
+Höhe der Mauer (y 131…415), wann immer sie zwischen Mündung und Wand stehen; bei einer
+Schwingweite von x = 35…405 ist das für ein Schiff bei x = 100 immer der Fall. Ihre
+Kontur dreht **nicht** mit (der Konturtest kennt keine Drehung, beim Kreis bedeutungslos).
+
+**Bauteile** (Gegnertypen der Datei; Route in Klammern):
+
+| Typ | HP | Teile | Rolle |
+|---|---|---|---|
+| Wand-3 (10) bei x = 500 | 8000 | 1 (Ziegel) | ohne Schild, zuerst |
+| Wand-2 (9) bei 550 | 30000 | Ziegel + Platte (`Wand Unzerstörbar`, Bild 0 = Wand, 2 = 1×1) | Platte weg bei Global 0 = 1 |
+| Wand-1 (8) bei 600 | 45000 | Ziegel + Platte | Platte weg bei Global 0 = 2 |
+| Endgegner Main (3) bei 650, y 95 | 16000 | 13, nur Teil 5 (Kanone, 5000, Route 16) und 11 (Turbine, `damagesBody`) ungepanzert | Turbine hat Platte Teil 12 (`Turbine unzerstörbar`, Bild 10 = 1×1) bis Global 0 = 3 |
+| Säge oben (14) / unten (15) | — | Blatt + Motor, alle gepanzert | unzerstörbar, sperren die Bahnen |
+| Schienenkanone (12) | — | 2, gepanzert | unzerstörbar, feuert Waffe 7 (Route 13) |
+
+Alle Mauern sind 54 × 284 und überlappen sich in x (500 / 550 / 600); die Wände fallen
+mit Beschleunigung von oben ein (Tempo 4, +0,3 je Tick bis y = 131), der Boss fliegt
+mit Tempo 1 von x = 800 bis 650 (bis etwa Tick 150; erst danach laufen seine Routen
+weiter).
+
+**Ablauf** über die geteilte Ganzzahl `Global[0]` (`SetGlobal`/`GetGlobal`, Routen
+8, 9, 3, 12, 14, 15, 16, 6 der Datei):
+
+1. Wand-3 (ohne Schild) zerstören. Ihr `deathSpawn` = 12050 ruft die **Schienenkanone**
+   auf Route 12: `Global[0] = 1`. Wand-2 tauscht ihre Platte auf das 1×1-Bild.
+2. Wand-2 (30000) zerstören. `deathSpawn` = 14060: **Säge oben**, Route 14 setzt
+   `Global[0] = 2` und `Global[1] = 1000`; die Säge fliegt von links bis x = 400 und
+   schwingt dann mit x = 220 + 185 · cos(a), a −= 1,2 je Tick (Periode 300 Ticks) in
+   ihrer Höhe (85 bzw. 218). Die untere Säge (Route 15, beim Levelstart gespawnt)
+   wartet auf `Global[0] ≥ 2` und tut es ihr gleich. Wand-1 tauscht die Platte.
+   Wand-2 schreibt je Tick `Global[1] = (HP − 4000) / 500` (unten bei 0 gekappt); die
+   Schienenkanone (Route 13) liest es für ihren Feuertakt.
+3. Wand-1 (45000) zerstören, **mit den Sägen davor**: Saw-Blätter decken zusammen
+   fast jede Höhe zwischen Bot und Wand. `deathSpawn` = 7020: Route 7 „Afterskript
+   Letzte Mauer“ setzt `Global[0] = 3`. Die Sägen fliegen ab, sobald sie in der
+   Schwingphase `Global[0] ≥ 3` sehen (oben nach oben hinaus, unten nach unten;
+   knapp 100 Ticks), Boss-Teil 10 (`Schwarzskript`) feuert Kreisschüsse (Waffe 5),
+   die Platte auf Teil 12 wird zum 1×1-Bild.
+4. Die Turbine (Teil 11, 16000 über `damagesBody`) zerstören: Zustand 4 (Boss-Finale),
+   Ende wie beim Zeppelin (Abschnitt „Boss-Finale“).
+
+**Warum der einfache Bot scheitert** (mit Zahlen aus dem Lauf): Wand-3 und Wand-2
+schafft er (Wand-2 fällt bei Tick ≈ 1950, `Global[0] = 2`), solange keine Säge da ist.
+Danach verliert Wand-1 in den ersten 400 Ticks etwa 2100 HP (bis die Sägen im Schwingbereich
+sind), dann bleibt sie bei 42860 stehen: Er zielt auf die nächste Höhe eines lebenden
+Gegners und wählt die Sägen (HP 500, aber gepanzert), sein Schuss auf Höhe 157 trifft das
+Blatt. Auch mit einer Zielwahl nur unter verwundbaren Teilen bleibt Wand-1 bei x = 100
+auf 42860 (14000 Ticks geprüft), weil die Bahn nie frei ist. Boss (16000) und Sägen
+bleiben unberührt. Die „kleinen Gegner“ des Symptoms (Typ 6/7, HP 500,
+wandernd) sind die Sägen, das „zweite Teil“ (Typ 1, 45000) ist Wand-1.
+
+**Was funktioniert** (`test/lanebot.ts`, `test/boss-3-3.test.ts`): Ein Pilot, der bis
+kurz vor das vorderste verwundbare Teil fliegt (x = Teil − 60) und die nächste Höhe mit
+freier Bahn wählt (erstes Teil vor der Mündung ungepanzert, Konturtest wie oben, Band
+`y + 32 … + 46`), schließt das Level unverwundbar ab: `Global[0]` = 1 bei Tick 451,
+2 bei 1951, 3 bei 4357, Boss-Zustand 4 bei 5156, Level geschafft bei 5828 Ticks
+(danach `Play.txt` weiter zu 4-1, geprüft im Test).
+
+**Offen:** Ob der Mensch die Sägen im Original anders umgeht (etwa durch die Lücke
+zwischen den beiden Blättern bei bestimmter Schwingphase) ist nicht geprüft; das
+Sägenverhalten bei Spielerkontakt (Tod bei Berührung) ist wie bei allen Gegnern
+(`SpielFeindberührung`) und in diesem Abschnitt nicht getestet.
 
 ## Waffen-Emitter (`Me.C0C`, 51 × 0x78)
 
@@ -659,6 +986,73 @@ Energiebalken wird per DirectDraw mit Farbschlüssel geblittet;
 `interface*_energyA` ist ein eigenes Hintergrundbild (nur mit einer Option
 gezeichnet), keine Alphamaske — der Atlas behandelt es seit M8 so.
 
+## Vibration (`AddForce` `0x529870`, `sim/rumble.ts`)
+
+Joystick-Force-Feedback des Originals; im Port reine Ausgabe (`world.rumble`),
+die Simulation liest sie nie und verbraucht kein `Rnd`. Der Host liest nach
+jedem Tick `world.rumble.magnitude[Joystick]` (0…10000, 0 = aus) und setzt seine
+Motoren; ihm gehören auch `padOfPlayer` (Joystick 1…2 je Spieler, 0 ohne;
+Original `Me.588270[Spieler + Spieleranzahl − 1]`), `rumbleBase` (Grundstärke je
+Joystick, Vorgabe 2500) und `rumbleOn`.
+
+**Quellen.** `AddForce(Stärke, Dauer, Spieler)` (Methode `0x91C`) trägt im ersten
+freien der 21 Plätze (`Me.A0C` Stärke, `Me.A28` Restdauer in Ticks, `Me.A44`
+Spieler; frei = Dauer ≤ 0) eine Quelle ein; ein Spieler außerhalb 0…1 (im
+Original −1) ruft sich für Spieler 0 und 1 auf (zwei Plätze). Sind alle Plätze
+belegt, entfällt die Quelle. Argumente stehen, wie bei VB üblich, als Zeiger
+rechts nach links: Spieler, Dauer, Stärke.
+
+**Tick** (`0x5299B0`, Methode `0x920`, am Ende jedes Durchlaufs von
+`SpielLoop`, **auch in der Nova**, `0x53F614`): jede Quelle mit Dauer > 0 zählt
+einen Tick ab und addiert ihre Stärke zur Summe des Joysticks ihres Spielers
+(ohne Joystick zählt sie nicht). Die Quelle wirkt daher `Dauer` Ticks lang,
+beginnend im Tick ihrer Eintragung, wenn sie vor dem Tick-Schritt eingetragen
+wird (alle Auslöser liegen vor ihm im Tick).
+Summe 0 beendet den Kraftstoß (`DoForce` `0x57A190`); sonst wird die Summe auf 5
+gekappt und die Stärke des Kraftstoßes ist mit der Grundstärke `s`
+(500…10000, Vorgabe 2500) `CLng((Summe − 1) · (10000 − s) / 4 + s)`, also `s` bei
+Summe 1, linear bis 10000 bei Summe 5. Sie wird nur neu gesetzt, wenn sie sich
+ändert und die Vibration des Joysticks an ist.
+
+**Auslöser** (alle Aufrufer von `0x91C`; Spieler = der betroffene bzw. auslösende):
+
+| Original | Port | Stärke | Dauer | Bedingung |
+|---|---|---|---|---|
+| `CheckColisionWithEnemy` `0x4C4A87` | `enemies.ts` `killBy` (`vibrate`) | 1 | 20 | ein Gegner stirbt (Teil mit `vital` oder letztes Teil oder Körper-HP ≤ 0), Spieler = Schütze (auch −1: beide) |
+| `AddGegnerS` `0x4AAF51` | `world.ts` `makeEnemyWorld.shockwave` | 2 | 30 | Druckwelle (Typ −1) wird angelegt (freier Schussplatz), Spieler = Ziel des Gegners |
+| `SpielMoveGegnerS` `0x4AB9D9` | `world.ts` `shotWorld.hitPlayers` | 2 | 15 | Gegnerschuss trifft einen lebenden Spieler (unabhängig von Unverwundbarkeit; nach dem Treffer-Ton) |
+| `SpielMoveGegnerS` `0x4AC540` | `world.ts` `shotWorld.shockwave` | 1 | 1 | je Tick der Druckwelle für jeden Spieler im Radius (`4·Alter + 32`) |
+| `SpielKeysDove` `0x50824F` | `player.ts` `exitFlight` | 5 | 15 | Levelausflug: Zustand 2 → 3 auf Ausflughöhe |
+| `SpielDoveWiedergeburt` `0x50AFD5` | `world.ts` `rebirth` | 1 | 30 | Wiedergeburt nach dem Tod (Neustart am Checkpoint, 2P allein) |
+| `KillDove` `0x50B1AB` | `world.ts` `killPlayer` | 5 | 50 | Tod des Spielers (nur verwundbar und noch nicht im Sterben) |
+| `SpielFeindberührung` `0x50BC18` | `world.ts` `contact` | 3 | 40 | Gegnerkontakt (Energie −2 je Berührung; gleicher Tick wie Wackeln +4) |
+| `SpielBeam` `0x5143A8` | `beam.ts` `fire` | 1 | 5 | Beam wird losgelassen (Ladung > 0; nach dem Ton, vor Schaden) |
+| `SpielErschütterung` `0x529C3D` | `world.ts` `shakeRumble` | 5 | 1 | Wackelzähler `Me.7D0` > 50, beide Joysticks (Spieler −1) |
+| `SpielErschütterung` `0x529C72` | dito | 3 | 1 | Zähler 20…50, Spieler −1 |
+| `SpielErschütterung` `0x529C98` | dito | 1 | 1 | Zähler 1…19, Spieler −1 |
+| `SpielSpezial` `0x53C36F` | `special.ts` `escape` | 5 | 1 | Spezialablauf 7 (Flucht): je Spieler mit `x < 150` (Energie −0,1) |
+
+Die Aufrufe bei `0x5298D4`/`0x529900` sind die Rekursion von `AddForce` selbst
+(Spieler −1). Das Wackeln vibriert unabhängig von der Wackel-Option (`Me.4FC`:
+die Prüfung steht hinter dem Aufruf); der Zähler wird vor dem Abzählen gelesen,
+im Port in `World.step` unmittelbar vor `stepShake`. Alle 13 Aufrufer außerhalb
+von `AddForce` haben einen Port-Gegenpart; es gibt keinen Debug-only-Aufrufer.
+
+Der Aufrufer `0x5143A8` liegt in `SpielBeam` (`0x513940`), nicht im HUD
+`0x510E10` (die Funktion reicht dort bis `0x513940`); er ist kein
+Energiewarnpuls, sondern der Beam-Abschuss. Die Quellen werden bei Checkpoint,
+Tod und Wiedergeburt weder gesichert noch gelöscht (auch im Original); nur
+`World.step` im Zustand ≠ 0 und die Schleife des Speicherbildschirms leeren sie
+(`Rumble.clear`), damit der Host 0 liest.
+
+Konfidenz: Auslöser, Stärken, Dauern und Spieler-Argument aus der Disassembly
+(hoch); Bedingungen der Aufrufer geprüft (hoch), beim Gegnertod und bei der
+Druckwelle nur die Bedingung, nicht die genaue Stelle innerhalb der Funktion
+(Reihenfolge zu Effekten und Ton ohne Wirkung). Formel der Ausgabe aus
+`0x5299B0`/`0x57A190` (mittel): die Zuordnung Joystick → Motor und die Wirkung
+der Stärke (DirectInput-Effekt) hängen am Gerät und sind im Port nicht
+nachgebildet; `magnitude` ist der Effekt-Wert des Originals (0…10000).
+
 ## Ton
 
 DirectSound 7 über dx7vb: `LoadSound` (`0x4EE2E0`) legt je Sound
@@ -688,7 +1082,8 @@ gespiegelt), dann Porträt `frame1–32` (alle 5 Ticks weiter, zu 10 % gestört)
 unter Rauschen von 100 auf 30 %. Das Laufband (`AddMsg`/`ShowMSGS`,
 `0x50FB90`/`0x50FCC0`) setzt alle Einträge mit Abstand zusammen und schiebt
 sie von rechts herein (Courier 12, RGB(64, 255, 64), bei (575, 552)); ein
-Neustart leert es. Texte in der Spielsprache, Stimmen nur englisch.
+Neustart leert es. Texte in der Spielsprache (D/E/R), Stimmen nur englisch; russisch gibt es nur
+Untertitel („Sprachen“).
 
 ## Musik
 
@@ -890,6 +1285,54 @@ QBColor 8 (inaktiv), 7 (wählbar), 15 (gewählt). Schiffsdrehung auf Seite 1:
 je Stufe, vier Schichten für Bewegungsunschärfe, bei (510 + k, 310).
 Highscore-Seite: vier additive Leuchtbänder und je Bild ein Glitzer (7 `Rnd`).
 
+## Tastenkonfiguration (Seite 33, `InitKeyConfig` `0x504BA0`, `Taste` `0x54FE40`)
+
+**Modell:** Die Belegung ist ein Feld von 6 Blöcken × 10 `Long` bei `0x588174`
+(Block = Satz für `T1`, Block + 3 = `T2`; Satz 0 ein Spieler, 1 und 2 im
+Zwei-Spieler-Spiel). Aktionen 0…9: links, hoch, rechts, runter, Feuer, Beam,
+Satellit/Partikel wechseln, Force-Modus, Partikel drehen, Supernova.
+`Taste(Satz, Aktion)` ist wahr, wenn `Keys(T1)` **oder** `Keys(T2)` gehalten wird
+(Einträge ≤ 0 zählen nicht). `InitKeyConfig(Satz, Gerät)` löscht beide Blöcke und
+füllt bei Gerät 0 (Tastatur):
+
+| Satz | `T1` (DIK) | `T2` |
+|---|---|---|
+| 0 | ←, ↑, →, ↓, S, A, D, Q, W, E | – |
+| 1 | J, I, L, K, S, A, D, Q, W, E | ←, ↑, →, ↓ |
+| 2 | Num 4, Num 8, Num 6, Num 5, Ende, Entf, Bild ↓, Einfg, Pos 1, Bild ↑ | – (nur runter: Num 2) |
+
+Zusatztasten stehen nicht im Feld (Leertaste feuert im Einzelspiel, F11 hupt).
+Gerät ≠ 0 (DirectInput-Joystick) belegt die Blöcke mit Knopfnummern (`0x58838C`);
+im Port entfällt das, ein Pad wirkt über die Shell als Tastatur.
+`KeyName` (`0x578820`) liefert die Namen der 69 bekannten DIK-Codes (deutsche
+Beschriftung: DIK `0x15` heißt „Z“, `0x2C` „Y“, `0x1D` „L. Ctrl“, `0x4B` „Num. 4“,
+`0xC7` „Pos 1“, `0xD3` „Entf.“), sonst die Nummer; `GetKeyText(T1, T2)`
+(`0x559400`) macht daraus „a“ bzw. „a / b“.
+
+**Seite** (Liste bei (390, 130)): 0 Titel, 1 Striche, 2 leer, 3 „Steuerung für …“
+(OK schaltet den Satz 0→1→2→0), 4 „Gerät: Tastatur“ (OK schaltet die Geräte durch;
+ohne Joystick bleibt es die Tastatur), 5 leer, 6…15 die zehn Aktionen mit
+„Name: Tasten“ (wählbar), 16…19 leer, 20 „Einstellungen übernehmen“, 21 „Zurück“.
+Beim Betreten (aus Seite 30) wird die Belegung gesichert (`CopyBytes` 264 Byte);
+Änderungen gelten sofort (auch für die Menüsteuerung), **Übernehmen** aktualisiert
+die Sicherung, **Zurück** und Esc stellen sie wieder her und verlassen die Seite.
+Töne: Zeile 3 und 4 `plingding`, sonst `dude`.
+
+**Aufnahme** (OK auf 6…15): Die Schleife wartet (`DoEvents`), bis OK losgelassen ist,
+und läuft dann je Durchlauf: höchste gehaltene DIK-Nummer 1…211 (ohne Esc) wird zur
+Taste; ist Esc gehalten, Abbruch (nach dem Loslassen von Esc, Belegung unverändert);
+sonst `T2` der Aktion := 0, dann := Taste, und solange die Taste gehalten wird,
+ersetzt jede weitere gehaltene Taste (höchste Nummer, ohne die erste und Esc) `T2`.
+Während der Aufnahme sperrt `ShowList` ↑/↓ und die gewählte Zeile blinkt: die
+zweite Farbe der Zeile ist Gelb statt Weiß, wenn `(Me.584 \ 3) Mod 2 = 0`.
+OK und Zurück sind frei, sobald die Tasten losgelassen sind. Port: `game/input.ts`
+(`readInput`, `keyName`, `keyText`, `useKeys`, DIK-Tabelle), `game/config.ts`
+(`keys`: die 30 `T2`-Einträge als `KeyboardEvent.code`, `""` = keine),
+`menu/menuLogic.ts` (`stepCapture`, `working`); die Shell liefert die gehaltenen
+Tasten über `KeyState.held()` (nur Tastatur, das Pad zeigt der Aufnahme keine
+Stickausschläge). Die Zeilen 16…18 des Originals (nur bei einem Joystick:
+Feuerknopf, Vibration an/aus, Stärke) folgen mit der Vibration.
+
 **Seiten:** 3 Hauptmenü (Neu, Laden, Optionen, Highscore, Exit; Esc = Exit),
 10 Spieleranzahl (2 Spieler ohne Überblende, so im Original), 1 Schiff (nur
 Spieler 1 wählt, Spieler 2 fliegt das andere), 2 Name (`KeyAscii` ab 32,
@@ -905,12 +1348,392 @@ Hauptmenü und auf den Seiten 1 und 2 nur Esc. Töne: OK `dude`, Umschalten
 `plingding`, Sprachtest `speech`. Nach einem Spielstart `FadeOut(1, False)`;
 Game Over, EXIT und Skriptende führen zurück ins Menü (ohne Logos), „Exit“
 beendet das Programm (im Port: zurück zur Shell). Einen Credits-Eintrag gibt es
-nicht; das Osterei „LOV“ fehlt im Port.
+nicht; das Osterei „LOV“ steht im Abschnitt „Osterei LOV“.
 
 Port: `src/game/menu/` (`menuLogic.ts` Logik, `menuView.ts` Zeichnung,
 `menuScene.ts` Takt, Töne, Zeicheneingabe, `logos.ts` Logos), Optionen in
 `src/game/config.ts` (gespeichert beim Ändern). Abweichungen: Russisch fehlt;
-die Tastenseite zeigt die Belegung nur an (Umbelegen fehlt noch); Trägheit
+Trägheit („Realistic“) wirkt als Ausgleiten nach dem Loslassen (Reihenfolge im
+Tick nicht am Original geprüft); die Tastenseite kennt nur die Tastatur (siehe
+„Tastenkonfiguration“); Vibration: die Simulation liefert `world.rumble.magnitude`
+(Abschnitt „Vibration“). `#/dovez?nointro=1` startet ohne Logos und Intro.
+
+## Osterei LOV (`0x546C30`, Aufruf `Me+0x960` am Ende von `MenuLoop`)
+
+**Auslöser** (`0x55BD55`–`0x55BDB5`, Hauptmenü): sind L (DIK `0x26`), O (`0x18`)
+und V (`0x2F`) gleichzeitig gehalten (`[0x588300 + 2·DIK] ≠ 0`, alle drei), setzt
+`MenuLoop` `[0x588018] = 8` und verlässt die Schleife (es zählt jeder
+Durchlauf, ohne Flanke, nur auf der Hauptmenüseite). Am Schleifenende folgen
+bei „Ton an“ `StopOgg` (Stub `0x40D1CC`, die Menümusik endet) und `0x57A3C0`;
+der Zweig `cmp [0x588018], 8` (`0x56998D`) setzt `[0x588018] = 0`, ruft
+`Me.960` und danach `[0x588018] = 0xA` — **Programmende**, wie „Exit“. Die
+Funktion selbst kennt keinen Musik- und keinen Soundaufruf: das Osterei läuft
+still.
+
+**Aufbau** (einmal, vor der Schleife):
+
+1. `FadeOut(0, False)` (`Me.95C`, `0x545C70`) über dem Menübild (1 `Rnd`).
+2. `Me.83C` (`0x4FCB10`) lädt die Standardflächen: `Standart.d2p`, `Blur`,
+   `Blur3`, `Glitzer` (`Me.72C`), `A_KREIS2` (`Me.730`), `weiss` (`Me.758`).
+3. `Me.506 = False`, `Me.520 = 1` (Explosionsstil weiß), `Me.584 = 0`.
+4. **Schriftzug „JULIA“**: fünf Zeilen Pixelschrift `0x412CD4`, `0x412D04`,
+   `0x412D34`, `0x412D64`, `0x412D94` (je 21 Zeichen, `.` = Punkt; J, U, L, I,
+   A in 5 Zeilen Höhe). Zeilenweise (Zeile 0…4, Spalte 1…Länge) wird je `.` ein
+   Datensatz (0x18 Byte, `ReDim Preserve pts(0 To n)`, Felder `x` +0, `y` +4,
+   `vx` +8, `vy` +C, `tx` +10, `ty` +14) angelegt: Ziel `tx = 32 · Spalte + 10`,
+   `ty = 32 · Zeile + 180`, Start `x = Rnd · 1032 − 132`, dann
+   `y = Rnd · 832 − 132`, Tempo 0. Das sind **44 Punkte** (9/7/10/8/10 je
+   Zeile), **88 `Rnd`**, in der Zeilenreihenfolge.
+5. Danach werden die fünf Zeilen mit den Herzzeilen überschrieben (`0x412DC4`
+   ` ..  ..`, `0x412DD8` `........`, `0x412DFC` ` ......`, `0x412E10` `  ....`,
+   `0x412E24` `   ..`; die erste Kopie des Schriftzugs wird nicht mehr gebraucht).
+6. `Me.6DC…6E8 = (0, 0, 800, 600)` (Quellrechteck, hier unbenutzt);
+   schwarzes Vollbild-Rechteck auf `weiss` (ohne `RenderStart`, das erste
+   Schleifenbild deckt es ohnehin mit Schwarz ab); `Me.7CC = 4` (Hintergrund
+   4, rotes Plasma des Speicherbildschirms), `Me.10CC = True` (Flecken neu
+   auslegen), `Me.584 = 0`.
+7. `Wait 1000` (`Me.85C`): eine Sekunde Schwarz.
+
+**Schleife** (`Wait 18`, ≈ 55,6 Hz, jeder Durchlauf wird gezeichnet — `Me.4FE`
+hat hier keine Wirkung, die Zeichenaufrufe fragen `Me.4FC` nicht ab). Kopf:
+läuft, solange `[[0x588300] + 2] = 0` (Esc, DIK 1, aus dem **vorigen**
+Tastenlesen) und `[0x588018] = 0` (das setzen sonst andere Abschnitte, etwa
+beim Schließen des Fensters; in der Schleife schreibt niemand darauf). Je
+Durchlauf in dieser Reihenfolge:
+
+1. Tasten lesen (`0x5780C0`), `Me.584 += 1` (also `t = 1, 2, …`).
+2. `t = 400`: Herz (unten).
+3. `t > 600`: Glitzerpartikel (unten), **5 `Rnd`**.
+4. `Me.50A = Me.50C = False`; `RenderStart` (`Me.874`, `0x506EA0`);
+   `SpielMoveHintergrund` (`Me.8A8`, Modus 4, wie im Speicherbildschirm:
+   im ersten Durchlauf 505 `Rnd` für die 101 Flecken, danach keine; Schwarz,
+   101 rote `a_kreis2`-Flecken in die Ecke 64 × 64, nach `blur` erfasst und auf
+   800 × 600 gestreckt).
+5. `t < 100`: `weiss` (0, 0)–(800, 600) in Schwarz, α = `(100 − t) / 100`, normal
+   — Einblenden aus Schwarz über die ersten 99 Durchläufe.
+6. **Punkte**, `For i = 0 To n` (`n` = Zahl − 1, `Me.71C = i`):
+   `vx += (tx − x) / 10`, `vy += (ty − y) / 8`;
+   `x += vx + Sin(10 · (t + i)°)`, `y += vy + Cos(10 · (t + i)°)` (`Me.7D4`
+   `0x4E9DF0` = Tabelle `Me.4C4` Sinus, `Me.7D0` `0x4E9D50` = `Me.4E0` Kosinus,
+   ganzzahlige Grad); danach `vx, vy ·= 0,95` (alles `Single`). Je Punkt gleich
+   danach das rote Leuchten: `SetUpColor(A_KREIS2, 1, 0,2, 0,1, 0,7)`,
+   `SetUpRect(x, y, x + 64, y + 64)`, `Render(…, additiv)`.
+7. Zweiter Durchgang über dieselben Punkte: `SetUpColor(Glitzer, 1, 1, 1,
+   0,2)`, dasselbe Rechteck, additiv — ein weißer Stern auf jedem Punkt.
+8. `t > 750`: `RenderEnd` (`Me.878`), `GetDC` des Backbuffers (`Me.1E4`, +0x68),
+   `SetFont(hdc, "Arial", 28)` (`0x57DE40`), dreimal `Text` (`0x57DD50`,
+   transparent) „Ich liebe dich“ (`0x412E34`): Schwarz bei (620, 565),
+   Schwarz bei (622, 567), dann in `RGB(g, g, g)` bei (621, 566) mit
+   `g = min(t − 750, 128)`; `0x57DF40`, `ReleaseDC`, `RenderStart`.
+9. `MovePartikel(1)` (`Me.800`, leer — es entstehen keine kleinen Partikel),
+   `MoveBigPartikel` (`Me.7F8`): die Glitzer (über der Schrift). `Me.514`
+   (Standbild-Überblendung), `Me.50A`, `Me.50C` sind aus.
+10. `RenderEnd`, `Flip` (`Me.794`), `Wait 18`.
+
+**Herz** (`t = 400`, einmal): `n = −1`; Spalte 1…20 **außen**, Zeile 0…4 innen
+(anders als der Schriftzug!): ist `Len(Zeile) ≥ Spalte` und das Zeichen `.`, bekommt
+der nächste Datensatz (0, 1, 2, …) das Ziel `tx = 16 · Spalte + 300`,
+`ty = 16 · Zeile + 250`. Das Herz hat 24 Punkte; **`n` ist danach 23** — die
+Schleifen laufen nur noch über die ersten 24 Datensätze, die übrigen 20
+(Rest von J, U, L, I, A: Zeile 2…4) werden nicht mehr bewegt oder gezeichnet
+und verschwinden. Die 24 federn vom Schriftzug zum Herzen in der Bildmitte (Ziele
+`(316…428, 250…314)` sind linke obere Ecken der 64-px-Rechtecke, die Kreismitte
+liegt 32 px weiter rechts unten; Herzmitte ≈ (404, 314)).
+
+**Glitzerregen** (`t > 600`, je Durchlauf): fünf `Rnd` in der Reihenfolge
+`r1…r5`, dann `Add1BigPartikel(336, −128, r1 · 8 − 4, r2 · 10 + 5, 1,
+r3 · 0,5 + 0,5, r4 · 0,2, Größe 128, Verzögerung 0, Leben 50, Art 14,
+Wachstum r5 · 20 − 15)`: ein `glitzer` (Art 14, additiv, Drehung
+`(t mod 90) · 4°`) fällt oben aus (336, −128), ändert seine Größe um
+`Wachstum` je Tick (−15 … +5, meist Schrumpfen um die feste Mitte; die Größe wird
+negativ und spiegelt das Bild — D3D zeichnet ohne Culling, `RenderStart`
+setzt `CULLMODE = NONE`), Farbe Orange bis Gelb (Rot 1, Grün 0,5…1, Blau 0…0,2),
+Tempo `vx = −4…4`, `vy = 5…15` (fällt nach unten).
+
+**Ende:** Esc (nur Esc, ohne Loslassen abzuwarten; der Test am Schleifenkopf
+sieht den Zustand des vorigen Tastenlesens) → `FadeOut(0, False)` (nicht
+abbrechbar) → `if [0x588018] = 2 then [0x588018] = 0` (`0x548C29`, im Port ohne
+Wirkung) → Rückkehr in `MenuLoop`, das den Modus 0xA setzt (Programmende).
+Der Fehlerzweig ab `0x548C48` (`DDERR_SURFACELOST` `0x887601C2`: alle Flächen
+wiederherstellen und die Schleife fortsetzen, sonst Modus 0xA) ist DirectDraw
+und entfällt im Port.
+
+**Zeitlinie** (Durchlauf zu 18 ms, Zeiten ab Schleifenbeginn, davor 1 s Anlauf): 0–1,8 s Einblenden (die
+Punkte federn ab dem ersten Durchlauf aus zufälligen Orten herein, sie sind
+nach ≈ 3 s im Ziel), 7,2 s Herz (20 Punkte verschwinden), 10,8 s Glitzerregen,
+13,5 s Text erscheint (dunkel) und wird bis 15,8 s heller (Grau 128, halbe
+Helligkeit; schwarze Kanten), dann bleibt das Bild bis Esc.
+
+**Konfidenz:** Ablauf, Zahlen, Farben, Rechtecke und `Rnd`-Reihenfolge hoch
+(die Funktion ist vollständig gelesen, 44 Punkte und 24 Herzpunkte per Skript
+nachgezählt, Plasma und Partikel sind die des Speicherbildschirms bzw. des
+Abspanns). Mittel: die Schriftgröße (28 als GDI-Zellhöhe wie bei den anderen
+`SetFont`-Aufrufen), die tatsächliche Länge des `Wait 1000` (der Takt `Me.544`
+läuft seit dem letzten `Wait`, das Laden von `Me.83C` zählt mit), ob im
+Originalbild vom Menü übrig gebliebene Funken der Partikeltöpfe in die ersten
+Durchläufe hineinragen (der Port startet mit leeren Töpfen), und ob die
+Stille wirklich still ist (es gibt keine Klangaufrufe in `0x546C30`; ob `0x57A3C0`
+oder `StopOgg` am Schleifenende der Menümusik noch etwas anderes tun, wurde
+nicht geprüft). Nicht prüfbar ohne Original-Lauf: Kantenglättung der GDI-Schrift
+und die genauen Zeitabstände.
+
+Port: `src/game/love.ts` (Logik), `loveView.ts` (Zeichnung über den
+`Compositor`), `loveScene.ts` (Takt, Esc); Verdrahtung in `Game.ts`: nach dem
+Menüergebnis „love“ `FadeScene(FadeLogic(0, rnd))`, dann
+`LoveScene(host, app, textures, standart, new LoveLogic(rnd))`, danach
+`FadeScene(FadeLogic(0, rnd))` und zurück zur Shell wie bei „Exit“. Test:
+`test/love.test.ts` (unter anderem: `Rnd`-Zug je Durchlauf 88 / 505 / 0 / 5,
+Plasma gleich `Environment.moveBackground` im Speicherbildschirm).
+`src/game/config.ts` (gespeichert beim Ändern). Sprachen: siehe „Sprachen“.
+Abweichungen: die Tastenseite zeigt die Belegung nur an (Umbelegen fehlt noch); Trägheit
 („Realistic“) lässt sich schalten, wirkt aber noch nicht (der Port kennt nur
 Arcade); keine Vibration. `#/dovez?nointro=1` startet ohne Logos und Intro.
 
+## Sprachen (`Me.588070`: „D“, „E“, „R“)
+
+DoveZ kennt drei Sprachen. `Me.588070` (`0x588070`) ist ein String mit dem
+Buchstaben: `0x4A60E0` setzt beim Start „E“ (`0x40F814`), `config.cfg`
+(`0x504E80`) überschreibt ihn — Version 1 speichert einen Boolean („D“, wenn
+wahr, sonst „E“), ab Version 2 wird der String selbst gelesen (`Get #f`); so kommt
+„R“ hinein. Die Schaltflächen des Konfigurationsdialogs setzen nur „D“
+(`0x57D180`) und „E“ (`0x57D220`); „R“ steht also in der `config.cfg` der
+russischen Ausgabe. *(Die Vorgabe ist demnach „E“, nicht „D“; der Port fällt bei
+unbekannter Locale auf Englisch.)* Jede Textstelle vergleicht mit
+`StrCmp(Me.588070, "D"/"E"/"R")` — meist als Kette D → E → R, an manchen Stellen
+nur „R“ gegen „alles andere“ oder nur „D“ gegen „alles andere“ (dann steht dort
+auch auf Russisch Englisch). Bei einem anderen Wert bleiben Tastenhinweis und
+Pause-Menüpunkt „Weiter“ leer. Konstanten: `0x411414` = „D“, `0x40F814` = „E“, `0x410600` = „R“.
+
+**Russische Texte:** Im Programm stehen sie als UTF-16-Konstanten, deren Zeichen
+in Wahrheit CP1251-Bytes sind (`0x415244` zeigt „Êîíôèãóðàöèÿ“ = „Конфигурация“);
+VB wandelt sie mit `StrToAnsi` in die Systemcodepage zurück, GDI zeichnet sie mit
+`CreateFontA(…, Charset = [0x5886DC], …)` (`0x57DE7F`: nur bei „R“ der
+Zeichensatz der Formularschrift, sonst 0). Der Port hat sie dekodiert
+(`menuTexts.ts`, `saveScreen.ts`, `lang.ts`) und zeichnet Unicode mit Arial.
+Ihre Reihenfolge im Code ist die Zuordnung DE ↔ EN ↔ RU je Zeile.
+
+### Weichen und ihre Zweige
+
+| Stelle | Funktion | Text bzw. Wirkung |
+|---|---|---|
+| `0x4CA9D8` | `LadeDaten` (`0x4C72C0`) | „Loading“ (System 18, weiß, 376/490); **R** „Загрузка“ bei **372**/490. Gleich in `LevelSkript` bei `Play` (`0x54D826`) und `credits` (`0x54DC21`) |
+| `0x4CFB00` | `LadeDaten` | „Press any key to start!“ (System 24, y 470): D und E englisch bei x 294; **R** „Нажмите любую клавишу для старта!“ bei x **214** |
+| `0x4CEFB9`, `0x4CF118` | `LadeDaten` | Funkdatei `<Name><D\|E\|R>.txt` (Existenzprüfung, sonst „Textdatei nicht gefunden“) |
+| `0x5232B3` | `Continue` (`0x521790`) | nur „D“: „… landet auf Platz N!“, sonst englisch — **R zeigt „ranked at place N!“** |
+| `0x527187`/`0x527240`/`0x5272F9` | `Pause` (`0x524610`) | R „Продолжить“, E „RESUME“, D „WEITER“ bei (118, 89), Arial 26 gewählt/21 |
+| `0x527413` | `Pause` | R „Выход“, sonst „EXIT“ bei (118, 120) |
+| `0x5275BA` | `Pause` | Titel: R `Replace(Left(Lvl, InStr(Lvl, "-") + 1), "Level", "Уровень")` → „Уровень1-1 (Bruce)“, sonst der ganze Name „Level1-1 Skyfight (Bruce)“ |
+| `0x539DF0` | `SpielSpezial` (`0x538CF0`) | Tastenhinweis (Arial 70): R „Нажмите: “, E „Press: “, D „Drücke: “ |
+| `0x541183` | `SaveGame` (`0x541010`) | Platz 0: R „Не сохранено“, E „Don't Save“, D „Nicht speichern“ |
+| `0x541FE0` (R), `0x5425D2` (E), `0x542C5A` (D) | `SaveGame` | Kopf und Spielerzeilen, siehe unten |
+| `0x544AA2` | `SaveGame` | Beschriftung: R ersetzt im Levelnamen „Level“ durch „Уровень“ (`Replace`, sonst `Left(Lvl, InStr+1)` wie bisher) |
+| `0x544F06`/`0x545061`/`0x5451B5` | `SaveGame` | „Gespeichert“ (Arial 150, 20/150), „Saved“ (300, 20/120), **R „Сохранено“ (Arial 170, 20/140)**, Schatten +2/+2 |
+| `0x54DD63`, `0x54DDD0`, `0x559BCA` | `LevelSkript`, `MenuLoop` | Videodatei `Outro2<S>.avi`, `Outro<S>.avi`, `intro<S>.avi` mit dem Buchstaben der Sprache |
+| `0x559567`… | `OnOff` (`0x559530`) | D „Ein“/„Aus“, E „On“/„Off“, R „Вкл.“/„Выкл.“ |
+| `0x55A696`… `0x568BB4` | `MenuLoop` (`0x559630`) | 27 Stellen, Tabelle unten |
+
+**Speicherbildschirm auf Russisch** (`0x541FE0`): Der Zweig ist eine eigene Kopie
+mit denselben Positionen, aber anderem Inhalt: „Уровень расчищен!“ **ohne
+Levelnamen** (24 bei 50/170), „Сохранить игру? “ (50/280), je Spieler
+„1 игрок: “/„2 игрок: “ + Punkte (18 bei 50/200, 50/220) — **ohne** den
+Highscore-Platz „(HIGHSCORE: n. Platz!)“. D und E bleiben wie sie waren.
+
+**Hauptmenü auf Russisch** (`menuTexts.ts`; Adressen der Konstanten dort):
+
+| Seite | Russisch (Unterschiede zu D/E) |
+|---|---|
+| 3 Hauptmenü | „Меню“: Новая, Загрузить, Настройки, **[Бонус]**, Выход — **kein „Highscore“-Eintrag**; „Бонус“ nur, wenn `[0x588080] ≠ 0` (n = 3 bzw. 4) |
+| 10 Spieleranzahl | „Новая“: `1 игрок"`, „2 игрока“, „Назад“ |
+| 1 Schiff | „КОРАБЛЬ“: D-Tonator, D-Phyton, „Назад“ |
+| 2 Name | nur „D“ ist eigen: R zeigt „Please insert Name, player N:“ |
+| 20 Laden | Titel „Загрузить“, Zurück „Назад“ |
+| 30 Optionen | „Настройки“: `Игра"`, Звуки, Клавиши, Назад — **ohne Bonus-Eintrag** |
+| 31 | „Настройка игры“, 19 Striche; „Режим Супер Луч: Норма“/„…: Смена режима“, „Апгрейд: Начальный“/„…: Продвинутый“, „Инерция корабля: Вкл./Выкл.“, „Назад“ |
+| 32 | `Уровень звука"`, 32 Striche; „Музыка: “, **„SFX: “** (statt „Sound: “), „Голоса: “, „Назад“ |
+| 33 | „Конфигурация“, **20** Striche; `Синглплеер"`/„Мультиплеер: Игрок 1/2“, „Управление: Клавиатура“; zehn Aktionen Влево, Вверх, Вправо, Вниз, Огонь, Навести, „Управление режимом/Сменить Части“, „Режим Супер Луч“, „Поворот частей“, „Сверхновая звезда“ (+ „Пауза“, „Force Feedback“, „Принять настройку“, „Назад“) |
+| 40 Bonus | „Бонус“, Levelnamen JUNGLE/SPACE/STIFT, „Назад“ |
+| 50 Highscore | Zurück-Zeile nur „D“ eigen: R „Back“ |
+
+Koordinaten, Tafeln und Listenpositionen stehen jeweils **vor** der Sprachweiche
+und sind in allen Sprachen gleich (`Me.zx/zy`, Liste 385/255 usw.); `ShowMenu`
+(`0x558890`) und `ShowList` (`0x558500`) kennen keine Sprache. Die Aktionen
+hängen am Index (`sel = 3` öffnet auf Seite 3 „Highscore“, der letzte Eintrag
+`Me.5F0` beendet; auf Seite 30 öffnet `sel = 3` „Bonus“): Das russische Menü hat
+weniger Einträge, also öffnet dort „Бонус“ die **Highscore-Seite**, und die
+Bonuslevel sind in der russischen Fassung nicht erreichbar — der Port übernimmt
+das wörtlich (Test `menuLang.test.ts`). Die schließenden `"` in `1 игрок"`,
+`Игра"`, `Уровень звука"`, `Синглплеер"` (und „Несовместимая видео карта"“) stehen
+so in den Konstanten und werden mit angezeigt.
+
+### Videos
+
+`intro<S>.avi` (lose, `Data\Video`), `Outro<S>.avi` und `Outro2<S>.avi`
+(`Video.d2p`) mit `S` = „D“/„E“/„R“ — die Zwischensequenzen der Kampagne
+(`Play <datei>`) sind sprachunabhängig. Die russischen Dateien `introR`,
+`OutroR`, `Outro2R` liegen in den Originaldaten **nicht** vor (nur D und E). Fehlt
+die Datei, läuft `PlayAVIFile` (`0x551930`) in den Fehlerzweig (`0x552D3C`, Meldung
+„Video: <Fehler>“) und kehrt zurück: die Sequenz wird übersprungen, das Spiel geht
+gleich weiter. Der Port tut dasselbe (`VideoScene`: unbekannte ID → weiter); die
+IDs sind `video/intror`, `video/outror`, `video/outro2r`. Kämen die Dateien in
+`Video.d2p` bzw. `Data/Video`, müsste nur `assetkit` sie mitnehmen.
+
+### Funktexte und Stimmen
+
+`<Name>R.txt` (CP1251) wird wie D/E geladen (`LadeDaten`, `0x4CEFB9`): Zeile für
+Zeile, `[Abschnitt]` = Funk-ID des Level-Skripts (Byte-Vergleich; das „ß“ von
+„Drohnen schießen“ steht in der R-Datei als Byte `DF`, in CP1251 „Я“ —
+`parseRadioTextRu` liest die Namen deshalb als CP1252). Jede Zeile zerlegt
+`GetWord(Zeile, n, ";")` (`0x576270`) an *jedem* `;`. Die WAV-Namen kommen
+unverändert aus der Datei (`SkyfightRU_notruf.wav`) und werden zur Wiedergabe aus
+`<Level>.dfp` entpackt (`0x56A2B7`, `0x4EE2E0`); fehlt die Datei, bleibt der Ton
+aus (das Original meldet zusätzlich „Sound Not Found: <Datei>“ ins Laufband,
+`0x4EE5EB`, vermutlich — der Port lässt die Meldung weg). In den Originaldaten
+liegt keine einzige `…RU_*.wav` in einer `.dfp` — **russisch: nur Untertitel**,
+Dauer und Untertitel aus `R.txt` (die Dauern gehören zu den fehlenden
+Sprachaufnahmen: 5001 statt 4598 ms bei Skyfight). Ausnahme: `Escape_Bruce_oaah.wav`,
+`…_Yeehaw.wav` (Level 7-5) heißen in E und R gleich und werden gespielt. Liefert
+eine russische Ausgabe die Aufnahmen in den `.dfp`, spielt der Port sie ohne
+Änderung (die Pipeline wandelt jede WAV der `.dfp`).
+
+`R.txt` ist bis auf drei Stellen die genaue Entsprechung von `E.txt` (gleiche
+Abschnitte, Sprecher, Reihenfolge; WAV-Namen `RU_` ↔ `E_`, Epilog `_ru` ↔ `_en`):
+[Bombers] (Spacestation II) fehlt, im Epilog [Credits] hat 12 statt 13 Gruppen,
+und `Industry1R.txt` [Harbor] enthält ein **stray `;`** im Untertitel
+(`…Кровавый ад;они прибыли до нас.;;0;`). Das Original läse dort eine Müllgruppe
+(Sprecher „они прибыли до нас.“, Dauer 0) und zeigte nur „Укрытие. Кровавый ад“.
+Der Parser (`RadioText.ts`) erkennt Gruppen an Sprecher + WAV; was dazwischen
+liegt, ist Untertitel (mit „; “ zusammengefügt), `;;0;`-Reste am Ende fallen weg —
+ergibt „Укрытие. Кровавый ад; они прибыли до нас.“. Die Pipeline schreibt
+`radio/<slug>` = `{ de, en, ru }` (eigener Job je Level, `RADIO_CONVERTER_VERSION`).
+
+### Im Port
+
+- **Wahl:** `lang=de|en|ru` in der URL (`#/dovez?lang=ru`) gewinnt; sonst die Locale
+  des Hosts (`de-*` Deutsch, `ru-*` Russisch, alles andere Englisch). Die Shell
+  kennt `ru` (`LOCALES`, eigene Shelltexte, Sprachwahl in den Einstellungen); ein
+  Spiel ohne Russisch (DOVE) fällt auf Englisch.
+- **Umsetzung:** `src/game/lang.ts` (`Lang`, `pick(lang, de, en, ru)`, Ladebild-
+  und Tastenhinweistexte, Levelkürzel), `menu/menuTexts.ts` (Tabellen je Sprache),
+  `saveScreen.ts` (`saveStrings`), `pauseScreen.ts`, `continueScreen.ts`,
+  `saveGame.ts` (`saveLabel`), `campaign.ts` (`languageVideo`), `Renderer.ts`
+  (Tastenhinweis). Tests: `lang.test.ts`, `menuLang.test.ts`, `radioLang.test.ts`,
+  `packages/formats/test/dovez.test.ts`.
+- **Namenseingabe:** auf Russisch sind zusätzlich Ё, А–я, ё erlaubt (CP1251-
+  `KeyAscii` ab 192).
+- **Datum** der Spielstandbeschriftung (im Original das der Windows-
+  Ländereinstellung): Deutsch und Russisch `TT.MM.JJJJ`, Englisch `M/T/JJJJ`
+  *(Annahme)*.
+- **Nicht übernommen:** Konfigurationsdialog und Fehlerfenster mit russischen
+  Texten („Несовместимая видео карта“ `0x411844`, „Пожалуйста, вставьте CD“
+  `0x411B24`, „DoveZ уже запущен“ `0x41368C`, „800*600 Видео“, „400*300 Видео“,
+  „32-bit цвет“, „Отмена“, „Видео“, „Звук“, „Полный экран“, „В окне“ …,
+  `0x4FEE90`, `0x5027B0`, `0x57AA70`): Der Browser hat weder Anzeigemodus noch
+  CD-Prüfung noch Einzelstartsperre. Die drei Treffer für `push 0x410600` in
+  `0x578820`, `0x57E030`, `0x57E730` sind die **Taste R** der Tastennamen, keine
+  Sprache.
+- **Abweichungen, die nicht an Russisch hängen** (beim Vergleich aufgefallen, D/E
+  unverändert gelassen): Tastenseite (33) — die Striche sind im Original D 27 /
+  E 16 (`0x414CE8`, `0x41501C`), der Port zeigt 26/19; „Zurück“ steht im Port bei
+  Zeile 20, die Aktion prüft Zeile 21 (im Original stehen dort „Принять
+  настройку“ bei 20 und „Назад“ bei 21); Pause, Vibration und „Einstellungen
+  übernehmen“ fehlen.
+
+## Bosslevel-Verifikation (Kopflos-Bot)
+
+Ein Bot (`packages/game-dovez/test/`) spielt die Level unverwundbar durch. Der
+einfache Bot hält x = 100, feuert und folgt in y dem nächsten Gegner; das genügt
+nicht für Bosse mit gepanzerten Vorbauten. Der **Jäger-Bot** (`hunter.ts`) fliegt
+in beiden Achsen an eine Stelle, an der ein ungepanzertes Teil das oberste
+Teil ist. Je Bosslevel ein Unterabschnitt.
+
+### Level 4-3 (`level4-3_cityboss`)
+
+Länge 99999, Ende über den Boss-Tod (`Me.584 = Me.588 − 151` bei Zustandstimer
+520, Abschnitt „Boss-Finale“). Test: `test/boss-4-3.test.ts`. **Im Port war
+nichts zu ändern**; beide Symptome des einfachen Bots sind Verhalten des
+Originals.
+
+**Aufbau.** Ebene 4: bei Tick 0 Typ 1 „Schwarz“ (fest, 2 × 2, Route 3 „Scroll“:
+setzt alle Scrollgeschwindigkeiten auf 0, endet im selben Tick), bei Tick 23
+Typ 0 „Cityboss“ (Route 4 „Main“, y = 39, x = 800). Ebene 3 hat nur zwei
+vorplatzierte Dachkacheln (Gruppe 17, 799 × 38, y = 513, x = 0 und 797): der
+einzige Boden, x ≈ 0…1596. Der Boss hat 21 Teile (Energie 75 000); ein Teil ist
+ungepanzert und nimmt Schaden, ein Teil mit `damagesBody ≠ 0` gibt ihn an den
+Gegner weiter:
+
+| Teil | Bild | Lage (x, y) | Rolle |
+|---|---|---|---|
+| 16 | Generatorhinten | 255, 317 | ungepanzert, eigene 15 000, nichts darüber |
+| 8 + 9 | Brustgenerator + Deckel | 75, 130 | 40 000; Deckel (gepanzert, gleiches Bild) darüber |
+| 14 + 15 | Generatorvorne + Deckel | 16, 332 | 30 000; ebenso |
+| 2 + 3 | Torso + Deckel | 73, 138 | 30 000; ebenso |
+| 0 | Hauptgenerator | 126, 181 | ungepanzert, **`damagesBody`**: zieht die 75 000 ab; unter Torso und Armen |
+| 1, 5, 6, 7, 4, 10–13, 17–20 | Arme, Werfer, Ketten, Kopf | | gepanzert (nehmen keinen Schaden) |
+
+Die Deckel sind gepanzerte Teile mit dem Bild des Teils darunter; ihr Bild 2 ist
+`Schwarz.bmp` (2 × 2), `SetPartFrame(Deckel, 2)` „öffnet“ sie.
+
+**Phasen** (Route 4, Register R9 = 32779 an die Teilrouten): 0 Vorlauf, x von
+800 mit 0,5 px/Tick nach links bis x = 0 (Wurf `SetGlobal 0, −5`, Werfer
+Teil 10 mit Route 6), zurück nach rechts bis 500 (R9 = 2, Wurf `+3` nach rechts),
+danach `IfPartDestroyed(16)`: solange der Generator hinten steht, wiederholt sich
+das Hin und Her (Wartezeit 50). Ist er weg, springt R9 auf 3 (Wurf wieder −5),
+beide vorderen Deckel öffnen (`SetPartFrame 9, 2` und `15, 2`), nach 100 Ticks
+zwei Zerstörungsanimationen. Route 10 („Waffensysteme“, Teil 0) wartet auf globale 2.
+Sind Brust- und Frontgenerator zerstört (`IfPartDestroyed 8` und `14`), setzt die
+Route R7 = 1 (beendet die Feuerschleifen von Teil 0), öffnet den Torsodeckel
+(`SetPartFrame 3, 2`), `SetGlobal 1, 1`, Rütteln 50; Route 7 („Explode“, Arme
+und Hände Teile 1, 5, 6, 7) setzt daraufhin `HP = −1` — die Arme zerplatzen.
+Fällt der Torso, läuft die letzte Phase (Tempo 1,5, R9 = 4, endlose
+Feuerschleife). Den Rest erledigt der Hauptgenerator: 75 000 Energie am
+Gegner → Zustand 4 (Boss-Finale).
+
+**Symptom 1 (Boss verliert nie Energie): Bot, nicht Port.** Treffertest
+`CheckColisionWithEnemy` (`0x4C3E10`): Teile vom letzten zum ersten, das erste
+überlappende Teil entscheidet; ein gepanzertes (`[Teil+0x2E] ≠ 0`, Sprung
+`0x4C424A` → `0x4C4A4A` → Ende `0x4C5E48`) verbraucht den Schuss ohne Schaden,
+die Suche geht **nicht** weiter. Der Generator hinten liegt hinter den
+gepanzerten Ketten (Teile 11, 13) und der Streukanone (Teil 17); von links sind
+in allen Höhen und Bosslagen (getestet: Tick 400…2100, x-Abstand 8, y-Abstand 4)
+nur gepanzerte Teile das erste, was ein Schuss berührt. Der Schuss entsteht bei
+(x + 45, y + 32) des Schiffs; wer dort **im** Boss steht, trifft das oberste Teil
+an dieser Stelle — der Generator hinten ist dann frei (Teil 16 hat den höchsten
+Index unter den Teilen dort). Der einfache Bot bleibt bei x = 100, zielt in y auf
+`actor.y + 30` (Ursprung des Bosses, oben) und trifft nur Kopf und Arme: Punkte
+bleiben bei den abgeschossenen Granaten (≤ 2000). Der Jäger-Bot besiegt den Boss
+nach ≈ 11 500 Ticks (Generator hinten ≈ 1500, Brust/Front ≈ 3500…4000, Torso ≈ 7500,
+Boss ≈ 11 500 — in Ticks des Bots, nicht zeitkritisch), Zustand 2, die Kampagne
+geht mit `level5-1_atlantis` weiter (Test gegen `Play.txt`). Konfidenz: hoch für
+die Trefferreihenfolge und die Routen (Code gelesen, im Port durchgespielt),
+mittel dafür, dass ein Mensch es ebenso löst (Original nicht gespielt).
+
+**Symptom 2 (Granaten fliegen ewig): auch im Original.** Typ 2 „Granate“
+(Route 5) gehört dem Boss (`spawnSpec` 5002, Teil 10 ruft `Fire 10, −1`): erst ein
+Sprung um 20 · L0 = −100 px und −30 px, dann vy = −4 + 0,2 je Tick, vx = L0
+(−5 nach links, sonst +3 + `Rnd(3)`); jeden Tick `IfHitsLandscape(vx, vy)` →
+`HP = −1` (Selbstzerstörung, keine Punkte). Die Granate zerplatzt nur am Dach
+(Ebene 3). Wirft der Boss bei x ≲ 600 nach links, landet sie bei x < 0, wo es
+keinen Boden gibt (ausgeprägt in den ersten 1600 Ticks des Hinwegs bis x = 0 und in
+der Phase mit Wurf nach links), und fällt ewig. Nachgewiesen: `SpielMoveEnemy`
+(`0x4B5850`…`0x4C3CB0`) hat keine Positions- oder Bildschirmprüfung (die gelesenen
+`fcomp`-Vergleiche gelten 0, Zählern und den Wackelgrenzen 736/486 des
+Boss-Finales); `KillEnemy` (`0x4AC810`, vtable `+0x754`) hat 16 Aufrufer, davon
+in `SpielMoveEnemy` `0x4C0E51` (Routenende), `0x4C1668` (Selbstzerstörung ohne
+Wrack), `0x4C3C8E`, `0x4C0CD6` (Ende der Teileschleife ohne sichtbares Teil) und
+in den Todeszuständen (`0x4B9381`, `0x4BCF88`, `0x4BDFD8`, `0x4BFF51`) — alle an
+Routenende, Tod oder Treffer gebunden, keiner an eine Position; `DoRoute`
+(`0x4ACC70`) endet nur am
+Listenende, bei `MoveToAndDie`, Routenindex < 0 und nach 10 000 Befehlen ohne
+Nachgeben (`0x4ACD48`). Es gibt also keine Freigabe außerhalb des Bildes; das
+Leck ist **durch die Slottabelle begrenzt**: `AddEnemy` (`0x575FF0`) sucht ab
+`[0x58811C]` bis Slot 100 (`cmp ecx, 0x64`) und kehrt bei keinem freien Platz
+ohne Fehler zurück (Port: −1). Im Jäger-Lauf bis zum Boss-Tod stieg die Zahl
+lebender Gegner auf 23 (etwa 3 Granaten je 500 Ticks); ein Lauf von 30 000 Ticks
+ohne Boss-Tod würde die 101 Slots füllen, und der Boss kann dann keine Granaten
+mehr werfen. Die Koordinaten wachsen im Original ebenso (Single: y 4 · 10⁶ nach
+7500 Ticks ohne Genauigkeitsverlust, der für die Route zählt). Der Port
+übernimmt das unverändert (Tests in `boss-4-3.test.ts`).
+
+**Offen.** Anzahl der Ticks des Spielers im Original und die Frage, ob ein
+Mensch den Boss tatsächlich von innen ausschaltet (Vermutung *M*); Teil-Konturen
+stammen aus den erzeugten `.r`-Assets und sind nicht gegen das Original geprüft.

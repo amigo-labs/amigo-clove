@@ -10,6 +10,7 @@ import {
   type Renderer as PixiRenderer,
 } from "pixi.js";
 import type { DrawList, DrawSlot, Quad } from "../sim/effects";
+import { type Lang, hintPrefix } from "../game/lang";
 import type { EnvSlot } from "../sim/envDraw";
 import { DeathState, type Enemy } from "../sim/enemies";
 import { LAYER_COUNT } from "../sim/layers";
@@ -91,6 +92,7 @@ const ORDER = [
   "anim5",
   "fx:gate0",
   "fx:exhaust",
+  "fx:drones",
   "fx:weapons",
   "fx:shots0",
   "fx:sparks0",
@@ -105,10 +107,12 @@ const ORDER = [
   "fx:shots1",
   "anim3",
   "fx:beam",
+  "env:beam",
   "nova:blits",
   "fx:nova",
   "fx:sparks1",
   "fx:big",
+  "env:big",
   "eshots",
   "fx:force",
   "fx:popups",
@@ -125,9 +129,14 @@ const ORDER = [
   "env:overlay",
 ] as const;
 
+/** Deckkraft von Vollbildblitzen bei bewegungsarmer Darstellung. */
+const CALM_FLASH = 0.3;
+
 export interface RendererOptions {
-  /** Spielsprache Deutsch (Tastenhinweis „Drücke:“ statt „Press:“). */
-  readonly german?: boolean;
+  /** Bewegungsarme Darstellung (Einstellung der Shell): kein Wackeln, abgeschwächte Blitze. */
+  readonly calm?: () => boolean;
+  /** Spielsprache (Tastenhinweis „Drücke:“/„Press:“/„Нажмите:“); ohne Angabe Deutsch. */
+  readonly lang?: Lang;
   /** Tastenname einer Aktion (Index der Belegungstabelle) für Satz 0 (1P) bzw. 1/2. */
   readonly keyLabel?: (action: number, set: number) => string;
 }
@@ -223,6 +232,10 @@ export class Renderer {
     return this.texture(s.key, s.rect.x, s.rect.y, s.rect.w, s.rect.h);
   }
 
+  private calm(): boolean {
+    return this.opts.calm?.() === true;
+  }
+
   private batch(name: string): SpriteBatch {
     return this.batches.get(name)!;
   }
@@ -244,7 +257,10 @@ export class Renderer {
       if (slot !== "radio") this.drawList(this.batch(`fx:${slot as DrawSlot}`), list);
     }
     this.drawHint();
-    this.screen.position.set(-w.fx.shakeX, -w.fx.shakeY);
+    const calm = this.calm();
+    this.screen.position.set(calm ? 0 : -w.fx.shakeX, calm ? 0 : -w.fx.shakeY);
+    const flash = this.layers.get("fx:flash");
+    if (flash) flash.alpha = calm ? CALM_FLASH : 1;
     // Abblenden in den letzten 50 Ticks
     const left = w.level.levelLength - w.tick;
     this.fade.alpha = left < 50 && !w.nova ? (50 - left) / 50 : 0;
@@ -291,7 +307,9 @@ export class Renderer {
       else if (name === "nova:blits") this.novaBlits(plan);
       else if (name.startsWith("env:")) {
         const slot = name.slice(4) as EnvSlot;
-        c.expand(lists[slot], (key) => this.stripTexture(key), plan);
+        // bewegungsarm: Gewitter- und Vollbild-Overlays nur zu 30 %
+        const soft = this.calm() && (slot === "overlay" || slot === "weather");
+        c.expand(lists[slot], (key) => this.stripTexture(key), plan, soft ? CALM_FLASH : 1);
       } else plan.push(this.layers.get(name)!);
     }
     c.play(plan);
@@ -314,8 +332,10 @@ export class Renderer {
 
   /** Streifen-Textur zu einem Schlüssel: Render-Ziel oder Atlas-Sprite (`@noise` mit Wiederholung). */
   private stripTexture(key: string): StripTexture | undefined {
-    if (key === "@blur" || key === "@still")
-      return this.compositor.targetTexture(key === "@blur" ? "blur" : "still");
+    if (key === "@blur" || key === "@still" || key === "@lens")
+      return this.compositor.targetTexture(
+        key === "@blur" ? "blur" : key === "@lens" ? "lens" : "still",
+      );
     const wrap = key === "@noise";
     const t = this.texture(wrap ? "noise" : key);
     if (!t) return undefined;
@@ -349,7 +369,7 @@ export class Renderer {
     }
     this.hintTexts.forEach((t, i) => (t.visible = i < need));
     if (!h) return;
-    const prefix = this.opts.german === false ? "Press: " : "Drücke: ";
+    const prefix = hintPrefix(this.opts.lang ?? "de");
     lines.forEach((set, n) => {
       const y = lines.length === 2 && n === 0 ? 360 : 450;
       const text = prefix + (this.opts.keyLabel?.(h.action, set) ?? "?");

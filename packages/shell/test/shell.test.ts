@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { combineKeys, createPadState, padKeys, type PadSnapshot } from "../src/gamepad";
 import { parseRoute } from "../src/router";
-import { DEFAULT_SETTINGS, loadSettings, sanitizeSettings } from "../src/settings";
+import { DEFAULT_SETTINGS, loadSettings, reducedMotion, sanitizeSettings } from "../src/settings";
 import { collectSaves, restoreSaves, storageFor } from "../src/storage";
 import { TEXTS } from "../src/texts";
 
@@ -38,7 +38,18 @@ describe("Einstellungen", () => {
       language: "de",
       volume: { master: 1, music: 0.25, sfx: 1 },
       gamepad: false,
+      motion: "auto",
     });
+    expect(sanitizeSettings({ motion: "reduce" }).motion).toBe("reduce");
+    expect(sanitizeSettings({ motion: "viel" }).motion).toBe("auto");
+  });
+
+  test("bewegungsarm: fest an oder aus, sonst nach dem System", () => {
+    expect(reducedMotion("reduce", false)).toBe(true);
+    expect(reducedMotion("full", true)).toBe(false);
+    expect(reducedMotion("auto", true)).toBe(true);
+    expect(reducedMotion("auto", false)).toBe(false);
+    expect(sanitizeSettings({ language: "ru" }).language).toBe("ru");
   });
 
   test("kaputtes JSON im Speicher schadet nicht", () => {

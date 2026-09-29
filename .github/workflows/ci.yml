@@ -21,6 +21,8 @@ jobs:
       # Assets werden lokal einmal gebaut und committet; CI konvertiert nichts, sondern
       # prüft nur Hashes (Dateien ↔ Manifest ↔ Quellen/Optionen).
       - run: bun run assets:verify
+      # Levelbericht (docs/measurements/dovez-levels.md) stammt aus den Assets.
+      - run: bun scripts/dovez-levels.ts --check
 
   smoke:
     runs-on: ubuntu-latest
@@ -33,3 +35,5 @@ jobs:
       # gepinnte playwright-core-Version aus packages/shell (passende Chromium-Revision)
       - run: bun run --cwd packages/shell browsers
       - run: bun run smoke
+      # Smoke baut mit Vite; das Größenbudget prüft die fertige Ausgabe.
+      - run: bun run budget
