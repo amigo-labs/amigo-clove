@@ -12,10 +12,14 @@ import type { Segment } from "./effects";
  * Backbuffer ab.
  */
 
-/** Render-Ziele des Originals: `blur` 64×64 (`Me.770`), Standbild 800×600 (`Me.774`, `blur3`). */
-export type RenderTarget = "blur" | "still";
+/**
+ * Render-Ziele des Originals: `blur` 64×64 (`Me.770`), Standbild 800×600
+ * (`Me.774`, `blur3`) und die zweite 64×64-Textur `Me.738` („Linse“ des
+ * Beams und der Schockwelle des Debug-Schiffs, mit `a_kreis3` überblittet).
+ */
+export type RenderTarget = "blur" | "still" | "lens";
 
-/** Schlüssel einer Textur: Atlas-Sprite oder `@blur`/`@still`/`@noise` (Rauschen mit Kachelwiederholung). */
+/** Schlüssel einer Textur: Atlas-Sprite oder `@blur`/`@still`/`@lens`/`@noise` (Rauschen mit Kachelwiederholung). */
 export type TexKey = string;
 
 /** TL-Vertex: Position, Texturkoordinate (0…1 über das Bild), Farbe 0…1 (geklemmt wie `0x577E70`). */
@@ -43,6 +47,8 @@ export interface Capture {
   readonly op: "capture";
   readonly target: RenderTarget;
   readonly src: readonly [number, number, number, number];
+  /** Danach dieses Atlas-Bild (Farbschlüssel) über das ganze Ziel blitten (`BltFast` mit `a_kreis3`). */
+  readonly overlay?: TexKey | undefined;
 }
 
 /** `BltFast` Backbuffer → Backbuffer: Rechtecke (sx, sy, w, h) nach (dx, dy). */
@@ -56,6 +62,7 @@ export type EnvCmd = Strip | Capture | Copy;
 /** Texturgrößen der Render-Ziele (für Quellrechtecke in Pixeln). */
 const TARGET_SIZE: Record<string, readonly [number, number]> = {
   "@blur": [64, 64],
+  "@lens": [64, 64],
   "@still": [800, 600],
   "@noise": [256, 256],
 };
@@ -159,8 +166,15 @@ export class EnvList {
     );
   }
 
-  capture(target: RenderTarget, x: number, y: number, w: number, h: number): void {
-    this.cmds.push({ op: "capture", target, src: [x, y, w, h] });
+  capture(
+    target: RenderTarget,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    overlay?: TexKey,
+  ): void {
+    this.cmds.push({ op: "capture", target, src: [x, y, w, h], overlay });
   }
 
   copy(rects: Copy["rects"]): void {
@@ -183,5 +197,9 @@ export const ENV_SLOTS = [
   "special1",
   /** `OverlayEffekte` mit `MakeSomeNoise`, zuletzt vor Abblende und HUD. */
   "overlay",
+  /** Beam des Debug-Schiffs 2 (`SpielBeam`, nach dem Beam der übrigen Schiffe). */
+  "beam",
+  /** Schockwellen-Linse der großen Partikel (Art 17, nach `MoveBigPartikel`). */
+  "big",
 ] as const;
 export type EnvSlot = (typeof ENV_SLOTS)[number];
