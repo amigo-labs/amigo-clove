@@ -1637,3 +1637,103 @@ ergibt „Укрытие. Кровавый ад; они прибыли до на
   Zeile 20, die Aktion prüft Zeile 21 (im Original stehen dort „Принять
   настройку“ bei 20 und „Назад“ bei 21); Pause, Vibration und „Einstellungen
   übernehmen“ fehlen.
+
+## Bosslevel-Verifikation (Kopflos-Bot)
+
+Ein Bot (`packages/game-dovez/test/`) spielt die Level unverwundbar durch. Der
+einfache Bot hält x = 100, feuert und folgt in y dem nächsten Gegner; das genügt
+nicht für Bosse mit gepanzerten Vorbauten. Der **Jäger-Bot** (`hunter.ts`) fliegt
+in beiden Achsen an eine Stelle, an der ein ungepanzertes Teil das oberste
+Teil ist. Je Bosslevel ein Unterabschnitt.
+
+### Level 4-3 (`level4-3_cityboss`)
+
+Länge 99999, Ende über den Boss-Tod (`Me.584 = Me.588 − 151` bei Zustandstimer
+520, Abschnitt „Boss-Finale“). Test: `test/boss-4-3.test.ts`. **Im Port war
+nichts zu ändern**; beide Symptome des einfachen Bots sind Verhalten des
+Originals.
+
+**Aufbau.** Ebene 4: bei Tick 0 Typ 1 „Schwarz“ (fest, 2 × 2, Route 3 „Scroll“:
+setzt alle Scrollgeschwindigkeiten auf 0, endet im selben Tick), bei Tick 23
+Typ 0 „Cityboss“ (Route 4 „Main“, y = 39, x = 800). Ebene 3 hat nur zwei
+vorplatzierte Dachkacheln (Gruppe 17, 799 × 38, y = 513, x = 0 und 797): der
+einzige Boden, x ≈ 0…1596. Der Boss hat 21 Teile (Energie 75 000); ein Teil ist
+ungepanzert und nimmt Schaden, ein Teil mit `damagesBody ≠ 0` gibt ihn an den
+Gegner weiter:
+
+| Teil | Bild | Lage (x, y) | Rolle |
+|---|---|---|---|
+| 16 | Generatorhinten | 255, 317 | ungepanzert, eigene 15 000, nichts darüber |
+| 8 + 9 | Brustgenerator + Deckel | 75, 130 | 40 000; Deckel (gepanzert, gleiches Bild) darüber |
+| 14 + 15 | Generatorvorne + Deckel | 16, 332 | 30 000; ebenso |
+| 2 + 3 | Torso + Deckel | 73, 138 | 30 000; ebenso |
+| 0 | Hauptgenerator | 126, 181 | ungepanzert, **`damagesBody`**: zieht die 75 000 ab; unter Torso und Armen |
+| 1, 5, 6, 7, 4, 10–13, 17–20 | Arme, Werfer, Ketten, Kopf | | gepanzert (nehmen keinen Schaden) |
+
+Die Deckel sind gepanzerte Teile mit dem Bild des Teils darunter; ihr Bild 2 ist
+`Schwarz.bmp` (2 × 2), `SetPartFrame(Deckel, 2)` „öffnet“ sie.
+
+**Phasen** (Route 4, Register R9 = 32779 an die Teilrouten): 0 Vorlauf, x von
+800 mit 0,5 px/Tick nach links bis x = 0 (Wurf `SetGlobal 0, −5`, Werfer
+Teil 10 mit Route 6), zurück nach rechts bis 500 (R9 = 2, Wurf `+3` nach rechts),
+danach `IfPartDestroyed(16)`: solange der Generator hinten steht, wiederholt sich
+das Hin und Her (Wartezeit 50). Ist er weg, springt R9 auf 3 (Wurf wieder −5),
+beide vorderen Deckel öffnen (`SetPartFrame 9, 2` und `15, 2`), nach 100 Ticks
+zwei Zerstörungsanimationen. Route 10 („Waffensysteme“, Teil 0) wartet auf globale 2.
+Sind Brust- und Frontgenerator zerstört (`IfPartDestroyed 8` und `14`), setzt die
+Route R7 = 1 (beendet die Feuerschleifen von Teil 0), öffnet den Torsodeckel
+(`SetPartFrame 3, 2`), `SetGlobal 1, 1`, Rütteln 50; Route 7 („Explode“, Arme
+und Hände Teile 1, 5, 6, 7) setzt daraufhin `HP = −1` — die Arme zerplatzen.
+Fällt der Torso, läuft die letzte Phase (Tempo 1,5, R9 = 4, endlose
+Feuerschleife). Den Rest erledigt der Hauptgenerator: 75 000 Energie am
+Gegner → Zustand 4 (Boss-Finale).
+
+**Symptom 1 (Boss verliert nie Energie): Bot, nicht Port.** Treffertest
+`CheckColisionWithEnemy` (`0x4C3E10`): Teile vom letzten zum ersten, das erste
+überlappende Teil entscheidet; ein gepanzertes (`[Teil+0x2E] ≠ 0`, Sprung
+`0x4C424A` → `0x4C4A4A` → Ende `0x4C5E48`) verbraucht den Schuss ohne Schaden,
+die Suche geht **nicht** weiter. Der Generator hinten liegt hinter den
+gepanzerten Ketten (Teile 11, 13) und der Streukanone (Teil 17); von links sind
+in allen Höhen und Bosslagen (getestet: Tick 400…2100, x-Abstand 8, y-Abstand 4)
+nur gepanzerte Teile das erste, was ein Schuss berührt. Der Schuss entsteht bei
+(x + 45, y + 32) des Schiffs; wer dort **im** Boss steht, trifft das oberste Teil
+an dieser Stelle — der Generator hinten ist dann frei (Teil 16 hat den höchsten
+Index unter den Teilen dort). Der einfache Bot bleibt bei x = 100, zielt in y auf
+`actor.y + 30` (Ursprung des Bosses, oben) und trifft nur Kopf und Arme: Punkte
+bleiben bei den abgeschossenen Granaten (≤ 2000). Der Jäger-Bot besiegt den Boss
+nach ≈ 11 500 Ticks (Generator hinten ≈ 1500, Brust/Front ≈ 3500…4000, Torso ≈ 7500,
+Boss ≈ 11 500 — in Ticks des Bots, nicht zeitkritisch), Zustand 2, die Kampagne
+geht mit `level5-1_atlantis` weiter (Test gegen `Play.txt`). Konfidenz: hoch für
+die Trefferreihenfolge und die Routen (Code gelesen, im Port durchgespielt),
+mittel dafür, dass ein Mensch es ebenso löst (Original nicht gespielt).
+
+**Symptom 2 (Granaten fliegen ewig): auch im Original.** Typ 2 „Granate“
+(Route 5) gehört dem Boss (`spawnSpec` 5002, Teil 10 ruft `Fire 10, −1`): erst ein
+Sprung um 20 · L0 = −100 px und −30 px, dann vy = −4 + 0,2 je Tick, vx = L0
+(−5 nach links, sonst +3 + `Rnd(3)`); jeden Tick `IfHitsLandscape(vx, vy)` →
+`HP = −1` (Selbstzerstörung, keine Punkte). Die Granate zerplatzt nur am Dach
+(Ebene 3). Wirft der Boss bei x ≲ 600 nach links, landet sie bei x < 0, wo es
+keinen Boden gibt (ausgeprägt in den ersten 1600 Ticks des Hinwegs bis x = 0 und in
+der Phase mit Wurf nach links), und fällt ewig. Nachgewiesen: `SpielMoveEnemy`
+(`0x4B5850`…`0x4C3CB0`) hat keine Positions- oder Bildschirmprüfung (die gelesenen
+`fcomp`-Vergleiche gelten 0, Zählern und den Wackelgrenzen 736/486 des
+Boss-Finales); `KillEnemy` (`0x4AC810`, vtable `+0x754`) hat 16 Aufrufer, davon
+in `SpielMoveEnemy` `0x4C0E51` (Routenende), `0x4C1668` (Selbstzerstörung ohne
+Wrack), `0x4C3C8E`, `0x4C0CD6` (Ende der Teileschleife ohne sichtbares Teil) und
+in den Todeszuständen (`0x4B9381`, `0x4BCF88`, `0x4BDFD8`, `0x4BFF51`) — alle an
+Routenende, Tod oder Treffer gebunden, keiner an eine Position; `DoRoute`
+(`0x4ACC70`) endet nur am
+Listenende, bei `MoveToAndDie`, Routenindex < 0 und nach 10 000 Befehlen ohne
+Nachgeben (`0x4ACD48`). Es gibt also keine Freigabe außerhalb des Bildes; das
+Leck ist **durch die Slottabelle begrenzt**: `AddEnemy` (`0x575FF0`) sucht ab
+`[0x58811C]` bis Slot 100 (`cmp ecx, 0x64`) und kehrt bei keinem freien Platz
+ohne Fehler zurück (Port: −1). Im Jäger-Lauf bis zum Boss-Tod stieg die Zahl
+lebender Gegner auf 23 (etwa 3 Granaten je 500 Ticks); ein Lauf von 30 000 Ticks
+ohne Boss-Tod würde die 101 Slots füllen, und der Boss kann dann keine Granaten
+mehr werfen. Die Koordinaten wachsen im Original ebenso (Single: y 4 · 10⁶ nach
+7500 Ticks ohne Genauigkeitsverlust, der für die Route zählt). Der Port
+übernimmt das unverändert (Tests in `boss-4-3.test.ts`).
+
+**Offen.** Anzahl der Ticks des Spielers im Original und die Frage, ob ein
+Mensch den Boss tatsächlich von innen ausschaltet (Vermutung *M*); Teil-Konturen
+stammen aus den erzeugten `.r`-Assets und sind nicht gegen das Original geprüft.

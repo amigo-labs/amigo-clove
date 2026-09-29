@@ -9,20 +9,16 @@ import type { PlayerInput } from "../src/sim/player";
 import type { World } from "../src/sim/world";
 import { runLevel } from "./bot";
 import { botInputVulnerable } from "./botVulnerable";
+import { hunterInput } from "./hunter";
 import { laneInput } from "./lanebot";
 import { LEVEL_SLUGS } from "./assets";
 
 /** Level, in denen der Standard-Bot die Schwachstelle nicht trifft. */
 const BOTS: Readonly<Record<string, (w: World) => PlayerInput>> = {
   "level3-3_saw_machine": laneInput,
+  "level4-3_cityboss": hunterInput,
   "level5-3_rumbler": botInputVulnerable,
 };
-
-/**
- * Noch offen: ein Agent klärt 4-3 (Boss nimmt keinen Schaden, Gegner-Leck). Der Eintrag
- * entfällt, sobald `boss-4-3.test.ts` gemergt ist — bis dahin läuft dieser Test ohne 4-3.
- */
-const OPEN = new Set(["level4-3_cityboss"]);
 
 /** Höchstgrenze gleichzeitig lebender Gegner (ein Leck ließe sie ins Unendliche wachsen). */
 const MAX_ENEMIES = 120;
@@ -32,7 +28,7 @@ describe("Alle Level spielbar", () => {
     expect(LEVEL_SLUGS.length).toBe(27);
   });
 
-  for (const slug of LEVEL_SLUGS.filter((s) => !OPEN.has(s))) {
+  for (const slug of LEVEL_SLUGS) {
     test(
       slug,
       async () => {
