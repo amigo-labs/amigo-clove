@@ -154,8 +154,8 @@ Todessequenz, `Me.50C`) kopiert `OverlayEffekte` das Spielfeld nach `Me.774`
 dasselbe mit α 1 → 0 in Schritten von 0,05. Rauschen: bei `Me.6D0 > 0` 4 × 3
 Kacheln `noise` mit zufälligem, gespiegeltem Ausschnitt, **48 `Rnd`**, nur
 beim Zeichnen. `Me.6D0` ist je Tick 0; **Route op 41 („AddFade“) addiert
-Rauschen** (auf 0…1 geklemmt; 7-1, 7-2), dazu Spezial 7 und der Beam von
-Schiff 2 (fehlt im Port). Der Port rendert nach einem Tod erst das Todesbild,
+Rauschen** (auf 0…1 geklemmt; 7-1, 7-2), dazu Spezial 7 und die Ladung des
+Beams von Schiff 2 (`World.env.addNoise`). Der Port rendert nach einem Tod erst das Todesbild,
 dann startet er neu (für das Standbild).
 
 ## Spezialabläufe (`SpielSpezial` `0x538CF0`, `special.ts`)
@@ -221,8 +221,9 @@ erscheinen Waffen-Power-ups nur für das gewählte Schiff.
 - Start (100, 260), mit zwei Spielern (100, 228) und (100, 292). Neigung 0–4
   (2 waagerecht), wechselt sofort und dann alle 6 Ticks.
 - **Schiffstypen** (`A.A8`, auch `Var` 32784): 0 „D-Tonator“ (Partikel), 1
-  „D-Phyton“ (Force); 2 nur per Debug. Mit zwei Spielern bekommt Spieler 2 den
-  anderen Typ. Sprites `dove{Typ}{Neigung+1}{Bild+1}` (64 × 64).
+  „D-Phyton“ (Force); 2 „Debug-Schiff“ nur per Kommandozeile/Debug-Dialog (im
+  Port `?ship=2`, siehe „Debug-Schiff 2 und Drohnen“). Mit zwei Spielern bekommt
+  Spieler 2 den anderen Typ. Sprites `dove{Typ}{Neigung+1}{Bild+1}` (64 × 64).
 - **Schaden:** Gegnerschuss überlappt (x+5, y+20)–(x+60, y+45) → Energie −
   Schaden; Kontakt je Durchgang −2, der Gegner nimmt 15 (Schleife im selben
   Tick, bis nichts mehr trifft); Landschaft oder feste Gegner töten sofort;
@@ -279,8 +280,9 @@ erscheinen Waffen-Power-ups nur für das gewählte Schiff.
   `Rnd`), 5 Abpraller (Zünder 15…27, zerfällt in drei), 6–10 Laser der Force
   rot/blau/gelb/violett/grün mit Leuchtband (`Spur` `0x536110`; nach einem
   Treffer steht der Kopf, die Spur läuft aus), 11–13 Zweitwaffen, 14
-  Beam-Suchgeschoss. Typ 2 hat keinen Erzeuger, Typ 15 (Debug-Drohnen) wird nie
-  bewegt und belegt seinen Slot bis zum nächsten Leeren. Die Typen 6, 7, 9, 10
+  Beam-Suchgeschoss (Erzeuger: Beam-Nachwirkung von Schiff 2). Typ 2 hat keinen Erzeuger, Typ 15 (Sonderwaffe
+  2 der Debug-Drohnen, dort unerreichbar) wird nie bewegt und belegt seinen Slot
+  bis zum nächsten Leeren. Die Typen 6, 7, 9, 10
   setzen den gemeinsamen Kasten `L.304…L.310` nicht und erben im Außentest
   dessen Maße vom zuletzt bearbeiteten Schuss (im Port mitgeführt).
 - **Treffer** `CheckColisionWithEnemy` (`0x4C3E10`): Gegner in Slotreihenfolge,
@@ -320,7 +322,8 @@ halbiert sich je Treffer und wächst sonst um 25; sie schluckt Gegnerkugeln
 Stufe 1 oder in der Kraftphase; frei ein Fächer nach Stufe). Gegner zielen auf
 einen D-Phyton gestreut über Schiff bzw. Force (1–2 `Rnd`) und runden den
 Zielpunkt mit `CLng`. `AddForce`/`DoForce` sind Joystick-Vibration, nicht die
-Force. Drohnen (`SpielDWeapons`) gibt es nur beim Debug-Schiff 2 (im Port nicht).
+Force. Drohnen (`SpielDWeapons`) gibt es nur beim Debug-Schiff 2, siehe
+„Debug-Schiff 2 und Drohnen“.
 
 ## Beam und Kombo
 
@@ -345,10 +348,108 @@ Ladung). Schaden `CLng(L^1,6 · Stufe)`, voll `8500 · Stufe` (+1500 Schiff 1).
   unter Wasser; jeder Abschuss spaltet den Gegner (Zustand 1) und zählt die
   Kombo (`Multiplikator = Treffer · 0,1 + 1` vor dem Zählen). Danach klingt der
   Balken in 825 Ticks aus, so lange ist kein Neuladen möglich.
+- **Beam Schiff 2** (Debug): eigener Ablauf, siehe „Debug-Schiff 2 und Drohnen“.
 - **Kombo** (`Me.59C` Multiplikator, `Me.5B8` Treffer, `Me.5D4` Bonus): Reset
   bei einem entkommenen Gegner (außer `noComboReset`/`solid`), am Ende der
   Kraftphase und im Nachglühen. Anzeige nur für Spieler 1: `combo` bei
   (730, 520) mit Zähler und Bonus, am Ende „Combo: N Hit B“ im Laufband.
+
+## Debug-Schiff 2 und Drohnen
+
+Nur statisch aus der EXE (kein Spielversuch). Schiffstyp 2 (`Me.A7C[p]+0xA8`)
+ist im Original nur über die Kommandozeile bzw. den Debug-Dialog erreichbar
+(Zeichenketten „Debug INIT“, „-Level“, „Schiff Nummer?“ um `0x413500`); das Menü
+bietet nur 0 und 1. Im Port wählt die URL-Option **`?ship=2`** (Spieler 1) den
+Typ; das Menü bleibt bei 0/1 (`index.ts` → `Game` → `World`, Option `ship`).
+Code: `sim/drones.ts`, `sim/beam.ts` (`flight2`, `aftermath`, `chargeGraphics2`),
+`sim/effects.ts` (Art 17), `sim/envDraw.ts`, `render/Compositor.ts`; Tests
+`test/ship2.test.ts`, `test/ship2Beam.test.ts`. Schiff 0/1 bleibt bit-identisch
+(Regressionslauf mit Zustands-Hash vor/nach der Änderung).
+
+Was Typ 2 im Original anders macht (alle Stellen aus einer Suche nach `+0xA8`):
+
+- **Sprites** `dove2<Neigung+1><Bild+1>` (Gleiches Schema wie 0/1), Auspuff,
+  Neugeburt, `KillDove`, Wasser, HUD, Power-ups, Nova, Hauptschuss und
+  Gegnerzielen behandeln Typ 2 wie Typ 0/1 (im Port schon vorhanden).
+- **Drohnen** (`SpielDWeapons` `0x4E0ED0`, Array `Me.B04`, 2 × 0x70 Byte,
+  `ReDim 0 To 1`), je Tick und Typ-2-Spieler, nach den Partikeln
+  (Schritt 5 von `SpielLoop`), auch in der Nova; ohne Prüfung auf Leben:
+  1. *Kette:* Drohne 0 folgt (Schiff + 16, +16), Drohne 1 dem Verlaufsende der
+     vorigen; Verlauf 11 Werte, die Drohne liegt 10 Ticks zurück; steht das
+     Ziel (gleiche Position wie der neueste Wert), passiert nichts außer
+     Drehung mit 1° zurück auf 0°. Sonst Drehung höchstens 10° je Tick zum
+     Winkel `WinkelInGrad(dx, dy) − 360` (`CLng`), Zielwinkel um 360 nach oben
+     an den aktuellen herangerückt. Zeichnen: Glutfleck `a_kreis2` 64 × 64
+     (0,2 / 0,1 / 0,1 / 0,8) normal und additiv, Richtungsstrich 3 px additiv.
+  2. *Zielsuche* (`Me.B08`, Start True): nächste Teil-Mitte im Umkreis
+     `Me.724` = 170 um (Schiff + 64, +32) (`CLng(Sqr(dx²+dy²))`, strikt `<`,
+     Gleichstand: das erste; alle Teile lebender, nicht fester Gegner mit
+     Kontur, auch unsichtbare, gepanzerte nicht). Vier `Blitz` (zwei Paare, rot 10
+     px / schwarz 5 px, Startpunkt ± 5 · cos(2 · Tick) in y, Anzahl Segmente 4,
+     Streuung 30, Startwert `CLng(Rnd · 10000)` je Paar = **1 `Rnd` je Paar**),
+     dann 10 Schaden auf 2 × 2 px um die Mitte (mit Funken).
+  3. *Kugeln* (`Me.B0A`, Feuer `Me.B0C`): zwei Sprites `dw1-<Int(Tick/3) mod
+     10>` 32 × 32 auf der Bahn (Schiff + 32 + cos(φ + 8 · Tick) · 60,
+     Schiff + 32 + sin(9 · Tick + φ) · 55), φ = 0°/180°; Treffer 20 Schaden.
+     Je Kugel 2 `Rnd` (5-%-Wurf, Richtung); nur bei Treffer beider Bedingungen
+     und gehaltenem Feuer (Aktion 4, gesperrt im Levelausflug) ein Paar
+     Schüsse Typ −2 (Tempo ±9, Ebene 1, Schaden `40 · Stufe + 50`).
+  4. *Sonderwaffen* `Me.B14[k]` (Vorrat 30 / 4 / 0 aus `DoveReset`
+     `0x4A6D50`/`0x4A6E97`, Pause `Me.B20[k]`), D-Taste, Modus `Me.B2C`: 0
+     Fallrakete Typ 12 (Schaden 1500, `Rnd`, Pause 8, `rocketlaunch`), 1
+     zwölf Zielsuchraketen Typ 13 im 30°-Ring (Pause 100), 2 21 Schüsse Typ 15
+     „Debug-Drohnen“. **`Me.B2C` wird nirgends geschrieben**, 1 und 2 sind im
+     Original unerreichbar (im Port trotzdem nachgebaut, Feld `Drones.mode`).
+- **Drohnen-Schüsse** (`SpielSchieß` `0x4E3D0F`, bei gehaltenem Feuer, an
+  Stelle des Zweigs für Typ 0/1): je Drohne alle 8 Ticks (`Me.B04[i].6C` = 7)
+  ein Schuss Typ 0, Tempo 9 in Blickrichtung, Ebene 1, ab Mitte + 8, Schaden
+  `20 · Stufe + 50`.
+- **Aufstellung** `DovePosSetup` `0x4A6BF6`: alle Drohnen samt Verlauf auf
+  Spieler 1 + (16, 16), auch wenn Spieler 1 kein Typ-2-Schiff fliegt.
+- **Beam** (`SpielBeam` `0x514EDC`/`0x51A89B`), mit `Schaden = CLng(L^1,6 ·
+  Stufe)`, voll `8500 · Stufe` (ohne die +1500 des D-Phyton):
+  - *Laden* (`chargeGraphics2`): Rauschen `Me.6D0 += Ladung · 0,05 / 165`;
+    Linse vor der Nase (Mitte Schiff + 96, +32, Radius `Ladung · 27/165 + 5`):
+    Ausschnitt des Spielfelds mit Überlagerung `a_kreis3` in ein 64 × 64
+    Ziel (`@lens`), darin ein bunter Blitzpartikel (Art 0, Größe 2r, drei
+    `Rnd` für die Farbe); bei voller Ladung zwei Geisterbilder `dove2<n>` mit
+    α 0,2 und keine Einsaug-Funken mehr (sonst Art 16, fünf `Rnd` je Funke).
+    Einsaug-Ziel ist (Schiff + 96, +32) statt der Nase der anderen Typen.
+  - *Flug* (`flight2`): erst ab `fired ≥ 10`; 20 px je Tick; Körper aus einem
+    erfassten Streifen (`@blur`) plus `balken` additiv 0,3, Linse am Kopf
+    (`@lens`, `a_kreis2` additiv 0,3); bei voller Ladung 5 `Rnd` je Tick und
+    Regenbogenstriche (Art 4, ab Stufe 3 Art 2, ab Stufe 2 Spiralspuren); am
+    Rand (x > 800) Ende (Kombo zurück). Treffertest mit `Schaden − 2100`, Durchschlag
+    nur beim vollen Beam; Landschaft stoppt nicht sofort, sondern löst die
+    Nachwirkung aus. Je Treffer `glow = −100`, Kombo `+0,5`, `Schaden = Rest + 2100`;
+    Rest 0 → Blitz und Ausbruch.
+  - *Nachwirkung* (`aftermath`, `glow` −100 → 0): voller Beam schickt acht
+    Suchgeschosse Typ 14 (Winkel 110…250 in 20°, Tempo 20, Schaden
+    `Schaden \ 7`) und zwei Wellen (Linse Art 17, Glut Art 16); kleiner Beam
+    blendet in `Int(Breite)` Ticks aus. Danach ist der Beam frei.
+- **Art 17** (`MoveBigPartikel`, Stoßlinse): erfasst den Ausschnitt unter dem
+  Partikel (`@lens`, Überlagerung `a_kreis3`) und zeichnet ihn um `k = Alter ·
+  p38` vergrößert; Alter = Startleben − Leben (aus der Registerbelegung
+  geschlossen).
+- **Zwei Spieler:** `LoadSpielSurfaces` (`0x4F7290`/`0x4F77A0`) gibt dem
+  zweiten Spieler mit Schiff 2 als Vorgabe den Typ −1 (`1 − 2`), also kein
+  gültiges Sprite (das Original bricht dort ab). Der Port gibt Spieler 2 dann
+  den D-Tonator.
+
+Port-Anbindung: die Drohnen zeichnen in die DrawList-Ebene `drones` (zwischen
+`exhaust` und `weapons`), der Beam nutzt die EnvList-Ebenen `beam` und `big`
+(Erfassen und Streifen nach `Compositor`, dritter Zielspeicher `@lens`). Rnd-
+Reihenfolge wie im Original (Drohnen unmittelbar nach den Partikeln, dann
+Schießen, dann Beam).
+
+Konfidenz: Drohnenlogik (Kette, Zielsuche, Kugeln, Schüsse, Sonderwaffe 0)
+hoch; Beam-Simulation (Schaden, Treffer, Nachwirkung, Suchgeschosse) hoch;
+Ladegrafik mittel bis hoch; genaue Bildzusammensetzung der Linsen
+(Überlagerung `a_kreis3`, Alter der Art 17) mittel. Abweichungen und
+Unbekanntes: die Flags `Me.4FC`/`Me.4F8` (Zeichnen der Drohnen) werden ignoriert
+(Zeichnen immer an), Töne der Sonderwaffen 1/2 (`PlaySound`-Offsets 0/200) durch
+zwei gleichzeitige Ereignisse angenähert, Erfassen außerhalb des Bildschirms
+wird geklemmt (das Original meldet einen DirectDraw-Fehler).
 
 ## Gegner-Laufzeit `SpielMoveEnemy` (`0x4B5850`)
 
