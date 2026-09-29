@@ -524,6 +524,9 @@ export class World {
       effect: (i, fx) => this.routeEffect(i, fx),
       partFires: (i, j) => this.partFires(i, j),
       addPoints: (points, x, y, vy, player) => this.addPoints(points, x, y, vy, player),
+      addKill: () => {
+        this.kills++;
+      },
       killEmitters: (i) => this.fire.killEmittersOf(i),
       sound: (name) => this.sfx(name),
       shockwave: (cx, cy, life) => this.fire.addShockwave(cx, cy, life),
@@ -813,6 +816,9 @@ export class World {
       background: (v) => this.bossHooks.background(v),
       nextParticle: (p) => nextParticle(this.companionWorld(), p),
       addPoints: (points, x, y, vy, player) => this.addPoints(points, x, y, vy, player),
+      addKill: () => {
+        this.kills++;
+      },
       sound: (name) => this.sfx(name),
       soundOff: () => this.soundOff(),
       noFlash: () => {

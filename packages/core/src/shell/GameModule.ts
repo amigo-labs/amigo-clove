@@ -12,6 +12,8 @@ import type { AssetStore } from "../asset/AssetStore";
 /** Gehaltene Tasten als `KeyboardEvent.code` (layoutunabhängig, z. B. `KeyS`, `ArrowLeft`). */
 export interface KeyState {
   isDown(code: string): boolean;
+  /** Alle gerade gehaltenen Tasten der Tastatur (für die Tastenaufnahme); fehlt bei reinen Pads. */
+  held?(): readonly string[];
 }
 
 /**

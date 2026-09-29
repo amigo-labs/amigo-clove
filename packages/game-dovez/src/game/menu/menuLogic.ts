@@ -26,6 +26,8 @@ export interface MenuKeys {
   readonly focus: boolean;
   /** Letztes `KeyAscii` (Namenseingabe), 0 = keins. */
   readonly char: number;
+  /** Gehaltene Tasten als DIK-Codes aufsteigend (Tastenaufnahme, `Keys(k)`). */
+  readonly held: readonly number[];
 }
 
 export type MenuResult =
@@ -158,8 +160,10 @@ export interface MenuOptions {
   readonly names: readonly string[];
   /** Spiel-IDs aus dem letzten Spiel (`P[p].6C`, Eindeutigkeit gegen den anderen Spieler). */
   readonly ids: readonly number[];
-  /** Tastenzeilen der Tastenkonfiguration je Satz (Aktion 0…9, Text). */
-  readonly keyText: (set: number, action: number) => string;
+  /** Tastenzeile der Tastenkonfiguration (`GetKeyText`): Satz, Aktion 0…9, zweite Tasten. */
+  readonly keyText: (set: number, action: number, keys: readonly string[]) => string;
+  /** DIK → `KeyboardEvent.code` (`""` unbekannt). */
+  readonly codeOfDik?: (dik: number) => string;
   /** Bildzähler beim Start (`Me.584` läuft vom Spiel bzw. den Logos weiter). */
   readonly frame?: number;
 }
@@ -201,6 +205,21 @@ export class MenuLogic {
   private p = 0;
   /** Tastenkonfiguration: Satz 0…2. */
   private keySet = 0;
+  /**
+   * Tastenkonfiguration: Arbeitsstand der zweiten Tasten (`0x588174` Block 3…5) seit dem
+   * Betreten von Seite 33; `config.keys` ist der zuletzt übernommene Stand (`[ebp-0x138]`).
+   */
+  private working: string[] | undefined;
+  /**
+   * Tastenaufnahme (`[ebp-0x13c]`): `wait` bis OK losgelassen ist, `scan` wartet auf eine Taste
+   * (Zeile blinkt), `hold` nimmt weitere Tasten auf, solange die erste gehalten wird, `esc`
+   * wartet auf das Loslassen von Esc (Abbruch).
+   */
+  private capture:
+    | { state: "wait" | "scan" | "esc" }
+    | { state: "hold"; dik: number; index: number }
+    | undefined;
+  private captureIndex = 0;
   private okFree = false;
   private backFree = false;
   private menuDownFree = false;
@@ -431,16 +450,17 @@ export class MenuLogic {
             [DASHES(de ? 26 : 19), false],
             ["", false],
             [`${de ? "Steuerung für " : ""}${who!}`, true],
-            [`${de ? "Gerät" : "Controller"}: ${de ? "Tastatur" : "Keyboard"}`, false],
+            [`${de ? "Gerät" : "Controller"}: ${de ? "Tastatur" : "Keyboard"}`, true],
             ["", false],
           ];
-          // Im Port nur zur Ansicht: die Belegung kommt aus `input.ts` (Umbelegen fehlt noch)
-          labels.forEach((l, a) => rows.push([`${l}: ${this.o.keyText(set, a)}`, false]));
+          const keys = this.working ?? this.config.keys;
+          labels.forEach((l, a) => rows.push([`${l}: ${this.o.keyText(set, a, keys)}`, true]));
           rows.push(
             ["", false],
             ["", false],
             ["", false],
             ["", false],
+            [de ? "Einstellungen übernehmen" : "Apply changes", true],
             [de ? "Zurück" : "Back", true],
           );
           this.setList(390, 130, this.list.sel, rows);
@@ -503,8 +523,15 @@ export class MenuLogic {
         scores = this.o.highscores.map((e) => String(e.score));
       }
       fillList?.();
-      if (this.page === 2 || this.page === 20 || this.page === 50 || fillList)
-        list = this.showList(k, this.page === 2);
+      if (this.page === 2 || this.page === 20 || this.page === 50 || fillList) {
+        const capturing = this.page === 33 && this.capture !== undefined;
+        // Tastenseite: die Zeile der Aufnahme blinkt gelb, alle 3 Durchläufe wechselnd
+        const blink =
+          this.page === 33 &&
+          this.capture?.state === "scan" &&
+          Math.trunc(this.frame / 3) % 2 === 0;
+        list = this.showList(k, this.page === 2 || capturing, blink);
+      }
     }
     this.actions(k);
     return {
@@ -619,15 +646,15 @@ export class MenuLogic {
 
   // --- ShowList -----------------------------------------------------------
 
-  /** Auf der Tastenseite blinkt im Original die Zeile der Tastenaufnahme (im Port ohne Aufnahme). */
-  private showList(k: MenuKeys, locked: boolean): MenuDraw["list"] {
+  /** `blink`: die gewählte Zeile bekommt statt Weiß Gelb (Farbe −1, Tastenaufnahme). */
+  private showList(k: MenuKeys, locked: boolean, blink = false): MenuDraw["list"] {
     const l = this.list;
     const rows: ListRow[] = [];
     l.rows.forEach((text, i) => {
       if (text.length === 0) return;
       const f = l.selectable[i] ? -1 : 0;
       const color = qbColor(f + 8);
-      const top = qbColor(f + 8 + (i === l.sel ? 8 : 0));
+      const top = qbColor(f + 8 + (i === l.sel ? 8 + (blink ? -1 : 0) : 0));
       rows.push({ index: i, text, color, top });
     });
     const draw = { x: l.x, y: l.y, rows };
@@ -726,6 +753,7 @@ export class MenuLogic {
     const page = this.page;
     const n = this.entries.length - 1;
     const sel = this.sel;
+    if (page === 33 && this.stepCapture(k)) return;
     if (page === 2) {
       this.nameInput(k);
       if (this.backEdge(k.pause)) {
@@ -817,6 +845,8 @@ export class MenuLogic {
             this.off = [460, 320, 700][sel]!;
             this.list.sel = 3;
             this.keySet = 0;
+            // Seite 33 sichert die Belegung (`CopyBytes`) und arbeitet auf einer Kopie
+            if (sel === 2) this.working = [...this.config.keys];
             this.goto(([31, 32, 33] as const)[sel]!);
           } else if (sel === 3) {
             this.sound("dude");
@@ -836,10 +866,21 @@ export class MenuLogic {
           if (l === 3) {
             this.sound("plingding");
             this.keySet = (this.keySet + 1) % 3;
+          } else if (l === 4) {
+            // Gerät weiterschalten: ohne DirectInput-Joystick bleibt es bei der Tastatur
+            this.sound("plingding");
+          } else if (l >= 6 && l <= 15) {
+            // OK startet die Aufnahme, gewartet wird, bis OK losgelassen ist
+            this.sound("dude");
+            this.captureIndex = this.keySet * 10 + (l - 6);
+            this.capture = { state: "wait" };
+          } else if (l === 20) {
+            // „Einstellungen übernehmen“: der Arbeitsstand wird der gesicherte
+            this.sound("dude");
+            this.config = { ...this.config, keys: [...this.keyMap] };
           } else if (l === 21) {
             this.sound("dude");
-            this.blend();
-            this.goto(30);
+            this.leaveKeys();
           }
           break;
         }
@@ -895,9 +936,11 @@ export class MenuLogic {
         break;
       case 31:
       case 32:
-      case 33:
         this.blend();
         this.goto(30);
+        break;
+      case 33:
+        this.leaveKeys();
         break;
       case 40:
         this.blend();
@@ -905,6 +948,66 @@ export class MenuLogic {
         this.goto(30);
         break;
     }
+  }
+
+  /** Belegung, die Menü und Spiel gerade benutzen (`0x588174`, zweite Tasten). */
+  get keyMap(): readonly string[] {
+    return this.working ?? this.config.keys;
+  }
+
+  /** Seite 33 verlassen: nicht übernommene Änderungen verfallen (`CopyBytes` aus der Sicherung). */
+  private leaveKeys(): void {
+    this.working = undefined;
+    this.capture = undefined;
+    this.blend();
+    this.goto(30);
+  }
+
+  /**
+   * Tastenaufnahme (Seite 33, `[ebp-0x13c]`). Das Original wartet in Schleifen innerhalb eines
+   * Durchlaufs; hier geschieht dasselbe Durchlauf für Durchlauf. Tasten, die dabei gehalten
+   * werden, lösen weder OK noch Zurück aus. Wahr, solange eine Aufnahme läuft.
+   */
+  private stepCapture(k: MenuKeys): boolean {
+    const c = this.capture;
+    if (!c) return false;
+    // im Original absorbieren die Schleifen die Tasten: OK und Zurück erst nach dem Loslassen wieder frei
+    this.okFree = false;
+    this.backFree = false;
+    const held = k.held.filter((d) => d !== 1);
+    switch (c.state) {
+      case "wait":
+        if (!k.ok) this.capture = { state: "scan" };
+        break;
+      case "scan":
+        if (k.pause) this.capture = { state: "esc" };
+        else if (held.length > 0) {
+          // die höchste gehaltene DIK-Nummer gewinnt (Schleife 1…211 ohne Abbruch)
+          const dik = held[held.length - 1]!;
+          this.setKey(this.captureIndex, dik);
+          this.capture = { state: "hold", dik, index: this.captureIndex };
+          this.stepCapture(k);
+        }
+        break;
+      case "hold": {
+        // solange die erste Taste gehalten wird, ersetzt jede weitere die Belegung
+        const others = held.filter((d) => d !== c.dik);
+        if (others.length > 0) this.setKey(c.index, others[others.length - 1]!);
+        if (!k.held.includes(c.dik)) this.capture = undefined;
+        break;
+      }
+      case "esc":
+        if (!k.pause) this.capture = undefined;
+        break;
+    }
+    return true;
+  }
+
+  private setKey(index: number, dik: number): void {
+    const code = this.o.codeOfDik?.(dik) ?? "";
+    const keys = [...this.keyMap];
+    keys[index] = code;
+    this.working = keys;
   }
 
   private options31(): void {

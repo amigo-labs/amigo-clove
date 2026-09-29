@@ -121,12 +121,17 @@ function audioHost(params: Readonly<Record<string, string>>): AudioHost | undefi
 /** Tastatur plus Pad; das Pad lässt sich in den Einstellungen abschalten. */
 function keysFor(module: GameModule): KeyState {
   if (!module.gamepad || !navigator.getGamepads) return keyboard;
+  const held = () => keyboard.held?.() ?? [];
   const pad = createPadState(
     () => navigator.getGamepads(),
     () => performance.now(),
     module.gamepad,
   );
-  return { isDown: (code) => keyboard.isDown(code) || (settings.gamepad && pad.isDown(code)) };
+  // aufgenommen werden nur Tastaturtasten: das Pad zeigt der Aufnahme keine Stick-Ausschläge
+  return {
+    isDown: (code) => keyboard.isDown(code) || (settings.gamepad && pad.isDown(code)),
+    held,
+  };
 }
 
 function showPage(page: HTMLElement, signal: AbortSignal): void {

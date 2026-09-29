@@ -103,6 +103,8 @@ export interface NovaWorld {
   /** `NextPartikel(p)` (mit Ton `press_d`). */
   nextParticle(p: Player): void;
   addPoints(points: number, x: number, y: number, vy: number, player: number): void;
+  /** Abschusszähler `B48[0].54`. */
+  addKill(): void;
   sound(name: string): void;
   /** `SpielSoundOFF`. */
   soundOff(): void;
@@ -255,6 +257,7 @@ function explodeBox(w: NovaWorld, e: Enemy): void {
   const x = e.actor.x;
   const y = e.actor.y;
   w.fx.addExplosion(x, y, f32(x + bw), f32(y + bh));
+  w.addKill();
 }
 
 /** `Mitte(j)`: `f32((E.14 \ 2) + E.64)`, `f32((E.18 \ 2) + E.68)`. */

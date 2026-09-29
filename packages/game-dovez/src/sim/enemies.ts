@@ -97,6 +97,8 @@ export interface EnemyWorld {
   partFires(enemy: number, part: number): void;
   /** `AddPunkte`: Punkte, Wackeln, Popup bei (x, y) mit Steiggeschwindigkeit `vy`. */
   addPoints(points: number, x: number, y: number, vy: number, player: number): void;
+  /** Abschusszähler `B48[0].54`: +1 je Explosion eines Teils (wandert in den Spielstand). */
+  addKill(): void;
   /** `KillGegnerSchussErzeuger` für alle Waffen des Gegners. */
   killEmitters(enemy: number): void;
   /** Effekt-Ton aus `Sound.d2p` (Name wie das Asset `sound/<name>`). */
@@ -458,6 +460,7 @@ export class Enemies {
     const y2 = py + dy + s.bottomRow;
     w.fx.addSparks(1, count, cint(x1 + 5), cint(y1 + 5), cint(x2 - 5), cint(y2 - 5), false);
     w.fx.addExplosion(x1, y1, x2, y2);
+    if (shake) w.addKill();
     // keine Erschütterung, solange im 1P die Kraftphase läuft
     if (shake && (!w.beamPower(0) || this.playersMinus1 === 1))
       w.fx.shake += idiv(p.score, 500) + 1;
@@ -570,6 +573,7 @@ export class Enemies {
         false,
       );
       fx.addExplosion(ox + s.left, oy + s.topRow, ox + s.right, oy + s.bottomRow);
+      w.addKill();
       if (!w.beamPower(0) || this.playersMinus1 === 1) fx.shake += idiv(p.score, 500) + 1;
       w.sound(p.score > 1499 ? "explosion2" : "explosion1");
     }
@@ -778,6 +782,7 @@ export class Enemies {
           f32(bx + s.right),
           f32(by + s.bottomRow),
         );
+        w.addKill();
         if (!w.beamPower(0) || this.playersMinus1 === 1) fx.shake += idiv(p.score, 500) + 1;
         w.sound(p.score > 1499 ? "explosion2" : "explosion1");
       }

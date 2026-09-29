@@ -2,7 +2,7 @@ import { SfxPool, StreamPlayer } from "@clove/audio";
 import { FixedStepLoop, type GameHost } from "@clove/core";
 import type { DovezConfig } from "../config";
 import { dbGain } from "../config";
-import { okKey, pauseKey, readInput } from "../input";
+import { heldDiks, okKey, pauseKey, readInput, useKeys } from "../input";
 import type { Scene } from "../scene";
 import type { MenuKeys, MenuLogic } from "./menuLogic";
 import type { MenuView } from "./menuView";
@@ -106,6 +106,7 @@ export class MenuScene implements Scene {
       pause: pauseKey(host),
       focus: doc.hasFocus() && !doc.hidden,
       char: this.chars.shift() ?? 0,
+      held: heldDiks(host),
     };
   }
 
@@ -117,6 +118,8 @@ export class MenuScene implements Scene {
       this.view.tick();
       const before = logic.config;
       const d = logic.step(this.keys());
+      // die Belegung der Tastenseite gilt sofort, auch für die Menüsteuerung
+      useKeys(logic.keyMap);
       for (const s of logic.sounds.splice(0))
         this.audio?.play(s.name, s.gain === "speech" ? logic.config.speech : logic.config.sfx);
       if (logic.config !== before) {

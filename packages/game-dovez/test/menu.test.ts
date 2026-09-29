@@ -1,3 +1,4 @@
+import { codeOfDik, keyText } from "../src/game/input";
 import { describe, expect, test } from "bun:test";
 import { DEFAULT_CONFIG, dbGain, parseConfig } from "../src/game/config";
 import { emptyHighscores } from "../src/game/highscore";
@@ -20,6 +21,7 @@ const none: MenuKeys = {
   pause: false,
   focus: true,
   char: 0,
+  held: [],
 };
 
 function menu(o: Partial<MenuOptions> = {}): MenuLogic {
@@ -33,7 +35,8 @@ function menu(o: Partial<MenuOptions> = {}): MenuLogic {
     playersMinus1: 0,
     names: [],
     ids: [],
-    keyText: () => "?",
+    keyText: (set, a, keys) => keyText(set, a, keys),
+    codeOfDik,
     ...o,
   });
 }
@@ -207,6 +210,78 @@ describe("Hauptmenü (MenuLoop)", () => {
     press(m, { ok: true });
     m.step({ ...none, char: 13 });
     expect(m.result).toMatchObject({ kind: "new", bonus: "Spacestation Bonus" });
+  });
+
+  test("Tastenkonfiguration: Aufnahme setzt die zweite Taste, übernehmen sichert, Zurück verwirft", () => {
+    const m = menu();
+    m.step(none);
+    press(m, { down: true });
+    press(m, { down: true });
+    press(m, { ok: true });
+    press(m, { down: true });
+    press(m, { down: true });
+    press(m, { ok: true });
+    expect(m.page).toBe(33);
+    for (let i = 0; i < 20; i++) m.step(none);
+    // 3 „Steuerung für“, 4 „Gerät“, 5 leer, 6 „Links“
+    press(m, { down: true });
+    press(m, { down: true });
+    // OK lösen, dann die Taste Y (DIK 21) halten: Aufnahme, Loslassen beendet sie
+    m.step({ ...none, ok: true });
+    m.step(none);
+    m.step({ ...none, held: [21] });
+    expect(m.keyMap[0]).toBe("KeyY");
+    expect(m.config.keys[0]).toBe("");
+    m.step(none);
+    m.step(none);
+    // gehaltene Taste + weitere: die weitere gewinnt
+    press(m, { ok: true });
+    m.step({ ...none, held: [44] });
+    m.step({ ...none, held: [44, 45] });
+    m.step(none);
+    expect(m.keyMap[0]).toBe("KeyX");
+    m.step(none);
+    // Esc bricht ab und lässt die Belegung, wie sie war
+    press(m, { ok: true });
+    m.step({ ...none, pause: true });
+    m.step(none);
+    expect(m.keyMap[0]).toBe("KeyX");
+    expect(m.page).toBe(33);
+    m.step(none);
+    expect(m.page).toBe(33);
+    // Zurück ohne Übernehmen verwirft
+    press(m, { back: true });
+    expect(m.page).toBe(30);
+    expect(m.keyMap[0]).toBe("");
+  });
+
+  test("Tastenkonfiguration: Übernehmen sichert den Arbeitsstand in der Konfiguration", () => {
+    const m = menu();
+    m.step(none);
+    press(m, { down: true });
+    press(m, { down: true });
+    press(m, { ok: true });
+    press(m, { down: true });
+    press(m, { down: true });
+    press(m, { ok: true });
+    for (let i = 0; i < 20; i++) m.step(none);
+    press(m, { down: true });
+    press(m, { down: true });
+    m.step({ ...none, ok: true });
+    m.step(none);
+    m.step({ ...none, held: [21] });
+    m.step(none);
+    // Zeile 20 „Einstellungen übernehmen“: ↑ von 6 läuft über 4 und 3 zu 21, dann 20
+    press(m, { up: true });
+    press(m, { up: true });
+    press(m, { up: true });
+    press(m, { up: true });
+    press(m, { ok: true });
+    expect(m.config.keys[0]).toBe("KeyY");
+    press(m, { back: true });
+    expect(m.page).toBe(30);
+    expect(m.keyMap[0]).toBe("KeyY");
+    expect(parseConfig(JSON.stringify(m.config)).keys[0]).toBe("KeyY");
   });
 
   test("Grundeinstellungen schalten die drei Optionen um", () => {
