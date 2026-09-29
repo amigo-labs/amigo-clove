@@ -5,20 +5,9 @@
  * zielt (`botVulnerable.ts`, `lanebot.ts`). Die Bosskämpfe selbst prüfen `boss-*.test.ts`.
  */
 import { describe, expect, test } from "bun:test";
-import type { PlayerInput } from "../src/sim/player";
-import type { World } from "../src/sim/world";
 import { runLevel } from "./bot";
-import { botInputVulnerable } from "./botVulnerable";
-import { hunterInput } from "./hunter";
-import { laneInput } from "./lanebot";
 import { LEVEL_SLUGS } from "./assets";
-
-/** Level, in denen der Standard-Bot die Schwachstelle nicht trifft. */
-const BOTS: Readonly<Record<string, (w: World) => PlayerInput>> = {
-  "level3-3_saw_machine": laneInput,
-  "level4-3_cityboss": hunterInput,
-  "level5-3_rumbler": botInputVulnerable,
-};
+import { botFor } from "./levelBots";
 
 /** Höchstgrenze gleichzeitig lebender Gegner (ein Leck ließe sie ins Unendliche wachsen). */
 const MAX_ENEMIES = 120;
@@ -32,7 +21,7 @@ describe("Alle Level spielbar", () => {
     test(
       slug,
       async () => {
-        const run = await runLevel(slug, undefined, BOTS[slug]);
+        const run = await runLevel(slug, undefined, botFor(slug));
         expect([slug, run.state]).toEqual([slug, 2]);
         expect([slug, run.peakEnemies < MAX_ENEMIES]).toEqual([slug, true]);
       },
