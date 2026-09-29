@@ -1,3 +1,5 @@
+import { LoveLogic } from "./love";
+import { LoveScene } from "./loveScene";
 import type { AtlasJson, GameHost, GameInstance } from "@clove/core";
 import { StreamPlayer } from "@clove/audio";
 import { dovezSlug, type PlayStep } from "@clove/formats";
@@ -66,7 +68,7 @@ export interface GameOptions {
   /** Logos und Intro vor dem ersten Menü. */
   readonly intro: boolean;
   /** Sichtprüfung: Bildschirm gleich nach dem ersten Bild zeigen (nichts wird gespeichert). */
-  readonly screen?: "continue" | "pause" | "save" | "credits" | undefined;
+  readonly screen?: "continue" | "pause" | "save" | "credits" | "love" | undefined;
 }
 
 /** Höchster geschaffter Durchgang (`[0x588080]` in `config.cfg`). */
@@ -420,7 +422,10 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
       }),
     );
     // `mode = 1` → `FadeOut 1, False` über dem letzten Menübild
-    if (logic.result && logic.result.kind !== "exit")
+    // Osterei: `FadeOut(0, False)` statt `FadeOut(1, False)` über dem Menübild
+    if (logic.result?.kind === "love")
+      await play(new FadeScene(app, targets, new FadeLogic(0, rnd)));
+    else if (logic.result && logic.result.kind !== "exit")
       await play(new FadeScene(app, targets, new FadeLogic(1, rnd)));
     view.destroy();
     textures.unload(atlas.pages);
@@ -441,6 +446,12 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
       const r = await menu(first, hangar);
       first = false;
       if (!r || r.kind === "exit") return;
+      if (r.kind === "love") {
+        // L + O + V im Hauptmenü (`0x546C30`): Osterei, danach wie „Exit“ zurück zur Shell
+        await play(new LoveScene(host, app, textures, standart, new LoveLogic(rnd)));
+        await play(new FadeScene(app, targets, new FadeLogic(0, rnd)));
+        return;
+      }
       if (r.kind === "load") {
         const saved = parseSave(host.storage.get(saveKey(r.slot)));
         if (!saved) continue;
@@ -463,6 +474,11 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
   const directFlow = async () => {
     if (opts.screen === "credits") {
       await credits(`video/outro${german ? "d" : "e"}`);
+      return;
+    }
+    if (opts.screen === "love") {
+      // Sichtprüfung des Osterei ohne Menü
+      await play(new LoveScene(host, app, textures, standart, new LoveLogic(rnd)));
       return;
     }
     const saved =
