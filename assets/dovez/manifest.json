@@ -3033,16 +3033,16 @@
         "level/epilog"
       ],
       "kind": "data",
-      "file": "radio/epilog.882c405a.json",
-      "bytes": 3418,
-      "sha256": "882c405aeeca02a568bae14c8c3b524c0535c9e28e4fff4113df5163dcbb2de2",
+      "file": "radio/epilog.afaa34ea.json",
+      "bytes": 5377,
+      "sha256": "afaa34eaa48f71f990fb36cdc24b933075943b5d1ca359d8174c26b0c43de4e5",
       "sources": [
         {
           "path": "original-dovez/Data/Epilog.dlp",
           "sha256": "75235f786af7d0fe98eb229fd2ff781dbbc1d3ff9f9ff1f181fd0e09f74775a0"
         }
       ],
-      "optionsHash": "ec995c13ebbdf027",
+      "optionsHash": "b2790a58a6c722a9",
       "converterVersion": 1
     },
     {
@@ -3051,16 +3051,16 @@
         "level/level0-1_tutorial"
       ],
       "kind": "data",
-      "file": "radio/level0-1_tutorial.ff42758f.json",
-      "bytes": 5656,
-      "sha256": "ff42758fd9c7148cabc142591e063f0e517d0af51364fa5c979a0440a19f85b7",
+      "file": "radio/level0-1_tutorial.1f866227.json",
+      "bytes": 9665,
+      "sha256": "1f8662276fc62a7abd685d87d2c8e782ef1ec6435177aa353d950d05c6baf993",
       "sources": [
         {
           "path": "original-dovez/Data/Level0-1 Tutorial.dlp",
           "sha256": "cb327a90b1760f0d6aa21dc8d79ce4cf97acab12052d97bdb540118f35b3261d"
         }
       ],
-      "optionsHash": "ec995c13ebbdf027",
+      "optionsHash": "b2790a58a6c722a9",
       "converterVersion": 1
     },
     {
@@ -3069,16 +3069,16 @@
         "level/level1-1_skyfight"
       ],
       "kind": "data",
-      "file": "radio/level1-1_skyfight.f8beee9b.json",
-      "bytes": 3357,
-      "sha256": "f8beee9b547c02104a37446e2aa72e3dc852668a86abf515fec5329fad8947b2",
+      "file": "radio/level1-1_skyfight.ab782ffa.json",
+      "bytes": 5624,
+      "sha256": "ab782ffa1d0bce16e907e450872739b8f3e62cbb1270154c38c45ac2d1fe3469",
       "sources": [
         {
           "path": "original-dovez/Data/Level1-1 Skyfight.dlp",
           "sha256": "e12c6efaf0bacbb43b85b3f9643b28a0cbc25bc761bc5c475e9a6b834fc981c4"
         }
       ],
-      "optionsHash": "ec995c13ebbdf027",
+      "optionsHash": "b2790a58a6c722a9",
       "converterVersion": 1
     },
     {
@@ -3087,16 +3087,16 @@
         "level/level2-1_spacestation_i"
       ],
       "kind": "data",
-      "file": "radio/level2-1_spacestation_i.9ff17905.json",
-      "bytes": 2620,
-      "sha256": "9ff17905c39764878e2e0f21e9b42519023ce6ba0b4038855ffede8cc68f544c",
+      "file": "radio/level2-1_spacestation_i.ca8276e6.json",
+      "bytes": 4235,
+      "sha256": "ca8276e607705cddd5b31b7edc4305f6330b63d99257fb9579b4923fb6d3ba61",
       "sources": [
         {
           "path": "original-dovez/Data/Level2-1 Spacestation I.dlp",
           "sha256": "36cd684b4e09babec73dcc92749dce809d83d9b37b05cd3ec831bf3b712ec561"
         }
       ],
-      "optionsHash": "ec995c13ebbdf027",
+      "optionsHash": "b2790a58a6c722a9",
       "converterVersion": 1
     },
     {
@@ -3105,16 +3105,16 @@
         "level/level2-2_spacestation_ii"
       ],
       "kind": "data",
-      "file": "radio/level2-2_spacestation_ii.dcbe1dfa.json",
-      "bytes": 2996,
-      "sha256": "dcbe1dfa36d8e8777473e0888f767e1570e98a869e470c26f9a6d111eb33b73f",
+      "file": "radio/level2-2_spacestation_ii.c13f4c52.json",
+      "bytes": 4731,
+      "sha256": "c13f4c52a4cca837c9dfc42bea62545e6e7e66bdb2626948a47cdef364882e64",
       "sources": [
         {
           "path": "original-dovez/Data/Level2-2 Spacestation II.dlp",
           "sha256": "8e33a489ebe4507ac6d7c122216505c3d189fa9b7c7d8f5368abb0685685f966"
         }
       ],
-      "optionsHash": "ec995c13ebbdf027",
+      "optionsHash": "b2790a58a6c722a9",
       "converterVersion": 1
     },
     {
@@ -3123,16 +3123,16 @@
         "level/level3-1_industry_harbor"
       ],
       "kind": "data",
-      "file": "radio/level3-1_industry_harbor.66a307af.json",
-      "bytes": 651,
-      "sha256": "66a307af449e2b5433a0be7d185d2fc9197bae114f3bdbb7d9d6ee55babe3be5",
+      "file": "radio/level3-1_industry_harbor.48b71c1c.json",
+      "bytes": 1025,
+      "sha256": "48b71c1c5415c2edf958460729f873b34dc12e05a4e8e43725fff96f2ce1e837",
       "sources": [
         {
           "path": "original-dovez/Data/Level3-1 Industry Harbor.dlp",
           "sha256": "28ef3e1f4a0403ca81e104f4922ed0c9317950eab33008327943ff2e5105b4d6"
         }
       ],
-      "optionsHash": "ec995c13ebbdf027",
+      "optionsHash": "b2790a58a6c722a9",
       "converterVersion": 1
     },
     {
@@ -3141,16 +3141,16 @@
         "level/level3-2_industry_harbor_ii"
       ],
       "kind": "data",
-      "file": "radio/level3-2_industry_harbor_ii.98b2bc8a.json",
-      "bytes": 1680,
-      "sha256": "98b2bc8a493b49d00883b1b31e926f48b192ae703dc08005d5019da4bf231462",
+      "file": "radio/level3-2_industry_harbor_ii.cd3153d7.json",
+      "bytes": 2722,
+      "sha256": "cd3153d7a7b26994166ee8a8c0535426b15772c0a6ca0ae87812f8c89eb359dd",
       "sources": [
         {
           "path": "original-dovez/Data/Level3-2 Industry Harbor II.dlp",
           "sha256": "74145e2b2664dd6c268fcd08b89cca3c9092d6b016602eef471b217e7e69f724"
         }
       ],
-      "optionsHash": "ec995c13ebbdf027",
+      "optionsHash": "b2790a58a6c722a9",
       "converterVersion": 1
     },
     {
@@ -3159,16 +3159,16 @@
         "level/level4-1_midtown_madness"
       ],
       "kind": "data",
-      "file": "radio/level4-1_midtown_madness.6316095c.json",
-      "bytes": 1933,
-      "sha256": "6316095cd31a9dcf9f1e39038cae3558effc0232893b97e6d8ae098c340782ee",
+      "file": "radio/level4-1_midtown_madness.373d6a13.json",
+      "bytes": 3057,
+      "sha256": "373d6a1305e19fb2ef385c59a373bb5194d91c95e393e6ddbdb9f773facbfd94",
       "sources": [
         {
           "path": "original-dovez/Data/Level4-1 Midtown Madness.dlp",
           "sha256": "9fa53a27fd719dd5a2a62fb1658385f4a7b4511b72b3642f382d2e803f4a1269"
         }
       ],
-      "optionsHash": "ec995c13ebbdf027",
+      "optionsHash": "b2790a58a6c722a9",
       "converterVersion": 1
     },
     {
@@ -3177,16 +3177,16 @@
         "level/level4-2_midtown_madness_ii"
       ],
       "kind": "data",
-      "file": "radio/level4-2_midtown_madness_ii.dbe18ff2.json",
-      "bytes": 3057,
-      "sha256": "dbe18ff2f87ac1ef2926c3704ebfb9cd5e2639d0a983223b0d1c92b3dec48d0f",
+      "file": "radio/level4-2_midtown_madness_ii.2ddd1bb6.json",
+      "bytes": 4746,
+      "sha256": "2ddd1bb65e62310df29f7d1ca510c1cfec78eedc4c88d287cb6883fd4c2c8674",
       "sources": [
         {
           "path": "original-dovez/Data/Level4-2 Midtown Madness II.dlp",
           "sha256": "e0f316f9cdeaaf76d28ddf9834a5c63ba9750cefc9f0144dee320dce06254d22"
         }
       ],
-      "optionsHash": "ec995c13ebbdf027",
+      "optionsHash": "b2790a58a6c722a9",
       "converterVersion": 1
     },
     {
@@ -3195,16 +3195,16 @@
         "level/level5-1_atlantis"
       ],
       "kind": "data",
-      "file": "radio/level5-1_atlantis.fbe6b998.json",
-      "bytes": 3623,
-      "sha256": "fbe6b9986d6870fdbae943e123a431d45da8a5685c7226549250df195d887352",
+      "file": "radio/level5-1_atlantis.06828368.json",
+      "bytes": 5748,
+      "sha256": "06828368457eb3801297a393e835d96d4ba92c03c1bd9d71623ec991f2a9154b",
       "sources": [
         {
           "path": "original-dovez/Data/Level5-1 Atlantis.dlp",
           "sha256": "78293445e239589accf8654f66792d2618f7010d8641ce0d78d17ef8c7384750"
         }
       ],
-      "optionsHash": "4190b16381321153",
+      "optionsHash": "b2790a58a6c722a9",
       "converterVersion": 1
     },
     {
@@ -3213,16 +3213,16 @@
         "level/level5-2_canalisation"
       ],
       "kind": "data",
-      "file": "radio/level5-2_canalisation.c441543f.json",
-      "bytes": 2376,
-      "sha256": "c441543f91a87e7c8e8665d987c91036282a2c93053bd4c48888487c0a2a6fec",
+      "file": "radio/level5-2_canalisation.95aaffad.json",
+      "bytes": 3846,
+      "sha256": "95aaffada1e0604f4ff47b214fa7ef7d2c64e802621e2890d8b01cf9e20feca6",
       "sources": [
         {
           "path": "original-dovez/Data/Level5-2 Canalisation.dlp",
           "sha256": "c23f7381c2c355390bfd471939200ae96c43c579a83535f28eca559e426ac4be"
         }
       ],
-      "optionsHash": "ec995c13ebbdf027",
+      "optionsHash": "b2790a58a6c722a9",
       "converterVersion": 1
     },
     {
@@ -3231,16 +3231,16 @@
         "level/level6-1_ice_palace"
       ],
       "kind": "data",
-      "file": "radio/level6-1_ice_palace.d9626d5e.json",
-      "bytes": 2720,
-      "sha256": "d9626d5e93c0e826305ae54df9bc8a484dcceec05b776433140fca38025a6613",
+      "file": "radio/level6-1_ice_palace.b45f3d97.json",
+      "bytes": 4238,
+      "sha256": "b45f3d970411253c90eddf31c5f7feb95ef41f100133c02cb24308bc15bed98d",
       "sources": [
         {
           "path": "original-dovez/Data/Level6-1 Ice Palace.dlp",
           "sha256": "ae987a3328abd4dafc0678bf7fa151726f20a78edd5b648e6d77469cedb919bf"
         }
       ],
-      "optionsHash": "ec995c13ebbdf027",
+      "optionsHash": "b2790a58a6c722a9",
       "converterVersion": 1
     },
     {
@@ -3249,16 +3249,16 @@
         "level/level6-2_caves"
       ],
       "kind": "data",
-      "file": "radio/level6-2_caves.c3f68ad9.json",
-      "bytes": 2280,
-      "sha256": "c3f68ad9f647a89dbdcfff16b7e48d99d0becfbc437e354a07b9bbb56817d6a1",
+      "file": "radio/level6-2_caves.1b806eda.json",
+      "bytes": 3769,
+      "sha256": "1b806edac4a1556959edc94e6ddb5899ac7e0cfb30f994f71260b0ee675de73a",
       "sources": [
         {
           "path": "original-dovez/Data/Level6-2 Caves.dlp",
           "sha256": "bd2062e09dc91e5892443ae28d10fe49c6b92531fe2fe7bf6a2077bb071d5dc7"
         }
       ],
-      "optionsHash": "ec995c13ebbdf027",
+      "optionsHash": "b2790a58a6c722a9",
       "converterVersion": 1
     },
     {
@@ -3267,16 +3267,16 @@
         "level/level7-1_alienation"
       ],
       "kind": "data",
-      "file": "radio/level7-1_alienation.eeb95c77.json",
-      "bytes": 1001,
-      "sha256": "eeb95c777b7d542caa02b06ab0a10419981c358256b20f6c83efd511488c90d1",
+      "file": "radio/level7-1_alienation.8dc5f4a3.json",
+      "bytes": 1649,
+      "sha256": "8dc5f4a3784d9d3ac6a583c3d1aea1f2195cb74b397e86b6e7a5947ee524b843",
       "sources": [
         {
           "path": "original-dovez/Data/Level7-1 Alienation.dlp",
           "sha256": "6f754353b16da6bee606e9a3ca79a913e35fca21cccfef333f0e42aa54411124"
         }
       ],
-      "optionsHash": "ec995c13ebbdf027",
+      "optionsHash": "b2790a58a6c722a9",
       "converterVersion": 1
     },
     {
@@ -3285,16 +3285,16 @@
         "level/level7-2_alienation_ii"
       ],
       "kind": "data",
-      "file": "radio/level7-2_alienation_ii.d77941aa.json",
-      "bytes": 1144,
-      "sha256": "d77941aa0781751d7e13d408ec811181e3a6b48e3486db7b3e10494a2f61dad8",
+      "file": "radio/level7-2_alienation_ii.06ec30fd.json",
+      "bytes": 1788,
+      "sha256": "06ec30fd6be639c7d8b0186a4dd19d3b94f8c3c702be618a00d9af41c2e74472",
       "sources": [
         {
           "path": "original-dovez/Data/Level7-2 Alienation II.dlp",
           "sha256": "f6ef013cac75cc1a049937281d9acff1ac7ace21ec124b5fbf9d6dd9d587e578"
         }
       ],
-      "optionsHash": "ec995c13ebbdf027",
+      "optionsHash": "b2790a58a6c722a9",
       "converterVersion": 1
     },
     {
@@ -3303,16 +3303,16 @@
         "level/level7-5_escape"
       ],
       "kind": "data",
-      "file": "radio/level7-5_escape.571d3098.json",
-      "bytes": 354,
-      "sha256": "571d3098c961983773d1ff3e9a190e817996da6305ba002c0f48d75920989304",
+      "file": "radio/level7-5_escape.883cc6f7.json",
+      "bytes": 530,
+      "sha256": "883cc6f7d570c6f052ccad3e4c19a1ca1ead4c4b70aa75467b8324804f88c37e",
       "sources": [
         {
           "path": "original-dovez/Data/Level7-5 Escape.dlp",
           "sha256": "ea79008a1af7a5143eb6b3baf23af994ee14776ae739994d68420835b698507f"
         }
       ],
-      "optionsHash": "ec995c13ebbdf027",
+      "optionsHash": "b2790a58a6c722a9",
       "converterVersion": 1
     },
     {
