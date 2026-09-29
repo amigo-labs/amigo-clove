@@ -55,6 +55,14 @@ import {
 } from "./weapons";
 import { COS_DEG, SIN_DEG, VbRnd, cint, degIndex, f32, idiv, vbInt, winkelInGrad } from "./vb";
 import { newNovaState, stepNova, type NovaWorld } from "./nova";
+import {
+  cloneDrones,
+  newDrones,
+  placeDrones,
+  stepDrones,
+  type DroneWorld,
+  type Drones,
+} from "./drones";
 
 /**
  * Weltzustand eines DoveZ-Levels und der Tick in der Reihenfolge von
@@ -171,6 +179,8 @@ export interface Carry {
   }[];
   readonly force: Readonly<Force>;
   readonly particles: readonly Readonly<Particle>[];
+  /** Drohnen und Sonderwaffen des Debug-Schiffs 2 (`Me.B04…B2C`, nur `DoveReset` setzt sie). */
+  readonly drones?: Readonly<Drones>;
 }
 
 export class World {
@@ -243,6 +253,8 @@ export class World {
   /** Force des D-Phyton und die vier Partikel des D-Tonator. */
   readonly force: Force = newForce();
   readonly particles: Particle[] = newParticles();
+  /** Drohnen des Debug-Schiffs 2 (`Me.B04`), nicht im Schnappschuss (nur `DoveReset` und `DovePosSetup`). */
+  drones: Drones = newDrones();
   private readonly companionKeys = newCompanionKeys();
   /** Option „D-Tonator-Partikel: Auto-Arrange“ (`Me.50E`). */
   autoArrange = true;
@@ -288,7 +300,8 @@ export class World {
       players?: 1 | 2;
       seed?: number;
       startTick?: number;
-      ship?: 0 | 1;
+      /** Schiffstyp von Spieler 1: 0 D-Tonator, 1 D-Phyton, 2 Debug-Schiff (nur URL `ship=2`). */
+      ship?: 0 | 1 | 2;
       /** Funktexte in der Spielsprache (`radio/<Level>`); ohne: kein Funk. */
       radioTexts?: RadioTexts;
       /** Stand aus dem vorigen Level der Kampagne (ohne: neues Spiel, `DoveReset`). */
@@ -318,14 +331,18 @@ export class World {
     };
     const players = this.playersMinus1 + 1;
     const ship = opts.ship ?? 0;
+    // Spieler 2 bekommt den anderen Typ (`LoadSpielSurfaces` `0x4F77A0`: `A[1].A8 = 1 − A[0].A8`);
+    // beim Debug-Schiff ergäbe das −1 (ohne Bilder, Waffen und Hitbox-Sprites), der Port nimmt den D-Tonator
     this.players = Array.from(
       { length: players },
-      (_, i) => new Player(i, i === 0 ? ship : 1 - ship, players),
+      (_, i) => new Player(i, i === 0 ? ship : ship === 2 ? 0 : 1 - ship, players),
     );
     this.lives = players === 1 ? 3 : 6;
     const q = tonator(this.companionWorld());
     if (q) resetParticles(this.particles, q);
     if (opts.carry) this.applyCarry(opts.carry, q);
+    // DovePosSetup: die Drohnen samt Verlauf auf Schiff 1
+    placeDrones(this.drones, this.players[0]);
     this.tick = opts.startTick ?? 0;
     this.env = new Environment(level, this.envWorld());
     this.preroll();
@@ -353,6 +370,7 @@ export class World {
       })),
       force: { ...this.force },
       particles: this.particles.map((r) => ({ ...r })),
+      drones: cloneDrones(this.drones),
     };
   }
 
@@ -372,6 +390,7 @@ export class World {
       p.fillHistory();
     });
     Object.assign(this.force, c.force);
+    if (c.drones) this.drones = cloneDrones(c.drones);
     c.particles.forEach((r, i) => {
       const t = this.particles[i]!;
       Object.assign(t, r);
@@ -576,6 +595,7 @@ export class World {
       surfaces: this.surfaces,
       terrain: (x1, y1, x2, y2) => this.hitsTerrain(x1, y1, x2, y2),
       sound: (name) => this.sfx(name),
+      bigEnv: this.env.lists.big,
     };
   }
 
@@ -733,6 +753,40 @@ export class World {
     };
   }
 
+  /** Ziele der Drohnen: wie die der Suchwaffen, aber auch unsichtbare Teile (`0x4E1703` prüft nur Panzerung und Kontur). */
+  private droneTargets(): ShotTarget[] {
+    const out: ShotTarget[] = [];
+    const en = this.enemies;
+    for (let i = 0; i <= en.high; i++) {
+      const e = en.items[i];
+      if (!e?.alive || e.inState || e.def.solid !== 0) continue;
+      for (const p of e.parts) {
+        const s = en.surface(p);
+        if (p.def.armored !== 0 || !s || s.topRow < 0) continue;
+        const [x, y] = en.partPos(e, p);
+        out.push({ x, y, w: s.rect.w, h: s.rect.h });
+      }
+    }
+    return out;
+  }
+
+  private droneWorld(): DroneWorld {
+    const ew = this.makeEnemyWorld();
+    return {
+      tick: this.tick,
+      rnd: this.rnd,
+      fx: this.fx,
+      out: this.fx.lists.drones,
+      players: this.players,
+      layers: this.playerShots,
+      input: (p) => this.inputs[p],
+      targets: () => this.droneTargets(),
+      hitEnemies: (x1, y1, x2, y2, damage, owner) =>
+        this.enemies.hit(x1, y1, x2, y2, damage, owner, ew, { sparks: true }),
+      sound: (name) => this.sfx(name),
+    };
+  }
+
   private weaponWorld(): WeaponWorld {
     const ew = this.makeEnemyWorld();
     return {
@@ -743,6 +797,7 @@ export class World {
       players: this.players,
       force: this.force,
       particles: this.particles,
+      drones: this.drones,
       beamPower: (p) => this.beams[p]?.power === true,
       sound: (name) => this.sfx(name),
       loop: (name, on) => this.loopSfx(name, on),
@@ -828,6 +883,9 @@ export class World {
       rnd: this.rnd,
       fx: this.fx,
       out: this.fx.lists.beam,
+      env: this.env.lists.beam,
+      layers: this.playerShots,
+      noise: (v) => this.env.addNoise(v),
       players: this.players,
       playersMinus1: this.playersMinus1,
       beams: this.beams,
@@ -1469,6 +1527,8 @@ export class World {
       if (this.players.some((p) => p.exitState >= 1 && p.exitState < 5)) this.afterimages = true;
     }
     moveParticles(this.companionWorld(), this.companionKeys);
+    // Drohnen (`SpielDWeapons`): auch in der Nova
+    stepDrones(this.droneWorld(), this.drones);
     // [3] Abfeuern, Spielerschüsse Ebene 0
     if (!this.nova) {
       fireWeapons(this.weaponWorld(), this.fireState, inputs);
