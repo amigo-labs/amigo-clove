@@ -893,6 +893,54 @@ QBColor 8 (inaktiv), 7 (wählbar), 15 (gewählt). Schiffsdrehung auf Seite 1:
 je Stufe, vier Schichten für Bewegungsunschärfe, bei (510 + k, 310).
 Highscore-Seite: vier additive Leuchtbänder und je Bild ein Glitzer (7 `Rnd`).
 
+## Tastenkonfiguration (Seite 33, `InitKeyConfig` `0x504BA0`, `Taste` `0x54FE40`)
+
+**Modell:** Die Belegung ist ein Feld von 6 Blöcken × 10 `Long` bei `0x588174`
+(Block = Satz für `T1`, Block + 3 = `T2`; Satz 0 ein Spieler, 1 und 2 im
+Zwei-Spieler-Spiel). Aktionen 0…9: links, hoch, rechts, runter, Feuer, Beam,
+Satellit/Partikel wechseln, Force-Modus, Partikel drehen, Supernova.
+`Taste(Satz, Aktion)` ist wahr, wenn `Keys(T1)` **oder** `Keys(T2)` gehalten wird
+(Einträge ≤ 0 zählen nicht). `InitKeyConfig(Satz, Gerät)` löscht beide Blöcke und
+füllt bei Gerät 0 (Tastatur):
+
+| Satz | `T1` (DIK) | `T2` |
+|---|---|---|
+| 0 | ←, ↑, →, ↓, S, A, D, Q, W, E | – |
+| 1 | J, I, L, K, S, A, D, Q, W, E | ←, ↑, →, ↓ |
+| 2 | Num 4, Num 8, Num 6, Num 5, Ende, Entf, Bild ↓, Einfg, Pos 1, Bild ↑ | – (nur runter: Num 2) |
+
+Zusatztasten stehen nicht im Feld (Leertaste feuert im Einzelspiel, F11 hupt).
+Gerät ≠ 0 (DirectInput-Joystick) belegt die Blöcke mit Knopfnummern (`0x58838C`);
+im Port entfällt das, ein Pad wirkt über die Shell als Tastatur.
+`KeyName` (`0x578820`) liefert die Namen der 69 bekannten DIK-Codes (deutsche
+Beschriftung: DIK `0x15` heißt „Z“, `0x2C` „Y“, `0x1D` „L. Ctrl“, `0x4B` „Num. 4“,
+`0xC7` „Pos 1“, `0xD3` „Entf.“), sonst die Nummer; `GetKeyText(T1, T2)`
+(`0x559400`) macht daraus „a“ bzw. „a / b“.
+
+**Seite** (Liste bei (390, 130)): 0 Titel, 1 Striche, 2 leer, 3 „Steuerung für …“
+(OK schaltet den Satz 0→1→2→0), 4 „Gerät: Tastatur“ (OK schaltet die Geräte durch;
+ohne Joystick bleibt es die Tastatur), 5 leer, 6…15 die zehn Aktionen mit
+„Name: Tasten“ (wählbar), 16…19 leer, 20 „Einstellungen übernehmen“, 21 „Zurück“.
+Beim Betreten (aus Seite 30) wird die Belegung gesichert (`CopyBytes` 264 Byte);
+Änderungen gelten sofort (auch für die Menüsteuerung), **Übernehmen** aktualisiert
+die Sicherung, **Zurück** und Esc stellen sie wieder her und verlassen die Seite.
+Töne: Zeile 3 und 4 `plingding`, sonst `dude`.
+
+**Aufnahme** (OK auf 6…15): Die Schleife wartet (`DoEvents`), bis OK losgelassen ist,
+und läuft dann je Durchlauf: höchste gehaltene DIK-Nummer 1…211 (ohne Esc) wird zur
+Taste; ist Esc gehalten, Abbruch (nach dem Loslassen von Esc, Belegung unverändert);
+sonst `T2` der Aktion := 0, dann := Taste, und solange die Taste gehalten wird,
+ersetzt jede weitere gehaltene Taste (höchste Nummer, ohne die erste und Esc) `T2`.
+Während der Aufnahme sperrt `ShowList` ↑/↓ und die gewählte Zeile blinkt: die
+zweite Farbe der Zeile ist Gelb statt Weiß, wenn `(Me.584 \ 3) Mod 2 = 0`.
+OK und Zurück sind frei, sobald die Tasten losgelassen sind. Port: `game/input.ts`
+(`readInput`, `keyName`, `keyText`, `useKeys`, DIK-Tabelle), `game/config.ts`
+(`keys`: die 30 `T2`-Einträge als `KeyboardEvent.code`, `""` = keine),
+`menu/menuLogic.ts` (`stepCapture`, `working`); die Shell liefert die gehaltenen
+Tasten über `KeyState.held()` (nur Tastatur, das Pad zeigt der Aufnahme keine
+Stickausschläge). Die Zeilen 16…18 des Originals (nur bei einem Joystick:
+Feuerknopf, Vibration an/aus, Stärke) folgen mit der Vibration.
+
 **Seiten:** 3 Hauptmenü (Neu, Laden, Optionen, Highscore, Exit; Esc = Exit),
 10 Spieleranzahl (2 Spieler ohne Überblende, so im Original), 1 Schiff (nur
 Spieler 1 wählt, Spieler 2 fliegt das andere), 2 Name (`KeyAscii` ab 32,
@@ -913,7 +961,7 @@ nicht; das Osterei „LOV“ fehlt im Port.
 Port: `src/game/menu/` (`menuLogic.ts` Logik, `menuView.ts` Zeichnung,
 `menuScene.ts` Takt, Töne, Zeicheneingabe, `logos.ts` Logos), Optionen in
 `src/game/config.ts` (gespeichert beim Ändern). Abweichungen: Russisch fehlt;
-die Tastenseite zeigt die Belegung nur an (Umbelegen fehlt noch); Trägheit
-(„Realistic“) wirkt als Ausgleiten nach dem Loslassen (Reihenfolge im Tick
-nicht am Original geprüft); keine Vibration. `#/dovez?nointro=1` startet ohne Logos und Intro.
+Trägheit („Realistic“) wirkt als Ausgleiten nach dem Loslassen (Reihenfolge im
+Tick nicht am Original geprüft); die Tastenseite kennt nur die Tastatur (siehe
+„Tastenkonfiguration“). `#/dovez?nointro=1` startet ohne Logos und Intro.
 

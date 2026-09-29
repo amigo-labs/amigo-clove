@@ -276,7 +276,7 @@ export function heldDiks(host: GameHost): number[] {
     const d = DIK[c];
     if (d !== undefined) out.push(d);
   }
-  return out.sort((a, b) => a - b);
+  return out.toSorted((a, b) => a - b);
 }
 
 /** DIK → `code` (`""` für unbekannte Codes). */
