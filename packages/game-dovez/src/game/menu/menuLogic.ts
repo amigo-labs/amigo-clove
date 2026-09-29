@@ -171,6 +171,8 @@ export interface MenuOptions {
   readonly ids: readonly number[];
   /** Tastenzeile der Tastenkonfiguration (`GetKeyText`): Satz, Aktion 0…9, zweite Tasten. */
   readonly keyText: (set: number, action: number, keys: readonly string[]) => string;
+  /** Anzahl der Gamepads mit Vibrationsmotor. */
+  readonly pads?: () => number;
   /** DIK → `KeyboardEvent.code` (`""` unbekannt). */
   readonly codeOfDik?: (dik: number) => string;
   /** Bildzähler beim Start (`Me.584` läuft vom Spiel bzw. den Logos weiter). */
@@ -229,6 +231,8 @@ export class MenuLogic {
     | { state: "hold"; dik: number; index: number }
     | undefined;
   private captureIndex = 0;
+  /** Probeimpuls der Vibrationszeilen: Pad, Stärke 0…1, Durchläufe bis zum Ende (`[ebp-0x14c]`). */
+  pulse: { pad: number; magnitude: number; ticks: number } | undefined;
   private okFree = false;
   private backFree = false;
   private menuDownFree = false;
@@ -405,10 +409,15 @@ export class MenuLogic {
           ];
           const keys = this.working ?? this.config.keys;
           kt.labels.forEach((l, a) => rows.push([`${l}: ${this.o.keyText(set, a, keys)}`, true]));
+          // Zeilen 17 und 18 gibt es nur mit einem Gamepad mit Motor (im Original: Joystick mit Force Feedback)
+          const pad = set === 2 ? 1 : 0;
+          const has = (this.o.pads?.() ?? 0) > pad;
+          const c = this.config;
+          const strength = (c.vibrationStrength[pad]! / 1000).toFixed(1).replace(".", kt.decimal);
           rows.push(
             ["", false],
-            ["", false],
-            ["", false],
+            has ? [`${kt.vibration}: ${kt.bool[c.vibration[pad] ? 0 : 1]}`, true] : ["", false],
+            has ? [`${kt.strength}: ${strength}`, true] : ["", false],
             ["", false],
             [kt.apply, true],
             [t.back, true],
@@ -824,6 +833,25 @@ export class MenuLogic {
             this.sound("dude");
             this.captureIndex = this.keySet * 10 + (l - 6);
             this.capture = { state: "wait" };
+          } else if (l === 17 || l === 18) {
+            // Vibration an/aus bzw. Stärke +500 (über 10000 zurück auf 500), dann ein Probeimpuls
+            const pad = this.keySet === 2 ? 1 : 0;
+            if ((this.o.pads?.() ?? 0) <= pad) break;
+            this.sound("plingding");
+            const c = this.config;
+            if (l === 17) {
+              const on: [boolean, boolean] = [c.vibration[0], c.vibration[1]];
+              on[pad] = !on[pad];
+              this.config = { ...c, vibration: on };
+              this.pulse = { pad, magnitude: 1, ticks: 20 };
+            } else {
+              const s: [number, number] = [c.vibrationStrength[0], c.vibrationStrength[1]];
+              let v = s[pad]! + 500;
+              if (v > 10000) v = 500;
+              s[pad] = v;
+              this.config = { ...c, vibrationStrength: s };
+              this.pulse = { pad, magnitude: v / 10000, ticks: 20 };
+            }
           } else if (l === 20) {
             // „Einstellungen übernehmen“: der Arbeitsstand wird der gesicherte
             this.sound("dude");

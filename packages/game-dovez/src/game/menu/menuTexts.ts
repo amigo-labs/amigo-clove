@@ -59,6 +59,12 @@ export interface MenuTexts {
     labels: readonly string[];
     /** Zeile 20 „Einstellungen übernehmen“ (Zeile 21 ist `Zurück`). */
     apply: string;
+    /** Zeilen 17 und 18 (nur mit Gamepad): Kennungen ohne „: “ und `CBool` als Text (`True`/`False` je Systemsprache). */
+    vibration: string;
+    strength: string;
+    bool: readonly [string, string];
+    /** Dezimalzeichen von `Format(…, "0.0")`. */
+    decimal: string;
   };
 }
 
@@ -109,6 +115,10 @@ const DE: MenuTexts = {
       "Supernova",
     ],
     apply: "Einstellungen übernehmen",
+    vibration: "Vibration",
+    strength: "Vibrationsstärke",
+    bool: ["Wahr", "Falsch"],
+    decimal: ",",
   },
 };
 
@@ -158,6 +168,10 @@ const EN: MenuTexts = {
       "Supernova",
     ],
     apply: "Apply changes",
+    vibration: "Vibration",
+    strength: "Strength of the vibration",
+    bool: ["True", "False"],
+    decimal: ".",
   },
 };
 
@@ -229,6 +243,10 @@ const RU: MenuTexts = {
       "Сверхновая звезда",
     ],
     apply: "Принять настройку",
+    vibration: "Force Feedback",
+    strength: "Сила вибрации",
+    bool: ["Истина", "Ложь"],
+    decimal: ",",
   },
 };
 

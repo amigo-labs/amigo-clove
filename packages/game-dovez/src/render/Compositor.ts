@@ -54,7 +54,13 @@ export class Compositor {
   }
 
   /** Befehlsliste in Ebenen (je eine Folge von Streifen-Meshes) und Erfassen/Kopieren zerlegen. */
-  expand(list: EnvList, resolve: (key: string) => StripTexture | undefined, out: PlanItem[]): void {
+  expand(
+    list: EnvList,
+    resolve: (key: string) => StripTexture | undefined,
+    out: PlanItem[],
+    /** Deckkraft der gezeichneten Ebenen (bewegungsarme Darstellung schwächt Blitze ab). */
+    alpha = 1,
+  ): void {
     let run: Container | undefined;
     let mesh: StripMesh | undefined;
     let key = "";
@@ -73,6 +79,7 @@ export class Compositor {
       if (!run) {
         run = this.runs[this.runsUsed] ?? new Container();
         this.runs[this.runsUsed++] = run;
+        run.alpha = alpha;
         out.push(run);
       }
       if (!mesh || k !== key) {
