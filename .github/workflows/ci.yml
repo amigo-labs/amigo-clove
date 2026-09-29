@@ -33,3 +33,5 @@ jobs:
       # gepinnte playwright-core-Version aus packages/shell (passende Chromium-Revision)
       - run: bun run --cwd packages/shell browsers
       - run: bun run smoke
+      # Smoke baut mit Vite; das Größenbudget prüft die fertige Ausgabe.
+      - run: bun run budget
