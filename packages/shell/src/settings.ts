@@ -6,13 +6,24 @@ export interface Settings {
   /** Pegel 0…1. */
   readonly volume: { readonly master: number; readonly music: number; readonly sfx: number };
   readonly gamepad: boolean;
+  /** Bewegungsarme Darstellung: nach dem System („auto“), an oder aus. */
+  readonly motion: MotionPreference;
 }
+
+export const MOTION_PREFERENCES = ["auto", "reduce", "full"] as const;
+export type MotionPreference = (typeof MOTION_PREFERENCES)[number];
 
 export const DEFAULT_SETTINGS: Settings = {
   language: "auto",
   volume: { master: 1, music: 1, sfx: 1 },
   gamepad: true,
+  motion: "auto",
 };
+
+/** Ist die bewegungsarme Darstellung aktiv? „auto“ folgt `prefers-reduced-motion`. */
+export function reducedMotion(pref: MotionPreference, systemReduces: boolean): boolean {
+  return pref === "reduce" || (pref === "auto" && systemReduces);
+}
 
 export const SETTINGS_KEY = "clove:settings";
 
@@ -38,6 +49,7 @@ export function sanitizeSettings(raw: unknown): Settings {
       sfx: level(v["sfx"], d.volume.sfx),
     },
     gamepad: typeof r["gamepad"] === "boolean" ? r["gamepad"] : d.gamepad,
+    motion: MOTION_PREFERENCES.find((m) => m === r["motion"]) ?? d.motion,
   };
 }
 

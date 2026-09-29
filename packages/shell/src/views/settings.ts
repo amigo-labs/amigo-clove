@@ -49,6 +49,30 @@ function languageSection(c: SettingsContext): HTMLElement {
   return section(c.t("language"), select);
 }
 
+function motionSection(c: SettingsContext): HTMLElement {
+  const select = h(
+    "select",
+    {
+      id: "motion",
+      "aria-describedby": "motion-help",
+      onchange: (e) =>
+        c.update({ motion: (e.target as HTMLSelectElement).value as Settings["motion"] }),
+    },
+    ...(
+      [
+        ["auto", c.t("motionAuto")],
+        ["reduce", c.t("motionReduce")],
+        ["full", c.t("motionFull")],
+      ] as const
+    ).map(([v, label]) => h("option", { value: v, selected: c.settings().motion === v }, label)),
+  );
+  return section(
+    c.t("motion"),
+    select,
+    h("p", { class: "hint", id: "motion-help" }, c.t("motionHelp")),
+  );
+}
+
 function volumeSection(c: SettingsContext): HTMLElement {
   const rows = (["master", "music", "sfx"] as const).map((ch) => {
     const label = { master: "volumeMaster", music: "volumeMusic", sfx: "volumeSfx" } as const;
@@ -232,6 +256,7 @@ export function settingsView(c: SettingsContext): HTMLElement {
     h("h1", {}, c.t("settings")),
     languageSection(c),
     volumeSection(c),
+    motionSection(c),
     gamepadSection(c),
     savesSection(c),
     offlineSection(c),

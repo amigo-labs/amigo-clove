@@ -81,6 +81,37 @@ function serviceWorker(): Plugin {
   };
 }
 
+/** Symbol der Site und der installierbaren App: ein Schiff im Anflug, eigene Zeichnung. */
+const ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="96" fill="#0a0a12"/><path d="M96 352 256 96l160 256-160-72z" fill="#fc6"/><path d="M256 96v184l-160 72z" fill="#c93"/><circle cx="256" cy="392" r="22" fill="#fc6"/></svg>`;
+
+/** Web-App-Manifest und Symbol; `index.html` verweist relativ darauf. */
+function appManifest(): Plugin {
+  const manifest = {
+    name: "amigo-clove",
+    short_name: "amigo-clove",
+    description: "Browser-Port der Arcade-Shooter DOVE und DoveZ",
+    start_url: "./",
+    scope: "./",
+    display: "fullscreen",
+    orientation: "landscape",
+    background_color: "#000000",
+    theme_color: "#000000",
+    icons: [{ src: "icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" }],
+  };
+  return {
+    name: "clove-app-manifest",
+    apply: "build",
+    generateBundle() {
+      this.emitFile({ type: "asset", fileName: "icon.svg", source: ICON });
+      this.emitFile({
+        type: "asset",
+        fileName: "manifest.webmanifest",
+        source: `${JSON.stringify(manifest, null, 2)}\n`,
+      });
+    },
+  };
+}
+
 /**
  * `_headers` für das statische Hosting (Cloudflare Workers Assets): Bundle-Dateien
  * und Spielassets sind content-gehasht und unbegrenzt cachebar, die beiden
@@ -92,6 +123,12 @@ const HEADERS_FILE = "_headers";
 function staticHeaders(): Plugin {
   const immutable = "  Cache-Control: public, max-age=31536000, immutable";
   const rules = [
+    "/*",
+    "  X-Content-Type-Options: nosniff",
+    "  Referrer-Policy: no-referrer",
+    "  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()",
+    "  Cross-Origin-Opener-Policy: same-origin",
+    "  X-Frame-Options: DENY",
     ...["/assets/*", "/dove/*", "/dovez/*"].flatMap((p) => [p, immutable]),
     ...["/dove/manifest.json", "/dovez/manifest.json"].flatMap((p) => [
       p,
@@ -116,5 +153,5 @@ export default defineConfig({
   base: "./",
   build: { target: "es2023", assetsInlineLimit: 0 },
   server: { port: 5173 },
-  plugins: [chiptuneWorklet(), staticHeaders(), serviceWorker()],
+  plugins: [chiptuneWorklet(), appManifest(), staticHeaders(), serviceWorker()],
 });
