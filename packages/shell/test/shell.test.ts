@@ -39,6 +39,7 @@ describe("Einstellungen", () => {
       volume: { master: 1, music: 0.25, sfx: 1 },
       gamepad: false,
     });
+    expect(sanitizeSettings({ language: "ru" }).language).toBe("ru");
   });
 
   test("kaputtes JSON im Speicher schadet nicht", () => {
