@@ -516,6 +516,53 @@ nur vom 2P-Wiedereinstieg und von `KillDove` (Force). Einen Boss-Balken gibt es
 nicht. Ein Boss, der anders als durch einen Spielertreffer stirbt, beendet das
 Bosslevel nie.
 
+### Level 7-4 „Final Boss“ (`level7-4_finalboss`, Länge 99999)
+
+*Befund (Datenanalyse + `Var` `0x4AC970`), Konfidenz hoch für die Ursache, mittel
+für die Spielabsicht.* Der Endboss ist **kein `boss`-Gegner**: Der einzige Typ
+(`spider`, 8 Teile, HP 100000, `boss = 0`, `bigDeath = 1`) erzeugt weder das
+Flag „Boss lebt“ (`[0x5882A8]`) noch den Boss-Tod (Zustand 4) noch die Ausflug-
+Kette bei T = 520. Alle Teile sind `armored` (Spielerschüsse und Beam bleiben
+ohne Wirkung). Das Level endet stattdessen über die Route und ein Spezialablauf:
+
+1. Zeitleiste Ebene 4, Tick 220: Typ 0 auf Route 3 („äh“), y = −53.
+2. Route 3: `Set HP = 100000`, `SetPos(800 + 200, Spawn-y)`, dann je Tick `Step(−1, 0)`,
+   solange x > 230. Bei x ≤ 230: `SetLayerScroll(0…6, 0)` (alle Ebenen stehen) und
+   `SetSpecial(1, 9, 0, 0, 0)` = Tastenhinweis „Drücke: <Taste der Aktion 9>“, das ist
+   die **Super-Nova** (Aktionen 0…9, Abschnitt „Tastenkonfiguration“), 300 Ticks.
+3. Danach wartet die Route in `Label 0; If HP == 100000: Wait 1; Goto 0`. Nur die
+   Super-Nova verändert die HP (pauschal −10000 je Treffer, Abschnitt „Super-Nova“;
+   gepanzerte Teile stoppen Schüsse, die Nova kennt keine Panzerung).
+4. Weicht die HP ab: `Set HP = −1`, `SetSpecial(6)` (`Me.584 = Me.588 − 300`,
+   Schiffe gesteuert, Glühen und Unschärfe; Abschnitt „Spezialabläufe“), `Wait 1`.
+   Im selben Tick zerstört sich die Spinne selbst (`HP < 0` nach der Route:
+   Selbstzerstörung ohne Punkte, `bigDeath`); 150 Ticks später verlässt das Schiff
+   das Bild, `Me.584` erreicht den Levelausflug wie in jedem Bosslevel
+   (Zustand 2 im Port, danach `Play.txt` weiter zu 7-5).
+
+**Ursache im Port:** `Var` (`0x4AC970`) liefert für Beträge **über 32784 den
+Betrag selbst** (Fall `0x4ACC1A` → `0x4ACC3C`: der Wert bleibt in `[ebp−0x18]`,
+den `0x4AC9E6` mit dem Betrag vorbelegt hat; die Codes 32748…32784 sind
+Variablen, alles darunter und darüber Literal). `route.ts` gab dort 0 zurück. Die
+Marke 100000 (Route 3: `Set`, zwei `If`) war für den Port daher 0: `Set HP =
+100000` setzte 0, und `If HP == 100000` (also 0 == 0) war bis zum ersten Schaden
+wahr — die Spinne lief also ein und wartete wie im Original, nur mit HP 0. Der
+Bot sieht das als „lebt endlos mit HP 0“. Die Nova zog aber 10000 von 0 ab
+(−10000 ≤ 0): die Nova-Zustandsmaschine tötete die Spinne (`KillEnemy`, Punkte),
+bevor die Route je wieder lief — `Set HP = −1` und `SetSpecial(6)` kamen nie, das
+Level blieb auch für einen Spieler mit Nova stehen. Mit 100000 bleibt die HP
+nach dem Treffer bei 90000 > 0, die Route läuft nach der Nova weiter und beendet
+das Level. Alle anderen 26 Level haben **kein** Argument über 32784 (geprüft),
+nichts anderes ändert sich. Fix: `varValue` gibt dort `c` zurück.
+
+Der Bot (Dauerfeuer, unverwundbar) schafft das Level nur, wenn er auf den Hinweis
+die Nova drückt (`test/boss-7-4.test.ts`); mit Schüssen allein bleibt es bei der
+Wartestellung (wie im Original, das keinen anderen Weg vorsieht; Konfidenz
+mittel — die Wartestellung ist aus Route und Panzerung gelesen, ein Lauf des
+Originals liegt nicht vor). Verpasst der Spieler den Hinweis (300 Ticks), steht
+das Level still, bis er die Nova auslöst; sie braucht hier keinen Partikel
+(Streuung mit Schild).
+
 **Explosion:** Funken (`AddPartikel`), Glut, Rauch und Feuerbälle
 (`AddExplosionsPartikel`, Größe nach Rechteck), Ton `Explosion1.wav` bzw.
 `Explosion2.wav` ab 1500 Punkten, `spalt.wav` beim animierten Abschuss.

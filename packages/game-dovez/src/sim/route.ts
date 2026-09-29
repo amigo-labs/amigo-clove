@@ -245,7 +245,7 @@ function varValue(a: RouteActor, h: RouteHost, v: number): number {
   else if (c === VAR.playersMinus1) r = h.playersMinus1;
   else if (c <= VAR.reg13) r = a.regs[c - VAR.reg0] ?? 0;
   else if (c === VAR.playerA8) r = h.playerA8;
-  else r = 0;
+  else r = c; // über 32784: wieder ein Literal (`0x4ACC1A`, nur 7-4: HP-Marke 100000)
   return neg ? -r : r;
 }
 
