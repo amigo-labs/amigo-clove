@@ -52,6 +52,8 @@ an ihrer Stelle ab; die Nova schaltet in Schritt 9 mitten im Tick um (Abschnitt
     Schnee/Wolken/Regenschleier; `SpielSpezial(1)` (prüft die Nova selbst).
 11. Erschütterung; außer Nova: **Kontakt** (`SpielFeindberührung` `0x50B710`);
     Overlays mit Rauschen; außer Nova: Abblenden in den letzten 50 Ticks; HUD.
+12. Zuletzt, auch in der Nova: Laufband (`0x50FCC0`), `0x4D0D80` und
+    die **Vibration** (`0x5299B0`, `SpielLoop` `0x53F614`), siehe „Vibration“.
 
 Zeichenreihenfolge der Ebenen damit 0, 1, 2, 5, [Schiff, Gegner], 4, 3, 6.
 
@@ -329,8 +331,8 @@ halbiert sich je Treffer und wächst sonst um 25; sie schluckt Gegnerkugeln
 (nach deren Bewegung). Schüsse je Farbe in `SpielSchieß` (angedockt nur ab
 Stufe 1 oder in der Kraftphase; frei ein Fächer nach Stufe). Gegner zielen auf
 einen D-Phyton gestreut über Schiff bzw. Force (1–2 `Rnd`) und runden den
-Zielpunkt mit `CLng`. `AddForce`/`DoForce` sind Joystick-Vibration, nicht die
-Force. Drohnen (`SpielDWeapons`) gibt es nur beim Debug-Schiff 2 (im Port nicht).
+Zielpunkt mit `CLng`. `AddForce`/`DoForce` sind Joystick-Vibration (Abschnitt
+„Vibration“), nicht die Force. Drohnen (`SpielDWeapons`) gibt es nur beim Debug-Schiff 2 (im Port nicht).
 
 ## Beam und Kombo
 
@@ -669,6 +671,73 @@ Energiebalken wird per DirectDraw mit Farbschlüssel geblittet;
 `interface*_energyA` ist ein eigenes Hintergrundbild (nur mit einer Option
 gezeichnet), keine Alphamaske — der Atlas behandelt es seit M8 so.
 
+## Vibration (`AddForce` `0x529870`, `sim/rumble.ts`)
+
+Joystick-Force-Feedback des Originals; im Port reine Ausgabe (`world.rumble`),
+die Simulation liest sie nie und verbraucht kein `Rnd`. Der Host liest nach
+jedem Tick `world.rumble.magnitude[Joystick]` (0…10000, 0 = aus) und setzt seine
+Motoren; ihm gehören auch `padOfPlayer` (Joystick 1…2 je Spieler, 0 ohne;
+Original `Me.588270[Spieler + Spieleranzahl − 1]`), `rumbleBase` (Grundstärke je
+Joystick, Vorgabe 2500) und `rumbleOn`.
+
+**Quellen.** `AddForce(Stärke, Dauer, Spieler)` (Methode `0x91C`) trägt im ersten
+freien der 21 Plätze (`Me.A0C` Stärke, `Me.A28` Restdauer in Ticks, `Me.A44`
+Spieler; frei = Dauer ≤ 0) eine Quelle ein; ein Spieler außerhalb 0…1 (im
+Original −1) ruft sich für Spieler 0 und 1 auf (zwei Plätze). Sind alle Plätze
+belegt, entfällt die Quelle. Argumente stehen, wie bei VB üblich, als Zeiger
+rechts nach links: Spieler, Dauer, Stärke.
+
+**Tick** (`0x5299B0`, Methode `0x920`, am Ende jedes Durchlaufs von
+`SpielLoop`, **auch in der Nova**, `0x53F614`): jede Quelle mit Dauer > 0 zählt
+einen Tick ab und addiert ihre Stärke zur Summe des Joysticks ihres Spielers
+(ohne Joystick zählt sie nicht). Die Quelle wirkt daher `Dauer` Ticks lang,
+beginnend im Tick ihrer Eintragung, wenn sie vor dem Tick-Schritt eingetragen
+wird (alle Auslöser liegen vor ihm im Tick).
+Summe 0 beendet den Kraftstoß (`DoForce` `0x57A190`); sonst wird die Summe auf 5
+gekappt und die Stärke des Kraftstoßes ist mit der Grundstärke `s`
+(500…10000, Vorgabe 2500) `CLng((Summe − 1) · (10000 − s) / 4 + s)`, also `s` bei
+Summe 1, linear bis 10000 bei Summe 5. Sie wird nur neu gesetzt, wenn sie sich
+ändert und die Vibration des Joysticks an ist.
+
+**Auslöser** (alle Aufrufer von `0x91C`; Spieler = der betroffene bzw. auslösende):
+
+| Original | Port | Stärke | Dauer | Bedingung |
+|---|---|---|---|---|
+| `CheckColisionWithEnemy` `0x4C4A87` | `enemies.ts` `killBy` (`vibrate`) | 1 | 20 | ein Gegner stirbt (Teil mit `vital` oder letztes Teil oder Körper-HP ≤ 0), Spieler = Schütze (auch −1: beide) |
+| `AddGegnerS` `0x4AAF51` | `world.ts` `makeEnemyWorld.shockwave` | 2 | 30 | Druckwelle (Typ −1) wird angelegt (freier Schussplatz), Spieler = Ziel des Gegners |
+| `SpielMoveGegnerS` `0x4AB9D9` | `world.ts` `shotWorld.hitPlayers` | 2 | 15 | Gegnerschuss trifft einen lebenden Spieler (unabhängig von Unverwundbarkeit; nach dem Treffer-Ton) |
+| `SpielMoveGegnerS` `0x4AC540` | `world.ts` `shotWorld.shockwave` | 1 | 1 | je Tick der Druckwelle für jeden Spieler im Radius (`4·Alter + 32`) |
+| `SpielKeysDove` `0x50824F` | `player.ts` `exitFlight` | 5 | 15 | Levelausflug: Zustand 2 → 3 auf Ausflughöhe |
+| `SpielDoveWiedergeburt` `0x50AFD5` | `world.ts` `rebirth` | 1 | 30 | Wiedergeburt nach dem Tod (Neustart am Checkpoint, 2P allein) |
+| `KillDove` `0x50B1AB` | `world.ts` `killPlayer` | 5 | 50 | Tod des Spielers (nur verwundbar und noch nicht im Sterben) |
+| `SpielFeindberührung` `0x50BC18` | `world.ts` `contact` | 3 | 40 | Gegnerkontakt (Energie −2 je Berührung; gleicher Tick wie Wackeln +4) |
+| `SpielBeam` `0x5143A8` | `beam.ts` `fire` | 1 | 5 | Beam wird losgelassen (Ladung > 0; nach dem Ton, vor Schaden) |
+| `SpielErschütterung` `0x529C3D` | `world.ts` `shakeRumble` | 5 | 1 | Wackelzähler `Me.7D0` > 50, beide Joysticks (Spieler −1) |
+| `SpielErschütterung` `0x529C72` | dito | 3 | 1 | Zähler 20…50, Spieler −1 |
+| `SpielErschütterung` `0x529C98` | dito | 1 | 1 | Zähler 1…19, Spieler −1 |
+| `SpielSpezial` `0x53C36F` | `special.ts` `escape` | 5 | 1 | Spezialablauf 7 (Flucht): je Spieler mit `x < 150` (Energie −0,1) |
+
+Die Aufrufe bei `0x5298D4`/`0x529900` sind die Rekursion von `AddForce` selbst
+(Spieler −1). Das Wackeln vibriert unabhängig von der Wackel-Option (`Me.4FC`:
+die Prüfung steht hinter dem Aufruf); der Zähler wird vor dem Abzählen gelesen,
+im Port in `World.step` unmittelbar vor `stepShake`. Alle 13 Aufrufer außerhalb
+von `AddForce` haben einen Port-Gegenpart; es gibt keinen Debug-only-Aufrufer.
+
+Der Aufrufer `0x5143A8` liegt in `SpielBeam` (`0x513940`), nicht im HUD
+`0x510E10` (die Funktion reicht dort bis `0x513940`); er ist kein
+Energiewarnpuls, sondern der Beam-Abschuss. Die Quellen werden bei Checkpoint,
+Tod und Wiedergeburt weder gesichert noch gelöscht (auch im Original); nur
+`World.step` im Zustand ≠ 0 und die Schleife des Speicherbildschirms leeren sie
+(`Rumble.clear`), damit der Host 0 liest.
+
+Konfidenz: Auslöser, Stärken, Dauern und Spieler-Argument aus der Disassembly
+(hoch); Bedingungen der Aufrufer geprüft (hoch), beim Gegnertod und bei der
+Druckwelle nur die Bedingung, nicht die genaue Stelle innerhalb der Funktion
+(Reihenfolge zu Effekten und Ton ohne Wirkung). Formel der Ausgabe aus
+`0x5299B0`/`0x57A190` (mittel): die Zuordnung Joystick → Motor und die Wirkung
+der Stärke (DirectInput-Effekt) hängen am Gerät und sind im Port nicht
+nachgebildet; `magnitude` ist der Effekt-Wert des Originals (0…10000).
+
 ## Ton
 
 DirectSound 7 über dx7vb: `LoadSound` (`0x4EE2E0`) legt je Sound
@@ -970,7 +1039,8 @@ Port: `src/game/menu/` (`menuLogic.ts` Logik, `menuView.ts` Zeichnung,
 `src/game/config.ts` (gespeichert beim Ändern). Abweichungen: Russisch fehlt;
 Trägheit („Realistic“) wirkt als Ausgleiten nach dem Loslassen (Reihenfolge im
 Tick nicht am Original geprüft); die Tastenseite kennt nur die Tastatur (siehe
-„Tastenkonfiguration“). `#/dovez?nointro=1` startet ohne Logos und Intro.
+„Tastenkonfiguration“); Vibration: die Simulation liefert `world.rumble.magnitude`
+(Abschnitt „Vibration“). `#/dovez?nointro=1` startet ohne Logos und Intro.
 
 ## Osterei LOV (`0x546C30`, Aufruf `Me+0x960` am Ende von `MenuLoop`)
 
