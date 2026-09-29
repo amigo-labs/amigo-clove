@@ -1,5 +1,6 @@
 import type { KeyValueStore } from "@clove/core";
 import type { Carry } from "../sim/world";
+import { type Lang, levelRu, levelShort } from "./lang";
 
 /**
  * Spielstände (`SaveGame` `0x541010`, `LoadGame` `0x540970`): 21 Plätze,
@@ -35,6 +36,9 @@ export const saveKey = (slot: number): string => `save/${slot}`;
 /**
  * Beschriftung (`0x544AA9`): `"P" & Spieler & "S" & Schiff & Chr(Durchgang + 64)`
  * (ab 27 „Z“) `& " - " & Left(Lvl, InStr(Lvl, "-") + 1) & "  " & Date`.
+ * Russisch ersetzt im Levelnamen „Level“ durch „Уровень“ (`levelRu`). Das Datum
+ * ist im Original das der Windows-Ländereinstellung (`Date`): der Port nimmt für
+ * Deutsch und Russisch `TT.MM.JJJJ` (de-DE, ru-RU), für Englisch `M/T/JJJJ` (en-US).
  */
 export function saveLabel(
   players: number,
@@ -42,17 +46,17 @@ export function saveLabel(
   pass: number,
   level: string,
   date: Date,
-  german: boolean,
+  lang: Lang,
 ): string {
   const letter = String.fromCharCode(pass > 26 ? 90 : pass + 64);
-  const dash = level.indexOf("-");
-  const short = level.slice(0, dash + 2);
+  const short = lang === "ru" ? levelRu(level) : levelShort(level);
   const d = date.getDate();
   const m = date.getMonth() + 1;
   const y = date.getFullYear();
-  const day = german
-    ? `${String(d).padStart(2, "0")}.${String(m).padStart(2, "0")}.${y}`
-    : `${m}/${d}/${y}`;
+  const day =
+    lang === "en"
+      ? `${m}/${d}/${y}`
+      : `${String(d).padStart(2, "0")}.${String(m).padStart(2, "0")}.${y}`;
   return `P${players}S${ship + 1}${letter} - ${short}  ${day}`;
 }
 

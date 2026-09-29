@@ -43,6 +43,7 @@ function languageSection(c: SettingsContext): HTMLElement {
         ["auto", c.t("languageAuto")],
         ["de", "Deutsch"],
         ["en", "English"],
+        ["ru", "Русский"],
       ] as const
     ).map(([v, label]) => h("option", { value: v, selected: c.settings().language === v }, label)),
   );

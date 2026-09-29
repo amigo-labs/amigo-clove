@@ -292,7 +292,12 @@ describe.if(existsSync(DATA))("Planung", () => {
     const jobs = planDoveZ(ROOT);
     const ids = jobs.flatMap((j) => j.outputs.map((o) => o.id));
     expect(new Set(ids).size).toBe(ids.length);
-    // 52 Pakete + 2 lose Intro-Videos + 20 Musikstücke
-    expect(jobs.length).toBe(52 + 2 + 20);
+    // 52 Pakete + 16 Funktext-Jobs (D/E/R je Level) + 2 lose Intro-Videos + 20 Musikstücke
+    expect(jobs.length).toBe(52 + 16 + 2 + 20);
+    const radio = jobs.filter((j) => j.outputs.some((o) => o.id.startsWith("radio/")));
+    expect(radio).toHaveLength(16);
+    expect(radio.every((j) => j.outputs.length === 1 && j.bundles[0]?.startsWith("level/"))).toBe(
+      true,
+    );
   });
 });

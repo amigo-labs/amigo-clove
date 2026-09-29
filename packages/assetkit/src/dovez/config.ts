@@ -16,6 +16,7 @@ import {
   maskName,
   parsePlayScript,
   parseRadioText,
+  parseRadioTextRu,
   readContainer,
   type ContainerEntry,
   type MaskOffset,
@@ -61,6 +62,8 @@ export const SOUND_OPUS_CONVERTER_VERSION = 1;
 export const VIDEO_CONVERTER_VERSION = 1;
 export const MUSIC_OGG_CONVERTER_VERSION = 1;
 export const DATA_CONVERTER_VERSION = 1;
+/** Funktexte `{ de, en, ru }` (Version 1: nur `{ de, en }` im Atlas-Job, daher neu). */
+export const RADIO_CONVERTER_VERSION = 1;
 
 /** Globale Grafikpakete → Bundle. */
 const D2P_ATLAS_BUNDLES: Readonly<Record<string, string>> = {
@@ -127,7 +130,8 @@ const json = (value: unknown) => new TextEncoder().encode(`${JSON.stringify(valu
 
 /**
  * Atlas-Job eines Pakets mit Grafik: Atlas-JSON, Seiten, Konturen und — bei
- * Levels — Level-Skript (roh, M7 dekodiert es) und Funktexte (D/E).
+ * Levels — Level-Skript (roh, M7 dekodiert es). Die Funktexte (D/E/R) baut
+ * `radioJob`.
  */
 function atlasJob(path: string, slug: string, bundle: string, listing: readonly Listing[]): Job {
   const lower = new Set(listing.map((l) => l.name.toLowerCase()));
@@ -152,34 +156,21 @@ function atlasJob(path: string, slug: string, bundle: string, listing: readonly 
   );
   const contourFiles = listing.filter((l) => ext(l.name) === "r");
   const dats = listing.filter((l) => ext(l.name) === "dat");
-  const texts = listing.filter((l) => ext(l.name) === "txt");
   for (const l of listing) {
     if (!["bmp", "r", "dat", "txt"].includes(ext(l.name))) {
       throw new Error(`${path}: ${l.name} ist keinem Asset zugeordnet (dovez/config.ts)`);
     }
   }
   if (dats.length > 1) throw new Error(`${path}: mehr als ein Level-Skript`);
-  const textDe = texts.find((t) => /D\.txt$/i.test(t.name));
-  const textEn = texts.find((t) => /E\.txt$/i.test(t.name));
-  for (const t of texts) {
-    if (t !== textDe && t !== textEn && !/R\.txt$/i.test(t.name)) {
-      throw new Error(`${path}: Funktext ${t.name} ohne Sprachkennung D/E/R`);
-    }
-  }
-  if (texts.length > 0 && (!textDe || !textEn))
-    throw new Error(`${path}: Funktexte D/E unvollständig`);
-
   const atlasId = `atlas/${slug}`;
   const pageIds = layout.pages.map((_, i) => `image/${slug}/${i}`);
   const contourId = `contours/${slug}`;
   const datId = `leveldat/${slug}`;
-  const radioId = `radio/${slug}`;
   const outputs: OutputSpec[] = [
     { id: atlasId, kind: "atlas", ext: "json" },
     ...pageIds.map((id) => ({ id, kind: "image" as const, ext: "webp" })),
     ...(contourFiles.length ? [{ id: contourId, kind: "binary" as const, ext: "bin" }] : []),
     ...(dats.length ? [{ id: datId, kind: "binary" as const, ext: "dat" }] : []),
-    ...(textDe ? [{ id: radioId, kind: "data" as const, ext: "json" }] : []),
   ];
   const options = {
     effort: DOVEZ_WEBP_EFFORT,
@@ -248,18 +239,58 @@ function atlasJob(path: string, slug: string, bundle: string, listing: readonly 
       }
       const dat = entries.find((e) => ext(e.name) === "dat");
       if (dat) out.push({ id: datId, kind: "binary", ext: "dat", bytes: dat.data, meta: {} });
-      if (textDe && textEn) {
-        const text = (name: string) =>
-          parseRadioText(decodeCp1252((byName.get(name.toLowerCase()) as ContainerEntry).data));
-        out.push({
-          id: radioId,
-          kind: "data",
-          ext: "json",
-          bytes: json({ de: text(textDe.name), en: text(textEn.name) }),
-          meta: {},
-        });
-      }
       return out;
+    },
+  };
+}
+
+/**
+ * Funktexte eines Levels (`<Name>D/E/R.txt`) → `radio/<slug>` = `{ de, en, ru }`.
+ * D und E sind CP1252, R ist CP1251 (`parseRadioTextRu`: Abschnittsnamen
+ * byteweise wie die Level-Skripte, `;` im Untertitel toleriert). Alle drei
+ * sind Pflicht, sobald ein Level Funktexte hat.
+ */
+function radioJob(
+  path: string,
+  slug: string,
+  bundle: string,
+  listing: readonly Listing[],
+): Job | undefined {
+  const texts = listing.filter((l) => ext(l.name) === "txt");
+  if (texts.length === 0) return undefined;
+  const find = (re: RegExp) => texts.find((t) => re.test(t.name));
+  const textDe = find(/D\.txt$/i);
+  const textEn = find(/E\.txt$/i);
+  const textRu = find(/R\.txt$/i);
+  for (const t of texts) {
+    if (t !== textDe && t !== textEn && t !== textRu) {
+      throw new Error(`${path}: Funktext ${t.name} ohne Sprachkennung D/E/R`);
+    }
+  }
+  if (!textDe || !textEn || !textRu) throw new Error(`${path}: Funktexte D/E/R unvollständig`);
+  const id = `radio/${slug}`;
+  return {
+    bundles: [bundle],
+    sources: [path],
+    options: { languages: ["de", "en", "ru"] },
+    converterVersion: RADIO_CONVERTER_VERSION,
+    outputs: [{ id, kind: "data", ext: "json" }],
+    run: async ([bytes]) => {
+      const byName = new Map(readContainer(bytes!, inflate).map((e) => [e.name.toLowerCase(), e]));
+      const data = (t: Listing) => (byName.get(t.name.toLowerCase()) as ContainerEntry).data;
+      return [
+        {
+          id,
+          kind: "data" as const,
+          ext: "json",
+          bytes: json({
+            de: parseRadioText(decodeCp1252(data(textDe))),
+            en: parseRadioText(decodeCp1252(data(textEn))),
+            ru: parseRadioTextRu(data(textRu)),
+          }),
+          meta: {},
+        },
+      ];
     },
   };
 }
@@ -361,6 +392,8 @@ export function planDoveZ(root: string): Job[] {
     const kind = ext(file);
     if (kind === "dlp") {
       jobs.push(atlasJob(path, slug, `level/${slug}`, listing));
+      const radio = radioJob(path, slug, `level/${slug}`, listing);
+      if (radio) jobs.push(radio);
     } else if (kind === "dfp") {
       jobs.push(soundJob(path, `voice/${slug}`, `voice/${slug}`, listing, VOICE_OPUS));
     } else if (slug === "sound") {

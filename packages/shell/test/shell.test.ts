@@ -49,6 +49,7 @@ describe("Einstellungen", () => {
     expect(reducedMotion("full", true)).toBe(false);
     expect(reducedMotion("auto", true)).toBe(true);
     expect(reducedMotion("auto", false)).toBe(false);
+    expect(sanitizeSettings({ language: "ru" }).language).toBe("ru");
   });
 
   test("kaputtes JSON im Speicher schadet nicht", () => {
