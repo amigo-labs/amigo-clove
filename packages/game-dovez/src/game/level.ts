@@ -168,6 +168,7 @@ export class LevelScene implements Scene {
     // `Me.512` (normal) und `Me.50E` aus den Grundeinstellungen
     world.qToggles = !ctx.config.qNormal;
     world.autoArrange = ctx.config.autoArrange;
+    world.realistic = ctx.config.realistic;
     const renderer = new Renderer(textures, world, atlases, ctx.app.renderer, { german, keyLabel });
     // Seiten, die nur dieses Level braucht (die globalen bleiben geladen)
     const shared = new Set(Renderer.pageIds(globals.map((json) => ({ json }))));

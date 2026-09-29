@@ -189,6 +189,26 @@ describe("Spieler", () => {
     expect([p.x, p.y]).toEqual([0, -17]);
   });
 
+  const glideRun = (realistic: boolean) => {
+    const p = new Player(0, 0, 1);
+    const w = { ...open, realistic };
+    for (let i = 0; i < 12; i++) updatePlayer(p, { ...NO_INPUT, right: true }, w);
+    const x0 = p.x;
+    updatePlayer(p, NO_INPUT, w);
+    const first = p.x - x0;
+    for (let i = 0; i < 60; i++) updatePlayer(p, NO_INPUT, w);
+    return { first, total: p.x - x0 };
+  };
+
+  test("Realistic: gleitet nach dem Loslassen mit ×0,85 je Tick aus, Arcade bleibt stehen", () => {
+    const arcade = glideRun(false);
+    expect(arcade.total).toBe(0);
+    const real = glideRun(true);
+    expect(real.first).toBeCloseTo(6 * 0.85, 4);
+    expect(real.total).toBeGreaterThan(real.first);
+    expect(real.total).toBeLessThan((6 * 0.85) / (1 - 0.85) + 0.01);
+  });
+
   test("Neigung: sofort beim Drücken, dann alle 6 Ticks; zurück zur Mitte", () => {
     const p = new Player(0, 0, 1);
     updatePlayer(p, { ...NO_INPUT, up: true }, open);

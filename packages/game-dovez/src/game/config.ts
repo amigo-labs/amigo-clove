@@ -15,7 +15,7 @@ export interface DovezConfig {
   readonly qNormal: boolean;
   /** `Me.50E`: D-Tonator-Partikel automatisch anordnen. */
   readonly autoArrange: boolean;
-  /** `Me.510`: Trägheit („Realistic“); im Port noch ohne Wirkung (nur Arcade). */
+  /** `Me.510`: Trägheit („Realistic“): Schiff gleitet nach dem Loslassen aus. */
   readonly realistic: boolean;
 }
 

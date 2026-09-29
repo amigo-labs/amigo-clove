@@ -246,6 +246,8 @@ export class World {
   private readonly companionKeys = newCompanionKeys();
   /** Option „D-Tonator-Partikel: Auto-Arrange“ (`Me.50E`). */
   autoArrange = true;
+  /** Option „Ship Movements: Realistic“ (`Me.510`). */
+  realistic = false;
   /** Eingaben des laufenden Ticks (Begleiter lesen sie außerhalb von `SpielKeysDove`). */
   private inputs: readonly PlayerInput[] = [];
   /** Gemeinsame Leben (`P[0].44`): 3 mit einem, 6 mit zwei Spielern. */
@@ -857,6 +859,7 @@ export class World {
   private playerWorld(): PlayerWorld {
     return {
       terrainSpeed: this.layers[TERRAIN_LAYER]!.speed,
+      realistic: this.realistic,
       // in der Beam-Kraftphase entfällt der Tempoabzug unter Wasser
       underwater: (p) =>
         !this.beams[p.index]?.power &&

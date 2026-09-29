@@ -213,7 +213,10 @@ erscheinen Waffen-Power-ups nur für das gewählte Schiff.
   Q, W, E. Zwei Spieler: IJKL bzw. Ziffernblock mit eigener Belegung.
 - **Bewegung „Arcade“ (Vorgabe):** keine Trägheit, `CLng(speed)` px je Achse
   (Start 6, unter Wasser −3, mindestens 1), Diagonalen nicht normiert.
-  „Realistisch“ gleitet nach dem Loslassen mit ×0,85 je Tick aus.
+  „Realistisch“ gleitet nach dem Loslassen (nach ≥ 10 Ticks Tastendruck) mit
+  ×0,85 je Tick aus, bis beide Geschwindigkeiten unter 1 fallen; der Port
+  addiert dazu die abklingende Geschwindigkeit auf die Position
+  (`PlayerWorld.realistic`, gesetzt aus `Me.510`).
 - Grenzen x 0…736, y −17…496; **Hitbox (0, 17)–(64, 54)** für alle Typen.
   Wände sperren achsenweise (Rücksprung auf die Position zu Tickbeginn);
   Landschaft voraus schiebt mit der Scrollgeschwindigkeit nach links, bei
@@ -911,6 +914,6 @@ Port: `src/game/menu/` (`menuLogic.ts` Logik, `menuView.ts` Zeichnung,
 `menuScene.ts` Takt, Töne, Zeicheneingabe, `logos.ts` Logos), Optionen in
 `src/game/config.ts` (gespeichert beim Ändern). Abweichungen: Russisch fehlt;
 die Tastenseite zeigt die Belegung nur an (Umbelegen fehlt noch); Trägheit
-(„Realistic“) lässt sich schalten, wirkt aber noch nicht (der Port kennt nur
-Arcade); keine Vibration. `#/dovez?nointro=1` startet ohne Logos und Intro.
+(„Realistic“) wirkt als Ausgleiten nach dem Loslassen (Reihenfolge im Tick
+nicht am Original geprüft); keine Vibration. `#/dovez?nointro=1` startet ohne Logos und Intro.
 
