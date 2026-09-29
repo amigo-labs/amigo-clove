@@ -103,6 +103,8 @@ export interface EnemyWorld {
   sound(name: string): void;
   /** Druckwelle `AddGegnerS(−1, …)` um (cx, cy) mit Lebensdauer `life`. */
   shockwave(cx: number, cy: number, life: number, target: number): void;
+  /** `AddForce` (`0x529870`): Joystick-Vibration, reine Ausgabe. */
+  vibrate?(strength: number, ticks: number, player: number): void;
   /** Beam-Kraftphase des Spielers (`Me.CB0[p]+0x2E`). */
   beamPower(player: number): boolean;
   /** Super-Nova läuft (`Me.D6C`). */
@@ -1196,6 +1198,8 @@ export class Enemies {
     w: EnemyWorld,
   ): void {
     this.deathSpawn(e, w);
+    // `AddForce(1, 20, Spieler)` (`0x4C4A87`), sobald der Gegner stirbt
+    w.vibrate?.(1, 20, player);
     const { w: bw, h: bh } = this.box(e.def);
     const cx = idiv(bw, 2) + hx;
     const cy = idiv(bh, 2) + hy;
