@@ -48,6 +48,13 @@ export interface GameHost {
    * Bildschirmwackeln, abgeschwächte Vollbildblitze. Die Simulation bleibt gleich.
    */
   readonly reducedMotion?: boolean;
+  /**
+   * Gamepad-Vibration (Force Feedback des Originals): Stärke 0…1 für das n-te angeschlossene
+   * Pad, 0 beendet sie. Fehlt, wenn der Browser oder die Einstellung keine Vibration erlaubt.
+   */
+  readonly rumble?: (pad: number, magnitude: number) => void;
+  /** Anzahl der Pads mit Vibrationsmotor (für die Optionen des Spiels). */
+  readonly rumblePads?: () => number;
   /** Monotone Zeit in ms (`performance.now` im Browser). */
   now(): number;
 }

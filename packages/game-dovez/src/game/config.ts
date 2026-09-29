@@ -20,6 +20,10 @@ export interface DovezConfig {
   readonly realistic: boolean;
   /** Zweite Tasten der Tastenkonfiguration (`0x588174`, Block 3…5): 3 Sätze × 10 Aktionen, `""` = keine. */
   readonly keys: readonly string[];
+  /** Vibration je Gamepad 1 und 2 an/aus (`0x58842C`, Vorgabe an). */
+  readonly vibration: readonly [boolean, boolean];
+  /** Grundstärke der Vibration je Gamepad (`Me.9F0`): 500…10000 in Schritten von 500, Vorgabe 2500. */
+  readonly vibrationStrength: readonly [number, number];
 }
 
 export const CONFIG_KEY = "config";
@@ -32,11 +36,15 @@ export const DEFAULT_CONFIG: DovezConfig = {
   autoArrange: true,
   realistic: false,
   keys: DEFAULT_KEYS,
+  vibration: [true, true],
+  vibrationStrength: [2500, 2500],
 };
 
 const num = (v: unknown, d: number, lo: number, hi: number) =>
   typeof v === "number" && Number.isFinite(v) ? Math.max(lo, Math.min(hi, Math.trunc(v))) : d;
 const bool = (v: unknown, d: boolean) => (typeof v === "boolean" ? v : d);
+const pair = <T>(v: unknown, d: readonly [T, T], one: (x: unknown, d: T) => T): [T, T] =>
+  Array.isArray(v) ? [one(v[0], d[0]), one(v[1], d[1])] : [d[0], d[1]];
 
 export function parseConfig(json: string | null): DovezConfig {
   if (!json) return DEFAULT_CONFIG;
@@ -54,6 +62,10 @@ export function parseConfig(json: string | null): DovezConfig {
         Array.isArray(o.keys) && o.keys.length === d.keys.length && o.keys.every(isKeyCode)
           ? (o.keys as string[])
           : d.keys,
+      vibration: pair(o.vibration, d.vibration, bool),
+      vibrationStrength: pair(o.vibrationStrength, d.vibrationStrength, (x, y) =>
+        num(x, y, 500, 10000),
+      ),
     };
   } catch {
     return DEFAULT_CONFIG;
