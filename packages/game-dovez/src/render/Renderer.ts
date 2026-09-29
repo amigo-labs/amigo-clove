@@ -10,6 +10,7 @@ import {
   type Renderer as PixiRenderer,
 } from "pixi.js";
 import type { DrawList, DrawSlot, Quad } from "../sim/effects";
+import { type Lang, hintPrefix } from "../game/lang";
 import type { EnvSlot } from "../sim/envDraw";
 import { DeathState, type Enemy } from "../sim/enemies";
 import { LAYER_COUNT } from "../sim/layers";
@@ -126,8 +127,8 @@ const ORDER = [
 ] as const;
 
 export interface RendererOptions {
-  /** Spielsprache Deutsch (Tastenhinweis „Drücke:“ statt „Press:“). */
-  readonly german?: boolean;
+  /** Spielsprache (Tastenhinweis „Drücke:“/„Press:“/„Нажмите:“); ohne Angabe Deutsch. */
+  readonly lang?: Lang;
   /** Tastenname einer Aktion (Index der Belegungstabelle) für Satz 0 (1P) bzw. 1/2. */
   readonly keyLabel?: (action: number, set: number) => string;
 }
@@ -349,7 +350,7 @@ export class Renderer {
     }
     this.hintTexts.forEach((t, i) => (t.visible = i < need));
     if (!h) return;
-    const prefix = this.opts.german === false ? "Press: " : "Drücke: ";
+    const prefix = hintPrefix(this.opts.lang ?? "de");
     lines.forEach((set, n) => {
       const y = lines.length === 2 && n === 0 ? 360 : 450;
       const text = prefix + (this.opts.keyLabel?.(h.action, set) ?? "?");

@@ -5,6 +5,7 @@ import { cint } from "../sim/vb";
 import { TICK_MS } from "../sim/world";
 import { GdiText, atlasTexture } from "./gdi";
 import type { HighscoreEntry } from "./highscore";
+import type { Lang } from "./lang";
 import type { LevelScene } from "./level";
 import type { Scene } from "./scene";
 
@@ -89,8 +90,59 @@ export function savePlaces(ranks: readonly number[]): number[] {
 const YELLOW = 0xffff00;
 const WHITE = 0xffffff;
 
+/** ` (HIGHSCORE: n. Platz!)` bei Platz 1…10. */
+const rank = (place: number, suffix: string) =>
+  place < 11 ? ` (HIGHSCORE: ${place}${suffix}` : "";
+
+/** Texte des Speicherbildschirms in einer Sprache (`SaveGame` `0x541010`). */
+export interface SaveStrings {
+  /** „<Level> geschafft!“ */
+  cleared(level: string): string;
+  ask: string;
+  /** Zeile eines Spielers: Punkte, dahinter bei Platz 1…10 der Highscore-Platz. */
+  player(n: number, score: number, place: number): string;
+  dontSave: string;
+  /** „Gespeichert“: Text, Arial-Größe und y (x = 20). */
+  saved: { readonly text: string; readonly size: number; readonly y: number };
+}
+
+/**
+ * Deutsch und Englisch wie bisher (Arial 24/18/16). **Russisch** (Zweig ab
+ * `0x541FE6`): „Уровень расчищен!“ ohne Levelnamen, `„1 игрок: “`/`„2 игрок: “`
+ * mit den Punkten, aber ohne Highscore-Platz; „Сохранено“ in Arial 170 bei
+ * (20, 140) — die Positionen der übrigen Zeilen sind gleich.
+ */
+export function saveStrings(lang: Lang): SaveStrings {
+  switch (lang) {
+    case "de":
+      return {
+        cleared: (level) => `${level} geschafft!`,
+        ask: "Spiel speichern? ",
+        player: (n, score, place) => `Spieler ${n}: ${score}${rank(place, ". Platz!)")}`,
+        dontSave: "Nicht speichern",
+        saved: { text: "Gespeichert", size: 150, y: 150 },
+      };
+    case "en":
+      return {
+        cleared: (level) => `${level} Cleared!`,
+        ask: "Save Game? ",
+        player: (n, score, place) => `Player ${n}: ${score}${rank(place, ". Place!)")}`,
+        dontSave: "Don't Save",
+        saved: { text: "Saved", size: 300, y: 120 },
+      };
+    case "ru":
+      return {
+        cleared: () => "Уровень расчищен!",
+        ask: "Сохранить игру? ",
+        player: (n, score) => `${n} игрок: ${score}`,
+        dontSave: "Не сохранено",
+        saved: { text: "Сохранено", size: 170, y: 140 },
+      };
+  }
+}
+
 export interface SaveTexts {
-  readonly german: boolean;
+  readonly lang: Lang;
   readonly level: string;
   readonly scores: readonly number[];
   readonly places: readonly number[];
@@ -157,14 +209,11 @@ export class SaveScene implements Scene {
       this.all.push(s);
       return s;
     };
-    const { german, level: name } = data;
-    add(24).set(german ? `${name} geschafft!` : `${name} Cleared!`, 50, 170);
-    add(24).set(german ? "Spiel speichern? " : "Save Game? ", 50, 280);
+    const str = saveStrings(data.lang);
+    add(24).set(str.cleared(data.level), 50, 170);
+    add(24).set(str.ask, 50, 280);
     data.scores.forEach((score, p) => {
-      const place = data.places[p] ?? 11;
-      const who = german ? `Spieler ${p + 1}: ` : `Player ${p + 1}: `;
-      const rank = place < 11 ? ` (HIGHSCORE: ${place}${german ? ". Platz!)" : ". Place!)"}` : "";
-      add(18).set(`${who}${score}${rank}`, 50, 200 + 20 * p);
+      add(18).set(str.player(p + 1, score, data.places[p] ?? 11), 50, 200 + 20 * p);
     });
     const [id0, id1] = data.ids;
     const two = data.ids.length === 2;
@@ -178,7 +227,7 @@ export class SaveScene implements Scene {
     });
     this.dontSave = add(16);
     for (let i = 0; i < 21; i++) this.slotTexts.push(add(16));
-    this.saved = new Shadowed(german ? 150 : 300, this.texts);
+    this.saved = new Shadowed(str.saved.size, this.texts);
     this.saved.shadow.text.visible = false;
     this.saved.main.text.visible = false;
     level.world.enterSaveScreen();
@@ -188,13 +237,8 @@ export class SaveScene implements Scene {
 
   private drawTexts(): void {
     const { sel } = this.logic;
-    const { german, slots } = this.data;
-    this.dontSave.set(
-      german ? "Nicht speichern" : "Don't Save",
-      50,
-      310,
-      sel === 0 ? YELLOW : WHITE,
-    );
+    const { lang, slots } = this.data;
+    this.dontSave.set(saveStrings(lang).dontSave, 50, 310, sel === 0 ? YELLOW : WHITE);
     for (let col = 0; col < 3; col++)
       for (let row = 1; row <= 7; row++) {
         const n = 7 * col + row;
@@ -226,10 +270,13 @@ export class SaveScene implements Scene {
     return false;
   }
 
-  /** „Gespeichert“ (Arial 150 bei 20/150) bzw. „Saved“ (Arial 300 bei 20/120) und `Save.wav`. */
+  /**
+   * „Gespeichert“ (Arial 150 bei 20/150), „Saved“ (Arial 300 bei 20/120) bzw.
+   * „Сохранено“ (Arial 170 bei 20/140) und `Save.wav`.
+   */
   showSaved(): void {
-    const german = this.data.german;
-    this.saved.set(german ? "Gespeichert" : "Saved", 20, german ? 150 : 120);
+    const { text, y } = saveStrings(this.data.lang).saved;
+    this.saved.set(text, 20, y);
     this.saved.shadow.text.visible = true;
     this.saved.main.text.visible = true;
     this.level.audio?.effect("save", true);
