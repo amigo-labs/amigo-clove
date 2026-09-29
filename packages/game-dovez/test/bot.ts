@@ -42,8 +42,15 @@ export interface LevelRun {
   readonly peakEnemies: number;
 }
 
-/** Ein Level mit dem Bot spielen, höchstens `maxTicks` (Vorgabe: Levellänge + 3000, bei Bosslevels 60000). */
-export async function runLevel(slug: string, maxTicks?: number): Promise<LevelRun> {
+/**
+ * Ein Level mit dem Bot spielen, höchstens `maxTicks` (Vorgabe: Levellänge + 3000, bei Bosslevels 60000).
+ * `input` ersetzt die Zielwahl für Level, in denen die Vorgabe die Schwachstelle nicht trifft.
+ */
+export async function runLevel(
+  slug: string,
+  maxTicks?: number,
+  input: (w: World) => PlayerInput = botInput,
+): Promise<LevelRun> {
   const { level, sprites } = await loadTestLevel(slug);
   const w = new World(level, sprites);
   const max = maxTicks ?? Math.min(level.levelLength + 3000, 60000);
@@ -52,7 +59,7 @@ export async function runLevel(slug: string, maxTicks?: number): Promise<LevelRu
   let t = 0;
   for (; t < max && w.state === 0; t++) {
     for (const p of w.players) p.invulnerable = 2;
-    w.step([botInput(w), NO_INPUT]);
+    w.step([input(w), NO_INPUT]);
     w.events.length = 0;
     if (w.bossAlive) bossSeen = true;
     if (t % 50 === 0) peak = Math.max(peak, w.enemies.items.filter((e) => e?.alive).length);
