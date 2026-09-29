@@ -120,6 +120,33 @@ function audioHost(params: Readonly<Record<string, string>>): AudioHost | undefi
   };
 }
 
+/** Pads mit Vibrationsmotor in der Reihenfolge, in der der Browser sie meldet. */
+function rumblePads(): Gamepad[] {
+  if (!settings.gamepad) return [];
+  return [...(navigator.getGamepads?.() ?? [])].filter(
+    (p): p is Gamepad => p !== null && p.mapping === "standard" && p.vibrationActuator != null,
+  );
+}
+
+/** Kurze Motorimpulse, jeden Tick erneuert: 0 beendet, sonst starker Motor voll, schwacher zu 60 %. */
+function rumble(pad: number, magnitude: number): void {
+  const actuator = rumblePads()[pad]?.vibrationActuator;
+  if (!actuator) return;
+  if (magnitude <= 0) {
+    void actuator.reset().catch(() => undefined);
+    return;
+  }
+  const m = Math.min(1, magnitude);
+  void actuator
+    .playEffect("dual-rumble", {
+      startDelay: 0,
+      duration: 48,
+      strongMagnitude: m,
+      weakMagnitude: 0.6 * m,
+    })
+    .catch(() => undefined);
+}
+
 /** Tastatur plus Pad; das Pad lässt sich in den Einstellungen abschalten. */
 function keysFor(module: GameModule): KeyState {
   if (!module.gamepad || !navigator.getGamepads) return keyboard;
@@ -187,6 +214,8 @@ async function startGame(
         assets,
         keys: keysFor(module),
         locale,
+        rumble,
+        rumblePads: () => rumblePads().length,
         // folgt der Einstellung auch während des Spiels
         get reducedMotion() {
           return reducedMotion(settings.motion, motionQuery?.matches ?? false);
