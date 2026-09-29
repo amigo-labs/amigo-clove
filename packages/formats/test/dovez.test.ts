@@ -11,11 +11,13 @@ import {
   decodeBmp,
   decodeCp1251,
   decodeCp1252,
+  encodeCp1251,
   inflateWeb,
   maskName,
   parseContourR,
   parsePlayScript,
   parseRadioText,
+  parseRadioTextRu,
   readContainer,
   serializeContourR,
   type ContainerEntry,
@@ -147,8 +149,8 @@ describe("Alphamasken", () => {
 });
 
 describe("Funktexte", () => {
-  // R.txt (Russisch, CP1251) bleibt außen vor: die RU-Aufnahmen fehlen in den .dfp,
-  // und einige Untertitel enthalten selbst `;` — dort ist die Datei nicht eindeutig.
+  // R.txt (Russisch, CP1251) verweist auf `…RU_*.wav`, die in keiner .dfp liegen (bis auf
+  // die drei gleichnamigen von Escape); die Prüfung der WAVs gilt daher nur für D und E.
   test("D und E parsen, haben dieselben Abschnitte und WAVs, die WAVs liegen in der .dfp", () => {
     let files = 0;
     for (const [file, entries] of containers) {
@@ -181,6 +183,102 @@ describe("Funktexte", () => {
   test("R.txt ist CP1251", () => {
     const r = containers.get("Level1-1 Skyfight.dlp")!.find((e) => e.name === "SkyfightR.txt")!;
     expect(decodeCp1251(r.data)).toContain("Космическую станцию атакуют!");
+  });
+
+  test("R.txt: alle 16 parsen, Abschnitte, Sprecher und WAV-Namen entsprechen der englischen Fassung", () => {
+    let files = 0;
+    const onlyEn: string[] = [];
+    const counts: string[] = [];
+    for (const [file, entries] of containers) {
+      const ru = entries.find((e) => /R\.txt$/i.test(e.name));
+      const en = entries.find((e) => /E\.txt$/i.test(e.name));
+      if (!file.endsWith(".dlp") || !ru || !en) continue;
+      files++;
+      const r = parseRadioTextRu(ru.data);
+      const e = parseRadioText(decodeCp1252(en.data));
+      for (const section of Object.keys(e)) if (!(section in r)) onlyEn.push(`${file}: ${section}`);
+      // jede russische Funk-ID kommt auch englisch vor (die Namen stimmen byteweise, auch mit „ß“)
+      for (const section of Object.keys(r)) {
+        expect([file, section, section in e]).toEqual([file, section, true]);
+      }
+      for (const [section, lines] of Object.entries(r)) {
+        const other = e[section]!;
+        if (lines.length !== other.length) {
+          counts.push(`${file}: ${section} ${other.length}/${lines.length}`);
+        }
+        lines.forEach((l, i) => {
+          // …RU_x.wav ↔ …E_x.wav, epilogN_ru.wav ↔ epilogN_en.wav, Escape: gleichnamig
+          const mapped = l.wav.replace(/RU_/i, "E_").replace(/_ru\.wav$/i, "_en.wav");
+          expect([file, section, i, mapped.toLowerCase()]).toEqual([
+            file,
+            section,
+            i,
+            other[i]!.wav.toLowerCase(),
+          ]);
+          expect(l.frame).toBe(other[i]!.frame);
+        });
+      }
+    }
+    expect(files).toBe(16);
+    // Spacestation II hat russisch keinen Funkspruch „Bombers“, der Epilog ein Credits-Ende weniger
+    expect(onlyEn).toEqual(["Level2-2 Spacestation II.dlp: Bombers"]);
+    expect(counts).toEqual(["Epilog.dlp: Credits 13/12"]);
+  });
+
+  test("R.txt: Semikolon im Untertitel (Industry1R [Harbor]) bleibt ein Untertitel", () => {
+    const r = containers
+      .get("Level3-1 Industry Harbor.dlp")!
+      .find((e) => e.name === "Industry1R.txt")!;
+    // im Original: `frame;…;4562;Укрытие. Кровавый ад;они прибыли до нас.;;0;` — ein sturer Split
+    // ergäbe eine Müllgruppe mit dem Sprecher „они прибыли до нас.“
+    expect(decodeCp1251(r.data)).toContain("Кровавый ад;они прибыли до нас.;;0;");
+    const t = parseRadioTextRu(r.data);
+    expect(t["Harbor"]).toEqual([
+      {
+        frame: true,
+        wav: "Industry1RU_Harbor.wav",
+        ms: 4562,
+        text: "Укрытие. Кровавый ад; они прибыли до нас.",
+      },
+    ]);
+    expect(t["Incoming"]).toHaveLength(1);
+    expect(t["Action"]?.[0]?.text).toBe("Идет новая волна!");
+  });
+
+  test("R.txt: Abschnittsnamen sind byteweise die der Level-Skripte („Drohnen schießen“)", () => {
+    const r = containers.get("Level0-1 Tutorial.dlp")!.find((e) => /R\.txt$/i.test(e.name))!;
+    // CP1251 liest das Byte 0xDF als „Я“; die Level-Skripte tragen CP1252 (ß)
+    expect(Object.keys(parseRadioText(decodeCp1251(r.data)))).toContain("Drohnen schieЯen");
+    const t = parseRadioTextRu(r.data);
+    expect(Object.keys(t)).toContain("Drohnen schießen");
+    expect(Object.keys(t)).not.toContain("Drohnen schieЯen");
+    expect(t["Drohnen schießen"]![0]!.text).toMatch(/[а-я]/);
+  });
+
+  test("Grammatik: Untertitel mit „;“, „;;0;“-Rest, vertauschte Felder", () => {
+    // Gruppenanfang = Sprecher + WAV (oder vertauscht Dauer + WAV); alles davor ist Untertitel
+    const t = parseRadioText(
+      "[A]\r\nframe;a.wav;10;Eins; zwei;;0;\r\n\r\n[B]\r\n0; 1489; b.wav; Text; 0 ; c.wav ; 7; Sieben; acht\r\n",
+    );
+    expect(t["A"]).toEqual([{ frame: true, wav: "a.wav", ms: 10, text: "Eins; zwei" }]);
+    expect(t["B"]).toEqual([
+      { frame: false, wav: "b.wav", ms: 1489, text: "Text", swapped: true },
+      { frame: false, wav: "c.wav", ms: 7, text: "Sieben; acht" },
+    ]);
+    // ein unbekannter Sprecher am Anfang bleibt ein Fehler
+    expect(() => parseRadioText("[A]\nEins; a.wav; 1; t")).toThrow("Sprecher");
+    expect(() => parseRadioText("[A]\nframe; a.txt; 1; t")).toThrow("keine WAV");
+  });
+
+  test("CP1251: Kodieren und Dekodieren sind zueinander invers", () => {
+    const all = Uint8Array.from({ length: 256 }, (_, i) => i);
+    expect(encodeCp1251(decodeCp1251(all))).toEqual(all);
+    expect(encodeCp1251("Привет, Брюс!")).toEqual(
+      Uint8Array.from([
+        0xcf, 0xf0, 0xe8, 0xe2, 0xe5, 0xf2, 0x2c, 0x20, 0xc1, 0xf0, 0xfe, 0xf1, 0x21,
+      ]),
+    );
+    expect(() => encodeCp1251("ä")).toThrow("nicht darstellbar");
   });
 
   test("Grammatik: Viergruppen, abgeschnittene letzte Gruppe, Sprecher mitten in der Zeile", () => {
