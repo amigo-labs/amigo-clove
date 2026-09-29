@@ -129,7 +129,12 @@ const ORDER = [
   "env:overlay",
 ] as const;
 
+/** Deckkraft von Vollbildblitzen bei bewegungsarmer Darstellung. */
+const CALM_FLASH = 0.3;
+
 export interface RendererOptions {
+  /** Bewegungsarme Darstellung (Einstellung der Shell): kein Wackeln, abgeschwächte Blitze. */
+  readonly calm?: () => boolean;
   /** Spielsprache (Tastenhinweis „Drücke:“/„Press:“/„Нажмите:“); ohne Angabe Deutsch. */
   readonly lang?: Lang;
   /** Tastenname einer Aktion (Index der Belegungstabelle) für Satz 0 (1P) bzw. 1/2. */
@@ -227,6 +232,10 @@ export class Renderer {
     return this.texture(s.key, s.rect.x, s.rect.y, s.rect.w, s.rect.h);
   }
 
+  private calm(): boolean {
+    return this.opts.calm?.() === true;
+  }
+
   private batch(name: string): SpriteBatch {
     return this.batches.get(name)!;
   }
@@ -248,7 +257,10 @@ export class Renderer {
       if (slot !== "radio") this.drawList(this.batch(`fx:${slot as DrawSlot}`), list);
     }
     this.drawHint();
-    this.screen.position.set(-w.fx.shakeX, -w.fx.shakeY);
+    const calm = this.calm();
+    this.screen.position.set(calm ? 0 : -w.fx.shakeX, calm ? 0 : -w.fx.shakeY);
+    const flash = this.layers.get("fx:flash");
+    if (flash) flash.alpha = calm ? CALM_FLASH : 1;
     // Abblenden in den letzten 50 Ticks
     const left = w.level.levelLength - w.tick;
     this.fade.alpha = left < 50 && !w.nova ? (50 - left) / 50 : 0;
@@ -295,7 +307,9 @@ export class Renderer {
       else if (name === "nova:blits") this.novaBlits(plan);
       else if (name.startsWith("env:")) {
         const slot = name.slice(4) as EnvSlot;
-        c.expand(lists[slot], (key) => this.stripTexture(key), plan);
+        // bewegungsarm: Gewitter- und Vollbild-Overlays nur zu 30 %
+        const soft = this.calm() && (slot === "overlay" || slot === "weather");
+        c.expand(lists[slot], (key) => this.stripTexture(key), plan, soft ? CALM_FLASH : 1);
       } else plan.push(this.layers.get(name)!);
     }
     c.play(plan);

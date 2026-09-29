@@ -171,7 +171,16 @@ export class LevelScene implements Scene {
     world.qToggles = !ctx.config.qNormal;
     world.autoArrange = ctx.config.autoArrange;
     world.realistic = ctx.config.realistic;
-    const renderer = new Renderer(textures, world, atlases, ctx.app.renderer, { lang, keyLabel });
+    // Vibration: Spieler p steuert das p-te Gamepad mit Motor (`Me.588270`), Einstellung je Pad
+    const pads = () => ctx.host.rumblePads?.() ?? 0;
+    world.padOfPlayer = (p) => (p < pads() ? p + 1 : 0);
+    world.rumbleOn = [ctx.config.vibration[0], ctx.config.vibration[1]];
+    world.rumbleBase = [ctx.config.vibrationStrength[0], ctx.config.vibrationStrength[1]];
+    const renderer = new Renderer(textures, world, atlases, ctx.app.renderer, {
+      lang,
+      keyLabel,
+      calm: () => host.reducedMotion === true,
+    });
     // Seiten, die nur dieses Level braucht (die globalen bleiben geladen)
     const shared = new Set(Renderer.pageIds(globals.map((json) => ({ json }))));
     const pages = own.filter((id) => !shared.has(id));
@@ -206,8 +215,21 @@ export class LevelScene implements Scene {
     if (on) this.afterPause.visible = false;
   }
 
+  /** Vibration je Tick erneuern (der Motorimpuls des Hosts ist kurz), Ende einmal melden. */
+  private readonly rumbleSent: [number, number] = [0, 0];
+  private rumble(stop = false): void {
+    const out = this.ctx.host.rumble;
+    if (!out) return;
+    for (let j = 0; j < 2; j++) {
+      const m = stop ? 0 : (this.world.rumble.magnitude[j] ?? 0);
+      if (m > 0 || this.rumbleSent[j] !== 0) out(j, m / 10000);
+      this.rumbleSent[j] = m;
+    }
+  }
+
   private enterPause(): void {
     const { ctx, world } = this;
+    this.rumble(true);
     this.audio?.pause();
     this.captureShot(false);
     // NewPictureToLoadingscreen beim Öffnen der Pause
@@ -353,6 +375,7 @@ export class LevelScene implements Scene {
       if (this.opts.invincible)
         for (const p of world.players) p.invulnerable = Math.max(p.invulnerable, 2);
       world.step(inputs);
+      this.rumble();
       if (this.afterPauseAlpha > 0)
         this.afterPauseAlpha = Math.max(0, f32(this.afterPauseAlpha - 0.05));
       // Tod: Neustart am Checkpoint im nächsten Frame, ohne Leben der Continue-Bildschirm
@@ -386,6 +409,7 @@ export class LevelScene implements Scene {
   }
 
   destroy(): void {
+    this.rumble(true);
     this.win?.removeEventListener("blur", this.onBlur);
     this.win?.removeEventListener("focus", this.onFocus);
     if (this.mode.kind !== "play") this.mode.view.destroy();

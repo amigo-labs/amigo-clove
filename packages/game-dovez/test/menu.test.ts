@@ -284,6 +284,36 @@ describe("Hauptmenü (MenuLoop)", () => {
     expect(parseConfig(JSON.stringify(m.config)).keys[0]).toBe("KeyY");
   });
 
+  test("Vibrationszeilen (17, 18) nur mit Gamepad: Schalter, Stärke in 500ern, Probeimpuls", () => {
+    const go = (pads: number) => {
+      const m = menu({ pads: () => pads });
+      m.step(none);
+      press(m, { down: true });
+      press(m, { down: true });
+      press(m, { ok: true });
+      press(m, { down: true });
+      press(m, { down: true });
+      press(m, { ok: true });
+      for (let i = 0; i < 20; i++) m.step(none);
+      return m;
+    };
+    const none0 = go(0);
+    for (let i = 0; i < 12; i++) press(none0, { down: true });
+    // ohne Pad überspringt die Auswahl die leeren Zeilen 17 und 18 und landet auf 20
+    press(none0, { ok: true });
+    expect(none0.config.vibration).toEqual([true, true]);
+    const m = go(1);
+    for (let i = 0; i < 12; i++) press(m, { down: true });
+    press(m, { ok: true });
+    expect(m.config.vibration).toEqual([false, true]);
+    expect(m.pulse).toMatchObject({ pad: 0, ticks: 20 });
+    press(m, { down: true });
+    press(m, { ok: true });
+    expect(m.config.vibrationStrength[0]).toBe(3000);
+    expect(m.pulse?.magnitude).toBeCloseTo(0.3, 5);
+    expect(parseConfig(JSON.stringify(m.config)).vibrationStrength[0]).toBe(3000);
+  });
+
   test("Osterei: L, O und V zugleich im Hauptmenü, nicht auf anderen Seiten", () => {
     const a = menu();
     a.step(none);

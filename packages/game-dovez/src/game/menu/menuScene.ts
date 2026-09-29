@@ -111,6 +111,19 @@ export class MenuScene implements Scene {
     };
   }
 
+  /** Probeimpuls der Vibrationszeilen an den Host geben; nach 20 Durchläufen aus. */
+  private pulse(logic: MenuLogic): void {
+    const p = logic.pulse;
+    if (!p) return;
+    if (p.ticks > 0) {
+      this.host.rumble?.(p.pad, p.magnitude);
+      p.ticks--;
+    } else {
+      this.host.rumble?.(p.pad, 0);
+      logic.pulse = undefined;
+    }
+  }
+
   frame(now: number): boolean {
     if (this.exiting) return !pauseKey(this.host);
     const n = this.loop.frame(now);
@@ -119,6 +132,7 @@ export class MenuScene implements Scene {
       this.view.tick();
       const before = logic.config;
       const d = logic.step(this.keys());
+      this.pulse(logic);
       // die Belegung der Tastenseite gilt sofort, auch für die Menüsteuerung
       useKeys(logic.keyMap);
       for (const s of logic.sounds.splice(0))

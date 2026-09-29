@@ -418,6 +418,7 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
       ids: lastIds,
       keyText,
       codeOfDik,
+      pads: () => host.rumblePads?.() ?? 0,
     });
     app.stage.addChild(view.root);
     await play(
