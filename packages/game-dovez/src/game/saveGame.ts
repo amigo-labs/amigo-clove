@@ -25,7 +25,7 @@ export interface SaveFile {
   readonly pass: number;
   readonly players: 1 | 2;
   /** Schiffstyp von Spieler 1 (`A[0].A8`). */
-  readonly ship: 0 | 1;
+  readonly ship: 0 | 1 | 2;
   readonly names: readonly string[];
   readonly ids: readonly number[];
   readonly carry: Carry;
@@ -75,7 +75,7 @@ export function parseSave(json: string | null): SaveFile | undefined {
       typeof o.step !== "number" ||
       typeof o.pass !== "number" ||
       (o.players !== 1 && o.players !== 2) ||
-      (o.ship !== 0 && o.ship !== 1) ||
+      (o.ship !== 0 && o.ship !== 1 && o.ship !== 2) ||
       !Array.isArray(o.names) ||
       !Array.isArray(o.ids) ||
       typeof o.carry !== "object" ||

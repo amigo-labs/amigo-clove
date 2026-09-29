@@ -1,3 +1,4 @@
+import { fireDrones, type Drones } from "./drones";
 import type { DrawList, Effects } from "./effects";
 import { MUZZLE, type Player, type PlayerInput } from "./player";
 import { SHOT_SPEED, type ShotLayer } from "./playerShots";
@@ -96,6 +97,8 @@ export interface WeaponWorld {
   readonly players: readonly Player[];
   readonly force: Force;
   readonly particles: readonly Particle[];
+  /** Drohnen des Debug-Schiffs 2 (`Me.B04`). */
+  readonly drones: Drones;
   /** Beam-Kraftphase je Spieler (`Me.CB0[p]+0x2E`). */
   beamPower(p: number): boolean;
   sound(name: string): void;
@@ -142,6 +145,7 @@ export function fireWeapons(
     secondary(w, p, m);
     if (p.shipType === 0) muzzleSparks = particles(w, st, p, m, flags) || muzzleSparks;
     else if (p.shipType === 1) force(w, p, m, flags);
+    else if (p.shipType === 2) fireDrones(w.layers, w.drones, p);
     if (muzzleSparks) sparks(w, p);
   }
   w.loop("cyan", flags.cyan);
