@@ -35,6 +35,46 @@
         align-items: center;
         justify-content: center;
       }
+      .stage {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+      }
+      .overlay {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+      .scanlines {
+        position: absolute;
+        left: var(--game-x);
+        top: var(--game-y);
+        width: var(--game-w);
+        height: var(--game-h);
+        background: linear-gradient(to bottom, transparent 50%, rgb(0 0 0 / 0.35) 50%);
+        background-size: 100% calc(var(--px) * 1px);
+      }
+      .overlay .fullscreen {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+        padding: 0.2rem 0.5rem;
+        font-size: 1.25rem;
+        line-height: 1;
+        border-color: #666;
+        background: rgb(0 0 0 / 0.6);
+        color: #ccc;
+        opacity: 0;
+        transition: opacity 0.3s;
+        pointer-events: auto;
+      }
+      .overlay .fullscreen[data-visible],
+      .overlay .fullscreen:focus-visible {
+        opacity: 1;
+      }
       #launcher,
       #settings,
       #loading {

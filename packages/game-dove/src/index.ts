@@ -89,6 +89,7 @@ const dove: GameModule = {
       canvas: host.canvas,
       width: SCREEN_WIDTH,
       height: SCREEN_HEIGHT,
+      scale: () => host.scaleMode?.() ?? "integer",
     });
     const textures = new TextureRegistry(host.assets);
     const audio = host.audio

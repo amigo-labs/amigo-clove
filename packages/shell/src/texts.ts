@@ -32,6 +32,15 @@ type Key =
   | "motionReduce"
   | "motionFull"
   | "motionHelp"
+  | "display"
+  | "scale"
+  | "scaleInteger"
+  | "scaleFit"
+  | "scaleSmooth"
+  | "scaleHelp"
+  | "scanlines"
+  | "fullscreen"
+  | "fullscreenExit"
   | "loadingBar"
   | "gameCanvas"
   | "saves"
@@ -87,6 +96,16 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
     motionFull: "volle Effekte",
     motionHelp:
       "Reduziert Bildschirmwackeln und schwächt Vollbildblitze ab; das Spielgeschehen bleibt gleich.",
+    display: "Darstellung",
+    scale: "Skalierung",
+    scaleInteger: "ganzzahlig (scharf, wie das Original)",
+    scaleFit: "Fenster füllen (scharf)",
+    scaleSmooth: "Fenster füllen (weich)",
+    scaleHelp:
+      "Ganzzahlig lässt jedes Originalpixel gleich groß, „Fenster füllen“ nutzt den ganzen Platz. Vollbild: Alt+Enter oder ⛶ oben rechts.",
+    scanlines: "Rasterlinien (Röhrenmonitor)",
+    fullscreen: "Vollbild",
+    fullscreenExit: "Vollbild beenden",
     loadingBar: "Ladefortschritt",
     gameCanvas: "{title}: Spielfläche. Bedienung mit Tastatur oder Gamepad, Esc pausiert.",
     saves: "Spielstände",
@@ -140,6 +159,16 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
     motionReduce: "reduce",
     motionFull: "full effects",
     motionHelp: "Reduces screen shake and softens full-screen flashes; gameplay stays the same.",
+    display: "Display",
+    scale: "Scaling",
+    scaleInteger: "integer (sharp, as the original)",
+    scaleFit: "fill window (sharp)",
+    scaleSmooth: "fill window (smooth)",
+    scaleHelp:
+      "Integer keeps every original pixel the same size; “fill window” uses all the space. Full screen: Alt+Enter or ⛶ at the top right.",
+    scanlines: "Scanlines (CRT look)",
+    fullscreen: "Full screen",
+    fullscreenExit: "Exit full screen",
     loadingBar: "Loading progress",
     gameCanvas: "{title}: play area. Controls: keyboard or gamepad, Esc pauses.",
     saves: "Saved games",
@@ -193,6 +222,16 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
     motionFull: "полные эффекты",
     motionHelp:
       "Убирает тряску экрана и ослабляет вспышки на весь экран; игровой процесс не меняется.",
+    display: "Изображение",
+    scale: "Масштаб",
+    scaleInteger: "целочисленный (чёткий, как в оригинале)",
+    scaleFit: "по размеру окна (чёткий)",
+    scaleSmooth: "по размеру окна (сглаженный)",
+    scaleHelp:
+      "Целочисленный масштаб сохраняет все пиксели одинаковыми, «по размеру окна» использует всё место. Полный экран: Alt+Enter или ⛶ справа вверху.",
+    scanlines: "Строки развёртки (как на ЭЛТ)",
+    fullscreen: "Полный экран",
+    fullscreenExit: "Выйти из полноэкранного режима",
     loadingBar: "Ход загрузки",
     gameCanvas: "{title}: игровое поле. Управление: клавиатура или геймпад, Esc — пауза.",
     saves: "Сохранения",

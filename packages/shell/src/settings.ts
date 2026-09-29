@@ -1,4 +1,4 @@
-import { LOCALES, type LocalePreference } from "@clove/core";
+import { LOCALES, type LocalePreference, type ScaleMode } from "@clove/core";
 
 /** Einstellungen der Shell, spielübergreifend. */
 export interface Settings {
@@ -8,16 +8,24 @@ export interface Settings {
   readonly gamepad: boolean;
   /** Bewegungsarme Darstellung: nach dem System („auto“), an oder aus. */
   readonly motion: MotionPreference;
+  /** Skalierung des Spielbilds (Vorgabe ganzzahlig wie im Original-Fenster). */
+  readonly scale: ScaleMode;
+  /** Rasterlinien über dem Spielbild (reine CSS-Schicht). */
+  readonly scanlines: boolean;
 }
 
 export const MOTION_PREFERENCES = ["auto", "reduce", "full"] as const;
 export type MotionPreference = (typeof MOTION_PREFERENCES)[number];
+
+export const SCALE_MODES = ["integer", "fit", "smooth"] as const satisfies readonly ScaleMode[];
 
 export const DEFAULT_SETTINGS: Settings = {
   language: "auto",
   volume: { master: 1, music: 1, sfx: 1 },
   gamepad: true,
   motion: "auto",
+  scale: "integer",
+  scanlines: false,
 };
 
 /** Ist die bewegungsarme Darstellung aktiv? „auto“ folgt `prefers-reduced-motion`. */
@@ -50,6 +58,8 @@ export function sanitizeSettings(raw: unknown): Settings {
     },
     gamepad: typeof r["gamepad"] === "boolean" ? r["gamepad"] : d.gamepad,
     motion: MOTION_PREFERENCES.find((m) => m === r["motion"]) ?? d.motion,
+    scale: SCALE_MODES.find((m) => m === r["scale"]) ?? d.scale,
+    scanlines: typeof r["scanlines"] === "boolean" ? r["scanlines"] : d.scanlines,
   };
 }
 

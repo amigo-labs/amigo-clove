@@ -107,6 +107,7 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
     canvas: host.canvas,
     width: SCREEN_WIDTH,
     height: SCREEN_HEIGHT,
+    scale: () => host.scaleMode?.() ?? "integer",
   });
   const textures = new TextureRegistry(host.assets);
   const globals = (await Promise.all(

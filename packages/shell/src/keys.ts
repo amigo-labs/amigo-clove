@@ -7,6 +7,8 @@ const SCROLL_KEYS = new Set(["Space", "PageUp", "PageDown", "Home", "End"]);
 export function createKeyState(target: Window): KeyState & { dispose(): void } {
   const down = new Set<string>();
   const onDown = (e: KeyboardEvent) => {
+    // Alt+Enter schaltet das Vollbild der Shell, das Spiel sieht davon kein Enter
+    if (e.code === "Enter" && e.altKey) return;
     down.add(e.code);
     if (e.code.startsWith("Arrow") || SCROLL_KEYS.has(e.code)) e.preventDefault();
   };
