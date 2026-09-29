@@ -92,6 +92,7 @@ const ORDER = [
   "anim5",
   "fx:gate0",
   "fx:exhaust",
+  "fx:drones",
   "fx:weapons",
   "fx:shots0",
   "fx:sparks0",
@@ -106,10 +107,12 @@ const ORDER = [
   "fx:shots1",
   "anim3",
   "fx:beam",
+  "env:beam",
   "nova:blits",
   "fx:nova",
   "fx:sparks1",
   "fx:big",
+  "env:big",
   "eshots",
   "fx:force",
   "fx:popups",
@@ -315,8 +318,10 @@ export class Renderer {
 
   /** Streifen-Textur zu einem Schlüssel: Render-Ziel oder Atlas-Sprite (`@noise` mit Wiederholung). */
   private stripTexture(key: string): StripTexture | undefined {
-    if (key === "@blur" || key === "@still")
-      return this.compositor.targetTexture(key === "@blur" ? "blur" : "still");
+    if (key === "@blur" || key === "@still" || key === "@lens")
+      return this.compositor.targetTexture(
+        key === "@blur" ? "blur" : key === "@lens" ? "lens" : "still",
+      );
     const wrap = key === "@noise";
     const t = this.texture(wrap ? "noise" : key);
     if (!t) return undefined;

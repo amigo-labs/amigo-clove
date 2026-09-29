@@ -41,7 +41,7 @@ export interface GameContext {
   readonly profile: Profile;
   readonly mosaic: Mosaic;
   readonly players: 1 | 2;
-  readonly ship: 0 | 1;
+  readonly ship: 0 | 1 | 2;
   /** Optionen aus dem Menü (Pegel, Force-Taste, Auto-Arrange). */
   readonly config: DovezConfig;
 }

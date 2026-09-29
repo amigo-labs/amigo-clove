@@ -57,7 +57,8 @@ export interface GameOptions {
   /** Einzellevel (Slug) ohne Menü. */
   readonly level?: string | undefined;
   readonly from: number;
-  readonly ship: 0 | 1;
+  /** 0 D-Tonator, 1 D-Phyton, 2 Debug-Schiff (nur URL `ship=2`). */
+  readonly ship: 0 | 1 | 2;
   readonly invincible: boolean;
   readonly players: 1 | 2;
   /** Kampagne ab dieser Anweisung (`Me.115C`, zum Testen), ohne Menü. */
@@ -92,7 +93,7 @@ function levelName(host: GameHost, slug: string): string {
 /** Wie ein Spiel beginnt: neu (Kampagne oder Bonus), per Spielstand oder direkt (URL). */
 interface Start {
   readonly players: 1 | 2;
-  readonly ship: 0 | 1;
+  readonly ship: 0 | 1 | 2;
   readonly names?: readonly string[] | undefined;
   readonly ids?: readonly number[] | undefined;
   readonly saved?: SaveFile | undefined;

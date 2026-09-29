@@ -1,5 +1,6 @@
 import type { DovezGroup } from "@clove/formats";
 import { doAni } from "./doAni";
+import type { EnvList } from "./envDraw";
 import type { Surface } from "./surfaces";
 import { COS_DEG, SIN_DEG, cint, degIndex, f32, idiv, vbInt, winkelInGrad, type VbRnd } from "./vb";
 
@@ -54,6 +55,20 @@ export interface Segment {
   additive: boolean;
 }
 
+/** Was `Blitz` und `Spur` brauchen: Balken zeichnen (`DrawList` oder eine Env-Liste in Ausführungsreihenfolge). */
+export interface LineSink {
+  line(
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+    w: number,
+    c1: Segment["c1"],
+    c2: Segment["c2"],
+    additive?: boolean,
+  ): void;
+}
+
 export class DrawList {
   readonly quads: Quad[] = [];
   readonly segments: Segment[] = [];
@@ -101,6 +116,8 @@ export const DRAW_SLOTS = [
   "gate0",
   /** Abgasflamme (`SpielKeysDove`), vor den Spielerschüssen. */
   "exhaust",
+  /** Drohnen des Debug-Schiffs 2 (`SpielDWeapons`, vor dem Abfeuern). */
+  "drones",
   /** Blitze der Partikelwaffe (`SpielSchieß`). */
   "weapons",
   /** Spielerschüsse Ebene 0 (`SpielMoveSchuss(0)`, unter Schiff und Gegnern). */
@@ -222,6 +239,8 @@ export interface EffectWorld {
   /** `Landschaft3`-Test (Blasen). */
   terrain(x1: number, y1: number, x2: number, y2: number): boolean;
   sound(name: string): void;
+  /** Befehlsliste der Schockwellen-Linse (Art 17: Erfassen des Backbuffers und Zeichnen der Linse). */
+  readonly bigEnv?: EnvList;
 }
 
 export class Effects {
@@ -614,7 +633,7 @@ export class Effects {
    * Hauptfolge danach mit dem zuerst gezogenen Wert neu.
    */
   lightning(
-    out: DrawList,
+    out: LineSink,
     x1: number,
     y1: number,
     x2: number,
@@ -815,6 +834,32 @@ export class Effects {
           out.quad("glitzer", p.x, p.y, x2, y2, p.r, p.g, p.b, a, true, (w.tick % 90) * 4);
           this.grow(p);
           break;
+        case 17: {
+          // Schockwellen-Linse (Beam des Debug-Schiffs): den Backbuffer an der Ursprungsstelle
+          // (`p − v · Alter`, Kantenlänge `size`) in `Me.738` erfassen, mit `a_kreis3` überblitten und
+          // um `p38` je Tick und Seite wachsend über die Stelle legen, Alpha `life / initLife`
+          if (p.delay > 0 || !w.bigEnv) break;
+          const age = p.initLife - p.life;
+          const cx = cint(p.x - p.vx * age);
+          const cy = cint(p.y - p.vy * age);
+          const [sx1, sy1] = [Math.max(0, cx), Math.max(0, cy)];
+          const [sx2, sy2] = [Math.min(800, cx + p.size), Math.min(600, cy + p.size)];
+          if (sx2 > sx1 && sy2 > sy1)
+            w.bigEnv.capture("lens", sx1, sy1, sx2 - sx1, sy2 - sy1, "a_kreis3");
+          const k = age * p.p38;
+          w.bigEnv.rect(
+            "@lens",
+            p.x - k,
+            p.y - k,
+            p.x + p.size + k,
+            p.y + p.size + k,
+            p.r,
+            p.g,
+            p.b,
+            a,
+          );
+          break;
+        }
         case 15:
           if (p.delay <= 0)
             out.quad("strich", p.x, p.y, x2, y2, p.r, p.g, p.b, a, true, cint(p.p38));

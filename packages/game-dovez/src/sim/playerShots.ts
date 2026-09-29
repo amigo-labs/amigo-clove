@@ -1,4 +1,4 @@
-import type { DrawList, Effects } from "./effects";
+import type { DrawList, Effects, LineSink } from "./effects";
 import { COS_DEG, SIN_DEG, cint, degIndex, f32, idiv, vbInt, winkelInGrad, type VbRnd } from "./vb";
 
 /**
@@ -169,7 +169,7 @@ function initTrail(s: PlayerShot, n: number): void {
  * dasselbe Feld wie `X` sein (der Beam übergibt beim Nachglühen beides gleich).
  */
 export function drawTrail(
-  out: DrawList,
+  out: LineSink,
   X: Float32Array,
   Y: Float32Array,
   x: number,
