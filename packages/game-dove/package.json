@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./keys": "./src/keys.ts",
     "./sim": "./src/sim/index.ts"
   },
   "dependencies": {

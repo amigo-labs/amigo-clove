@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { combineKeys, createPadState, padKeys, type PadSnapshot } from "../src/gamepad";
 import { hudLayout } from "../src/hud";
+import { keyName, withSecondKeys } from "../src/keymap";
 import { parseRoute } from "../src/router";
 import { DEFAULT_SETTINGS, loadSettings, reducedMotion, sanitizeSettings } from "../src/settings";
 import { collectSaves, restoreSaves, storageFor } from "../src/storage";
@@ -204,5 +205,51 @@ describe("HUD-Layout", () => {
     expect(hudLayout(rect(320, 155, 640, 410), 1280, 720)).toBe("side");
     expect(hudLayout(rect(0, 35, 640, 410), 640, 480)).toBe("inside");
     expect(hudLayout(rect(0, 0, 640, 410), 640, 600)).toBe("below");
+  });
+});
+
+const held = (...down: string[]) => ({ isDown: (c: string) => down.includes(c) });
+
+describe("Zweite Tasten", () => {
+  const actions = [
+    { id: "fire", label: { de: "Feuer", en: "Fire", ru: "Огонь" }, codes: ["KeyS", "Space"] },
+    { id: "beam", label: { de: "Beam", en: "Beam", ru: "Луч" }, codes: ["KeyA"] },
+  ];
+
+  test("die zweite Taste hält alle Originaltasten der Aktion, die Originale bleiben", () => {
+    const kb = withSecondKeys(held("KeyX"), actions, () => ({ fire: "KeyX" }));
+    expect([kb.isDown("KeyS"), kb.isDown("Space"), kb.isDown("KeyA")]).toEqual([true, true, false]);
+    expect(withSecondKeys(held("KeyS"), actions, () => ({ fire: "KeyX" })).isDown("KeyS")).toBe(
+      true,
+    );
+    expect(withSecondKeys(held("KeyX"), actions, () => undefined).isDown("KeyS")).toBe(false);
+  });
+
+  test("Einstellungen: nur gültige Codes, Tastennamen kurz", () => {
+    expect(
+      sanitizeSettings({ keymap: { dove: { fire: "KeyX", beam: "<b>", "x y": "KeyA" }, "": {} } })
+        .keymap,
+    ).toEqual({ dove: { fire: "KeyX" } });
+    expect(["KeyA", "Digit3", "Numpad4", "ArrowUp", "F5"].map(keyName)).toEqual([
+      "A",
+      "3",
+      "Num 4",
+      "↑",
+      "F5",
+    ]);
+  });
+});
+
+describe("Pad-Belegung je Spieler", () => {
+  test("das zweite Pad nutzt seine eigene Belegung, das erste die gemeinsame", () => {
+    const layouts = [
+      undefined,
+      {
+        buttons: { 0: ["End"] },
+        directions: ["Numpad8", "Numpad5", "Numpad4", "Numpad6"] as const,
+      },
+    ];
+    const both = padKeys([pad([0], [-1, 0]), pad([0, 12], [1, 0])], { 0: ["KeyS"] }, layouts);
+    expect([...both].toSorted()).toEqual(["ArrowLeft", "End", "KeyS", "Numpad6", "Numpad8"]);
   });
 });

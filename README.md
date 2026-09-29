@@ -70,8 +70,10 @@ bun run --cwd packages/shell dev   # Launcher unter http://localhost:5173
 ```
 
 Der Launcher (`#/`) listet die Spiele, `#/settings` enthält Sprache,
-Lautstärken, Gamepad, Spielstand-Export/-Import und „Spieldaten installieren“
-(nur im Build, der Dev-Server registriert keinen Service Worker).
+Lautstärken, Darstellung (HUD, Skalierung, Rasterlinien), Bewegung, Steuerung
+(Maus/Touch), zweite Tasten für DOVE, Gamepad, Spielstand-Export/-Import und
+„Spieldaten installieren“ (nur im Build, der Dev-Server registriert keinen
+Service Worker).
 DOVE starten: `http://localhost:5173/#/dove` (NEO-ARTS-Logo, Titelmenü).
 Steuerung wie im Original:
 
@@ -79,6 +81,21 @@ Steuerung wie im Original:
 - **Spiel:** Pfeiltasten, `S`/Leertaste Dauerfeuer (Bomben feuern mit),
   `A` Beam laden (Loslassen feuert), `D` Options-Richtung umkehren,
   `Q`/`W` Tempo, `Esc` Pause.
+
+Modernisierungen (alle abschaltbar; ohne sie läuft die Simulation bit-gleich
+wie im Original, siehe Spec „Optionale Modernisierungen“):
+
+- **Maus:** das Schiff folgt dem Zeiger, links Feuer, rechts Beam, Mitte
+  Extrawaffe drehen (DOVE) bzw. Super-Nova (DoveZ), Rad Tempo (DOVE) bzw.
+  Extrawaffe (DoveZ). Pfeiltasten übernehmen jederzeit.
+- **Touch:** Ziehen lenkt relativ und feuert, ein zweiter Finger lädt den
+  Beam; Steuerkreuz, OK und Pause erscheinen im Overlay.
+- **HUD:** Vorgabe ist das HTML-HUD der Shell neben bzw. unter dem Spielfeld
+  mit Boss-Lebensbalken; das Original-HUD lässt sich zurückholen.
+- **Darstellung:** Vollbild (`Alt+Enter` oder ⛶), Skalierung ganzzahlig,
+  fensterfüllend scharf oder weich, Rasterlinien.
+- **Komfort:** DOVE pausiert bei Fokusverlust; zweite Tasten je Aktion für
+  DOVE; in DoveZ steuert das zweite Gamepad Spieler 2.
 
 URL-Optionen: `nosound` (ohne Ton), `nointro=1`, `seed`, `shots=0|1|2`, `walls=1`;
 direkt ins Level mit `level=<n>`, zum Testen `invincible=1`, `from=<Tick>`,

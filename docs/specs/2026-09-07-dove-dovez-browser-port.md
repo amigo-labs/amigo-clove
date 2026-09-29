@@ -543,6 +543,33 @@ liegen für DOVE als `clove:<spiel>:<schlüssel>` in `localStorage`; die
 Exportdatei (`amigo-clove-save`, Version 1, Migrationskette) definiert
 `@clove/core`.
 
+### Optionale Modernisierungen
+
+*(nach M9)* Zusätze gegenüber dem Original folgen drei Regeln: **abschaltbar**,
+**Vorgabe Original** (Ausnahme: das HUD) und **ohne Zusatz bit-gleiche
+Simulation**, also unveränderte Referenz-Replays und Level-Hashes.
+
+- **Zeiger:** `GameHost.pointer` (Maus/Touch in logischen Canvas-Pixeln),
+  `PointerSteer` in `@clove/core` macht daraus pro Tick Ziel und Tasten. Das Ziel
+  ist Teil der Eingabe und damit der Simulation: DOVE trägt es in den Bits
+  10–28 der Eingabezahl (`Input.Target`, Replay-Format unverändert,
+  `decodeInput` liefert 32 Bit), DoveZ als `PlayerInput.target` (nur Spieler
+  1). Beide fahren geradlinig mit Schiffstempo (Chebyshev wie die Pfeiltasten);
+  `prevInput` bzw. der Tastenpfad ohne Ziel bleiben unverändert. Referenz-
+  Replay `level1-pointer` sichert den Zielpfad.
+- **HUD:** `GameInstance.hud()` liefert einen Schnappschuss dessen, was das
+  Original-HUD zeigt, plus Boss-Lebenspunkte; die Shell zeigt ihn als HTML.
+  Mit `hudMode = modern` zeichnen die Spiele ihr HUD nicht und begrenzen im
+  Level die sichtbare Höhe auf das Spielfeld (`setView`, 410 bzw. 550 px);
+  DoveZ rückt Funkbild und Laufband ins Feld. Die Bitmap-Font-Regel oben gilt
+  für alles im Canvas weiter.
+- **Darstellung:** `GameHost.scaleMode` (`integer` wie bisher, `fit`,
+  `smooth`), Rasterlinien als CSS-Schicht, Vollbild über die ganze Seite.
+- **Komfort:** DOVE pausiert bei Fokusverlust wie DoveZ; zweite Tasten je
+  Aktion (`KeyAction`, additiv wie `T2` in DoveZ); `GameModule.pads` belegt
+  einzelne Pads (DoveZ: Pad 2 = Satz 2 für Spieler 2); Touch-Tasten speisen
+  gewöhnliche Tastencodes ein.
+
 ---
 
 ## Verifikation

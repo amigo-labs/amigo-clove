@@ -62,6 +62,10 @@ type Key =
   | "hudBossAppears"
   | "hudBossDefeated"
   | "hudLifeLost"
+  | "keysTitle"
+  | "keysHelp"
+  | "keyPress"
+  | "keysReset"
   | "loadingBar"
   | "gameCanvas"
   | "saves"
@@ -150,6 +154,11 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
     hudBossAppears: "Ein Boss greift an.",
     hudBossDefeated: "Boss besiegt.",
     hudLifeLost: "Ein Leben verloren.",
+    keysTitle: "Tastenbelegung {title}",
+    keysHelp:
+      "Je Aktion eine zweite Taste zusätzlich zu den Originaltasten. Knopf anklicken, dann die Taste drücken; Entf löscht, Esc bricht ab.",
+    keyPress: "Taste drücken …",
+    keysReset: "Zweite Tasten löschen",
     loadingBar: "Ladefortschritt",
     gameCanvas: "{title}: Spielfläche. Bedienung mit Tastatur oder Gamepad, Esc pausiert.",
     saves: "Spielstände",
@@ -236,6 +245,11 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
     hudBossAppears: "A boss attacks.",
     hudBossDefeated: "Boss defeated.",
     hudLifeLost: "Life lost.",
+    keysTitle: "{title} keys",
+    keysHelp:
+      "One extra key per action in addition to the original keys. Click a button, then press the key; Delete clears it, Esc cancels.",
+    keyPress: "Press a key …",
+    keysReset: "Clear extra keys",
     loadingBar: "Loading progress",
     gameCanvas: "{title}: play area. Controls: keyboard or gamepad, Esc pauses.",
     saves: "Saved games",
@@ -322,6 +336,11 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
     hudBossAppears: "Атакует босс.",
     hudBossDefeated: "Босс побеждён.",
     hudLifeLost: "Жизнь потеряна.",
+    keysTitle: "Клавиши {title}",
+    keysHelp:
+      "Дополнительная клавиша для каждого действия к оригинальным. Нажмите кнопку, затем клавишу; Delete удаляет, Esc отменяет.",
+    keyPress: "Нажмите клавишу …",
+    keysReset: "Сбросить доп. клавиши",
     loadingBar: "Ход загрузки",
     gameCanvas: "{title}: игровое поле. Управление: клавиатура или геймпад, Esc — пауза.",
     saves: "Сохранения",

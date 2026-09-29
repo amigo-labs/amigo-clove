@@ -1,19 +1,22 @@
 import { PointerSteer, type KeyState, type PointerState } from "@clove/core";
+import { KEY_ACTIONS, type KeyActionId } from "./keys";
 import { SHIP_HIT } from "./sim/constants";
 import { Input, withTarget } from "./sim/step";
 
+const BITS: Readonly<Record<KeyActionId, number>> = {
+  up: Input.Up,
+  down: Input.Down,
+  left: Input.Left,
+  right: Input.Right,
+  fire: Input.Fire,
+  beam: Input.Beam,
+  swap: Input.Swap,
+  faster: Input.Faster,
+  slower: Input.Slower,
+};
+
 /** Tastenbelegung des Originals (`Keyboard`, `0x4398D0`) als `KeyboardEvent.code`. */
-const BINDINGS: readonly (readonly [number, readonly string[]])[] = [
-  [Input.Up, ["ArrowUp", "Numpad8"]],
-  [Input.Down, ["ArrowDown", "Numpad2", "Numpad5"]],
-  [Input.Left, ["ArrowLeft", "Numpad4"]],
-  [Input.Right, ["ArrowRight", "Numpad6"]],
-  [Input.Fire, ["KeyS", "Space"]],
-  [Input.Faster, ["KeyW", "KeyG"]],
-  [Input.Slower, ["KeyQ", "KeyF"]],
-  [Input.Beam, ["KeyA"]],
-  [Input.Swap, ["KeyD"]],
-];
+const BINDINGS = KEY_ACTIONS.map((a) => [BITS[a.id], a.codes] as const);
 
 const DIRECTIONS = Input.Up | Input.Down | Input.Left | Input.Right;
 
