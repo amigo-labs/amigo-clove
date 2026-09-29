@@ -163,6 +163,8 @@ export interface PlayerWorld {
   kill(p: Player): void;
   /** Abgasflamme zeichnen; `dx` = Weg seit Tickbeginn. */
   exhaust?(p: Player, dx: number): void;
+  /** `AddForce` (`0x529870`): Joystick-Vibration, reine Ausgabe. */
+  vibrate?(strength: number, ticks: number, player: number): void;
 }
 
 /** `SpielTastenCheck`: Tasten in Bewegung und Neigung (Arcade: ohne Trägheit, Realistic: gleitet aus). */
@@ -248,7 +250,7 @@ export function updatePlayer(p: Player, input: PlayerInput, w: PlayerWorld): voi
   p.prevY = p.y;
   p.pushHistory();
   if (p.exitState >= 1) {
-    exitFlight(p);
+    exitFlight(p, w);
     return;
   }
   const startX = p.x;
@@ -287,7 +289,7 @@ export function updatePlayer(p: Player, input: PlayerInput, w: PlayerWorld): voi
 }
 
 /** Levelausflug: auf y 243 steuern, dann mit 15 px/Tick nach rechts. */
-function exitFlight(p: Player): void {
+function exitFlight(p: Player, w: PlayerWorld): void {
   if (p.exitState === 1) {
     p.invulnerable = 500;
     p.exitState = 2;
@@ -296,6 +298,7 @@ function exitFlight(p: Player): void {
   if (d === 0) {
     if (p.exitState === 2) {
       p.exitState = 3;
+      w.vibrate?.(5, 15, p.index); // `AddForce(5, 15, Spieler)` (`0x50824F`)
       p.tilt = 2;
     } else p.x = f32(p.x + 15);
     return;
