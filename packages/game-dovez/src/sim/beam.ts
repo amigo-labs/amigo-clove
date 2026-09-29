@@ -138,6 +138,8 @@ export interface BeamWorld {
   sound(name: string): void;
   /** Schleife an/aus mit Abspielrate (Frequenz / 44100). */
   loop(name: string, on: boolean, rate?: number): void;
+  /** `AddForce` (`0x529870`): Joystick-Vibration, reine Ausgabe. */
+  vibrate?(strength: number, ticks: number, player: number): void;
 }
 
 const HIT_LEFT = 0;
@@ -209,6 +211,7 @@ function fire(w: BeamWorld, p: Player, c: Beam): void {
   w.loop(`charge${c.type + 1}`, false);
   if ((c.type === 0 && c.charge > 9) || (c.type === 1 && c.charge === 165))
     w.sound(`beam${c.type + 1}`);
+  w.vibrate?.(1, 5, p.index); // `AddForce(1, 5, Spieler)` (`0x5143A8`)
   c.running = true;
   for (const [xs, ys] of w.shared.spirals) {
     xs.fill(-1);

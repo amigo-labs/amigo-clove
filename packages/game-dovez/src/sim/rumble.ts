@@ -14,9 +14,9 @@ export const RUMBLE_DEFAULT = 2500;
 
 export class Rumble {
   /** Reststärke (`Me.A0C`), Restdauer in Ticks (`Me.A28`), Spieler (`Me.A44`). */
-  private readonly strength = new Array<number>(RUMBLE_SLOTS).fill(0);
-  private readonly ticks = new Array<number>(RUMBLE_SLOTS).fill(0);
-  private readonly player = new Array<number>(RUMBLE_SLOTS).fill(0);
+  private readonly strength = Array.from({ length: RUMBLE_SLOTS }, () => 0);
+  private readonly ticks = Array.from({ length: RUMBLE_SLOTS }, () => 0);
+  private readonly player = Array.from({ length: RUMBLE_SLOTS }, () => 0);
   /** Zuletzt ausgegebene Stärke je Joystick (`0x588464`), 0 = aus. */
   private readonly current = [0, 0];
   /** Stärke des Kraftstoßes je Joystick 0/1 nach dem letzten Tick (0 = keine Vibration). */

@@ -20,6 +20,7 @@ import {
 } from "./player";
 import { ShotLayer, moveShots, newShotBox, type ShotHost, type ShotTarget } from "./playerShots";
 import { Radio } from "./radio";
+import { RUMBLE_DEFAULT, Rumble } from "./rumble";
 import { Op, type RouteEffect } from "./route";
 import { collectShared, deepClone } from "./snapshot";
 import { buildSurfaces, spanEdges, spanHit, type SpriteSource, type Surface } from "./surfaces";
@@ -255,6 +256,16 @@ export class World {
   score = [0, 0];
   /** Effekte (Partikel, Popups, Wackeln) und ihre Zeichenlisten. */
   readonly fx: Effects;
+  /**
+   * Joystick-Vibration (`AddForce` `0x529870`, Auswertung `0x5299B0` am Tickende):
+   * reine Ausgabe, die Simulation liest sie nie. Der Host liest `rumble.magnitude`.
+   */
+  readonly rumble = new Rumble();
+  /** Joystick 1…2 des Spielers (0 ohne); der Host setzt es (`Me.588270`). */
+  padOfPlayer: (player: number) => number = () => 0;
+  /** Eingestellte Grundstärke je Joystick (500…10000) und ob die Vibration an ist. */
+  rumbleBase: [number, number] = [RUMBLE_DEFAULT, RUMBLE_DEFAULT];
+  rumbleOn: [boolean, boolean] = [true, true];
   /** Funk und Laufband. */
   readonly radio: Radio;
   /** Hintergrund, Wetter, Wasser, Overlays, Spezialabläufe (`environment.ts`). */
@@ -524,7 +535,11 @@ export class World {
       addPoints: (points, x, y, vy, player) => this.addPoints(points, x, y, vy, player),
       killEmitters: (i) => this.fire.killEmittersOf(i),
       sound: (name) => this.sfx(name),
-      shockwave: (cx, cy, life) => this.fire.addShockwave(cx, cy, life),
+      shockwave: (cx, cy, life, target) => {
+        // `AddGegnerS(−1, …)` (`0x4AAF51`): nur mit freiem Schussplatz
+        if (this.fire.addShockwave(cx, cy, life)) this.rumble.add(2, 30, target);
+      },
+      vibrate: (s, t, p) => this.rumble.add(s, t, p),
       beamPower: (p) => this.beams[p]?.power === true,
       nova: this.nova,
       boss: this.bossHooks,
@@ -555,6 +570,7 @@ export class World {
         this.events.push({ kind: "sfx", name, ...(rate !== undefined ? { rate } : {}) }),
       loop: (name: string, on: boolean) => this.loopSfx(name, on),
       saveCheckpoint: () => this.save(0),
+      vibrate: (s: number, t: number, p: number) => this.rumble.add(s, t, p),
     };
     return Object.defineProperties(host, {
       tick: { get: () => this.tick, set: (v: number) => void (this.tick = v) },
@@ -607,20 +623,21 @@ export class World {
       },
       shockwave: (cx, cy, r) => {
         // alle Spieler, ohne Lebend- oder Unverwundbar-Prüfung; Schub zugewiesen
-        for (const p of this.players) {
+        for (const [i, p] of this.players.entries()) {
           const dx = f32(cx - (p.x + 32));
           const dy = f32(cy - (p.y + 35));
           if (!(dx * dx + dy * dy < r * r)) continue;
           const k = f32(r - Math.sqrt(dx * dx + dy * dy));
           const a = degIndex(cint(winkelInGrad(dx, dy)));
           p.energy = f32(p.energy - 0.1);
+          this.rumble.add(1, 1, i); // `AddForce(1, 1, Spieler)` (`0x4AC540`)
           p.pushX = f32(((COS_DEG[a] ?? 0) * k) / 5);
           p.pushY = f32(((SIN_DEG[a] ?? 0) * k) / 5);
         }
       },
       hitPlayers: (shot, piercing) => {
         const a = shot.actor;
-        for (const p of this.players) {
+        for (const [i, p] of this.players.entries()) {
           if (!p.alive) continue;
           const hit =
             a.x < p.x + SHOT_HIT.right &&
@@ -629,6 +646,7 @@ export class World {
             a.y + a.height > p.y + SHOT_HIT.top;
           if (!hit) continue;
           this.sfx("hit");
+          this.rumble.add(2, 15, i); // `AddForce(2, 15, Spieler)` (`0x4AB9D9`)
           p.energy = f32(p.energy - shot.damage);
           // kleines Knistern (Blitz, 6 Bilder) bei kleinen Schüssen
           if (a.width < 20 && a.height < 20) {
@@ -842,6 +860,7 @@ export class World {
       background: (v) => this.bossHooks.background(v),
       sound: (name) => this.sfx(name),
       loop: (name, on, rate) => this.loopSfx(name, on, rate),
+      vibrate: (s, t, p) => this.rumble.add(s, t, p),
     };
   }
 
@@ -864,6 +883,7 @@ export class World {
       terrain: (x1, y1, x2, y2) => this.hitsTerrain(x1, y1, x2, y2),
       kill: (p) => this.killPlayer(p),
       exhaust: (p, dx) => this.exhaust(p, dx),
+      vibrate: (s, t, p) => this.rumble.add(s, t, p),
     };
   }
 
@@ -892,6 +912,7 @@ export class World {
   /** `KillDove` (`0x50B0D0`): Funken und blaue Feuerbälle über der Hitbox, Explosionston. */
   killPlayer(p: Player): void {
     if (!killPlayer(p)) return;
+    this.rumble.add(5, 50, p.index); // `AddForce(5, 50, Spieler)` (`0x50B1AB`)
     const [x1, y1, x2, y2] = [p.x, p.y + 17, p.x + 64, p.y + 54];
     this.fx.addSparks(1, 500, cint(x1), cint(y1), cint(x2), cint(y2), false);
     this.fx.addSparks(1, 100, cint(x1), cint(y1), cint(x2), cint(y2), true);
@@ -1053,6 +1074,7 @@ export class World {
       if (touched) {
         this.fx.shake += 4;
         this.fx.addCircle(0, 6, 0, cint(p.x + idiv(64, 2)), cint(p.y + idiv(54 - 17, 2)), 100);
+        this.rumble.add(3, 40, p.index); // `AddForce(3, 40, Spieler)` (`0x50BC18`)
       }
       if (p.energy > p.maxEnergy) p.energy = p.maxEnergy;
     }
@@ -1259,6 +1281,7 @@ export class World {
         0,
       );
     }
+    this.rumble.add(1, 30, p.index); // `AddForce(1, 30, Spieler)` (`0x50AFD5`)
     this.sfx("newborn1");
   }
 
@@ -1441,7 +1464,10 @@ export class World {
    * im End-Tick laufen sie wieder.
    */
   step(inputs: readonly PlayerInput[] = []): void {
-    if (this.state !== 0) return;
+    if (this.state !== 0) {
+      this.rumble.clear();
+      return;
+    }
     this.inputs = inputs;
     this.fx.beginTick();
     this.env.beginTick();
@@ -1521,11 +1547,27 @@ export class World {
       this.env.snow();
     }
     this.env.stepSpecial(1);
+    this.shakeRumble();
     this.fx.stepShake();
     // [10] Kontakt ([9] Schrifteffekt und [11] Abblende: Renderer)
     if (!this.nova) this.contact();
     this.env.overlay();
     this.display();
+    // [12] Vibration (`0x5299B0`, `SpielLoop` `0x53F614`): am Tickende, auch in der Nova
+    this.rumble.step(
+      (player) => this.padOfPlayer(player),
+      (joystick) => this.rumbleBase[joystick] ?? RUMBLE_DEFAULT,
+      (joystick) => this.rumbleOn[joystick] ?? true,
+    );
+  }
+
+  /**
+   * `SpielErschütterung` (`0x529C3D`…`0x529C98`), vor dem Abzählen des Wackelzählers
+   * `Me.7D0`: Vibration für beide Joysticks, 1 Tick lang; Stärke 5 über 50, 3 über 19, sonst 1.
+   */
+  private shakeRumble(): void {
+    const s = this.fx.shake;
+    if (s > 0) this.rumble.add(s > 50 ? 5 : s > 19 ? 3 : 1, 1, -1);
   }
 
   /**
@@ -1540,6 +1582,7 @@ export class World {
 
   /** Ein Durchlauf des Speicherbildschirms: nur `SpielMoveHintergrund` und `SpielDisplay`. */
   backdropTick(): void {
+    this.rumble.clear();
     this.fx.beginTick();
     this.env.beginTick();
     this.env.moveBackground();
