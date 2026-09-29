@@ -567,6 +567,88 @@ das Level still, bis er die Nova auslöst; sie braucht hier keinen Partikel
 (`AddExplosionsPartikel`, Größe nach Rechteck), Ton `Explosion1.wav` bzw.
 `Explosion2.wav` ab 1500 Punkten, `spalt.wav` beim animierten Abschuss.
 
+### Level 5-3 „Rumbler“ (Bosskampf, `boss-5-3.test.ts`)
+
+**Ergebnis: Der Port ist richtig, der Kampf ist zu gewinnen; der Bot zielte
+falsch.** Das Symptom („Hauptteil verliert nie HP, Dampfer langsam, Typ 6 fast
+gar nicht“) ist die Levelmechanik, nicht verlorener Schaden. Bei
+Spielerschaden `40 · (Stufe + 2)` = 80 je Schuss (Abklingzeit 6) sind das
+≈ 13 HP je Tick; jeder Schuss auf ein ungepanzertes Teil zieht seinen vollen
+Schaden ab (gemessen: Dampfer_unten 35000 → 13040 in 1500 Ticks).
+Konfidenz **H** für die Mechanik (Daten und Code), **M** für „so gedacht“.
+
+*Aufbau* (Zeitleiste Ebene 4, alle bei Tick 0): vier Dampfer und der Boss.
+
+| Typ | Name | HP | Ort | Route | Todes-Kind (`deathSpawn`) | Wurf (`spawnSpec`) |
+|---|---|---|---|---|---|---|
+| 1 | Dampfer_unten | 35000 | (262, 419) | 6 | 12011: 2 × Typ 1 auf Route 12 | 14007: Stalagmit (7) |
+| 2 | Dampfer_oben | 35000 | (262, 75) | 4 | 10020: 1 × Typ 2 auf Route 10 | 8003: Meteor (3) |
+| 5 | Dampfer_oben2 | 40000 | (451, 75) | 5 | 11051: 2 × Typ 5 auf Route 11 | 9004: Rotor (4) |
+| 6 | Dampfer_unten2 | 40000 | (451, 419) | 7 | 13061: 2 × Typ 6 auf Route 13 | 16008: Vulkan (8) |
+| 0 | Boss (`boss = 1`) | 40000 | (800 → 521, 130) | 3 | – | – |
+
+*Boss* (9 Teile, alle `damagesBody`): **nur Teil 4 („Kern“, `boss_innen`,
+Versatz (24, 115), sichtbar bei (545…644, 245…344)) ist ungepanzert**, die
+anderen acht haben `armored = −1`. Teil 8 („Schild“, `boss_schutz`, Versatz
+(0, 52), Konturspannen (524…659, 195…396)) liegt vor dem Kern und wird als
+letztes Teil zuerst geprüft; ein Schuss auf einen gepanzerten Teil ist
+verbraucht (Rückgabe 0, außer durchschlagend gegen `armorPassThrough`), ein
+Schuss von links erreicht den Kern also nur durch eine Lücke des Schilds.
+Das Schildbild 0 schließt den Kern ganz; Bild 2…5 (`schutz1…4`, je 6 Ticks)
+öffnen ihn, Bild 6 (`schutz5`, Dauer 9999) bleibt stehen (linke Kante 577 in
+den Kernzeilen; der Kern beginnt bei 545). Der Kern ist der einzige Ort, an
+dem der Boss Schaden nimmt; die Kern-`hitPoints` (500) sind wegen
+`damagesBody` bedeutungslos.
+
+*Ablauf* (Route 3 „Main“, `DoRoute` `0x4ACC70`, Op-Nummern nach
+`dovez-level-dat.md`): Ops 0…6 stellen die Ebenen 1…6 still (Op 25) und Ebene
+3 auf Tempo 1 (Op 24); der Boss fliegt von x = 800 bis 521 (Op 3 mit a = −0,4,
+Tempo 15) und wartet 200 Ticks. Dann die Schleife (Label 0): Die vier Globalen
+0…3 (`Me.A64`) sind je Dampfer 0 = bereit, 1 = greift an, 2 = tot. Steht
+keines auf 1 und nicht alle auf 2, wählt der Boss zufällig (Op 10, 1…4) einen
+Dampfer mit Global 0, setzt ihn auf 1 und **wartet 500 Ticks**. Die
+Dampferrouten 4…7 warten auf ihr Global = 1, spielen dann Ton, Rumpeln (Op
+31) und feuern (`Fire` mit −1 = `spawnSpec`) Stalagmiten, Meteore, Rotoren
+bzw. Vulkane, setzen ihr Global wieder auf 0 und beenden den Ton (Op 30).
+**Stirbt ein Dampfer**, entsteht sein Todes-Kind (`deathSpawn`) auf Route
+10…13; die liest das Global (war es 1: Rumpeln aus, Ton aus), setzt es auf
+**2** und endet (Kind ohne Punkte, ohne Wirkung; es hat nur diesen Zweck).
+Sind alle vier auf 2 (Summe 8, Op 29), springt der Boss zu Label 2 (**Phase
+2**): Global 4 = 1, Teil 8 auf Bild 2, dann animieren (Op 7 mit −1) — der
+Schild öffnet sich —, und in Label 3 alle 50 + HP/500 Ticks (bei 40000 HP
+130, bei 20000 90) mit 50 % ein Strahlenkranz (Op 33), immer Waffe 6 („Kern“)
+am Kern, mit 50 % zusätzlich Waffe 5 („Einknick“) an den Teilen 0 und 1. Der Kern-Abschuss
+ist der Boss-Abschuss (Zustand 4, Finale, `Me.584 = Me.588 − 151`). Ein
+Boss-Abschuss vor dem Tod der Dampfer ist nicht möglich (Schild zu, kein
+anderes ungepanzertes Teil); Global 4 liest nichts, der Schild öffnet sich
+allein über die Route.
+
+*Bot:* `botInput` zielt auf `y + 30` des Gegners (hier 160), das trifft am Boss
+nur gepanzerte Teile (1, 2, 5, dahinter 8) (Boss-HP nie verändert; der Bot stand nach
+dem Tod der Dampfer bei y = 117 still). Die vier Dampfer bekam er nach
+≈ 10 800 Ticks, weil er dem nächstliegenden Ziel folgt und die Stalagmiten
+(gepanzert, ohne Wirkung) nicht ausschließt. `botVulnerable.ts` zielt auf die
+Konturmitte eines ungepanzerten Teils: alle vier Dampfer tot nach 2899, 4634,
+8208, 16770 Ticks, Phase 2 bei 17266 (Wartezeit 500), Boss-Finale bei 19280,
+`state = 2` bei 19952 Ticks, 222200 Punkte. `runLevel(slug, maxTicks, input)`
+nimmt die Zielwahl als dritten Parameter (Vorgabe unverändert).
+
+*Im Original geprüft* (`CheckColisionWithEnemy` `0x4C3E10`): Teile von hinten
+nach vorn (`0x4C4176` zählt herunter); ein gepanzertes Teil (`[Teil+0x2E]`,
+`0x4C424A`) setzt `PanzerOut = −1` und beendet den Aufruf ohne Schaden
+(Rückgabe 0 bei `armorPassThrough ≤ 0` oder nicht durchschlagend, `0x4C4241`);
+`damagesBody` (`[Teil+0x24]`, `0x4C4350`) zieht `damage` von der
+Gegner-HP `[Gegner+0xC]` ab (`fisub` `0x4C43FF`), der Abschuss läuft ab
+`0x4C4A4A` (`AddForce(1, 20)`, Todes-Spawn aus `[Gegner+0x44]`, `0x4C4AC0`).
+`SetGlobal` (`0x4AEEB0`) legt das Feld `Me.A64` (Single, Obergrenze `Me.A68`,
+anfangs −1) bei Bedarf mit `ReDim Preserve` an (`0x4AEF24`), negative
+Indizes tut es nicht; `GetGlobal` (`0x4AF020`) liefert 0 über der Obergrenze
+(`0x4AF073`); gelöscht wird das Feld beim Levelstart (`0x4A672E`). Der Port
+macht alles so (`enemies.ts` `hit`, `route.ts`). *Offen (M):* ob die
+Kampfdauer (≈ 20 000 Ticks für einen Spieler ohne Verstärkungen) im Original
+wie hier sein soll, hängt an Spielerschaden und Extras — das Level hat nur ein
+Power-up (Ebene 3, Tick 12, y = 253, Untertyp 4: Force des D-Phyton).
+
 ## Super-Nova (`SpielNova` `0x52A230`)
 
 Jeden Tick nach dem Beam (`nova.ts`). **Auslösen:** Nova-Taste (E; im 2P Satz
