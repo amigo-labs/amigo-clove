@@ -41,13 +41,14 @@ export async function loadTestLevel(
   };
 }
 
-/** Funktexte eines Levels (`radio/<slug>`), Deutsch und Englisch. */
+/** Funktexte eines Levels (`radio/<slug>`), Deutsch, Englisch und Russisch. */
 export async function loadTestRadio(
   slug: string,
-): Promise<{ de: RadioTexts; en: RadioTexts } | undefined> {
+): Promise<{ de: RadioTexts; en: RadioTexts; ru: RadioTexts } | undefined> {
   if (!manifest.entries.some((e) => e.id === `radio/${slug}`)) return undefined;
   return JSON.parse(new TextDecoder().decode(await file(`radio/${slug}`))) as {
     de: RadioTexts;
     en: RadioTexts;
+    ru: RadioTexts;
   };
 }

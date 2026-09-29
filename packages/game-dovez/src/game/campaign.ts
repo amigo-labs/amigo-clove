@@ -1,4 +1,5 @@
 import { dovezSlug, type PlayStep } from "@clove/formats";
+import { type Lang, langLetter } from "./lang";
 
 /**
  * Kampagne wie `LevelSkript` (`0x54D3F0`): Schritt für Schritt durch
@@ -61,7 +62,7 @@ export class Campaign {
   }
 
   /** `LevelSkript`: die nächste Anweisung (Zähler danach schon weiter). */
-  next(german: boolean): CampaignAction {
+  next(lang: Lang): CampaignAction {
     const s = this.steps[this.step];
     if (!s) return { kind: "end" };
     this.step++;
@@ -80,10 +81,9 @@ export class Campaign {
       case "credits": {
         if (this.pass > this.passesDone) this.passesDone = this.pass;
         const second = this.passesDone >= 2;
-        const lang = german ? "d" : "e";
         return {
           kind: "credits",
-          outro: `video/${second ? "outro2" : "outro"}${lang}`,
+          outro: languageVideo(second ? "outro2" : "outro", lang),
           epilog: second,
         };
       }
@@ -94,6 +94,16 @@ export class Campaign {
   epilog(): Extract<CampaignAction, { kind: "level" }> {
     return this.single(EPILOG);
   }
+}
+
+/**
+ * Sprachabhängiges Video (`0x54DD63`/`0x54DDD0`, Intro `0x559BC5`):
+ * `"Outro" & Me.588070 & ".avi"` — `outrod`, `outroe`, `outror` (ab Durchgang 2
+ * `outro2…`), `introd/e/r`. Die russischen Videos liegen in den Originaldaten nicht
+ * vor; fehlt ein Video, geht es wie im Original gleich weiter (`VideoScene`).
+ */
+export function languageVideo(base: "intro" | "outro" | "outro2", lang: Lang): string {
+  return `video/${base}${langLetter(lang).toLowerCase()}`;
 }
 
 /** `Play <datei.avi>` → Asset-ID (Groß-/Kleinschreibung wie im Paket egal). */

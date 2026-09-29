@@ -1,5 +1,6 @@
 import { COS_DEG, SIN_DEG, cint, degIndex, f32, vbInt } from "../sim/vb";
 import type { Rnd } from "./continueScreen";
+import { type Lang, levelRu, pick } from "./lang";
 
 /**
  * Pause-Bildschirm (`Pause` `0x524610`), reine Logik ohne Pixi: Menü
@@ -186,12 +187,18 @@ export function wrapRadioLog(
   return lines;
 }
 
-/** Titelzeile: `Levelname (Name[ & Name2])`. */
-export function pauseTitle(level: string, names: readonly string[]): string {
-  return `${level} (${names.join(" & ")})`;
+/**
+ * Titelzeile: `Levelname (Name[ & Name2])`. Russisch (`0x5275BF`) kürzt den
+ * Levelnamen auf `Уровень1-1` (`levelRu`), die anderen Sprachen zeigen ihn ganz.
+ */
+export function pauseTitle(level: string, names: readonly string[], lang: Lang): string {
+  return `${lang === "ru" ? levelRu(level) : level} (${names.join(" & ")})`;
 }
 
-/** Menüpunkte je Sprache (D „WEITER“, sonst „RESUME“; „EXIT“). */
-export function pauseMenu(german: boolean): readonly [string, string] {
-  return [german ? "WEITER" : "RESUME", "EXIT"];
+/**
+ * Menüpunkte je Sprache (`0x527187…0x527413`): „WEITER“/„RESUME“/„Продолжить“
+ * und „EXIT“/„Выход“; Position und Größe sind in allen Sprachen gleich.
+ */
+export function pauseMenu(lang: Lang): readonly [string, string] {
+  return [pick(lang, "WEITER", "RESUME", "Продолжить"), pick(lang, "EXIT", "EXIT", "Выход")];
 }

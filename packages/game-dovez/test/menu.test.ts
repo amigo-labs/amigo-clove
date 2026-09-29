@@ -26,7 +26,7 @@ const none: MenuKeys = {
 
 function menu(o: Partial<MenuOptions> = {}): MenuLogic {
   return new MenuLogic({
-    german: true,
+    lang: "de",
     rnd: new VbRnd(1),
     passes: 0,
     highscores: emptyHighscores(),

@@ -19,6 +19,7 @@ import { ContinueView } from "./continueView";
 import { GdiText, atlasTexture } from "./gdi";
 import { addHighscore } from "./highscore";
 import { keyLabel, readInput, screenKeys } from "./input";
+import type { Lang } from "./lang";
 import { type DovezConfig, audioGains } from "./config";
 import type { Mosaic } from "./mosaic";
 import { PAUSE_MS, PauseLogic, pauseMenu, pauseTitle, wrapRadioLog } from "./pauseScreen";
@@ -35,7 +36,8 @@ export interface GameContext {
   /** Atlanten `spiel`, `standart`, `pause`. */
   readonly globals: readonly [AtlasJson, AtlasJson, AtlasJson];
   readonly targets: ScreenTargets;
-  readonly german: boolean;
+  /** Spielsprache (`Me.588070`). */
+  readonly lang: Lang;
   readonly profile: Profile;
   readonly mosaic: Mosaic;
   readonly players: 1 | 2;
@@ -137,7 +139,7 @@ export class LevelScene implements Scene {
   }
 
   static async create(ctx: GameContext, opts: LevelOptions): Promise<LevelScene> {
-    const { host, textures, globals, german } = ctx;
+    const { host, textures, globals, lang } = ctx;
     const pack = await loadLevelPack(host.assets, opts.slug);
     const atlases = [{ json: pack.atlas }, ...globals.map((json) => ({ json }))];
     const own = Renderer.pageIds([{ json: pack.atlas }]);
@@ -151,7 +153,7 @@ export class LevelScene implements Scene {
         return pack.contours.subarray(o, o + 4 + h * 2);
       },
     };
-    const radioTexts = pack.radio ? (german ? pack.radio.de : pack.radio.en) : undefined;
+    const radioTexts = pack.radio?.[lang];
     const world = new World(pack.level, sprites, {
       startTick: opts.from,
       ship: ctx.ship,
@@ -169,7 +171,7 @@ export class LevelScene implements Scene {
     world.qToggles = !ctx.config.qNormal;
     world.autoArrange = ctx.config.autoArrange;
     world.realistic = ctx.config.realistic;
-    const renderer = new Renderer(textures, world, atlases, ctx.app.renderer, { german, keyLabel });
+    const renderer = new Renderer(textures, world, atlases, ctx.app.renderer, { lang, keyLabel });
     // Seiten, die nur dieses Level braucht (die globalen bleiben geladen)
     const shared = new Set(Renderer.pageIds(globals.map((json) => ({ json }))));
     const pages = own.filter((id) => !shared.has(id));
@@ -212,8 +214,8 @@ export class LevelScene implements Scene {
     ctx.mosaic.add(ctx.app.renderer, ctx.targets.shot);
     const log = wrapRadioLog(world.radio.log, (s) => this.logFont.width(s));
     const view = new PauseView(ctx.targets, this.balken, this.pauseImage, {
-      menu: pauseMenu(ctx.german),
-      title: pauseTitle(this.opts.name, ctx.profile.names),
+      menu: pauseMenu(ctx.lang),
+      title: pauseTitle(this.opts.name, ctx.profile.names, ctx.lang),
       log,
     });
     const logic = new PauseLogic(world.rnd);
@@ -249,7 +251,7 @@ export class LevelScene implements Scene {
     const r = continueRanks(ctx.profile.highscores, players);
     if (!this.opts.screen) ctx.profile.store(r.list);
     this.captureShot(true);
-    const view = new ContinueView(ctx.targets, this.kreis, rankTexts(names, r.ranks, ctx.german));
+    const view = new ContinueView(ctx.targets, this.kreis, rankTexts(names, r.ranks, ctx.lang));
     this.audio?.playContinueMusic();
     const logic = new ContinueLogic(world.rnd);
     this.mode = { kind: "continue", logic, view, loop: new FixedStepLoop(CONTINUE_MS) };

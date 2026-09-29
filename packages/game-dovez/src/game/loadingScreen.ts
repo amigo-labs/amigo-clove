@@ -4,6 +4,7 @@ import { type Application, Container, Graphics, Sprite, type Texture } from "pix
 import { SIN_DEG, cint } from "../sim/vb";
 import { GdiText, atlasTexture } from "./gdi";
 import { okKey, pauseKey } from "./input";
+import { type Lang, loadingText, pressAnyKeyText } from "./lang";
 import type { Scene } from "./scene";
 
 /**
@@ -14,7 +15,8 @@ import type { Scene } from "./scene";
  *   weißer Rahmen (290, 476)–(510, 484), „nn%“ (System 16 bei 410 − 5·Len, 455),
  *   „Loading“ (System 18 bei 376, 490); danach „Press any key to start!“
  *   (System 24, Grau 129…255 pulsierend, 294, 470) bis `TasteOK` oder Esc,
- *   dann Loslassen von Esc abwarten. Kein deutscher Text.
+ *   dann Loslassen von Esc abwarten. Kein deutscher Text; Russisch schreibt
+ *   „Загрузка“ (372, 490) und „Нажмите любую клавишу для старта!“ (214, 470).
  * - **Mosaik** (`Loadingscreen.bmp`, Einzellevel und Epilog): 90 % Schwarz,
  *   blaue und weiße Bänder, drei Leuchtkreise, Logo (200, 120), „nn%“
  *   (System 32 bei 395 − 5·Len, 405); ohne Tastendruck.
@@ -48,6 +50,7 @@ export class LoadingScene implements Scene {
     standart: AtlasJson,
     private readonly image: Texture,
     private readonly mosaic: boolean,
+    private readonly lang: Lang,
   ) {
     this.back = new Sprite(image);
     this.back.width = 800;
@@ -83,7 +86,8 @@ export class LoadingScene implements Scene {
       }
     } else {
       this.fx.addChild(this.bar, this.loading.text);
-      this.loading.set("Loading", 376, 490);
+      const { text, x } = loadingText(lang);
+      this.loading.set(text, x, 490);
     }
     this.fx.addChild(this.percent.text);
     this.press.text.visible = false;
@@ -175,7 +179,8 @@ export class LoadingScene implements Scene {
     this.k = (this.k + 1) % 360;
     const v = cint((SIN_DEG[this.k] ?? 0) * 63 + 192);
     this.press.text.style.fill = (v << 16) | (v << 8) | v;
-    this.press.set("Press any key to start!", 294, 470);
+    const { text, x } = pressAnyKeyText(this.lang);
+    this.press.set(text, x, 470);
     this.press.text.visible = true;
     return false;
   }

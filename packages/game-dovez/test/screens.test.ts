@@ -187,7 +187,7 @@ describe("Highscore", () => {
     }));
     const r = continueRanks(list, [{ name: "Bruce", score: 5, id: 99 }]);
     expect(r.ranks).toEqual([NOT_RANKED]);
-    expect(rankTexts(["Bruce"], r.ranks, true)).toEqual([]);
+    expect(rankTexts(["Bruce"], r.ranks, "de")).toEqual([]);
   });
 
   test("zwei Spieler: Spieler 2 davor schiebt den Platz von Spieler 1", () => {
@@ -196,11 +196,11 @@ describe("Highscore", () => {
       { name: "Kim", score: 300, id: 2 },
     ]);
     expect(r.ranks).toEqual([2, 1]);
-    expect(rankTexts(["Bruce", "Kim"], r.ranks, true)).toEqual([
+    expect(rankTexts(["Bruce", "Kim"], r.ranks, "de")).toEqual([
       { text: "Bruce landet auf Platz 2!", player: 0 },
       { text: "Kim landet auf Platz 1!", player: 1 },
     ]);
-    expect(rankTexts(["Bruce"], [3], false)[0]!.text).toBe("Bruce ranked at place 3!");
+    expect(rankTexts(["Bruce"], [3], "en")[0]!.text).toBe("Bruce ranked at place 3!");
   });
 });
 

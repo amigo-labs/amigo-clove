@@ -11,7 +11,8 @@ import { bootGame } from "./game/Game";
  * `level=<slug>` ein einzelnes Level, `step=<n>` Kampagne ab Anweisung n,
  * `load=<1…21>` Spielstand; `video=0` ohne Videos,
  * `from=<Tick>` wie die Kommandozeile `-Tick N` des Originals (erstes Level),
- * `ship=0|1`, `players=1|2`, `invincible=1`. Esc/Fokusverlust: Pause; ohne
+ * `ship=0|1`, `players=1|2`, `invincible=1`, `lang=de|en|ru` (Sprache
+ * erzwingen; sonst die Locale des Hosts: `de`, `ru`, sonst Englisch). Esc/Fokusverlust: Pause; ohne
  * Leben: Continue. Sichtprüfung `screen=continue|pause|save|credits|love` (es wird
  * nichts gespeichert).
  * Debug-Ansichten: `#/dovez/debug/assets`, `#/dovez/debug/level`.
@@ -46,6 +47,7 @@ const dovez: GameModule = {
       players: options["players"] === "2" ? 2 : 1,
       step: num("step"),
       load: num("load"),
+      lang: options["lang"] || undefined,
       videos: options["video"] !== "0",
       intro: options["nointro"] !== "1",
       screen:

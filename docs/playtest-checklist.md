@@ -111,6 +111,22 @@ klären müsste:
 - [ ] **Level vor Tick 0** (`-Tick N` mit N < 0): die 118 Einträge mit negativem Tick.
 - [ ] **Vibration:** Stärke und Dauer je Quelle (siehe „Vibration“ in
       `dovez-runtime.md`), Gamepad-Motoren der Browser statt DirectInput-Kräfte.
+## Stand M8 — DoveZ auf Russisch (`#/dovez?lang=ru`) am Original prüfen
+
+- [ ] **Schrift:** kyrillische Texte in Arial (Original: GDI-Schrift mit
+      Zeichensatz `[0x5886DC]`) — Breite der langen Zeilen („Управление
+      режимом/Сменить Части“, „Нажмите любую клавишу для старта!“) und der
+      Tafeln im Menü gegen das Original.
+- [ ] **Hauptmenü:** ohne „Highscore“-Eintrag; nach einem Durchgang „Бонус“, der
+      im Original die Highscore-Seite öffnet; Optionen ohne Bonus.
+- [ ] **Speicherbildschirm:** „Уровень расчищен!“ ohne Levelnamen, Spielerzeile
+      ohne Highscore-Platz, „Сохранено“ in Arial 170 bei (20, 140).
+- [ ] **Pause:** Titel „Уровень1-1 (Bruce)“, „Продолжить“/„Выход“.
+- [ ] **Funk:** Untertitel im Laufband, kein Ton (RU-Aufnahmen fehlen);
+      [Harbor] in Level 3-1 vollständig.
+- [ ] **Videos:** `introR`/`OutroR`/`Outro2R` fehlen in den Originaldaten — das
+      Original übersprang sie; prüfen, ob eine russische Ausgabe sie mitbringt.
+- [ ] **Datum** der Spielstandbeschriftung `TT.MM.JJJJ` (Annahme).
 
 ## Nicht testbar, nur dokumentieren
 
