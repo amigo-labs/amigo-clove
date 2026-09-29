@@ -28,7 +28,10 @@ export function botInput(w: World): PlayerInput {
       ty = ey;
     }
   }
-  return { ...NO_INPUT, fire: true, up: py > ty + 8, down: py < ty - 8 };
+  // Tastenhinweis „Drücke: Super-Nova“ (Aktion 9, Level 7-4): nur die Nova besiegt den Boss;
+  // die Taste wird abwechselnd gedrückt und losgelassen (Auslösung an der Flanke)
+  const nova = w.env.hint?.action === 9 && w.tick % 2 === 0;
+  return { ...NO_INPUT, fire: true, up: py > ty + 8, down: py < ty - 8, nova };
 }
 
 export interface LevelRun {
