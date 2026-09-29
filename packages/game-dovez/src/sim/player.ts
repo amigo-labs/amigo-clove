@@ -155,6 +155,8 @@ export class Player {
 
 export interface PlayerWorld {
   readonly terrainSpeed: number;
+  /** Option „Ship Movements: Realistic“ (`Me.510`): Ausgleiten nach dem Loslassen. */
+  readonly realistic?: boolean;
   /** Unter Wasser (Wasserlinie über der Hitbox-Oberkante oder ganzes Level). */
   underwater(p: Player): boolean;
   terrain(x1: number, y1: number, x2: number, y2: number): boolean;
@@ -163,7 +165,7 @@ export interface PlayerWorld {
   exhaust?(p: Player, dx: number): void;
 }
 
-/** `SpielTastenCheck`: Tasten in Bewegung und Neigung (Arcade: ohne Trägheit). */
+/** `SpielTastenCheck`: Tasten in Bewegung und Neigung (Arcade: ohne Trägheit, Realistic: gleitet aus). */
 function keys(p: Player, input: PlayerInput, w: PlayerWorld): void {
   const oldX = p.x;
   const oldY = p.y;
@@ -225,6 +227,10 @@ function keys(p: Player, input: PlayerInput, w: PlayerWorld): void {
     if (p.glide) {
       p.vx = f32(p.vx * 0.85);
       p.vy = f32(p.vy * 0.85);
+      if (w.realistic) {
+        p.x = f32(p.x + p.vx);
+        p.y = f32(p.y + p.vy);
+      }
       if (Math.abs(p.vx) < 1 && Math.abs(p.vy) < 1) p.glide = false;
     }
   } else {
