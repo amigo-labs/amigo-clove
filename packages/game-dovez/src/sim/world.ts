@@ -20,6 +20,7 @@ import {
 } from "./player";
 import { ShotLayer, moveShots, newShotBox, type ShotHost, type ShotTarget } from "./playerShots";
 import { Radio } from "./radio";
+import { RUMBLE_DEFAULT, Rumble } from "./rumble";
 import { Op, type RouteEffect } from "./route";
 import { collectShared, deepClone } from "./snapshot";
 import { buildSurfaces, spanEdges, spanHit, type SpriteSource, type Surface } from "./surfaces";
@@ -55,6 +56,14 @@ import {
 } from "./weapons";
 import { COS_DEG, SIN_DEG, VbRnd, cint, degIndex, f32, idiv, vbInt, winkelInGrad } from "./vb";
 import { newNovaState, stepNova, type NovaWorld } from "./nova";
+import {
+  cloneDrones,
+  newDrones,
+  placeDrones,
+  stepDrones,
+  type DroneWorld,
+  type Drones,
+} from "./drones";
 
 /**
  * Weltzustand eines DoveZ-Levels und der Tick in der Reihenfolge von
@@ -171,6 +180,8 @@ export interface Carry {
   }[];
   readonly force: Readonly<Force>;
   readonly particles: readonly Readonly<Particle>[];
+  /** Drohnen und Sonderwaffen des Debug-Schiffs 2 (`Me.B04…B2C`, nur `DoveReset` setzt sie). */
+  readonly drones?: Readonly<Drones>;
 }
 
 export class World {
@@ -243,9 +254,13 @@ export class World {
   /** Force des D-Phyton und die vier Partikel des D-Tonator. */
   readonly force: Force = newForce();
   readonly particles: Particle[] = newParticles();
+  /** Drohnen des Debug-Schiffs 2 (`Me.B04`), nicht im Schnappschuss (nur `DoveReset` und `DovePosSetup`). */
+  drones: Drones = newDrones();
   private readonly companionKeys = newCompanionKeys();
   /** Option „D-Tonator-Partikel: Auto-Arrange“ (`Me.50E`). */
   autoArrange = true;
+  /** Option „Ship Movements: Realistic“ (`Me.510`). */
+  realistic = false;
   /** Eingaben des laufenden Ticks (Begleiter lesen sie außerhalb von `SpielKeysDove`). */
   private inputs: readonly PlayerInput[] = [];
   /** Gemeinsame Leben (`P[0].44`): 3 mit einem, 6 mit zwei Spielern. */
@@ -255,6 +270,16 @@ export class World {
   score = [0, 0];
   /** Effekte (Partikel, Popups, Wackeln) und ihre Zeichenlisten. */
   readonly fx: Effects;
+  /**
+   * Joystick-Vibration (`AddForce` `0x529870`, Auswertung `0x5299B0` am Tickende):
+   * reine Ausgabe, die Simulation liest sie nie. Der Host liest `rumble.magnitude`.
+   */
+  readonly rumble = new Rumble();
+  /** Joystick 1…2 des Spielers (0 ohne); der Host setzt es (`Me.588270`). */
+  padOfPlayer: (player: number) => number = () => 0;
+  /** Eingestellte Grundstärke je Joystick (500…10000) und ob die Vibration an ist. */
+  rumbleBase: [number, number] = [RUMBLE_DEFAULT, RUMBLE_DEFAULT];
+  rumbleOn: [boolean, boolean] = [true, true];
   /** Funk und Laufband. */
   readonly radio: Radio;
   /** Hintergrund, Wetter, Wasser, Overlays, Spezialabläufe (`environment.ts`). */
@@ -288,7 +313,8 @@ export class World {
       players?: 1 | 2;
       seed?: number;
       startTick?: number;
-      ship?: 0 | 1;
+      /** Schiffstyp von Spieler 1: 0 D-Tonator, 1 D-Phyton, 2 Debug-Schiff (nur URL `ship=2`). */
+      ship?: 0 | 1 | 2;
       /** Funktexte in der Spielsprache (`radio/<Level>`); ohne: kein Funk. */
       radioTexts?: RadioTexts;
       /** Stand aus dem vorigen Level der Kampagne (ohne: neues Spiel, `DoveReset`). */
@@ -318,14 +344,18 @@ export class World {
     };
     const players = this.playersMinus1 + 1;
     const ship = opts.ship ?? 0;
+    // Spieler 2 bekommt den anderen Typ (`LoadSpielSurfaces` `0x4F77A0`: `A[1].A8 = 1 − A[0].A8`);
+    // beim Debug-Schiff ergäbe das −1 (ohne Bilder, Waffen und Hitbox-Sprites), der Port nimmt den D-Tonator
     this.players = Array.from(
       { length: players },
-      (_, i) => new Player(i, i === 0 ? ship : 1 - ship, players),
+      (_, i) => new Player(i, i === 0 ? ship : ship === 2 ? 0 : 1 - ship, players),
     );
     this.lives = players === 1 ? 3 : 6;
     const q = tonator(this.companionWorld());
     if (q) resetParticles(this.particles, q);
     if (opts.carry) this.applyCarry(opts.carry, q);
+    // DovePosSetup: die Drohnen samt Verlauf auf Schiff 1
+    placeDrones(this.drones, this.players[0]);
     this.tick = opts.startTick ?? 0;
     this.env = new Environment(level, this.envWorld());
     this.preroll();
@@ -353,6 +383,7 @@ export class World {
       })),
       force: { ...this.force },
       particles: this.particles.map((r) => ({ ...r })),
+      drones: cloneDrones(this.drones),
     };
   }
 
@@ -372,6 +403,7 @@ export class World {
       p.fillHistory();
     });
     Object.assign(this.force, c.force);
+    if (c.drones) this.drones = cloneDrones(c.drones);
     c.particles.forEach((r, i) => {
       const t = this.particles[i]!;
       Object.assign(t, r);
@@ -522,9 +554,16 @@ export class World {
       effect: (i, fx) => this.routeEffect(i, fx),
       partFires: (i, j) => this.partFires(i, j),
       addPoints: (points, x, y, vy, player) => this.addPoints(points, x, y, vy, player),
+      addKill: () => {
+        this.kills++;
+      },
       killEmitters: (i) => this.fire.killEmittersOf(i),
       sound: (name) => this.sfx(name),
-      shockwave: (cx, cy, life) => this.fire.addShockwave(cx, cy, life),
+      shockwave: (cx, cy, life, target) => {
+        // `AddGegnerS(−1, …)` (`0x4AAF51`): nur mit freiem Schussplatz
+        if (this.fire.addShockwave(cx, cy, life)) this.rumble.add(2, 30, target);
+      },
+      vibrate: (s, t, p) => this.rumble.add(s, t, p),
       beamPower: (p) => this.beams[p]?.power === true,
       nova: this.nova,
       boss: this.bossHooks,
@@ -555,6 +594,7 @@ export class World {
         this.events.push({ kind: "sfx", name, ...(rate !== undefined ? { rate } : {}) }),
       loop: (name: string, on: boolean) => this.loopSfx(name, on),
       saveCheckpoint: () => this.save(0),
+      vibrate: (s: number, t: number, p: number) => this.rumble.add(s, t, p),
     };
     return Object.defineProperties(host, {
       tick: { get: () => this.tick, set: (v: number) => void (this.tick = v) },
@@ -576,6 +616,7 @@ export class World {
       surfaces: this.surfaces,
       terrain: (x1, y1, x2, y2) => this.hitsTerrain(x1, y1, x2, y2),
       sound: (name) => this.sfx(name),
+      bigEnv: this.env.lists.big,
     };
   }
 
@@ -607,20 +648,21 @@ export class World {
       },
       shockwave: (cx, cy, r) => {
         // alle Spieler, ohne Lebend- oder Unverwundbar-Prüfung; Schub zugewiesen
-        for (const p of this.players) {
+        for (const [i, p] of this.players.entries()) {
           const dx = f32(cx - (p.x + 32));
           const dy = f32(cy - (p.y + 35));
           if (!(dx * dx + dy * dy < r * r)) continue;
           const k = f32(r - Math.sqrt(dx * dx + dy * dy));
           const a = degIndex(cint(winkelInGrad(dx, dy)));
           p.energy = f32(p.energy - 0.1);
+          this.rumble.add(1, 1, i); // `AddForce(1, 1, Spieler)` (`0x4AC540`)
           p.pushX = f32(((COS_DEG[a] ?? 0) * k) / 5);
           p.pushY = f32(((SIN_DEG[a] ?? 0) * k) / 5);
         }
       },
       hitPlayers: (shot, piercing) => {
         const a = shot.actor;
-        for (const p of this.players) {
+        for (const [i, p] of this.players.entries()) {
           if (!p.alive) continue;
           const hit =
             a.x < p.x + SHOT_HIT.right &&
@@ -629,6 +671,7 @@ export class World {
             a.y + a.height > p.y + SHOT_HIT.top;
           if (!hit) continue;
           this.sfx("hit");
+          this.rumble.add(2, 15, i); // `AddForce(2, 15, Spieler)` (`0x4AB9D9`)
           p.energy = f32(p.energy - shot.damage);
           // kleines Knistern (Blitz, 6 Bilder) bei kleinen Schüssen
           if (a.width < 20 && a.height < 20) {
@@ -733,6 +776,40 @@ export class World {
     };
   }
 
+  /** Ziele der Drohnen: wie die der Suchwaffen, aber auch unsichtbare Teile (`0x4E1703` prüft nur Panzerung und Kontur). */
+  private droneTargets(): ShotTarget[] {
+    const out: ShotTarget[] = [];
+    const en = this.enemies;
+    for (let i = 0; i <= en.high; i++) {
+      const e = en.items[i];
+      if (!e?.alive || e.inState || e.def.solid !== 0) continue;
+      for (const p of e.parts) {
+        const s = en.surface(p);
+        if (p.def.armored !== 0 || !s || s.topRow < 0) continue;
+        const [x, y] = en.partPos(e, p);
+        out.push({ x, y, w: s.rect.w, h: s.rect.h });
+      }
+    }
+    return out;
+  }
+
+  private droneWorld(): DroneWorld {
+    const ew = this.makeEnemyWorld();
+    return {
+      tick: this.tick,
+      rnd: this.rnd,
+      fx: this.fx,
+      out: this.fx.lists.drones,
+      players: this.players,
+      layers: this.playerShots,
+      input: (p) => this.inputs[p],
+      targets: () => this.droneTargets(),
+      hitEnemies: (x1, y1, x2, y2, damage, owner) =>
+        this.enemies.hit(x1, y1, x2, y2, damage, owner, ew, { sparks: true }),
+      sound: (name) => this.sfx(name),
+    };
+  }
+
   private weaponWorld(): WeaponWorld {
     const ew = this.makeEnemyWorld();
     return {
@@ -743,6 +820,7 @@ export class World {
       players: this.players,
       force: this.force,
       particles: this.particles,
+      drones: this.drones,
       beamPower: (p) => this.beams[p]?.power === true,
       sound: (name) => this.sfx(name),
       loop: (name, on) => this.loopSfx(name, on),
@@ -811,6 +889,9 @@ export class World {
       background: (v) => this.bossHooks.background(v),
       nextParticle: (p) => nextParticle(this.companionWorld(), p),
       addPoints: (points, x, y, vy, player) => this.addPoints(points, x, y, vy, player),
+      addKill: () => {
+        this.kills++;
+      },
       sound: (name) => this.sfx(name),
       soundOff: () => this.soundOff(),
       noFlash: () => {
@@ -828,6 +909,9 @@ export class World {
       rnd: this.rnd,
       fx: this.fx,
       out: this.fx.lists.beam,
+      env: this.env.lists.beam,
+      layers: this.playerShots,
+      noise: (v) => this.env.addNoise(v),
       players: this.players,
       playersMinus1: this.playersMinus1,
       beams: this.beams,
@@ -842,6 +926,7 @@ export class World {
       background: (v) => this.bossHooks.background(v),
       sound: (name) => this.sfx(name),
       loop: (name, on, rate) => this.loopSfx(name, on, rate),
+      vibrate: (s, t, p) => this.rumble.add(s, t, p),
     };
   }
 
@@ -857,6 +942,7 @@ export class World {
   private playerWorld(): PlayerWorld {
     return {
       terrainSpeed: this.layers[TERRAIN_LAYER]!.speed,
+      realistic: this.realistic,
       // in der Beam-Kraftphase entfällt der Tempoabzug unter Wasser
       underwater: (p) =>
         !this.beams[p.index]?.power &&
@@ -864,6 +950,7 @@ export class World {
       terrain: (x1, y1, x2, y2) => this.hitsTerrain(x1, y1, x2, y2),
       kill: (p) => this.killPlayer(p),
       exhaust: (p, dx) => this.exhaust(p, dx),
+      vibrate: (s, t, p) => this.rumble.add(s, t, p),
     };
   }
 
@@ -892,6 +979,7 @@ export class World {
   /** `KillDove` (`0x50B0D0`): Funken und blaue Feuerbälle über der Hitbox, Explosionston. */
   killPlayer(p: Player): void {
     if (!killPlayer(p)) return;
+    this.rumble.add(5, 50, p.index); // `AddForce(5, 50, Spieler)` (`0x50B1AB`)
     const [x1, y1, x2, y2] = [p.x, p.y + 17, p.x + 64, p.y + 54];
     this.fx.addSparks(1, 500, cint(x1), cint(y1), cint(x2), cint(y2), false);
     this.fx.addSparks(1, 100, cint(x1), cint(y1), cint(x2), cint(y2), true);
@@ -1053,6 +1141,7 @@ export class World {
       if (touched) {
         this.fx.shake += 4;
         this.fx.addCircle(0, 6, 0, cint(p.x + idiv(64, 2)), cint(p.y + idiv(54 - 17, 2)), 100);
+        this.rumble.add(3, 40, p.index); // `AddForce(3, 40, Spieler)` (`0x50BC18`)
       }
       if (p.energy > p.maxEnergy) p.energy = p.maxEnergy;
     }
@@ -1259,6 +1348,7 @@ export class World {
         0,
       );
     }
+    this.rumble.add(1, 30, p.index); // `AddForce(1, 30, Spieler)` (`0x50AFD5`)
     this.sfx("newborn1");
   }
 
@@ -1441,7 +1531,10 @@ export class World {
    * im End-Tick laufen sie wieder.
    */
   step(inputs: readonly PlayerInput[] = []): void {
-    if (this.state !== 0) return;
+    if (this.state !== 0) {
+      this.rumble.clear();
+      return;
+    }
     this.inputs = inputs;
     this.fx.beginTick();
     this.env.beginTick();
@@ -1469,6 +1562,8 @@ export class World {
       if (this.players.some((p) => p.exitState >= 1 && p.exitState < 5)) this.afterimages = true;
     }
     moveParticles(this.companionWorld(), this.companionKeys);
+    // Drohnen (`SpielDWeapons`): auch in der Nova
+    stepDrones(this.droneWorld(), this.drones);
     // [3] Abfeuern, Spielerschüsse Ebene 0
     if (!this.nova) {
       fireWeapons(this.weaponWorld(), this.fireState, inputs);
@@ -1521,11 +1616,27 @@ export class World {
       this.env.snow();
     }
     this.env.stepSpecial(1);
+    this.shakeRumble();
     this.fx.stepShake();
     // [10] Kontakt ([9] Schrifteffekt und [11] Abblende: Renderer)
     if (!this.nova) this.contact();
     this.env.overlay();
     this.display();
+    // [12] Vibration (`0x5299B0`, `SpielLoop` `0x53F614`): am Tickende, auch in der Nova
+    this.rumble.step(
+      (player) => this.padOfPlayer(player),
+      (joystick) => this.rumbleBase[joystick] ?? RUMBLE_DEFAULT,
+      (joystick) => this.rumbleOn[joystick] ?? true,
+    );
+  }
+
+  /**
+   * `SpielErschütterung` (`0x529C3D`…`0x529C98`), vor dem Abzählen des Wackelzählers
+   * `Me.7D0`: Vibration für beide Joysticks, 1 Tick lang; Stärke 5 über 50, 3 über 19, sonst 1.
+   */
+  private shakeRumble(): void {
+    const s = this.fx.shake;
+    if (s > 0) this.rumble.add(s > 50 ? 5 : s > 19 ? 3 : 1, 1, -1);
   }
 
   /**
@@ -1540,6 +1651,7 @@ export class World {
 
   /** Ein Durchlauf des Speicherbildschirms: nur `SpielMoveHintergrund` und `SpielDisplay`. */
   backdropTick(): void {
+    this.rumble.clear();
     this.fx.beginTick();
     this.env.beginTick();
     this.env.moveBackground();

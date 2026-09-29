@@ -48,7 +48,12 @@ export class GameScreen implements Screen<GameResult> {
     private readonly record: TickRecorder,
   ) {
     this.images = Renderer.imageIds(world);
-    this.renderer = new Renderer(env.textures, world, env.german);
+    this.renderer = new Renderer(
+      env.textures,
+      world,
+      env.german,
+      () => env.host.reducedMotion === true,
+    );
     this.root.addChild(this.renderer.root);
     this.overlay = new Gfx(env.frames);
     this.root.addChild(this.overlay.root);

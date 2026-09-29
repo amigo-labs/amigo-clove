@@ -19,6 +19,7 @@ import { ContinueView } from "./continueView";
 import { GdiText, atlasTexture } from "./gdi";
 import { addHighscore } from "./highscore";
 import { keyLabel, readInput, screenKeys } from "./input";
+import type { Lang } from "./lang";
 import { type DovezConfig, audioGains } from "./config";
 import type { Mosaic } from "./mosaic";
 import { PAUSE_MS, PauseLogic, pauseMenu, pauseTitle, wrapRadioLog } from "./pauseScreen";
@@ -35,11 +36,12 @@ export interface GameContext {
   /** Atlanten `spiel`, `standart`, `pause`. */
   readonly globals: readonly [AtlasJson, AtlasJson, AtlasJson];
   readonly targets: ScreenTargets;
-  readonly german: boolean;
+  /** Spielsprache (`Me.588070`). */
+  readonly lang: Lang;
   readonly profile: Profile;
   readonly mosaic: Mosaic;
   readonly players: 1 | 2;
-  readonly ship: 0 | 1;
+  readonly ship: 0 | 1 | 2;
   /** Optionen aus dem Menü (Pegel, Force-Taste, Auto-Arrange). */
   readonly config: DovezConfig;
 }
@@ -137,7 +139,7 @@ export class LevelScene implements Scene {
   }
 
   static async create(ctx: GameContext, opts: LevelOptions): Promise<LevelScene> {
-    const { host, textures, globals, german } = ctx;
+    const { host, textures, globals, lang } = ctx;
     const pack = await loadLevelPack(host.assets, opts.slug);
     const atlases = [{ json: pack.atlas }, ...globals.map((json) => ({ json }))];
     const own = Renderer.pageIds([{ json: pack.atlas }]);
@@ -151,7 +153,7 @@ export class LevelScene implements Scene {
         return pack.contours.subarray(o, o + 4 + h * 2);
       },
     };
-    const radioTexts = pack.radio ? (german ? pack.radio.de : pack.radio.en) : undefined;
+    const radioTexts = pack.radio?.[lang];
     const world = new World(pack.level, sprites, {
       startTick: opts.from,
       ship: ctx.ship,
@@ -168,7 +170,17 @@ export class LevelScene implements Scene {
     // `Me.512` (normal) und `Me.50E` aus den Grundeinstellungen
     world.qToggles = !ctx.config.qNormal;
     world.autoArrange = ctx.config.autoArrange;
-    const renderer = new Renderer(textures, world, atlases, ctx.app.renderer, { german, keyLabel });
+    world.realistic = ctx.config.realistic;
+    // Vibration: Spieler p steuert das p-te Gamepad mit Motor (`Me.588270`), Einstellung je Pad
+    const pads = () => ctx.host.rumblePads?.() ?? 0;
+    world.padOfPlayer = (p) => (p < pads() ? p + 1 : 0);
+    world.rumbleOn = [ctx.config.vibration[0], ctx.config.vibration[1]];
+    world.rumbleBase = [ctx.config.vibrationStrength[0], ctx.config.vibrationStrength[1]];
+    const renderer = new Renderer(textures, world, atlases, ctx.app.renderer, {
+      lang,
+      keyLabel,
+      calm: () => host.reducedMotion === true,
+    });
     // Seiten, die nur dieses Level braucht (die globalen bleiben geladen)
     const shared = new Set(Renderer.pageIds(globals.map((json) => ({ json }))));
     const pages = own.filter((id) => !shared.has(id));
@@ -203,16 +215,29 @@ export class LevelScene implements Scene {
     if (on) this.afterPause.visible = false;
   }
 
+  /** Vibration je Tick erneuern (der Motorimpuls des Hosts ist kurz), Ende einmal melden. */
+  private readonly rumbleSent: [number, number] = [0, 0];
+  private rumble(stop = false): void {
+    const out = this.ctx.host.rumble;
+    if (!out) return;
+    for (let j = 0; j < 2; j++) {
+      const m = stop ? 0 : (this.world.rumble.magnitude[j] ?? 0);
+      if (m > 0 || this.rumbleSent[j] !== 0) out(j, m / 10000);
+      this.rumbleSent[j] = m;
+    }
+  }
+
   private enterPause(): void {
     const { ctx, world } = this;
+    this.rumble(true);
     this.audio?.pause();
     this.captureShot(false);
     // NewPictureToLoadingscreen beim Öffnen der Pause
     ctx.mosaic.add(ctx.app.renderer, ctx.targets.shot);
     const log = wrapRadioLog(world.radio.log, (s) => this.logFont.width(s));
     const view = new PauseView(ctx.targets, this.balken, this.pauseImage, {
-      menu: pauseMenu(ctx.german),
-      title: pauseTitle(this.opts.name, ctx.profile.names),
+      menu: pauseMenu(ctx.lang),
+      title: pauseTitle(this.opts.name, ctx.profile.names, ctx.lang),
       log,
     });
     const logic = new PauseLogic(world.rnd);
@@ -248,7 +273,7 @@ export class LevelScene implements Scene {
     const r = continueRanks(ctx.profile.highscores, players);
     if (!this.opts.screen) ctx.profile.store(r.list);
     this.captureShot(true);
-    const view = new ContinueView(ctx.targets, this.kreis, rankTexts(names, r.ranks, ctx.german));
+    const view = new ContinueView(ctx.targets, this.kreis, rankTexts(names, r.ranks, ctx.lang));
     this.audio?.playContinueMusic();
     const logic = new ContinueLogic(world.rnd);
     this.mode = { kind: "continue", logic, view, loop: new FixedStepLoop(CONTINUE_MS) };
@@ -350,6 +375,7 @@ export class LevelScene implements Scene {
       if (this.opts.invincible)
         for (const p of world.players) p.invulnerable = Math.max(p.invulnerable, 2);
       world.step(inputs);
+      this.rumble();
       if (this.afterPauseAlpha > 0)
         this.afterPauseAlpha = Math.max(0, f32(this.afterPauseAlpha - 0.05));
       // Tod: Neustart am Checkpoint im nächsten Frame, ohne Leben der Continue-Bildschirm
@@ -383,6 +409,7 @@ export class LevelScene implements Scene {
   }
 
   destroy(): void {
+    this.rumble(true);
     this.win?.removeEventListener("blur", this.onBlur);
     this.win?.removeEventListener("focus", this.onFocus);
     if (this.mode.kind !== "play") this.mode.view.destroy();

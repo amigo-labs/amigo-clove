@@ -46,6 +46,8 @@ export class Renderer {
     private readonly world: World,
     /** Sprache der Skripttexte: Deutsch (`Me.350` gesetzt) oder Englisch. */
     private readonly german = true,
+    /** Bewegungsarme Darstellung (Einstellung der Shell): kein Bildschirmwackeln. */
+    private readonly calm: () => boolean = () => false,
   ) {
     const n = world.level.number;
     this.feinde = `image/feinde${n}`;
@@ -297,7 +299,7 @@ export class Renderer {
     this.particles.update();
 
     // Bildschirmwackeln bei großen Abschüssen (Amplitude geschätzt, reine Darstellung)
-    if (w.shake > 0) {
+    if (w.shake > 0 && !this.calm()) {
       this.shakeSeed = (Math.imul(this.shakeSeed, 1103515245) + 12345) | 0;
       this.field.position.set(((this.shakeSeed >> 8) % 3) - 1, ((this.shakeSeed >> 12) % 3) - 1);
     } else {

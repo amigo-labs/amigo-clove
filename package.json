@@ -17,7 +17,10 @@
     "assets:verify": "bun packages/assetkit/src/cli.ts verify",
     "assets:report": "bun packages/assetkit/src/cli.ts report",
     "build": "bun run --cwd packages/shell build",
-    "smoke": "bun run --cwd packages/shell smoke"
+    "smoke": "bun run --cwd packages/shell smoke",
+    "perf": "bun scripts/perf.ts",
+    "budget": "bun scripts/budget.ts",
+    "levels:report": "bun scripts/dovez-levels.ts"
   },
   "devDependencies": {
     "@types/bun": "^1.4.2",

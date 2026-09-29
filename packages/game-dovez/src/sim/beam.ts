@@ -1,14 +1,16 @@
-import type { DrawList, Effects } from "./effects";
+import type { DrawList, Effects, LineSink } from "./effects";
+import type { EnvList } from "./envDraw";
 import type { Player, PlayerInput } from "./player";
-import { drawTrail } from "./playerShots";
+import { drawTrail, type ShotLayer } from "./playerShots";
 import { COS_DEG, SIN_DEG, cint, degIndex, f32, vbInt, winkel, type VbRnd } from "./vb";
 
 /**
  * `SpielBeam` (`0x513940`): Laden (A gehalten), Abfeuern beim Loslassen,
- * Beam 1 als Geschoss mit Schadensbudget (Schiff 0 und 1), Beam 2 mit
- * Kraftphase (Hauptschuss × 2, Abschüsse spalten die Gegner, Kombo), Q
- * wechselt den Typ. Schiff 2 (nur per Debug) fehlt. Befund:
- * `docs/measurements/dovez-runtime.md` („Beam und Kombo“).
+ * Beam 1 als Geschoss mit Schadensbudget (Schiff 0, 1 und das Debug-Schiff 2
+ * mit eigenem Flug, Ladegrafik und Nachwirkung), Beam 2 mit Kraftphase
+ * (Hauptschuss × 2, Abschüsse spalten die Gegner, Kombo), Q wechselt den Typ.
+ * Befund: `docs/measurements/dovez-runtime.md` („Beam und Kombo“, „Debug-Schiff 2
+ * und Drohnen“).
  */
 
 /** Beam-Record `Me.CB0[p]` (0x34). */
@@ -33,7 +35,10 @@ export interface Beam {
   /** Beam läuft (+0x2C) und Kraftphase (+0x2E). */
   running: boolean;
   power: boolean;
-  /** Nachglühen 10 → 0 (+0x30). */
+  /**
+   * Nachglühen 10 → 0 (+0x30). Das Debug-Schiff 2 nutzt das Feld negativ: −100 nach einem
+   * Treffer (Nachwirkung), zählt je Tick bis 0.
+   */
   glow: number;
 }
 
@@ -112,6 +117,12 @@ export interface BeamWorld {
   readonly rnd: VbRnd;
   readonly fx: Effects;
   readonly out: DrawList;
+  /** Befehlsliste des Schiff-2-Beams (Erfassen und Zeichnen in Ausführungsreihenfolge). */
+  readonly env: EnvList;
+  /** Spielerschüsse (Beam-Suchgeschosse Typ 14 des Schiffs 2). */
+  readonly layers: readonly [ShotLayer, ShotLayer];
+  /** `Me.6D0 += v` (Rauschen, `MakeSomeNoise`). */
+  noise(v: number): void;
   readonly players: readonly Player[];
   readonly playersMinus1: number;
   readonly beams: readonly Beam[];
@@ -138,6 +149,8 @@ export interface BeamWorld {
   sound(name: string): void;
   /** Schleife an/aus mit Abspielrate (Frequenz / 44100). */
   loop(name: string, on: boolean, rate?: number): void;
+  /** `AddForce` (`0x529870`): Joystick-Vibration, reine Ausgabe. */
+  vibrate?(strength: number, ticks: number, player: number): void;
 }
 
 const HIT_LEFT = 0;
@@ -197,6 +210,7 @@ export function stepBeams(w: BeamWorld): void {
     if (c.glow > 0) afterglow(w, p, c);
     if (c.type === 0 && c.running) {
       if (p.shipType === 1) flight1(w, p, c);
+      else if (p.shipType === 2) flight2(w, p, c);
       else flight0(w, p, c);
     } else if (c.type === 0 && c.charge > 0) chargeGraphics(w, p, c);
     if (c.type === 1) beam2(w, p, c);
@@ -209,6 +223,7 @@ function fire(w: BeamWorld, p: Player, c: Beam): void {
   w.loop(`charge${c.type + 1}`, false);
   if ((c.type === 0 && c.charge > 9) || (c.type === 1 && c.charge === 165))
     w.sound(`beam${c.type + 1}`);
+  w.vibrate?.(1, 5, p.index); // `AddForce(1, 5, Spieler)` (`0x5143A8`)
   c.running = true;
   for (const [xs, ys] of w.shared.spirals) {
     xs.fill(-1);
@@ -259,8 +274,57 @@ function afterglow(w: BeamWorld, p: Player, c: Beam): void {
     drawTrail(w.out, xs, xs, -1, -1, 15, c.width / 2, 0.7, 0.4, 1, true);
 }
 
+/** Zeichensenke: Rechtecke und Balken. */
+interface Sink extends LineSink {
+  quad(
+    key: string,
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+    r?: number,
+    g?: number,
+    b?: number,
+    a?: number,
+    additive?: boolean,
+  ): void;
+}
+
+/** Schreibt in Ausführungsreihenfolge in eine Env-Liste, damit Erfassen und Zeichnen sich abwechseln. */
+class EnvSink implements Sink {
+  constructor(readonly list: EnvList) {}
+
+  quad(
+    key: string,
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+    r = 1,
+    g = 1,
+    b = 1,
+    a = 1,
+    additive = false,
+  ): void {
+    this.list.rect(key, x1, y1, x2, y2, r, g, b, a, additive);
+  }
+
+  line(
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+    w: number,
+    c1: readonly [number, number, number, number],
+    c2: readonly [number, number, number, number],
+    additive = false,
+  ): void {
+    this.list.segment({ x1, y1, x2, y2, w, c1, c2, additive });
+  }
+}
+
 /** Vier Spiralspuren um den vollen Beam und ihre Köpfe (Schiffsstärke ≥ 3 bzw. ≥ 2). */
-function spirals(w: BeamWorld, c: Beam): void {
+function spirals(w: BeamWorld, c: Beam, out: Sink = w.out): void {
   const d = c.tipX - c.originX;
   const table: [number, number][] = [
     [0.8, 30],
@@ -272,10 +336,10 @@ function spirals(w: BeamWorld, c: Beam): void {
     const [f, amp] = table[k]!;
     const hx = c.tipX;
     const hy = f32(c.tipY + amp * (SIN_DEG[degIndex(cint(d * f))] ?? 0));
-    drawTrail(w.out, xs, ys, hx, hy, 15, c.width / 2, 0.7, 0.4, 1, true);
+    drawTrail(out, xs, ys, hx, hy, 15, c.width / 2, 0.7, 0.4, 1, true);
     const r = c.width / 2;
-    w.out.quad("a_kreis2", hx - r, hy - r, hx + r, hy + r, 0.7, 0.4, 1, 1);
-    w.out.quad("a_kreis2", hx - r, hy - r, hx + r, hy + r, 0.7, 0.4, 1, 1, true);
+    out.quad("a_kreis2", hx - r, hy - r, hx + r, hy + r, 0.7, 0.4, 1, 1);
+    out.quad("a_kreis2", hx - r, hy - r, hx + r, hy + r, 0.7, 0.4, 1, 1, true);
   });
 }
 
@@ -477,6 +541,200 @@ function flight1(w: BeamWorld, p: Player, c: Beam): void {
   c.tipX = f32(c.tipX + 20);
 }
 
+/**
+ * Erfasst einen Ausschnitt des Backbuffers (`Blt`, links/oben inklusive, rechts/unten
+ * exklusiv). Das Original meldet bei einem Rechteck außerhalb des Bildschirms einen
+ * DirectDraw-Fehler; der Port klemmt es an den Bildschirm.
+ */
+function grab(
+  env: EnvList,
+  target: "blur" | "lens",
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  overlay?: string,
+): void {
+  const l = Math.max(0, x1);
+  const t = Math.max(0, y1);
+  const r = Math.min(800, x2);
+  const b = Math.min(600, y2);
+  if (r > l && b > t) env.capture(target, l, t, r - l, b - t, overlay);
+}
+
+/**
+ * §3.5 Beam 1 im Flug, Debug-Schiff 2 (`0x514EDC`): wie Schiff 1 (20 px/Tick nach dem
+ * Treffertest), aber mit Schadensbudget − 2100, ohne Feuerbälle, einer Linse aus dem
+ * erfassten Bildschirm statt Körper und Blitzen, und einer Nachwirkung: jeder Treffer
+ * (auch an der Landschaft) setzt `glow = −100`, danach steht der Strahl und klingt
+ * `−glow` Ticks lang aus; ein voller Beam schickt dabei acht Suchgeschosse (Typ 14) los.
+ */
+function flight2(w: BeamWorld, p: Player, c: Beam): void {
+  const i = p.index;
+  if (c.fired < 10) {
+    abort(c);
+    return;
+  }
+  const out = new EnvSink(w.env);
+  if (c.glow < 0) {
+    aftermath(w, p, c, out);
+    return;
+  }
+  const wd = c.width;
+  const wi = cint(wd);
+  const h = Math.trunc(wi / 2);
+  const q = Math.trunc(wi / 4);
+  const g = beamGreen(p);
+  const rnd = w.rnd;
+  const yTop = f32(c.tipY - h);
+  const yBot = f32(h + c.tipY);
+  // Linse am Kopf (Erfassen vor dem Kopf, mit a_kreis3 überblittet) und Körper aus dem erfassten Streifen
+  grab(
+    w.env,
+    "lens",
+    cint(h + c.tipX - q),
+    cint(c.tipY - q),
+    cint(q + (h + c.tipX)),
+    cint(q + c.tipY),
+    "a_kreis3",
+  );
+  grab(
+    w.env,
+    "blur",
+    cint(h + c.originX - q),
+    cint(c.tipY - q),
+    cint(q + (c.tipX - h)),
+    cint(q + c.tipY),
+  );
+  out.quad("@blur", c.originX, yTop, c.tipX, yBot, 1, 1, 1, 1);
+  out.quad("balken", c.originX, yTop, c.tipX, yBot, 1, 1, 1, 0.3, true);
+  out.quad("@lens", c.tipX, yTop, f32(wd + c.tipX), yBot, 1, 1, 1, 1);
+  out.quad("a_kreis2", c.tipX, yTop, f32(wd + c.tipX), yBot, 1, 1, 1, 0.3, true);
+  const box: [number, number, number, number] = [
+    cint(c.tipX - 24),
+    cint(c.tipY - h),
+    cint(wd + c.tipX),
+    cint(h + c.tipY),
+  ];
+  if (c.fired === 165) {
+    // Regenbogen-Striche: vier Farb-/Lebenswürfe, dann die Drehung
+    const r1 = rnd.next();
+    const r2 = rnd.next();
+    const r3 = rnd.next();
+    const r4 = rnd.next();
+    const r5 = rnd.next();
+    w.fx.addBig(
+      c.tipX,
+      f32(c.tipY - wd),
+      0,
+      0,
+      r1,
+      r2,
+      r3,
+      cint(wd + wd),
+      5,
+      cint(2 * r4 + 15),
+      4,
+      f32(r5 * 360),
+    );
+    if (p.shotPower >= 3)
+      w.fx.addBig(
+        c.tipX + 12,
+        c.tipY - h,
+        -2,
+        0,
+        0.3,
+        f32(0.2 * p.shotPower + 0.2),
+        1,
+        wi,
+        0,
+        15,
+        2,
+        Math.trunc(wi / 3),
+      );
+    if (p.shotPower >= 2) spirals(w, c, out);
+  }
+  if (box[1] > w.waterLine) {
+    const rb = rnd.next();
+    w.fx.addBubble(c.tipX - 3, c.tipY - 3, cint(rb * 5 + 3));
+  }
+  if (c.tipX > 800) {
+    c.running = false;
+    resetCombo(w.combo, i);
+    c.tipX = f32(c.tipX + 20);
+    return;
+  }
+  if (w.terrain(...box)) {
+    c.glow = -100;
+    w.fx.addBig(c.tipX, c.tipY - h, 0, 0, 0.7, g, 1, wi, 0, 10, 1, 0);
+  }
+  w.combo.hits[i] = (w.combo.hits[i] ?? 0) + 1;
+  const res = { enemy: -1, armored: false };
+  for (;;) {
+    const passed = c.damage - 2100;
+    const rest = w.hitEnemies(...box, passed, i, c.fired === 165, res);
+    if (rest === passed) break;
+    c.glow = -100;
+    w.combo.mult[i] = f32((w.combo.mult[i] ?? 1) + 0.5);
+    w.combo.hits[i] = (w.combo.hits[i] ?? 0) + 1;
+    c.damage = cint(rest + 2100);
+    if (rest !== 0) continue;
+    w.fx.addBig(c.tipX, c.tipY - h, 0, 0, 0.7, g, 1, wi, 1, 10, 1, 0);
+    spentBurst(w, p, c, res.armored, true);
+    break;
+  }
+  w.combo.hits[i] = (w.combo.hits[i] ?? 0) - 1;
+  c.tipX = f32(c.tipX + 20);
+}
+
+/**
+ * Nachwirkung des Beams von Schiff 2 (`glow < 0`, `0x515236`): im ersten Tick (−100) acht
+ * Suchgeschosse (Typ 14, Winkel 110°…250°, Schaden `damage \ 7`) bei einem vollen Beam,
+ * sonst `glow = −Int(Breite)`; dazu zwei Wellen (Art 17 Linse, Art 16 Glut). Der Strahl
+ * steht, sein erfasster Körper blendet mit `−glow / 100` aus; bei 0 endet er.
+ */
+function aftermath(w: BeamWorld, p: Player, c: Beam, out: EnvSink): void {
+  const wi = cint(c.width);
+  const h = Math.trunc(wi / 2);
+  const q = Math.trunc(wi / 4);
+  if (c.glow === -100) {
+    if (c.fired === 165) {
+      for (let k = 110; k <= 250; k += 20)
+        w.layers[1].add(
+          14,
+          c.tipX,
+          c.tipY,
+          f32((COS_DEG[k] ?? 0) * 20),
+          f32((SIN_DEG[k] ?? 0) * 20),
+          k,
+          Math.trunc(c.damage / 7),
+          p.index,
+        );
+    } else c.glow = cint(-vbInt(c.width));
+    const x = f32(f32(h + c.tipX) - 32);
+    const y = f32(c.tipY - 32);
+    w.fx.addBig(x, y, 0, 0, 1, 1, 1, 64, 0, wi, 17, 1);
+    w.fx.addBig(x, y, 0, 0, 1, 1, 1, 64, 0, wi, 16, 1);
+  }
+  const yTop = f32(c.tipY - h);
+  const yBot = f32(h + c.tipY);
+  grab(
+    w.env,
+    "blur",
+    cint(h + c.originX - q),
+    cint(c.tipY - q),
+    cint(q + (c.tipX - h)),
+    cint(q + c.tipY),
+  );
+  out.quad("@blur", c.originX, yTop, c.tipX, yBot, 1, 1, 1, f32(-c.glow / 100));
+  out.quad("balken", c.originX, yTop, c.tipX, yBot, 1, 1, 1, f32(-c.glow / 300), true);
+  c.glow++;
+  if (c.glow === 0) {
+    c.running = false;
+    resetCombo(w.combo, p.index);
+  }
+}
+
 function abort(c: Beam): void {
   c.running = false;
   c.charge = 0;
@@ -496,6 +754,10 @@ function chargeGraphics(w: BeamWorld, p: Player, c: Beam): void {
     const r2 = rnd.next();
     const r3 = rnd.next();
     w.fx.addBubble((x2 - x1) * r1 + x1 - 6, (y2 - y1) * r2 + y1 - 6, cint(r3 * 5 + 3));
+  }
+  if (p.shipType === 2) {
+    chargeGraphics2(w, p, c);
+    return;
   }
   if (p.shipType === 1) {
     const r = Array.from({ length: 7 }, () => rnd.next());
@@ -558,6 +820,52 @@ function chargeGraphics(w: BeamWorld, p: Player, c: Beam): void {
     const rot = cint(rnd.next() * 90 + 90 * k);
     out.quad("strich", x1 - 5, y1 - 5, x2 + 7, y2 + 7, 1, g2, 1, 0.3, false, rot);
   }
+}
+
+/**
+ * §3.6 Lade-Grafik Beam 1, Debug-Schiff 2 (`0x51A89B`): Rauschen bis 0,05, eine Linse vor
+ * der Nase (Mitte Schiff + (96, 32), Radius 5…32 aus der Ladung) mit einem bunten
+ * Blitz darin, Funken hinter den einsaugenden Partikeln; bei voller Ladung zwei
+ * schwache, zitternde Geisterbilder des Schiffs.
+ */
+function chargeGraphics2(w: BeamWorld, p: Player, c: Beam): void {
+  const rnd = w.rnd;
+  const out = new EnvSink(w.env);
+  w.noise(f32(f32(c.charge * 0.05) / 165));
+  const cx = f32(p.x + 96);
+  const cy = f32(p.y + 32);
+  const r = cint((c.charge * 27) / 165 + 5);
+  const r1 = rnd.next();
+  const r2 = rnd.next();
+  const r3 = rnd.next();
+  w.fx.addBig(cx - r, cy - r, 0, 0, r1, r2, r3, 2 * r, 1, 1, 0, 2 * r);
+  const k = r * 0.75;
+  grab(w.env, "lens", cint(cx - k), cint(cy - k), cint(k + cx), cint(k + cy), "a_kreis3");
+  out.quad("@lens", cx - r, cy - r, cx + r, cy + r, 1, 1, 1, 1);
+  out.quad("a_kreis2", cx - r, cy - r, cx + r, cy + r, 1, 1, 1, 0.3, true);
+  if (c.charge < 165) {
+    for (let n = 5 * p.index; n <= 5 * p.index + 5; n++) {
+      const s = w.shared.suck[n]!;
+      if (!s.active) continue;
+      const q1 = rnd.next();
+      const q2 = rnd.next();
+      const q3 = rnd.next();
+      const q4 = rnd.next();
+      const q5 = rnd.next();
+      w.fx.addBig(s.x - 8, s.y - 8, 2 * q1 - 1, 2 * q2 - 1, q3, q4, q5, 16, 3, 7, 16, 0);
+    }
+    return;
+  }
+  const key = `dove2${p.tilt + 1}${p.animFrame + 1}`;
+  const t = w.tick;
+  const sway = (a: number, b: number): [number, number] => [
+    2 * (SIN_DEG[degIndex(a * t)] ?? 0),
+    2 * (COS_DEG[degIndex(b * t)] ?? 0),
+  ];
+  const [dx1, dy1] = sway(2, 4);
+  const [dx2, dy2] = sway(5, 6);
+  out.quad(key, p.x + dx1, p.y + dy1, p.x + dx1 + 64, p.y + dy1 + 64, 1, 1, 1, 0.2);
+  out.quad(key, p.x - dx2, p.y - dy2, p.x - dx2 + 64, p.y - dy2 + 64, 1, 1, 1, 0.2);
 }
 
 /** §3.7 Beam 2: Fehlschuss-Kollaps, Kraftphase (500 Ticks) und Ausklingen, Laden mit Blitzen, Aura. */
@@ -661,12 +969,16 @@ function suckIn(w: BeamWorld, p: Player, c: Beam): void {
     }
     return;
   }
-  // Ziel: Ladekugel (Beam 1, Schiff 0), Schiffsmitte (Beam 1, Schiff 1) bzw. Hitbox-Mitte (Beam 2)
+  // Ziel: Ladekugel (Beam 1, Schiff 0), Schiffsmitte (Schiff 1), Linse (Schiff 2) bzw. Hitbox-Mitte (Beam 2)
   let tx: number;
   let ty: number;
   if (c.type === 1) {
     tx = f32(p.x + HIT_LEFT + Math.trunc((HIT_RIGHT - HIT_LEFT) / 2));
     ty = f32(p.y + MID_Y);
+  } else if (p.shipType === 2) {
+    // die Linse vor der Nase (`ST.5C4/5C8` aus der Ladegrafik)
+    tx = f32(p.x + 96);
+    ty = f32(p.y + 32);
   } else if (p.shipType === 1) {
     tx = p.x + 32;
     ty = p.y + 32;

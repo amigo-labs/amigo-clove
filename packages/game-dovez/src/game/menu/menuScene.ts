@@ -2,7 +2,8 @@ import { SfxPool, StreamPlayer } from "@clove/audio";
 import { FixedStepLoop, type GameHost } from "@clove/core";
 import type { DovezConfig } from "../config";
 import { dbGain } from "../config";
-import { okKey, pauseKey, readInput } from "../input";
+import { heldDiks, okKey, pauseKey, readInput, useKeys } from "../input";
+import { isCyrillic } from "../lang";
 import type { Scene } from "../scene";
 import type { MenuKeys, MenuLogic } from "./menuLogic";
 import type { MenuView } from "./menuView";
@@ -76,8 +77,8 @@ export class MenuScene implements Scene {
     else if (e.key === "Backspace") this.chars.push(8);
     else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
       const c = e.key.charCodeAt(0);
-      // ANSI: nur Zeichen bis 255
-      if (c >= 32 && c <= 255) this.chars.push(c);
+      // ANSI: nur Zeichen bis 255; auf Russisch (CP1251) dazu die kyrillischen Buchstaben
+      if (c >= 32 && (c <= 255 || (this.logic.lang === "ru" && isCyrillic(c)))) this.chars.push(c);
     }
   };
 
@@ -106,7 +107,21 @@ export class MenuScene implements Scene {
       pause: pauseKey(host),
       focus: doc.hasFocus() && !doc.hidden,
       char: this.chars.shift() ?? 0,
+      held: heldDiks(host),
     };
+  }
+
+  /** Probeimpuls der Vibrationszeilen an den Host geben; nach 20 Durchläufen aus. */
+  private pulse(logic: MenuLogic): void {
+    const p = logic.pulse;
+    if (!p) return;
+    if (p.ticks > 0) {
+      this.host.rumble?.(p.pad, p.magnitude);
+      p.ticks--;
+    } else {
+      this.host.rumble?.(p.pad, 0);
+      logic.pulse = undefined;
+    }
   }
 
   frame(now: number): boolean {
@@ -117,6 +132,9 @@ export class MenuScene implements Scene {
       this.view.tick();
       const before = logic.config;
       const d = logic.step(this.keys());
+      this.pulse(logic);
+      // die Belegung der Tastenseite gilt sofort, auch für die Menüsteuerung
+      useKeys(logic.keyMap);
       for (const s of logic.sounds.splice(0))
         this.audio?.play(s.name, s.gain === "speech" ? logic.config.speech : logic.config.sfx);
       if (logic.config !== before) {

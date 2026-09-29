@@ -93,6 +93,18 @@ async function playDove(page: Page, label: string): Promise<void> {
   if (field < 0.05) failures.push(`${label}: Spielfeld leer (${(field * 100).toFixed(1)} %)`);
 }
 
+/** DoveZ-Hauptmenü ohne Logos: Knopfleiste links muss gezeichnet sein. */
+async function playDoveZMenu(page: Page, label: string): Promise<void> {
+  await page.setViewportSize({ width: 800, height: 600 });
+  await page.goto(`${ORIGIN}/#/dovez?nointro=1`);
+  await page.waitForSelector("body[data-game=dovez]", { timeout: 60_000 });
+  await page.waitForTimeout(4000);
+  const shot = await page.screenshot();
+  const buttons = await litShare(shot, 150, 160, 470, 420);
+  console.log(`${label}: Knopfleiste ${(buttons * 100).toFixed(1)} % hell`);
+  if (buttons < 0.3) failures.push(`${label}: Hauptmenü nicht gerendert`);
+}
+
 try {
   await waitForServer();
   const browser = await chromium.launch({
@@ -168,6 +180,35 @@ try {
   }
   await menu.close();
 
+  // 1b4. DoveZ mit Logos und Intro: die Content-Security-Policy darf Video und Musik nicht sperren
+  const intro = await browser.newPage({ viewport: { width: 800, height: 600 } });
+  watch(intro, "dovez-intro");
+  await intro.goto(`${ORIGIN}/#/dovez`);
+  await intro.waitForSelector("body[data-game=dovez]", { timeout: 30_000 });
+  // die Logos wechseln mit schwarzen Pausen: das hellste von drei Bildern zählt
+  let logoLit = 0;
+  for (let i = 0; i < 4; i++) {
+    await intro.waitForTimeout(2500);
+    logoLit = Math.max(logoLit, await litShare(await intro.screenshot(), 0, 0, 800, 600));
+  }
+  console.log(`dovez-intro: ${(logoLit * 100).toFixed(1)} % hell`);
+  if (logoLit < 0.02) failures.push("dovez-intro: Logos nicht gezeichnet");
+  await intro.close();
+
+  // 1b5. Osterei „LOV“ (Sichtprüfung ohne Menü): nach der Einblendung leuchten Punkte
+  const love = await browser.newPage({ viewport: { width: 800, height: 600 } });
+  watch(love, "dovez-love");
+  await love.goto(`${ORIGIN}/#/dovez?screen=love`);
+  await love.waitForSelector("body[data-game=dovez]", { timeout: 30_000 });
+  await love.waitForTimeout(9000);
+  const loveShot = await love.screenshot();
+  const loveLit = await litShare(loveShot, 0, 0, 800, 600);
+  console.log(`dovez-love: ${(loveLit * 100).toFixed(1)} % hell`);
+  if (loveLit < 0.05) failures.push("dovez-love: Osterei nicht gezeichnet");
+  if (process.env["SMOKE_SHOTS"])
+    await Bun.write(`${process.env["SMOKE_SHOTS"]}/dovez-love.png`, loveShot);
+  await love.close();
+
   // 1c. DoveZ-Level-Ansicht: Route zeichnen, zur nächsten, dann Schussmuster
   const levelView = await browser.newPage({ viewport: { width: 800, height: 600 } });
   watch(levelView, "dovez-level");
@@ -218,15 +259,18 @@ try {
   await page.waitForSelector("[data-install=dove][data-state=missing]");
   await page.click("[data-install=dove]");
   await page.waitForSelector("[data-install=dove][data-state=ready]", { timeout: 120_000 });
-  console.log("Offline-Installation abgeschlossen.");
+  await page.click("[data-install=dovez]");
+  await page.waitForSelector("[data-install=dovez][data-state=ready]", { timeout: 300_000 });
+  console.log("Offline-Installation abgeschlossen (DOVE und DoveZ).");
 
-  // 3. Server beenden: DOVE muss vollständig aus dem Cache starten
+  // 3. Server beenden: DOVE und das DoveZ-Hauptmenü müssen vollständig aus dem Cache starten
   server.kill();
   await server.exited;
   page.removeAllListeners("requestfailed");
   await page.goto(`${ORIGIN}/`);
   await page.waitForSelector("#launcher [data-play=dove]");
   await playDove(page, "offline");
+  await playDoveZMenu(page, "offline-dovez");
   await browser.close();
 } catch (err) {
   failures.push(String(err));

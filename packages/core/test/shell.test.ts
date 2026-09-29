@@ -17,11 +17,20 @@ describe("i18n", () => {
     expect(resolveLocale("auto", ["EN-gb"])).toBe("en");
     expect(resolveLocale("auto", ["fr", "it"])).toBe("en");
     expect(resolveLocale("auto", [])).toBe("en");
+    // Russisch wie in DoveZ (`config.cfg` „R“); `ru-RU` und Großschreibung genügen
+    expect(resolveLocale("auto", ["ru-RU", "en"])).toBe("ru");
+    expect(resolveLocale("auto", ["uk", "RU"])).toBe("ru");
+    expect(resolveLocale("ru", ["de"])).toBe("ru");
   });
 
   test("Platzhalter werden ersetzt, unbekannte bleiben stehen", () => {
-    const t = translator({ de: { hi: "Hallo {name}, {n} MB {x}" }, en: { hi: "Hi {name}" } }, "de");
-    expect(t("hi", { name: "Kauto", n: 3 })).toBe("Hallo Kauto, 3 MB {x}");
+    const dict = {
+      de: { hi: "Hallo {name}, {n} MB {x}" },
+      en: { hi: "Hi {name}" },
+      ru: { hi: "Привет, {name}" },
+    };
+    expect(translator(dict, "de")("hi", { name: "Kauto", n: 3 })).toBe("Hallo Kauto, 3 MB {x}");
+    expect(translator(dict, "ru")("hi", { name: "Bruce" })).toBe("Привет, Bruce");
   });
 });
 

@@ -47,6 +47,8 @@ export interface EnvWorld {
   loop(name: string, on: boolean): void;
   /** `SaveCheckpoint(0)` (Ende der Tutorial-Startsequenz). */
   saveCheckpoint(): void;
+  /** `AddForce` (`0x529870`): Joystick-Vibration, reine Ausgabe. */
+  vibrate?(strength: number, ticks: number, player: number): void;
 }
 
 /** `Me.1138…0x1154`: aktiv, Typ, Parameter `1140…114C`, Zähler `1150`, „neu“ `1154`. */

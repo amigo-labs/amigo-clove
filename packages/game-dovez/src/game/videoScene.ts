@@ -3,11 +3,24 @@ import { type Application, Container, Graphics, Sprite, Texture, VideoSource } f
 import { cint } from "../sim/vb";
 import { GdiText } from "./gdi";
 import { pauseKey } from "./input";
+import { type Lang, loadingText } from "./lang";
 import type { Scene } from "./scene";
 
 /**
+ * Pixis `VideoSource.load()` wartet asynchron (Alpha-Erkennung) und liest danach
+ * `resource.videoWidth`; wurde die Szene inzwischen zerstört, ist `resource` null.
+ * Beendet sich ein Video sofort (Fehler), reicht ein Bild für den Absturz.
+ */
+class SafeVideoSource extends VideoSource {
+  override get isValid(): boolean {
+    return this.resource ? super.isValid : false;
+  }
+}
+
+/**
  * Zwischensequenz (`PlayAVIFile` `0x551930`, DirectShow): 800 × 600, 1:1.
- * Vorher schreibt `LevelSkript` „Loading“ (System 18, weiß, 376/490) aufs
+ * Vorher schreibt `LevelSkript` „Loading“ (System 18, weiß, 376/490; Russisch
+ * „Загрузка“ bei 372) aufs
  * Schwarz — es steht, bis das Video läuft (im Original: solange `Depack`
  * die AVI entpackt). Ton mit 0 dB (unabhängig vom Musikpegel, im Port über
  * den Effekt-Bus), ohne Ton stumm. Ende, sobald `CLng(Position) ≥
@@ -18,7 +31,7 @@ import type { Scene } from "./scene";
 export class VideoScene implements Scene {
   private readonly root = new Container();
   private readonly video: HTMLVideoElement;
-  private readonly source: VideoSource;
+  private readonly source: SafeVideoSource;
   private readonly texture: Texture;
   private readonly sprite: Sprite;
   private readonly audioNode: MediaElementAudioSourceNode | undefined;
@@ -31,12 +44,14 @@ export class VideoScene implements Scene {
     private readonly host: GameHost,
     private readonly app: Application,
     id: string,
+    lang: Lang,
     /** „Loading“ vorher (Kampagne, nicht beim Intro). */
     showLoading = true,
   ) {
     const black = new Graphics().rect(0, 0, 800, 600).fill(0x000000);
     this.root.addChild(black);
-    this.loading.set("Loading", 376, 490);
+    const { text, x } = loadingText(lang);
+    this.loading.set(text, x, 490);
     this.loading.text.visible = showLoading;
     this.root.addChild(this.loading.text);
     const video = host.canvas.ownerDocument.createElement("video");
@@ -57,7 +72,7 @@ export class VideoScene implements Scene {
     this.audioNode = node;
     const known = host.assets.has(id);
     if (known) video.src = host.assets.url(id);
-    this.source = new VideoSource({ resource: video, autoPlay: false });
+    this.source = new SafeVideoSource({ resource: video, autoPlay: false });
     this.texture = new Texture({ source: this.source });
     this.sprite = new Sprite(this.texture);
     this.sprite.visible = false;
@@ -113,11 +128,11 @@ export class VideoScene implements Scene {
 
   destroy(): void {
     this.stop();
-    this.video.removeAttribute("src");
-    this.video.load();
     this.audioNode?.disconnect();
     this.app.stage.removeChild(this.root);
     this.root.destroy({ children: true });
+    // Pixi nimmt seine Listener ab und setzt das Video zurück (`src = ""`, `load()`);
+    // ein eigenes `load()` vorher löste über Pixis Fehler-Listener eine unbehandelte Ablehnung aus
     this.texture.destroy(true);
   }
 }

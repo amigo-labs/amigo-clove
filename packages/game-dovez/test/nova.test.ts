@@ -55,6 +55,16 @@ async function novaRun(): Promise<string> {
 }
 
 describe("Super-Nova", () => {
+  test("Abschusszähler B48[0].54: die Nova zählt jede zerplatzende Gegnerbox", async () => {
+    const w = await battle();
+    const before = w.kills;
+    w.particles[0]!.kind = 1;
+    step(w, nova);
+    runOut(w);
+    step(w, NO_INPUT, 60);
+    expect(w.kills).toBeGreaterThan(before);
+  });
+
   test("Auslösen mit leerem Partikel: Variante 0, Partikel weg, Schüsse weg, Töne", async () => {
     const w = await battle();
     const p = w.players[0]!;

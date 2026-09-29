@@ -236,15 +236,16 @@ export class EnemyFire {
    * `AddGegnerS(−1, 0, L, cx, cy, Ziel)` (`0x4AAF04`): Druckwelle um den
    * Mittelpunkt, wirkt `L − L\4` Ticks; kein Ton, kein `Rnd`, kein Bild.
    */
-  addShockwave(cx: number, cy: number, life: number): void {
+  addShockwave(cx: number, cy: number, life: number): boolean {
     const shot = this.shots.find((s2) => !s2.active);
-    if (!shot) return;
+    if (!shot) return false;
     shot.active = true;
     shot.shockwave = true;
     shot.actor.x = f32(cx);
     shot.actor.y = f32(cy);
     shot.age = 0;
     shot.life = life - Math.trunc(life / 4);
+    return true;
   }
 
   /** `SpielMoveGegnerS` (`0x4AAFE0`): Bewegung, Culling, Landschaft, Spielertreffer, Druckwellen. */
