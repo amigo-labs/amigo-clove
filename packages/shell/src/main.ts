@@ -15,6 +15,7 @@ import { createKeyState } from "./keys";
 import { DISPLAY_EVENT, createStage, toggleFullscreen, type Stage } from "./overlay";
 import { registerServiceWorker } from "./offline";
 import { createPointerState } from "./pointer";
+import { createTouchKeys } from "./touchKeys";
 import { parseRoute } from "./router";
 import { loadSettings, reducedMotion, saveSettings, type Settings } from "./settings";
 import { storageFor, webStorage } from "./storage";
@@ -151,10 +152,13 @@ function rumble(pad: number, magnitude: number): void {
     .catch(() => undefined);
 }
 
-/** Tastatur plus Pad; das Pad lässt sich in den Einstellungen abschalten. */
-function keysFor(module: GameModule): KeyState {
-  if (!module.gamepad || !navigator.getGamepads) return keyboard;
-  const held = () => keyboard.held?.() ?? [];
+/** Gehaltene Tastaturtasten für die Tastenaufnahme (ohne Pad und Touch). */
+const held = () => keyboard.held?.() ?? [];
+
+/** Tastatur plus Pad (in den Einstellungen abschaltbar) plus Touch-Tasten. */
+function keysFor(module: GameModule, touch: KeyState): KeyState {
+  if (!module.gamepad || !navigator.getGamepads)
+    return { isDown: (code) => keyboard.isDown(code) || touch.isDown(code), held };
   const pad = createPadState(
     () => navigator.getGamepads(),
     () => performance.now(),
@@ -162,7 +166,8 @@ function keysFor(module: GameModule): KeyState {
   );
   // aufgenommen werden nur Tastaturtasten: das Pad zeigt der Aufnahme keine Stick-Ausschläge
   return {
-    isDown: (code) => keyboard.isDown(code) || (settings.gamepad && pad.isDown(code)),
+    isDown: (code) =>
+      keyboard.isDown(code) || touch.isDown(code) || (settings.gamepad && pad.isDown(code)),
     held,
   };
 }
@@ -214,13 +219,17 @@ async function startGame(
     stage = s;
     screen.replaceChildren(s.root);
     const pointer = createPointerState(canvas, s.root);
-    s.onDispose(() => pointer.dispose());
+    const touch = createTouchKeys(s.root, s.layer, t);
+    s.onDispose(() => {
+      pointer.dispose();
+      touch.dispose();
+    });
     const audio = audioHost(params);
     const instance = await module.boot(
       {
         canvas,
         assets,
-        keys: keysFor(module),
+        keys: keysFor(module, touch),
         locale,
         rumble,
         rumblePads: () => rumblePads().length,

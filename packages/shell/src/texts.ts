@@ -44,6 +44,7 @@ type Key =
   | "controls"
   | "pointerUse"
   | "pointerHelp"
+  | "touchBack"
   | "loadingBar"
   | "gameCanvas"
   | "saves"
@@ -113,6 +114,7 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
     pointerUse: "Maus und Touch steuern das Schiff",
     pointerHelp:
       "Maus: das Schiff folgt dem Zeiger, links Feuer, rechts Beam, Rad Tempo (DOVE) bzw. Waffenwechsel (DoveZ). Touch: Finger ziehen lenkt und feuert, zweiter Finger lädt den Beam. Pfeiltasten übernehmen jederzeit.",
+    touchBack: "Zurück / Pause",
     loadingBar: "Ladefortschritt",
     gameCanvas: "{title}: Spielfläche. Bedienung mit Tastatur oder Gamepad, Esc pausiert.",
     saves: "Spielstände",
@@ -180,6 +182,7 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
     pointerUse: "Mouse and touch steer the ship",
     pointerHelp:
       "Mouse: the ship follows the pointer, left fires, right charges the beam, wheel changes speed (DOVE) or weapon (DoveZ). Touch: drag to steer and fire, a second finger charges the beam. Arrow keys take over at any time.",
+    touchBack: "Back / pause",
     loadingBar: "Loading progress",
     gameCanvas: "{title}: play area. Controls: keyboard or gamepad, Esc pauses.",
     saves: "Saved games",
@@ -247,6 +250,7 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
     pointerUse: "Мышь и касание управляют кораблём",
     pointerHelp:
       "Мышь: корабль следует за указателем, левая кнопка — огонь, правая — луч, колесо — скорость (DOVE) или смена оружия (DoveZ). Касание: ведите пальцем для движения и огня, второй палец заряжает луч. Стрелки перехватывают управление в любой момент.",
+    touchBack: "Назад / пауза",
     loadingBar: "Ход загрузки",
     gameCanvas: "{title}: игровое поле. Управление: клавиатура или геймпад, Esc — пауза.",
     saves: "Сохранения",
