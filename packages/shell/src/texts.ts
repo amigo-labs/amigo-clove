@@ -27,6 +27,13 @@ type Key =
   | "gamepadNone"
   | "gamepadConnected"
   | "gamepadHelp"
+  | "motion"
+  | "motionAuto"
+  | "motionReduce"
+  | "motionFull"
+  | "motionHelp"
+  | "loadingBar"
+  | "gameCanvas"
   | "saves"
   | "savesHelp"
   | "export"
@@ -55,7 +62,7 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
     debugAssets: "Assets ansehen (Debug)",
     debugLevel: "Level-Skripte ansehen (Debug)",
     doveSub: "1999–2003 · Horizontal-Shooter, 12 Level",
-    dovezSub: "2004–2019 · The Second Wave",
+    dovezSub: "2004–2019 · The Second Wave, 27 Level",
     offlineReady: "offline spielbar",
     offlinePartial: "{percent} % offline gespeichert",
     offlineNone: "nicht offline gespeichert",
@@ -74,6 +81,14 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
     gamepadConnected: "Erkannt: {name}",
     gamepadHelp:
       "DOVE: Steuerkreuz/Stick bewegen, A Feuer, B Beam, X Extrawaffe drehen, Y Enter, LB/RB Tempo, Start Pause.",
+    motion: "Bewegung",
+    motionAuto: "wie das System",
+    motionReduce: "reduzieren",
+    motionFull: "volle Effekte",
+    motionHelp:
+      "Reduziert Bildschirmwackeln und schwächt Vollbildblitze ab; das Spielgeschehen bleibt gleich.",
+    loadingBar: "Ladefortschritt",
+    gameCanvas: "{title}: Spielfläche. Bedienung mit Tastatur oder Gamepad, Esc pausiert.",
     saves: "Spielstände",
     savesHelp:
       "Optionen, Freischaltungen und Highscores liegen im Browser und können dort jederzeit gelöscht werden. Als Datei sichern:",
@@ -101,7 +116,7 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
     debugAssets: "View assets (debug)",
     debugLevel: "View level scripts (debug)",
     doveSub: "1999–2003 · horizontal shooter, 12 levels",
-    dovezSub: "2004–2019 · The Second Wave",
+    dovezSub: "2004–2019 · The Second Wave, 27 levels",
     offlineReady: "playable offline",
     offlinePartial: "{percent} % stored offline",
     offlineNone: "not stored offline",
@@ -120,6 +135,13 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
     gamepadConnected: "Detected: {name}",
     gamepadHelp:
       "DOVE: d-pad/stick move, A fire, B beam, X turn special weapon, Y Enter, LB/RB speed, Start pause.",
+    motion: "Motion",
+    motionAuto: "as system",
+    motionReduce: "reduce",
+    motionFull: "full effects",
+    motionHelp: "Reduces screen shake and softens full-screen flashes; gameplay stays the same.",
+    loadingBar: "Loading progress",
+    gameCanvas: "{title}: play area. Controls: keyboard or gamepad, Esc pauses.",
     saves: "Saved games",
     savesHelp:
       "Options, unlocked levels and high scores live in the browser and may be deleted at any time. Keep a copy as a file:",

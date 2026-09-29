@@ -43,6 +43,11 @@ export interface GameHost {
   readonly assets: AssetStore;
   readonly keys: KeyState;
   readonly locale: string;
+  /**
+   * Bewegungsarme Darstellung (Einstellung der Shell, Vorgabe die des Systems): kein
+   * Bildschirmwackeln, abgeschwächte Vollbildblitze. Die Simulation bleibt gleich.
+   */
+  readonly reducedMotion?: boolean;
   /** Monotone Zeit in ms (`performance.now` im Browser). */
   now(): number;
 }
