@@ -737,6 +737,91 @@ Spaltung (Beam), 2 Nova-Tod, 3 Trümmer (`wreckGroup`), 4 Boss, 5 explosiv
 (`explosionSpec`, nach 15 Ticks), 6 normale Explosion (Punkte, Kombo + 1),
 7 Kettenexplosion (`bigDeath`).
 
+### Level 3-3 „Saw Machine“ (Bossverifikation)
+
+Länge 99999, Ende über den Boss-Tod. **Befund: Der Port war richtig, es ist keine
+Simulationsänderung nötig.** Der einfache Bot (`test/bot.ts`: Dauerfeuer aus x = 100
+auf den nächsten lebenden Gegner) scheitert an der Bauart des Kampfes, nicht an einem
+Fehler: Gepanzerte Teile schlucken jeden Schuss, und der Kampf verlangt, dass der
+Spieler den Sägen ausweicht und aus der Nähe eine freie Bahn wählt. Konfidenz **H**
+(Mechanik aus Daten und Code, Bot-Lauf schließt ab); wie ein Mensch es im Original
+spielt, ist nicht gegen das laufende Original geprüft.
+
+**Die Schuss-Regeln** (`CheckColisionWithEnemy` `0x4C3E10`, Teilschleife
+`0x4C3F1D…0x4C4176`): Teile eines Gegners von **hinten nach vorn**
+(`0x4C416B`: Index − 1), nur sichtbare (`+0x44`), Kontur wie beim Landschaftstest
+(`SpanHit`, vereinigte Zeilenspannen, kein Pixeltest). Der erste Treffer beendet den
+Aufruf: `damage < 0` gibt 0 zurück (`0x4C4200`, ein Fühler ohne Wirkung); ein Teil mit
+`armored ≠ 0` (`0x4C424A`, Wort `+0x2E`) setzt `PanzerOut` = −1 (`0x4C4251`) und gibt
+Rückgabe 0 zurück — der Schuss ist verbraucht, ohne Schaden (`0x4C4243`; nur ein
+durchschlagender Aufrufer gegen `armorPassThrough > 0` behält den Schaden). Ein
+gepanzertes Teil wirkt also als **Schild für alles dahinter**, solange seine Kontur
+die Bahn deckt. Das Bild ist ein Schalter: `SetPartFrame` auf ein 1×1-Bild
+(`Schwarz.bmp`, Kontur praktisch leer) „schaltet den Schild ab“, das Teil bleibt
+gepanzert und sichtbar. Die Sägeblätter (255 × 255, Kreiskontur) decken zusammen jede
+Höhe der Mauer (y 131…415), wann immer sie zwischen Mündung und Wand stehen; bei einer
+Schwingweite von x = 35…405 ist das für ein Schiff bei x = 100 immer der Fall. Ihre
+Kontur dreht **nicht** mit (der Konturtest kennt keine Drehung, beim Kreis bedeutungslos).
+
+**Bauteile** (Gegnertypen der Datei; Route in Klammern):
+
+| Typ | HP | Teile | Rolle |
+|---|---|---|---|
+| Wand-3 (10) bei x = 500 | 8000 | 1 (Ziegel) | ohne Schild, zuerst |
+| Wand-2 (9) bei 550 | 30000 | Ziegel + Platte (`Wand Unzerstörbar`, Bild 0 = Wand, 2 = 1×1) | Platte weg bei Global 0 = 1 |
+| Wand-1 (8) bei 600 | 45000 | Ziegel + Platte | Platte weg bei Global 0 = 2 |
+| Endgegner Main (3) bei 650, y 95 | 16000 | 13, nur Teil 5 (Kanone, 5000, Route 16) und 11 (Turbine, `damagesBody`) ungepanzert | Turbine hat Platte Teil 12 (`Turbine unzerstörbar`, Bild 10 = 1×1) bis Global 0 = 3 |
+| Säge oben (14) / unten (15) | — | Blatt + Motor, alle gepanzert | unzerstörbar, sperren die Bahnen |
+| Schienenkanone (12) | — | 2, gepanzert | unzerstörbar, feuert Waffe 7 (Route 13) |
+
+Alle Mauern sind 54 × 284 und überlappen sich in x (500 / 550 / 600); die Wände fallen
+mit Beschleunigung von oben ein (Tempo 4, +0,3 je Tick bis y = 131), der Boss fliegt
+mit Tempo 1 von x = 800 bis 650 (bis etwa Tick 150; erst danach laufen seine Routen
+weiter).
+
+**Ablauf** über die geteilte Ganzzahl `Global[0]` (`SetGlobal`/`GetGlobal`, Routen
+8, 9, 3, 12, 14, 15, 16, 6 der Datei):
+
+1. Wand-3 (ohne Schild) zerstören. Ihr `deathSpawn` = 12050 ruft die **Schienenkanone**
+   auf Route 12: `Global[0] = 1`. Wand-2 tauscht ihre Platte auf das 1×1-Bild.
+2. Wand-2 (30000) zerstören. `deathSpawn` = 14060: **Säge oben**, Route 14 setzt
+   `Global[0] = 2` und `Global[1] = 1000`; die Säge fliegt von links bis x = 400 und
+   schwingt dann mit x = 220 + 185 · cos(a), a −= 1,2 je Tick (Periode 300 Ticks) in
+   ihrer Höhe (85 bzw. 218). Die untere Säge (Route 15, beim Levelstart gespawnt)
+   wartet auf `Global[0] ≥ 2` und tut es ihr gleich. Wand-1 tauscht die Platte.
+   Wand-2 schreibt je Tick `Global[1] = (HP − 4000) / 500` (unten bei 0 gekappt); die
+   Schienenkanone (Route 13) liest es für ihren Feuertakt.
+3. Wand-1 (45000) zerstören, **mit den Sägen davor**: Saw-Blätter decken zusammen
+   fast jede Höhe zwischen Bot und Wand. `deathSpawn` = 7020: Route 7 „Afterskript
+   Letzte Mauer“ setzt `Global[0] = 3`. Die Sägen fliegen ab, sobald sie in der
+   Schwingphase `Global[0] ≥ 3` sehen (oben nach oben hinaus, unten nach unten;
+   knapp 100 Ticks), Boss-Teil 10 (`Schwarzskript`) feuert Kreisschüsse (Waffe 5),
+   die Platte auf Teil 12 wird zum 1×1-Bild.
+4. Die Turbine (Teil 11, 16000 über `damagesBody`) zerstören: Zustand 4 (Boss-Finale),
+   Ende wie beim Zeppelin (Abschnitt „Boss-Finale“).
+
+**Warum der einfache Bot scheitert** (mit Zahlen aus dem Lauf): Wand-3 und Wand-2
+schafft er (Wand-2 fällt bei Tick ≈ 1950, `Global[0] = 2`), solange keine Säge da ist.
+Danach verliert Wand-1 in den ersten 400 Ticks etwa 2100 HP (bis die Sägen im Schwingbereich
+sind), dann bleibt sie bei 42860 stehen: Er zielt auf die nächste Höhe eines lebenden
+Gegners und wählt die Sägen (HP 500, aber gepanzert), sein Schuss auf Höhe 157 trifft das
+Blatt. Auch mit einer Zielwahl nur unter verwundbaren Teilen bleibt Wand-1 bei x = 100
+auf 42860 (14000 Ticks geprüft), weil die Bahn nie frei ist. Boss (16000) und Sägen
+bleiben unberührt. Die „kleinen Gegner“ des Symptoms (Typ 6/7, HP 500,
+wandernd) sind die Sägen, das „zweite Teil“ (Typ 1, 45000) ist Wand-1.
+
+**Was funktioniert** (`test/lanebot.ts`, `test/boss-3-3.test.ts`): Ein Pilot, der bis
+kurz vor das vorderste verwundbare Teil fliegt (x = Teil − 60) und die nächste Höhe mit
+freier Bahn wählt (erstes Teil vor der Mündung ungepanzert, Konturtest wie oben, Band
+`y + 32 … + 46`), schließt das Level unverwundbar ab: `Global[0]` = 1 bei Tick 451,
+2 bei 1951, 3 bei 4357, Boss-Zustand 4 bei 5156, Level geschafft bei 5828 Ticks
+(danach `Play.txt` weiter zu 4-1, geprüft im Test).
+
+**Offen:** Ob der Mensch die Sägen im Original anders umgeht (etwa durch die Lücke
+zwischen den beiden Blättern bei bestimmter Schwingphase) ist nicht geprüft; das
+Sägenverhalten bei Spielerkontakt (Tod bei Berührung) ist wie bei allen Gegnern
+(`SpielFeindberührung`) und in diesem Abschnitt nicht getestet.
+
 ## Waffen-Emitter (`Me.C0C`, 51 × 0x78)
 
 | Offset | Typ | Bedeutung |
