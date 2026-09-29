@@ -168,11 +168,33 @@ export interface GameInstance {
  */
 export type GamepadBindings = Readonly<Record<number, readonly string[]>>;
 
+/**
+ * Eine Aktion für die Tastenbelegung der Shell: Name je Sprache und die
+ * Originaltasten. Die Shell legt auf Wunsch eine zweite Taste dazu (wie T2 in
+ * DoveZ); das Spiel sieht dann bei jedem seiner Codes auch diese Taste.
+ */
+export interface KeyAction {
+  readonly id: string;
+  readonly label: Readonly<Record<"de" | "en" | "ru", string>>;
+  readonly codes: readonly string[];
+}
+
+/**
+ * Belegung eines einzelnen Pads (z. B. Spieler 2): Tasten und die Codes für
+ * Steuerkreuz und linken Stick in der Reihenfolge hoch, runter, links, rechts.
+ */
+export interface PadLayout {
+  readonly buttons: GamepadBindings;
+  readonly directions: readonly [string, string, string, string];
+}
+
 export interface GameModule {
   readonly id: string;
   readonly title: string;
   /** Bundles, die die Shell vor `boot()` mit Fortschrittsanzeige lädt. */
   readonly preload?: readonly string[];
   readonly gamepad?: GamepadBindings;
+  /** Belegung je Pad (n-tes Pad mit Standardbelegung); fehlt ein Eintrag, gilt `gamepad`. */
+  readonly pads?: readonly (PadLayout | undefined)[];
   boot(host: GameHost, options?: Readonly<Record<string, string>>): Promise<GameInstance>;
 }

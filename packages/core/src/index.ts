@@ -70,8 +70,10 @@ export type {
   HudPlayer,
   HudSnapshot,
   HudSprite,
+  KeyAction,
   KeyState,
   KeyValueStore,
+  PadLayout,
   PointerState,
   ScaleMode,
 } from "./shell/GameModule";
