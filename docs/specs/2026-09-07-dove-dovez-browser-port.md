@@ -215,6 +215,8 @@ Nicht im Skript und damit Bonus-Inhalt: `Level8-1 Jungle`,
   Sprecher `Frame` oder `0`. **Aufnahmen gibt es nur auf Englisch** — D und E
   verweisen auf dieselben `…E_*.wav`; `R.txt` (CP1251) verweist auf fehlende
   `RU`-Dateien. Das Bundle heißt daher `voice/<level>`, nicht `voice/<lang>`.
+  *(M8: die Pipeline übernimmt D/E/R als `radio/<slug>` = `{ de, en, ru }`;
+  russisch nur Untertitel, siehe `docs/measurements/dovez-runtime.md`.)*
 - **Video:** DivX 5 (`dx50`, MPEG-4 ASP) + MP3, 800×600, 3,2 Mbit/s. Kein Browser
   spielt MPEG-4 ASP — Transkodierung ist Pflicht.
 

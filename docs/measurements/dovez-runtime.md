@@ -688,7 +688,8 @@ gespiegelt), dann Porträt `frame1–32` (alle 5 Ticks weiter, zu 10 % gestört)
 unter Rauschen von 100 auf 30 %. Das Laufband (`AddMsg`/`ShowMSGS`,
 `0x50FB90`/`0x50FCC0`) setzt alle Einträge mit Abstand zusammen und schiebt
 sie von rechts herein (Courier 12, RGB(64, 255, 64), bei (575, 552)); ein
-Neustart leert es. Texte in der Spielsprache, Stimmen nur englisch.
+Neustart leert es. Texte in der Spielsprache (D/E/R), Stimmen nur englisch; russisch gibt es nur
+Untertitel („Sprachen“).
 
 ## Musik
 
@@ -909,8 +910,156 @@ nicht; das Osterei „LOV“ fehlt im Port.
 
 Port: `src/game/menu/` (`menuLogic.ts` Logik, `menuView.ts` Zeichnung,
 `menuScene.ts` Takt, Töne, Zeicheneingabe, `logos.ts` Logos), Optionen in
-`src/game/config.ts` (gespeichert beim Ändern). Abweichungen: Russisch fehlt;
-die Tastenseite zeigt die Belegung nur an (Umbelegen fehlt noch); Trägheit
+`src/game/config.ts` (gespeichert beim Ändern). Sprachen: siehe „Sprachen“.
+Abweichungen: die Tastenseite zeigt die Belegung nur an (Umbelegen fehlt noch); Trägheit
 („Realistic“) lässt sich schalten, wirkt aber noch nicht (der Port kennt nur
 Arcade); keine Vibration. `#/dovez?nointro=1` startet ohne Logos und Intro.
 
+## Sprachen (`Me.588070`: „D“, „E“, „R“)
+
+DoveZ kennt drei Sprachen. `Me.588070` (`0x588070`) ist ein String mit dem
+Buchstaben: `0x4A60E0` setzt beim Start „E“ (`0x40F814`), `config.cfg`
+(`0x504E80`) überschreibt ihn — Version 1 speichert einen Boolean („D“, wenn
+wahr, sonst „E“), ab Version 2 wird der String selbst gelesen (`Get #f`); so kommt
+„R“ hinein. Die Schaltflächen des Konfigurationsdialogs setzen nur „D“
+(`0x57D180`) und „E“ (`0x57D220`); „R“ steht also in der `config.cfg` der
+russischen Ausgabe. *(Die Vorgabe ist demnach „E“, nicht „D“; der Port fällt bei
+unbekannter Locale auf Englisch.)* Jede Textstelle vergleicht mit
+`StrCmp(Me.588070, "D"/"E"/"R")` — meist als Kette D → E → R, an manchen Stellen
+nur „R“ gegen „alles andere“ oder nur „D“ gegen „alles andere“ (dann steht dort
+auch auf Russisch Englisch). Bei einem anderen Wert bleiben Tastenhinweis und
+Pause-Menüpunkt „Weiter“ leer. Konstanten: `0x411414` = „D“, `0x40F814` = „E“, `0x410600` = „R“.
+
+**Russische Texte:** Im Programm stehen sie als UTF-16-Konstanten, deren Zeichen
+in Wahrheit CP1251-Bytes sind (`0x415244` zeigt „Êîíôèãóðàöèÿ“ = „Конфигурация“);
+VB wandelt sie mit `StrToAnsi` in die Systemcodepage zurück, GDI zeichnet sie mit
+`CreateFontA(…, Charset = [0x5886DC], …)` (`0x57DE7F`: nur bei „R“ der
+Zeichensatz der Formularschrift, sonst 0). Der Port hat sie dekodiert
+(`menuTexts.ts`, `saveScreen.ts`, `lang.ts`) und zeichnet Unicode mit Arial.
+Ihre Reihenfolge im Code ist die Zuordnung DE ↔ EN ↔ RU je Zeile.
+
+### Weichen und ihre Zweige
+
+| Stelle | Funktion | Text bzw. Wirkung |
+|---|---|---|
+| `0x4CA9D8` | `LadeDaten` (`0x4C72C0`) | „Loading“ (System 18, weiß, 376/490); **R** „Загрузка“ bei **372**/490. Gleich in `LevelSkript` bei `Play` (`0x54D826`) und `credits` (`0x54DC21`) |
+| `0x4CFB00` | `LadeDaten` | „Press any key to start!“ (System 24, y 470): D und E englisch bei x 294; **R** „Нажмите любую клавишу для старта!“ bei x **214** |
+| `0x4CEFB9`, `0x4CF118` | `LadeDaten` | Funkdatei `<Name><D\|E\|R>.txt` (Existenzprüfung, sonst „Textdatei nicht gefunden“) |
+| `0x5232B3` | `Continue` (`0x521790`) | nur „D“: „… landet auf Platz N!“, sonst englisch — **R zeigt „ranked at place N!“** |
+| `0x527187`/`0x527240`/`0x5272F9` | `Pause` (`0x524610`) | R „Продолжить“, E „RESUME“, D „WEITER“ bei (118, 89), Arial 26 gewählt/21 |
+| `0x527413` | `Pause` | R „Выход“, sonst „EXIT“ bei (118, 120) |
+| `0x5275BA` | `Pause` | Titel: R `Replace(Left(Lvl, InStr(Lvl, "-") + 1), "Level", "Уровень")` → „Уровень1-1 (Bruce)“, sonst der ganze Name „Level1-1 Skyfight (Bruce)“ |
+| `0x539DF0` | `SpielSpezial` (`0x538CF0`) | Tastenhinweis (Arial 70): R „Нажмите: “, E „Press: “, D „Drücke: “ |
+| `0x541183` | `SaveGame` (`0x541010`) | Platz 0: R „Не сохранено“, E „Don't Save“, D „Nicht speichern“ |
+| `0x541FE0` (R), `0x5425D2` (E), `0x542C5A` (D) | `SaveGame` | Kopf und Spielerzeilen, siehe unten |
+| `0x544AA2` | `SaveGame` | Beschriftung: R ersetzt im Levelnamen „Level“ durch „Уровень“ (`Replace`, sonst `Left(Lvl, InStr+1)` wie bisher) |
+| `0x544F06`/`0x545061`/`0x5451B5` | `SaveGame` | „Gespeichert“ (Arial 150, 20/150), „Saved“ (300, 20/120), **R „Сохранено“ (Arial 170, 20/140)**, Schatten +2/+2 |
+| `0x54DD63`, `0x54DDD0`, `0x559BCA` | `LevelSkript`, `MenuLoop` | Videodatei `Outro2<S>.avi`, `Outro<S>.avi`, `intro<S>.avi` mit dem Buchstaben der Sprache |
+| `0x559567`… | `OnOff` (`0x559530`) | D „Ein“/„Aus“, E „On“/„Off“, R „Вкл.“/„Выкл.“ |
+| `0x55A696`… `0x568BB4` | `MenuLoop` (`0x559630`) | 27 Stellen, Tabelle unten |
+
+**Speicherbildschirm auf Russisch** (`0x541FE0`): Der Zweig ist eine eigene Kopie
+mit denselben Positionen, aber anderem Inhalt: „Уровень расчищен!“ **ohne
+Levelnamen** (24 bei 50/170), „Сохранить игру? “ (50/280), je Spieler
+„1 игрок: “/„2 игрок: “ + Punkte (18 bei 50/200, 50/220) — **ohne** den
+Highscore-Platz „(HIGHSCORE: n. Platz!)“. D und E bleiben wie sie waren.
+
+**Hauptmenü auf Russisch** (`menuTexts.ts`; Adressen der Konstanten dort):
+
+| Seite | Russisch (Unterschiede zu D/E) |
+|---|---|
+| 3 Hauptmenü | „Меню“: Новая, Загрузить, Настройки, **[Бонус]**, Выход — **kein „Highscore“-Eintrag**; „Бонус“ nur, wenn `[0x588080] ≠ 0` (n = 3 bzw. 4) |
+| 10 Spieleranzahl | „Новая“: `1 игрок"`, „2 игрока“, „Назад“ |
+| 1 Schiff | „КОРАБЛЬ“: D-Tonator, D-Phyton, „Назад“ |
+| 2 Name | nur „D“ ist eigen: R zeigt „Please insert Name, player N:“ |
+| 20 Laden | Titel „Загрузить“, Zurück „Назад“ |
+| 30 Optionen | „Настройки“: `Игра"`, Звуки, Клавиши, Назад — **ohne Bonus-Eintrag** |
+| 31 | „Настройка игры“, 19 Striche; „Режим Супер Луч: Норма“/„…: Смена режима“, „Апгрейд: Начальный“/„…: Продвинутый“, „Инерция корабля: Вкл./Выкл.“, „Назад“ |
+| 32 | `Уровень звука"`, 32 Striche; „Музыка: “, **„SFX: “** (statt „Sound: “), „Голоса: “, „Назад“ |
+| 33 | „Конфигурация“, **20** Striche; `Синглплеер"`/„Мультиплеер: Игрок 1/2“, „Управление: Клавиатура“; zehn Aktionen Влево, Вверх, Вправо, Вниз, Огонь, Навести, „Управление режимом/Сменить Части“, „Режим Супер Луч“, „Поворот частей“, „Сверхновая звезда“ (+ „Пауза“, „Force Feedback“, „Принять настройку“, „Назад“) |
+| 40 Bonus | „Бонус“, Levelnamen JUNGLE/SPACE/STIFT, „Назад“ |
+| 50 Highscore | Zurück-Zeile nur „D“ eigen: R „Back“ |
+
+Koordinaten, Tafeln und Listenpositionen stehen jeweils **vor** der Sprachweiche
+und sind in allen Sprachen gleich (`Me.zx/zy`, Liste 385/255 usw.); `ShowMenu`
+(`0x558890`) und `ShowList` (`0x558500`) kennen keine Sprache. Die Aktionen
+hängen am Index (`sel = 3` öffnet auf Seite 3 „Highscore“, der letzte Eintrag
+`Me.5F0` beendet; auf Seite 30 öffnet `sel = 3` „Bonus“): Das russische Menü hat
+weniger Einträge, also öffnet dort „Бонус“ die **Highscore-Seite**, und die
+Bonuslevel sind in der russischen Fassung nicht erreichbar — der Port übernimmt
+das wörtlich (Test `menuLang.test.ts`). Die schließenden `"` in `1 игрок"`,
+`Игра"`, `Уровень звука"`, `Синглплеер"` (und „Несовместимая видео карта"“) stehen
+so in den Konstanten und werden mit angezeigt.
+
+### Videos
+
+`intro<S>.avi` (lose, `Data\Video`), `Outro<S>.avi` und `Outro2<S>.avi`
+(`Video.d2p`) mit `S` = „D“/„E“/„R“ — die Zwischensequenzen der Kampagne
+(`Play <datei>`) sind sprachunabhängig. Die russischen Dateien `introR`,
+`OutroR`, `Outro2R` liegen in den Originaldaten **nicht** vor (nur D und E). Fehlt
+die Datei, läuft `PlayAVIFile` (`0x551930`) in den Fehlerzweig (`0x552D3C`, Meldung
+„Video: <Fehler>“) und kehrt zurück: die Sequenz wird übersprungen, das Spiel geht
+gleich weiter. Der Port tut dasselbe (`VideoScene`: unbekannte ID → weiter); die
+IDs sind `video/intror`, `video/outror`, `video/outro2r`. Kämen die Dateien in
+`Video.d2p` bzw. `Data/Video`, müsste nur `assetkit` sie mitnehmen.
+
+### Funktexte und Stimmen
+
+`<Name>R.txt` (CP1251) wird wie D/E geladen (`LadeDaten`, `0x4CEFB9`): Zeile für
+Zeile, `[Abschnitt]` = Funk-ID des Level-Skripts (Byte-Vergleich; das „ß“ von
+„Drohnen schießen“ steht in der R-Datei als Byte `DF`, in CP1251 „Я“ —
+`parseRadioTextRu` liest die Namen deshalb als CP1252). Jede Zeile zerlegt
+`GetWord(Zeile, n, ";")` (`0x576270`) an *jedem* `;`. Die WAV-Namen kommen
+unverändert aus der Datei (`SkyfightRU_notruf.wav`) und werden zur Wiedergabe aus
+`<Level>.dfp` entpackt (`0x56A2B7`, `0x4EE2E0`); fehlt die Datei, bleibt der Ton
+aus (das Original meldet zusätzlich „Sound Not Found: <Datei>“ ins Laufband,
+`0x4EE5EB`, vermutlich — der Port lässt die Meldung weg). In den Originaldaten
+liegt keine einzige `…RU_*.wav` in einer `.dfp` — **russisch: nur Untertitel**,
+Dauer und Untertitel aus `R.txt` (die Dauern gehören zu den fehlenden
+Sprachaufnahmen: 5001 statt 4598 ms bei Skyfight). Ausnahme: `Escape_Bruce_oaah.wav`,
+`…_Yeehaw.wav` (Level 7-5) heißen in E und R gleich und werden gespielt. Liefert
+eine russische Ausgabe die Aufnahmen in den `.dfp`, spielt der Port sie ohne
+Änderung (die Pipeline wandelt jede WAV der `.dfp`).
+
+`R.txt` ist bis auf drei Stellen die genaue Entsprechung von `E.txt` (gleiche
+Abschnitte, Sprecher, Reihenfolge; WAV-Namen `RU_` ↔ `E_`, Epilog `_ru` ↔ `_en`):
+[Bombers] (Spacestation II) fehlt, im Epilog [Credits] hat 12 statt 13 Gruppen,
+und `Industry1R.txt` [Harbor] enthält ein **stray `;`** im Untertitel
+(`…Кровавый ад;они прибыли до нас.;;0;`). Das Original läse dort eine Müllgruppe
+(Sprecher „они прибыли до нас.“, Dauer 0) und zeigte nur „Укрытие. Кровавый ад“.
+Der Parser (`RadioText.ts`) erkennt Gruppen an Sprecher + WAV; was dazwischen
+liegt, ist Untertitel (mit „; “ zusammengefügt), `;;0;`-Reste am Ende fallen weg —
+ergibt „Укрытие. Кровавый ад; они прибыли до нас.“. Die Pipeline schreibt
+`radio/<slug>` = `{ de, en, ru }` (eigener Job je Level, `RADIO_CONVERTER_VERSION`).
+
+### Im Port
+
+- **Wahl:** `lang=de|en|ru` in der URL (`#/dovez?lang=ru`) gewinnt; sonst die Locale
+  des Hosts (`de-*` Deutsch, `ru-*` Russisch, alles andere Englisch). Die Shell
+  kennt `ru` (`LOCALES`, eigene Shelltexte, Sprachwahl in den Einstellungen); ein
+  Spiel ohne Russisch (DOVE) fällt auf Englisch.
+- **Umsetzung:** `src/game/lang.ts` (`Lang`, `pick(lang, de, en, ru)`, Ladebild-
+  und Tastenhinweistexte, Levelkürzel), `menu/menuTexts.ts` (Tabellen je Sprache),
+  `saveScreen.ts` (`saveStrings`), `pauseScreen.ts`, `continueScreen.ts`,
+  `saveGame.ts` (`saveLabel`), `campaign.ts` (`languageVideo`), `Renderer.ts`
+  (Tastenhinweis). Tests: `lang.test.ts`, `menuLang.test.ts`, `radioLang.test.ts`,
+  `packages/formats/test/dovez.test.ts`.
+- **Namenseingabe:** auf Russisch sind zusätzlich Ё, А–я, ё erlaubt (CP1251-
+  `KeyAscii` ab 192).
+- **Datum** der Spielstandbeschriftung (im Original das der Windows-
+  Ländereinstellung): Deutsch und Russisch `TT.MM.JJJJ`, Englisch `M/T/JJJJ`
+  *(Annahme)*.
+- **Nicht übernommen:** Konfigurationsdialog und Fehlerfenster mit russischen
+  Texten („Несовместимая видео карта“ `0x411844`, „Пожалуйста, вставьте CD“
+  `0x411B24`, „DoveZ уже запущен“ `0x41368C`, „800*600 Видео“, „400*300 Видео“,
+  „32-bit цвет“, „Отмена“, „Видео“, „Звук“, „Полный экран“, „В окне“ …,
+  `0x4FEE90`, `0x5027B0`, `0x57AA70`): Der Browser hat weder Anzeigemodus noch
+  CD-Prüfung noch Einzelstartsperre. Die drei Treffer für `push 0x410600` in
+  `0x578820`, `0x57E030`, `0x57E730` sind die **Taste R** der Tastennamen, keine
+  Sprache.
+- **Abweichungen, die nicht an Russisch hängen** (beim Vergleich aufgefallen, D/E
+  unverändert gelassen): Tastenseite (33) — die Striche sind im Original D 27 /
+  E 16 (`0x414CE8`, `0x41501C`), der Port zeigt 26/19; „Zurück“ steht im Port bei
+  Zeile 20, die Aktion prüft Zeile 21 (im Original stehen dort „Принять
+  настройку“ bei 20 und „Назад“ bei 21); Pause, Vibration und „Einstellungen
+  übernehmen“ fehlen.
