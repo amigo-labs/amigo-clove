@@ -201,9 +201,9 @@ describe("Level 3-3: Ablauf der Mauern", () => {
     const c = new Campaign(steps);
     const levels: string[] = [];
     for (
-      let a = c.next(true);
+      let a = c.next("de");
       a.kind !== "end";
-      a = a.kind === "credits" && a.epilog ? c.epilog() : c.next(true)
+      a = a.kind === "credits" && a.epilog ? c.epilog() : c.next("de")
     ) {
       if (a.kind === "level") levels.push(a.slug);
     }
