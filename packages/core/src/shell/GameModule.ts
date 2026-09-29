@@ -17,6 +17,29 @@ export interface KeyState {
 }
 
 /**
+ * Maus bzw. Touch über dem Canvas, in logischen Canvas-Koordinaten (ganzzahlig,
+ * auf den Canvas begrenzt). Fehlt, wenn die Einstellung den Zeiger abschaltet.
+ */
+export interface PointerState {
+  /**
+   * Der Zeiger steuert: seit der letzten Zeigerbewegung wurde nicht mit Tasten
+   * oder Pad gelenkt. Ohne je bewegte Maus `false`, dann bleibt alles wie im Original.
+   */
+  readonly active: boolean;
+  readonly kind: "mouse" | "touch";
+  readonly x: number;
+  readonly y: number;
+  /** Maustasten wie `PointerEvent.buttons`: Bit 0 links, Bit 1 rechts, Bit 2 Mitte. */
+  readonly buttons: number;
+  /** Aufliegende Finger (Touch). */
+  readonly touches: number;
+  /** Rad-Rasten seit dem letzten Aufruf (negativ: vom Spieler weg / nach oben). */
+  takeWheel(): number;
+  /** Tasten oder Pad lenken: der Zeiger ruht, bis er wieder bewegt wird. */
+  deactivate(): void;
+}
+
+/**
  * Audio der Shell: ein AudioContext mit getrennten Pegeln für Musik und Effekte.
  * Fehlt, wenn ohne Ton gestartet wird (Original: „Dove - NOSOUND.bat“).
  */
@@ -48,6 +71,8 @@ export interface GameHost {
   exit(): void;
   readonly assets: AssetStore;
   readonly keys: KeyState;
+  /** Zeiger über dem Canvas; `undefined`, solange die Einstellung ihn abschaltet (live). */
+  readonly pointer?: PointerState | undefined;
   readonly locale: string;
   /**
    * Bewegungsarme Darstellung (Einstellung der Shell, Vorgabe die des Systems): kein

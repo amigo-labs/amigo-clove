@@ -128,6 +128,21 @@ function volumeSection(c: SettingsContext): HTMLElement {
   return section(c.t("volume"), ...rows);
 }
 
+function controlsSection(c: SettingsContext): HTMLElement {
+  const box = h("input", {
+    type: "checkbox",
+    id: "pointer",
+    checked: c.settings().pointer,
+    "aria-describedby": "pointer-help",
+    onchange: (e) => c.update({ pointer: (e.target as HTMLInputElement).checked }),
+  });
+  return section(
+    c.t("controls"),
+    h("label", { class: "row" }, box, h("span", {}, c.t("pointerUse"))),
+    h("p", { class: "hint", id: "pointer-help" }, c.t("pointerHelp")),
+  );
+}
+
 function gamepadSection(c: SettingsContext): HTMLElement {
   const status = h("p", { class: "hint" });
   const refresh = () => {
@@ -290,6 +305,7 @@ export function settingsView(c: SettingsContext): HTMLElement {
     volumeSection(c),
     displaySection(c),
     motionSection(c),
+    controlsSection(c),
     gamepadSection(c),
     savesSection(c),
     offlineSection(c),

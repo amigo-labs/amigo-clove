@@ -68,7 +68,7 @@ import {
   updatePod,
   updateShots,
 } from "./weapons";
-import { idiv, roundHalfEven } from "./math";
+import { divRoundHalfEven, idiv, roundHalfEven } from "./math";
 import { World } from "./world";
 
 /** Eingabe eines Ticks als Bitmaske. */
@@ -84,7 +84,29 @@ export const Input = {
   Beam: 128,
   /** `D`: Waffenausrichtung vorn/hinten umkehren. */
   Swap: 256,
+  /**
+   * Erweiterung (Maus/Touch): Bits 10–19 und 20–28 tragen ein Ziel für den
+   * Bezugspunkt des Schiffs; es ersetzt die Richtungstasten. Ohne dieses Bit
+   * läuft alles wie im Original.
+   */
+  Target: 512,
 } as const;
+
+/** Tastenbits (ohne Ziel); nur sie zählen für Kanten und den Weltzustand. */
+const BUTTONS = 0x1ff;
+
+/** Eingabe mit Zeigerziel; Koordinaten werden auf den Bildschirm begrenzt. */
+export function withTarget(buttons: number, x: number, y: number): number {
+  const tx = Math.max(0, Math.min(SCREEN_W - 1, Math.round(x)));
+  const ty = Math.max(0, Math.min(479, Math.round(y)));
+  return (buttons & BUTTONS) | Input.Target | (tx << 10) | (ty << 20);
+}
+
+/** Ziel einer Eingabe oder `undefined`. */
+export function targetOf(input: number): { x: number; y: number } | undefined {
+  if (!(input & Input.Target)) return undefined;
+  return { x: (input >>> 10) & 0x3ff, y: (input >>> 20) & 0x1ff };
+}
 
 const FX_640 = fxFromInt(SCREEN_W);
 
@@ -271,14 +293,8 @@ function shipWall(w: World, x: number, y: number): boolean {
   return wallHit(w, x, y + SHIP_WALL.dy, SHIP_WALL.w, SHIP_WALL.h);
 }
 
-function keyboard(w: World, input: number): void {
-  const pressed = input & ~w.prevInput;
-  if (w.dead) {
-    w.tilt = 0;
-    return;
-  }
-  scriptKeyboard(w);
-  w.tilt = 0;
+/** Pfeiltasten des Originals. */
+function move(w: World, input: number): void {
   if (input & Input.Up) {
     w.py = Math.max(SHIP_MIN_Y, w.py - w.speed);
     w.tilt = 1;
@@ -289,6 +305,42 @@ function keyboard(w: World, input: number): void {
   }
   if (input & Input.Left) w.px = Math.max(SHIP_MIN_X, w.px - w.speed);
   if (input & Input.Right) w.px = Math.min(SHIP_MAX_X, w.px + w.speed);
+}
+
+/**
+ * Zeigersteuerung (keine Entsprechung im Original): geradlinig aufs Ziel, die
+ * längere Achse mit Schiffstempo, die kürzere anteilig — also nie langsamer als
+ * mit den Pfeiltasten und ohne Zittern am Ziel. Ganzzahlig und deterministisch.
+ */
+export function moveToward(w: World, tx: number, ty: number): void {
+  // Ziel auf den erreichbaren Bereich: sonst bremst die gesperrte Achse die freie
+  const dx = Math.max(SHIP_MIN_X, Math.min(SHIP_MAX_X, tx)) - w.px;
+  const dy = Math.max(SHIP_MIN_Y, Math.min(SHIP_MAX_Y, ty)) - w.py;
+  const major = Math.max(Math.abs(dx), Math.abs(dy));
+  if (major === 0) return;
+  const stepMajor = Math.min(w.speed, major);
+  const sy = divRoundHalfEven(dy * stepMajor, major);
+  if (sy < 0) {
+    w.py = Math.max(SHIP_MIN_Y, w.py + sy);
+    w.tilt = 1;
+  } else if (sy > 0) {
+    w.py = Math.min(SHIP_MAX_Y, w.py + sy);
+    w.tilt = 2;
+  }
+  w.px = Math.max(SHIP_MIN_X, Math.min(SHIP_MAX_X, w.px + divRoundHalfEven(dx * stepMajor, major)));
+}
+
+function keyboard(w: World, input: number): void {
+  const pressed = input & BUTTONS & ~w.prevInput;
+  if (w.dead) {
+    w.tilt = 0;
+    return;
+  }
+  scriptKeyboard(w);
+  w.tilt = 0;
+  const target = targetOf(input);
+  if (target) moveToward(w, target.x, target.y);
+  else move(w, input);
   if (pressed & Input.Faster) {
     w.speed = Math.min(SHIP_SPEED_MAX, w.speed + SHIP_SPEED_STEP);
     w.flame = 4;
@@ -626,7 +678,7 @@ export function step(w: World, input: number): void {
     if (shipWall(w, w.px, w.prevY)) w.px = w.prevX;
     if (shipWall(w, w.px, w.py)) w.py = w.prevY;
   }
-  w.prevInput = input;
+  w.prevInput = input & BUTTONS;
   // 5. Spielerkollision
   if (!w.dead && w.invuln === INVULN_DONE) {
     const r = hitTest(

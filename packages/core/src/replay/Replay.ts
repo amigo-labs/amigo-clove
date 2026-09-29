@@ -1,7 +1,8 @@
 /**
  * Replay = Startparameter + Eingabe pro Tick + Kontroll-Hashes.
  *
- * Eingaben sind Bitmasken (eine Zahl pro Tick, Semantik gehört dem Spiel) und
+ * Eingaben sind Bitmasken (eine vorzeichenlose 32-Bit-Zahl pro Tick, Semantik
+ * gehört dem Spiel, z. B. Tasten plus Zeigerziel) und
  * werden lauflängenkodiert gespeichert: Spieler halten Tasten über viele Ticks.
  */
 
@@ -32,10 +33,10 @@ export function encodeInput(masks: ArrayLike<number>): number[] {
   return out;
 }
 
-export function decodeInput(runs: readonly number[]): Uint16Array {
+export function decodeInput(runs: readonly number[]): Uint32Array {
   let total = 0;
   for (let i = 1; i < runs.length; i += 2) total += runs[i] as number;
-  const out = new Uint16Array(total);
+  const out = new Uint32Array(total);
   let p = 0;
   for (let i = 0; i < runs.length; i += 2) {
     out.fill(runs[i] as number, p, p + (runs[i + 1] as number));

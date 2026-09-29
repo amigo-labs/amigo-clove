@@ -41,6 +41,9 @@ type Key =
   | "scanlines"
   | "fullscreen"
   | "fullscreenExit"
+  | "controls"
+  | "pointerUse"
+  | "pointerHelp"
   | "loadingBar"
   | "gameCanvas"
   | "saves"
@@ -106,6 +109,10 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
     scanlines: "Rasterlinien (Röhrenmonitor)",
     fullscreen: "Vollbild",
     fullscreenExit: "Vollbild beenden",
+    controls: "Steuerung",
+    pointerUse: "Maus und Touch steuern das Schiff",
+    pointerHelp:
+      "Maus: das Schiff folgt dem Zeiger, links Feuer, rechts Beam, Rad Tempo (DOVE) bzw. Waffenwechsel (DoveZ). Touch: Finger ziehen lenkt und feuert, zweiter Finger lädt den Beam. Pfeiltasten übernehmen jederzeit.",
     loadingBar: "Ladefortschritt",
     gameCanvas: "{title}: Spielfläche. Bedienung mit Tastatur oder Gamepad, Esc pausiert.",
     saves: "Spielstände",
@@ -169,6 +176,10 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
     scanlines: "Scanlines (CRT look)",
     fullscreen: "Full screen",
     fullscreenExit: "Exit full screen",
+    controls: "Controls",
+    pointerUse: "Mouse and touch steer the ship",
+    pointerHelp:
+      "Mouse: the ship follows the pointer, left fires, right charges the beam, wheel changes speed (DOVE) or weapon (DoveZ). Touch: drag to steer and fire, a second finger charges the beam. Arrow keys take over at any time.",
     loadingBar: "Loading progress",
     gameCanvas: "{title}: play area. Controls: keyboard or gamepad, Esc pauses.",
     saves: "Saved games",
@@ -232,6 +243,10 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
     scanlines: "Строки развёртки (как на ЭЛТ)",
     fullscreen: "Полный экран",
     fullscreenExit: "Выйти из полноэкранного режима",
+    controls: "Управление",
+    pointerUse: "Мышь и касание управляют кораблём",
+    pointerHelp:
+      "Мышь: корабль следует за указателем, левая кнопка — огонь, правая — луч, колесо — скорость (DOVE) или смена оружия (DoveZ). Касание: ведите пальцем для движения и огня, второй палец заряжает луч. Стрелки перехватывают управление в любой момент.",
     loadingBar: "Ход загрузки",
     gameCanvas: "{title}: игровое поле. Управление: клавиатура или геймпад, Esc — пауза.",
     saves: "Сохранения",

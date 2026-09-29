@@ -25,6 +25,8 @@ export interface Stage {
   rect(): GameRect;
   /** Meldet jede Änderung des Rechtecks; liefert die Abmeldung. */
   onLayout(fn: (r: GameRect) => void): () => void;
+  /** Aufräumen, das mit der Bühne endet. */
+  onDispose(fn: () => void): void;
   dispose(): void;
 }
 
@@ -57,6 +59,7 @@ export function createStage(canvas: HTMLCanvasElement, options: StageOptions): S
   if (fullscreenSupported()) layer.append(full);
   const root = h("div", { class: "stage" }, canvas, layer);
   const listeners = new Set<(r: GameRect) => void>();
+  const cleanups: (() => void)[] = [];
   let current: GameRect = { x: 0, y: 0, w: 0, h: 0, px: 1 };
 
   const label = () => {
@@ -120,7 +123,11 @@ export function createStage(canvas: HTMLCanvasElement, options: StageOptions): S
       listeners.add(fn);
       return () => listeners.delete(fn);
     },
+    onDispose(fn) {
+      cleanups.push(fn);
+    },
     dispose() {
+      for (const fn of cleanups.splice(0)) fn();
       ac.abort();
       observer?.disconnect();
       clearTimeout(idle);
