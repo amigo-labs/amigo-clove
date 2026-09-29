@@ -284,6 +284,21 @@ describe("Hauptmenü (MenuLoop)", () => {
     expect(parseConfig(JSON.stringify(m.config)).keys[0]).toBe("KeyY");
   });
 
+  test("Osterei: L, O und V zugleich im Hauptmenü, nicht auf anderen Seiten", () => {
+    const a = menu();
+    a.step(none);
+    a.step({ ...none, held: [38, 24] });
+    expect(a.result).toBeUndefined();
+    a.step({ ...none, held: [24, 38, 47] });
+    expect(a.result).toEqual({ kind: "love" });
+    const b = menu();
+    b.step(none);
+    press(b, { ok: true });
+    expect(b.page).toBe(10);
+    b.step({ ...none, held: [24, 38, 47] });
+    expect(b.result).toBeUndefined();
+  });
+
   test("Grundeinstellungen schalten die drei Optionen um", () => {
     const m = menu();
     m.step(none);

@@ -195,6 +195,20 @@ try {
   if (logoLit < 0.02) failures.push("dovez-intro: Logos nicht gezeichnet");
   await intro.close();
 
+  // 1b5. Osterei „LOV“ (Sichtprüfung ohne Menü): nach der Einblendung leuchten Punkte
+  const love = await browser.newPage({ viewport: { width: 800, height: 600 } });
+  watch(love, "dovez-love");
+  await love.goto(`${ORIGIN}/#/dovez?screen=love`);
+  await love.waitForSelector("body[data-game=dovez]", { timeout: 30_000 });
+  await love.waitForTimeout(9000);
+  const loveShot = await love.screenshot();
+  const loveLit = await litShare(loveShot, 0, 0, 800, 600);
+  console.log(`dovez-love: ${(loveLit * 100).toFixed(1)} % hell`);
+  if (loveLit < 0.05) failures.push("dovez-love: Osterei nicht gezeichnet");
+  if (process.env["SMOKE_SHOTS"])
+    await Bun.write(`${process.env["SMOKE_SHOTS"]}/dovez-love.png`, loveShot);
+  await love.close();
+
   // 1c. DoveZ-Level-Ansicht: Route zeichnen, zur nächsten, dann Schussmuster
   const levelView = await browser.newPage({ viewport: { width: 800, height: 600 } });
   watch(levelView, "dovez-level");

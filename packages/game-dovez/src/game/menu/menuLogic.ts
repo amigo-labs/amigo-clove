@@ -41,6 +41,8 @@ export type MenuResult =
       readonly bonus: string | undefined;
     }
   | { readonly kind: "load"; readonly slot: number }
+  /** Osterei: L, O und V gleichzeitig im Hauptmenü (`Me.588018 = 8`). */
+  | { readonly kind: "love" }
   | { readonly kind: "exit" };
 
 export type MenuSound =
@@ -311,6 +313,9 @@ export class MenuLogic {
         this.zx = 155;
         this.zy = 165;
         locked = false;
+        // L (DIK 0x26), O (0x18) und V (0x2F) zugleich gehalten: das Osterei
+        if (!this.result && [38, 24, 47].every((d) => k.held.includes(d)))
+          this.result = { kind: "love" };
         break;
       case 10:
         this.setMenu(

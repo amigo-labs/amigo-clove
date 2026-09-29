@@ -12,7 +12,7 @@ import { bootGame } from "./game/Game";
  * `load=<1…21>` Spielstand; `video=0` ohne Videos,
  * `from=<Tick>` wie die Kommandozeile `-Tick N` des Originals (erstes Level),
  * `ship=0|1`, `players=1|2`, `invincible=1`. Esc/Fokusverlust: Pause; ohne
- * Leben: Continue. Sichtprüfung `screen=continue|pause|save|credits` (es wird
+ * Leben: Continue. Sichtprüfung `screen=continue|pause|save|credits|love` (es wird
  * nichts gespeichert).
  * Debug-Ansichten: `#/dovez/debug/assets`, `#/dovez/debug/level`.
  */
@@ -49,7 +49,11 @@ const dovez: GameModule = {
       videos: options["video"] !== "0",
       intro: options["nointro"] !== "1",
       screen:
-        screen === "continue" || screen === "pause" || screen === "save" || screen === "credits"
+        screen === "continue" ||
+        screen === "pause" ||
+        screen === "save" ||
+        screen === "credits" ||
+        screen === "love"
           ? screen
           : undefined,
     });
