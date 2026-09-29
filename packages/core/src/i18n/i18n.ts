@@ -1,9 +1,11 @@
 /**
- * Minimale Lokalisierung für Shell und Spiele: zwei Sprachen wie in beiden
- * Originalen (Deutsch, Englisch), Wörterbücher als flache Schlüssel/Text-Tabellen.
+ * Minimale Lokalisierung für Shell und Spiele: Deutsch und Englisch wie in
+ * beiden Originalen, dazu Russisch wie in DoveZ (`config.cfg`: „D“/„E“/„R“);
+ * Wörterbücher als flache Schlüssel/Text-Tabellen. Ein Spiel, das eine Sprache
+ * nicht kennt, fällt auf Englisch zurück (`GameHost.locale` ist ein String).
  */
 
-export const LOCALES = ["de", "en"] as const;
+export const LOCALES = ["de", "en", "ru"] as const;
 export type Locale = (typeof LOCALES)[number];
 
 /** Spracheinstellung: fest oder aus den Browsersprachen abgeleitet. */
