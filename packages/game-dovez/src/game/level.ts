@@ -18,7 +18,7 @@ import {
 import { ContinueView } from "./continueView";
 import { GdiText, atlasTexture } from "./gdi";
 import { addHighscore } from "./highscore";
-import { keyLabel, readInput, screenKeys } from "./input";
+import { PointerControl, keyLabel, readInput, screenKeys } from "./input";
 import type { Lang } from "./lang";
 import { type DovezConfig, audioGains } from "./config";
 import type { Mosaic } from "./mosaic";
@@ -101,6 +101,7 @@ export class LevelScene implements Scene {
   private readonly balken;
   private readonly pauseImage;
   private readonly pages: string[];
+  private readonly pointer = new PointerControl();
 
   private constructor(
     private readonly ctx: GameContext,
@@ -180,6 +181,7 @@ export class LevelScene implements Scene {
       lang,
       keyLabel,
       calm: () => host.reducedMotion === true,
+      modernHud: () => host.hudMode?.() === "modern",
     });
     // Seiten, die nur dieses Level braucht (die globalen bleiben geladen)
     const shared = new Set(Renderer.pageIds(globals.map((json) => ({ json }))));
@@ -342,6 +344,16 @@ export class LevelScene implements Scene {
     flush();
   }
 
+  /** Das Spielfeld läuft (keine Pause, kein Continue, nicht fertig). */
+  get playing(): boolean {
+    return this.mode.kind === "play" && this.result === undefined;
+  }
+
+  /** Mit dem HTML-HUD zeigt der laufende Level nur das Spielfeld (800 × 550). */
+  get fieldOnly(): boolean {
+    return this.playing && this.ctx.host.hudMode?.() === "modern";
+  }
+
   /** Levelname wie im Original (`[0x5880C4]`). */
   get name(): string {
     return this.opts.name;
@@ -372,6 +384,8 @@ export class LevelScene implements Scene {
     for (let i = 0; i < n && !next && running(); i++) {
       const inputs =
         ctx.players === 2 ? [readInput(host, 1), readInput(host, 2)] : [readInput(host), NO_INPUT];
+      const p1 = world.players[0];
+      inputs[0] = this.pointer.apply(host, inputs[0]!, p1?.alive ? p1 : undefined);
       if (this.opts.invincible)
         for (const p of world.players) p.invulnerable = Math.max(p.invulnerable, 2);
       world.step(inputs);

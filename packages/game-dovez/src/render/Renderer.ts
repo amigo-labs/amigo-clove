@@ -39,6 +39,11 @@ interface AtlasRef {
   readonly json: AtlasJson;
 }
 
+/** Laufband (`ShowMSGS`) über dem HUD-Grund. */
+const TICKER_Y = 552;
+/** So weit rücken Funkbild (y 542…592) und Laufband mit dem HTML-HUD nach oben ins Spielfeld. */
+const RADIO_LIFT = 52;
+
 /** HUD-Positionen (links oben) je Element, 1 Spieler. */
 const HUD_1P = {
   score: [743, 578],
@@ -135,6 +140,11 @@ const CALM_FLASH = 0.3;
 export interface RendererOptions {
   /** Bewegungsarme Darstellung (Einstellung der Shell): kein Wackeln, abgeschwächte Blitze. */
   readonly calm?: () => boolean;
+  /**
+   * HTML-HUD der Shell: `SpielDisplay` und Kombo entfallen, Funkbild und
+   * Laufband rücken um `RADIO_LIFT` ins Spielfeld (unten bleibt nichts sichtbar).
+   */
+  readonly modernHud?: () => boolean;
   /** Spielsprache (Tastenhinweis „Drücke:“/„Press:“/„Нажмите:“); ohne Angabe Deutsch. */
   readonly lang?: Lang;
   /** Tastenname einer Aktion (Index der Belegungstabelle) für Satz 0 (1P) bzw. 1/2. */
@@ -155,6 +165,8 @@ export class Renderer {
   private lastFrame = -1;
   /** HUD (`SpielDisplay`) über dem Spielfeld, nicht gewackelt, nicht abgeblendet. */
   private readonly hud: SpriteBatch;
+  private readonly hudLayer = new Container();
+  private readonly tickerClip = new Graphics().rect(575, 540, 225, 30).fill(0xffffff);
   /** Laufband (`ShowMSGS`): Courier 12, RGB(64, 255, 64), GDI nach dem HUD. */
   private readonly ticker = new Text({
     text: "",
@@ -185,13 +197,11 @@ export class Renderer {
       this.batches.set(name, new SpriteBatch(c));
     }
     this.root.addChild(this.underFade, this.fade, this.overFade);
-    const hud = new Container();
-    this.root.addChild(hud);
-    this.hud = new SpriteBatch(hud);
-    this.ticker.position.set(575, 552);
-    const clip = new Graphics().rect(575, 540, 225, 30).fill(0xffffff);
-    this.ticker.mask = clip;
-    this.root.addChild(clip, this.ticker);
+    this.root.addChild(this.hudLayer);
+    this.hud = new SpriteBatch(this.hudLayer);
+    this.ticker.position.set(575, TICKER_Y);
+    this.ticker.mask = this.tickerClip;
+    this.root.addChild(this.tickerClip, this.ticker);
   }
 
   /** Alle Seiten-IDs der Atlanten. */
@@ -265,8 +275,12 @@ export class Renderer {
     const left = w.level.levelLength - w.tick;
     this.fade.alpha = left < 50 && !w.nova ? (50 - left) / 50 : 0;
     this.fade.scale.y = 1;
-    this.drawHud();
-    this.drawCombo();
+    const modern = this.modernHud();
+    if (!modern) {
+      this.drawHud();
+      this.drawCombo();
+    }
+    this.placeRadio(modern);
     this.drawList(this.hud, w.fx.lists.radio);
     this.ticker.text = w.radio.ticker;
     for (const b of this.batches.values()) b.end();
@@ -289,11 +303,24 @@ export class Renderer {
     this.screen.position.set(0, 0);
     this.fade.alpha = Math.max(0, Math.min(1, fade));
     this.fade.scale.y = 600 / 550;
-    this.drawHud();
+    this.placeRadio(false);
+    if (!this.modernHud()) this.drawHud();
     this.ticker.text = w.radio.ticker;
     for (const b of this.batches.values()) b.end();
     this.hud.end();
     this.compose();
+  }
+
+  private modernHud(): boolean {
+    return this.opts.modernHud?.() === true;
+  }
+
+  /** Funkbild und Laufband: im Original im HUD, mit dem HTML-HUD unten im Spielfeld. */
+  private placeRadio(lift: boolean): void {
+    const dy = lift ? -RADIO_LIFT : 0;
+    this.hudLayer.y = dy;
+    this.tickerClip.y = dy;
+    this.ticker.y = TICKER_Y + dy;
   }
 
   /** Ebenen und Umgebungslisten der Reihe nach in den Backbuffer (`Compositor`). */

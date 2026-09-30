@@ -1,7 +1,7 @@
 import { Container } from "pixi.js";
-import { readInput } from "../../input";
+import { DoveInput } from "../../input";
 import { Renderer } from "../../render/Renderer";
-import { DEATH_END, DEATH_STEP } from "../../sim/constants";
+import { DEATH_END, DEATH_STEP, FIELD_H } from "../../sim/constants";
 import { step } from "../../sim/step";
 import type { World } from "../../sim/world";
 import { Gfx } from "../gfx";
@@ -37,7 +37,13 @@ export class GameScreen implements Screen<GameResult> {
   readonly root = new Container();
   private readonly renderer: Renderer;
   private readonly overlay: Gfx;
+  private readonly input: DoveInput;
   private paused = false;
+  /** Fenster ohne Fokus oder Tab verdeckt (Erweiterung wie in DoveZ): öffnet die Pause. */
+  private windowFocus = true;
+  private readonly win: Window | null | undefined;
+  private readonly onBlur = () => (this.windowFocus = false);
+  private readonly onFocus = () => (this.windowFocus = true);
   private panel = 0;
   private marker = 3;
   private pauseSel = 0;
@@ -48,11 +54,16 @@ export class GameScreen implements Screen<GameResult> {
     private readonly record: TickRecorder,
   ) {
     this.images = Renderer.imageIds(world);
+    this.input = new DoveInput(env.host.keys, () => env.host.pointer);
+    this.win = env.host.canvas?.ownerDocument?.defaultView;
+    this.win?.addEventListener("blur", this.onBlur);
+    this.win?.addEventListener("focus", this.onFocus);
     this.renderer = new Renderer(
       env.textures,
       world,
       env.german,
       () => env.host.reducedMotion === true,
+      () => this.modernHud(),
     );
     this.root.addChild(this.renderer.root);
     this.overlay = new Gfx(env.frames);
@@ -60,11 +71,11 @@ export class GameScreen implements Screen<GameResult> {
   }
 
   update(): GameResult | undefined {
-    const { keys, host, audio } = this.env;
+    const { keys, audio } = this.env;
     const w = this.world;
     if (this.paused) return this.updatePause();
     // Pause nur, wenn der Todeszähler nicht läuft
-    if (keys.hit("escape") && !w.dead) {
+    if ((keys.hit("escape") || !this.focused()) && !w.dead) {
       this.paused = true;
       this.panel = 0;
       this.marker = 3;
@@ -75,12 +86,16 @@ export class GameScreen implements Screen<GameResult> {
     // Leben < 0 nach diesem Tick? Dann setzt die Simulation Punkte und Leben zurück.
     const gameOver = w.dead !== 0 && w.lives === 0 && w.deathCounter + DEATH_STEP >= DEATH_END;
     const score = w.score;
-    const input = readInput(host.keys);
+    const input = this.input.read({ x: w.px, y: w.py });
     step(w, input);
     this.record(input, w);
     if (gameOver) return { kind: "gameover", score };
     if (w.exit === 3) return { kind: "complete" };
     return undefined;
+  }
+
+  private focused(): boolean {
+    return this.windowFocus && this.win?.document.hidden !== true;
   }
 
   private updatePause(): GameResult | undefined {
@@ -103,6 +118,15 @@ export class GameScreen implements Screen<GameResult> {
     return undefined;
   }
 
+  /** HTML-HUD der Shell statt der Konsole: nur das Spielfeld zeigen. */
+  private modernHud(): boolean {
+    return this.env.host.hudMode?.() === "modern";
+  }
+
+  viewHeight(): number | null {
+    return this.modernHud() ? FIELD_H : null;
+  }
+
   render(): void {
     const g = this.overlay;
     g.begin();
@@ -121,6 +145,8 @@ export class GameScreen implements Screen<GameResult> {
   }
 
   dispose(): void {
+    this.win?.removeEventListener("blur", this.onBlur);
+    this.win?.removeEventListener("focus", this.onFocus);
     this.renderer.destroy();
     this.overlay.destroy();
     this.root.destroy({ children: true });

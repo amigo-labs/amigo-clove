@@ -6,13 +6,20 @@ import {
   type AudioHost,
   type GameInstance,
   type GameModule,
+  type KeyAction,
   type KeyState,
   type Locale,
 } from "@clove/core";
+import { KEY_ACTIONS as DOVE_KEYS } from "@clove/game-dove/keys";
 import { h } from "./dom";
 import { createPadState, startPadNavigation } from "./gamepad";
+import { HudView } from "./hud";
 import { createKeyState } from "./keys";
+import { withSecondKeys } from "./keymap";
+import { DISPLAY_EVENT, createStage, toggleFullscreen, type Stage } from "./overlay";
 import { registerServiceWorker } from "./offline";
+import { createPointerState } from "./pointer";
+import { createTouchKeys } from "./touchKeys";
 import { parseRoute } from "./router";
 import { loadSettings, reducedMotion, saveSettings, type Settings } from "./settings";
 import { storageFor, webStorage } from "./storage";
@@ -37,6 +44,8 @@ interface GameInfo {
   readonly playable: boolean;
   /** Debug-Ansichten (Unterpfad und Beschriftung), im Launcher verlinkt. */
   readonly debug?: readonly DebugLink[];
+  /** Aktionen für die Tastenbelegung der Shell (DoveZ hat seine eigene im Spiel). */
+  readonly keys?: readonly KeyAction[];
   load(): Promise<GameModule>;
 }
 
@@ -45,6 +54,7 @@ const GAMES: Readonly<Record<string, GameInfo>> = {
     title: "DOVE",
     subtitle: "doveSub",
     playable: true,
+    keys: DOVE_KEYS,
     load: async () => (await import("@clove/game-dove")).default,
   },
   dovez: {
@@ -69,6 +79,7 @@ let settings: Settings = loadSettings(storage);
 let locale: Locale = "en";
 let t: ShellText = translator(TEXTS, locale);
 let running: GameInstance | undefined;
+let stage: Stage | undefined;
 let bus: AudioBus | undefined;
 let view: AbortController | undefined;
 /** Zählt Routenwechsel; ein langsamer Spielstart nach einem Wechsel wird verworfen. */
@@ -89,6 +100,7 @@ function updateSettings(patch: Partial<Settings>): void {
   settings = { ...settings, ...patch };
   saveSettings(storage, settings);
   applyVolume();
+  window.dispatchEvent(new Event(DISPLAY_EVENT));
   if (languageChanged) {
     applyLocale();
     void route().then(() => document.getElementById("language")?.focus());
@@ -147,18 +159,29 @@ function rumble(pad: number, magnitude: number): void {
     .catch(() => undefined);
 }
 
-/** Tastatur plus Pad; das Pad lässt sich in den Einstellungen abschalten. */
-function keysFor(module: GameModule): KeyState {
-  if (!module.gamepad || !navigator.getGamepads) return keyboard;
-  const held = () => keyboard.held?.() ?? [];
+/** Gehaltene Tastaturtasten für die Tastenaufnahme (ohne Pad und Touch). */
+const held = () => keyboard.held?.() ?? [];
+
+/**
+ * Tastatur (mit den zweiten Tasten der Einstellungen) plus Pad (abschaltbar)
+ * plus Touch-Tasten.
+ */
+function keysFor(id: string, module: GameModule, touch: KeyState): KeyState {
+  const actions = GAMES[id]?.keys;
+  const kb = actions ? withSecondKeys(keyboard, actions, () => settings.keymap[id]) : keyboard;
+  if (!module.gamepad || !navigator.getGamepads)
+    return { isDown: (code) => kb.isDown(code) || touch.isDown(code), held };
   const pad = createPadState(
     () => navigator.getGamepads(),
     () => performance.now(),
     module.gamepad,
+    4,
+    module.pads,
   );
   // aufgenommen werden nur Tastaturtasten: das Pad zeigt der Aufnahme keine Stick-Ausschläge
   return {
-    isDown: (code) => keyboard.isDown(code) || (settings.gamepad && pad.isDown(code)),
+    isDown: (code) =>
+      kb.isDown(code) || touch.isDown(code) || (settings.gamepad && pad.isDown(code)),
     held,
   };
 }
@@ -206,16 +229,29 @@ async function startGame(
     // Das Spiel zeichnet nur auf den Canvas: Name und Bedienung für Screenreader
     canvas.setAttribute("role", "application");
     canvas.setAttribute("aria-label", t("gameCanvas", { title: game.title }));
-    screen.replaceChildren(canvas);
+    const s = createStage(canvas, { t, scanlines: () => settings.scanlines });
+    stage = s;
+    screen.replaceChildren(s.root);
+    const pointer = createPointerState(canvas, s.root);
+    const touch = createTouchKeys(s.root, s.layer, t);
+    s.onDispose(() => {
+      pointer.dispose();
+      touch.dispose();
+    });
     const audio = audioHost(params);
     const instance = await module.boot(
       {
         canvas,
         assets,
-        keys: keysFor(module),
+        keys: keysFor(id, module, touch),
         locale,
         rumble,
         rumblePads: () => rumblePads().length,
+        scaleMode: () => settings.scale,
+        hudMode: () => settings.hud,
+        get pointer() {
+          return settings.pointer ? pointer : undefined;
+        },
         // folgt der Einstellung auch während des Spiels
         get reducedMotion() {
           return reducedMotion(settings.motion, motionQuery?.matches ?? false);
@@ -234,6 +270,11 @@ async function startGame(
       return;
     }
     running = instance;
+    if (instance.hud) {
+      const hud = instance.hud.bind(instance);
+      const hudView = new HudView(s, t, hud, () => settings.hud === "modern");
+      s.onDispose(() => hudView.dispose());
+    }
     document.body.dataset["game"] = id;
   } catch (err) {
     if (gen !== generation) return;
@@ -255,6 +296,8 @@ async function route(): Promise<void> {
   const gen = ++generation;
   running?.dispose();
   running = undefined;
+  stage?.dispose();
+  stage = undefined;
   view?.abort();
   view = new AbortController();
   delete document.body.dataset["game"];
@@ -291,7 +334,7 @@ async function route(): Promise<void> {
           signal: view.signal,
           games: Object.entries(GAMES)
             .filter(([, g]) => g.playable)
-            .map(([id, g]) => ({ id, title: g.title })),
+            .map(([id, g]) => ({ id, title: g.title, ...(g.keys ? { keys: g.keys } : {}) })),
         }),
         view.signal,
       );
@@ -314,5 +357,12 @@ async function route(): Promise<void> {
 
 applyLocale();
 window.addEventListener("hashchange", () => void route());
+// Alt+Enter wie in Windows-Spielen: F11 ist in DoveZ die Hupe, F/G sind in DOVE belegt
+window.addEventListener("keydown", (e) => {
+  if (e.code === "Enter" && e.altKey && !e.repeat) {
+    e.preventDefault();
+    toggleFullscreen();
+  }
+});
 void registerServiceWorker();
 void route();

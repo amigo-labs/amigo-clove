@@ -83,14 +83,28 @@ async function playDove(page: Page, label: string): Promise<void> {
   const png = await page.screenshot();
   await page.keyboard.up("KeyS");
 
-  // HUD (konsole.spr) ist opak und hell; im Spielfeld liegt ab Tick 2100 Landschaft.
-  const hud = await litShare(png, 0, 410, 640, 70);
-  const field = await litShare(png, 0, 0, 640, 410);
-  console.log(
-    `${label}: HUD ${(hud * 100).toFixed(1)} % hell, Spielfeld ${(field * 100).toFixed(1)} % hell`,
-  );
-  if (hud < 0.9) failures.push(`${label}: HUD nicht gerendert (${(hud * 100).toFixed(1)} %)`);
+  // Vorgabe: HTML-HUD der Shell, der Canvas zeigt nur das Spielfeld (640 × 410, zentriert).
+  const hud = await page.textContent(".hud:not([hidden]) .hud-score");
+  const top = await page.evaluate(() => document.querySelector("canvas")?.offsetTop ?? 0);
+  const field = await litShare(png, 0, top, 640, 410);
+  console.log(`${label}: HUD „${hud}“, Spielfeld ${(field * 100).toFixed(1)} % hell`);
+  if (!hud?.match(/\d/)) failures.push(`${label}: HTML-HUD fehlt`);
   if (field < 0.05) failures.push(`${label}: Spielfeld leer (${(field * 100).toFixed(1)} %)`);
+}
+
+/** Original-HUD (Einstellung): die Konsole (konsole.spr) ist opak und hell. */
+async function playDoveOriginalHud(page: Page, label: string): Promise<void> {
+  await page.addInitScript(() =>
+    localStorage.setItem("clove:settings", JSON.stringify({ hud: "original" })),
+  );
+  await page.goto(`${ORIGIN}/#/dove?level=1&seed=1&invincible=1&from=2100`);
+  await page.waitForSelector("body[data-game=dove]", { timeout: 30_000 });
+  await page.waitForTimeout(2000);
+  const png = await page.screenshot();
+  const hud = await litShare(png, 0, 410, 640, 70);
+  console.log(`${label}: Original-HUD ${(hud * 100).toFixed(1)} % hell`);
+  if (hud < 0.9)
+    failures.push(`${label}: Original-HUD nicht gerendert (${(hud * 100).toFixed(1)} %)`);
 }
 
 /** DoveZ-Hauptmenü ohne Logos: Knopfleiste links muss gezeichnet sein. */
@@ -116,6 +130,12 @@ try {
   watch(cold, "kalt");
   await playDove(cold, "kalt");
   await cold.close();
+
+  // 1a. Original-HUD per Einstellung
+  const original = await browser.newPage({ viewport: { width: 640, height: 480 } });
+  watch(original, "original-hud");
+  await playDoveOriginalHud(original, "original-hud");
+  await original.close();
 
   // 1b. DoveZ-Asset-Ansicht: erster Atlas mit Konturen, dann Wechsel zum nächsten
   const assets = await browser.newPage({ viewport: { width: 800, height: 600 } });

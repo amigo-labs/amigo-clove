@@ -1,4 +1,4 @@
-import { LOCALES, type LocalePreference } from "@clove/core";
+import { LOCALES, type HudMode, type LocalePreference, type ScaleMode } from "@clove/core";
 
 /** Einstellungen der Shell, spielübergreifend. */
 export interface Settings {
@@ -8,16 +8,35 @@ export interface Settings {
   readonly gamepad: boolean;
   /** Bewegungsarme Darstellung: nach dem System („auto“), an oder aus. */
   readonly motion: MotionPreference;
+  /** Skalierung des Spielbilds (Vorgabe: fensterfüllend scharf; `integer` für 1:1-Pixel). */
+  readonly scale: ScaleMode;
+  /** Rasterlinien über dem Spielbild (reine CSS-Schicht). */
+  readonly scanlines: boolean;
+  /** Maus und Touch steuern das Schiff (Erweiterung; ohne Zeigerbewegung wie das Original). */
+  readonly pointer: boolean;
+  /** HUD der Shell (Vorgabe) oder das Original-HUD im Spielbild. */
+  readonly hud: HudMode;
+  /** Zweite Tasten je Spiel und Aktion (`KeyboardEvent.code`). */
+  readonly keymap: Readonly<Record<string, Readonly<Record<string, string>>>>;
 }
 
 export const MOTION_PREFERENCES = ["auto", "reduce", "full"] as const;
 export type MotionPreference = (typeof MOTION_PREFERENCES)[number];
+
+export const HUD_MODES = ["modern", "original"] as const satisfies readonly HudMode[];
+
+export const SCALE_MODES = ["integer", "fit", "smooth"] as const satisfies readonly ScaleMode[];
 
 export const DEFAULT_SETTINGS: Settings = {
   language: "auto",
   volume: { master: 1, music: 1, sfx: 1 },
   gamepad: true,
   motion: "auto",
+  scale: "fit",
+  scanlines: false,
+  pointer: true,
+  hud: "modern",
+  keymap: {},
 };
 
 /** Ist die bewegungsarme Darstellung aktiv? „auto“ folgt `prefers-reduced-motion`. */
@@ -29,6 +48,23 @@ export const SETTINGS_KEY = "clove:settings";
 
 function level(v: unknown, fallback: number): number {
   return typeof v === "number" && Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : fallback;
+}
+
+const CODE = /^[A-Za-z][A-Za-z0-9]{0,31}$/;
+const ID = /^[a-z][a-zA-Z0-9]{0,31}$/;
+
+function keymap(v: unknown): Settings["keymap"] {
+  if (typeof v !== "object" || v === null) return {};
+  const out: Record<string, Record<string, string>> = {};
+  for (const [game, actions] of Object.entries(v as Record<string, unknown>)) {
+    if (!ID.test(game) || typeof actions !== "object" || actions === null) continue;
+    const keys: Record<string, string> = {};
+    for (const [a, code] of Object.entries(actions as Record<string, unknown>)) {
+      if (ID.test(a) && typeof code === "string" && CODE.test(code)) keys[a] = code;
+    }
+    out[game] = keys;
+  }
+  return out;
 }
 
 /** Nimmt aus beliebigem JSON nur, was gültig ist; der Rest fällt auf die Vorgabe zurück. */
@@ -50,6 +86,11 @@ export function sanitizeSettings(raw: unknown): Settings {
     },
     gamepad: typeof r["gamepad"] === "boolean" ? r["gamepad"] : d.gamepad,
     motion: MOTION_PREFERENCES.find((m) => m === r["motion"]) ?? d.motion,
+    scale: SCALE_MODES.find((m) => m === r["scale"]) ?? d.scale,
+    scanlines: typeof r["scanlines"] === "boolean" ? r["scanlines"] : d.scanlines,
+    pointer: typeof r["pointer"] === "boolean" ? r["pointer"] : d.pointer,
+    hud: HUD_MODES.find((m) => m === r["hud"]) ?? d.hud,
+    keymap: keymap(r["keymap"]),
   };
 }
 

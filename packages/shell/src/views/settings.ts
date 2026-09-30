@@ -1,5 +1,6 @@
-import { createSaveFile, parseSaveFile, type Locale } from "@clove/core";
+import { createSaveFile, parseSaveFile, type KeyAction, type Locale } from "@clove/core";
 import { h } from "../dom";
+import { assignable, keyName } from "../keymap";
 import {
   installGame,
   offlineStatus,
@@ -20,8 +21,12 @@ export interface SettingsContext {
   update(patch: Partial<Settings>): void;
   /** Endet beim Verlassen der Seite (Listener abmelden). */
   readonly signal: AbortSignal;
-  /** Spiele mit Offline-Daten (ID, Titel). */
-  readonly games: readonly { readonly id: string; readonly title: string }[];
+  /** Spiele mit Offline-Daten (ID, Titel) und Aktionen für die Tastenbelegung. */
+  readonly games: readonly {
+    readonly id: string;
+    readonly title: string;
+    readonly keys?: readonly KeyAction[];
+  }[];
 }
 
 function section(title: string, ...body: (Node | string)[]): HTMLElement {
@@ -74,6 +79,53 @@ function motionSection(c: SettingsContext): HTMLElement {
   );
 }
 
+function displaySection(c: SettingsContext): HTMLElement {
+  const select = h(
+    "select",
+    {
+      id: "scale",
+      "aria-describedby": "scale-help",
+      onchange: (e) =>
+        c.update({ scale: (e.target as HTMLSelectElement).value as Settings["scale"] }),
+    },
+    ...(
+      [
+        ["integer", c.t("scaleInteger")],
+        ["fit", c.t("scaleFit")],
+        ["smooth", c.t("scaleSmooth")],
+      ] as const
+    ).map(([v, label]) => h("option", { value: v, selected: c.settings().scale === v }, label)),
+  );
+  const scanlines = h("input", {
+    type: "checkbox",
+    id: "scanlines",
+    checked: c.settings().scanlines,
+    onchange: (e) => c.update({ scanlines: (e.target as HTMLInputElement).checked }),
+  });
+  const hud = h(
+    "select",
+    {
+      id: "hud",
+      "aria-describedby": "hud-help",
+      onchange: (e) => c.update({ hud: (e.target as HTMLSelectElement).value as Settings["hud"] }),
+    },
+    ...(
+      [
+        ["modern", c.t("hudModern")],
+        ["original", c.t("hudOriginal")],
+      ] as const
+    ).map(([v, label]) => h("option", { value: v, selected: c.settings().hud === v }, label)),
+  );
+  return section(
+    c.t("display"),
+    h("label", { class: "row" }, h("span", {}, c.t("hud")), hud),
+    h("p", { class: "hint", id: "hud-help" }, c.t("hudHelp")),
+    h("label", { class: "row" }, h("span", {}, c.t("scale")), select),
+    h("label", { class: "row" }, scanlines, h("span", {}, c.t("scanlines"))),
+    h("p", { class: "hint", id: "scale-help" }, c.t("scaleHelp")),
+  );
+}
+
 function volumeSection(c: SettingsContext): HTMLElement {
   const rows = (["master", "music", "sfx"] as const).map((ch) => {
     const label = { master: "volumeMaster", music: "volumeMusic", sfx: "volumeSfx" } as const;
@@ -95,6 +147,89 @@ function volumeSection(c: SettingsContext): HTMLElement {
     return h("label", { class: "row" }, h("span", {}, c.t(label[ch])), input, out);
   });
   return section(c.t("volume"), ...rows);
+}
+
+function controlsSection(c: SettingsContext): HTMLElement {
+  const box = h("input", {
+    type: "checkbox",
+    id: "pointer",
+    checked: c.settings().pointer,
+    "aria-describedby": "pointer-help",
+    onchange: (e) => c.update({ pointer: (e.target as HTMLInputElement).checked }),
+  });
+  return section(
+    c.t("controls"),
+    h("label", { class: "row" }, box, h("span", {}, c.t("pointerUse"))),
+    h("p", { class: "hint", id: "pointer-help" }, c.t("pointerHelp")),
+  );
+}
+
+/** Zweite Tasten eines Spiels: je Aktion ein Knopf, der die nächste Taste aufnimmt. */
+function keysSection(
+  c: SettingsContext,
+  game: { readonly id: string; readonly title: string; readonly keys: readonly KeyAction[] },
+): HTMLElement {
+  const second = () => c.settings().keymap[game.id] ?? {};
+  const save = (next: Readonly<Record<string, string>>) =>
+    c.update({ keymap: { ...c.settings().keymap, [game.id]: next } });
+  let stopCapture: (() => void) | undefined;
+  const rows = game.keys.map((a) => {
+    const button = h("button", { type: "button", "data-key": `${game.id}:${a.id}` });
+    const show = () => {
+      const code = second()[a.id];
+      button.textContent = code ? keyName(code) : "—";
+    };
+    show();
+    button.addEventListener("click", () => {
+      stopCapture?.();
+      button.textContent = c.t("keyPress");
+      const onKey = (e: KeyboardEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        stop();
+        if (e.code === "Backspace" || e.code === "Delete") {
+          const { [a.id]: _, ...rest } = second();
+          save(rest);
+        } else if (e.code !== "Escape" && assignable(e.code)) save({ ...second(), [a.id]: e.code });
+        show();
+      };
+      const stop = () => {
+        window.removeEventListener("keydown", onKey, true);
+        stopCapture = undefined;
+        show();
+      };
+      stopCapture = stop;
+      window.addEventListener("keydown", onKey, { capture: true, signal: c.signal });
+    });
+    const original = a.codes.map(keyName).join(" / ");
+    return h(
+      "div",
+      { class: "key-row" },
+      h("span", { class: "key-action" }, a.label[c.locale]),
+      h("span", { class: "hint key-original" }, original),
+      button,
+    );
+  });
+  const reset = h(
+    "button",
+    {
+      type: "button",
+      class: "button secondary",
+      onclick: () => {
+        stopCapture?.();
+        save({});
+        for (const b of document.querySelectorAll<HTMLButtonElement>(`[data-key^="${game.id}:"]`))
+          b.textContent = "—";
+      },
+    },
+    c.t("keysReset"),
+  );
+  return section(
+    c.t("keysTitle", { title: game.title }),
+    h("p", { class: "hint" }, c.t("keysHelp")),
+    h("div", { class: "keys" }, ...rows),
+    h("div", { class: "row" }, reset),
+  );
 }
 
 function gamepadSection(c: SettingsContext): HTMLElement {
@@ -257,7 +392,10 @@ export function settingsView(c: SettingsContext): HTMLElement {
     h("h1", {}, c.t("settings")),
     languageSection(c),
     volumeSection(c),
+    displaySection(c),
     motionSection(c),
+    controlsSection(c),
+    ...c.games.flatMap((g) => (g.keys ? [keysSection(c, { ...g, keys: g.keys })] : [])),
     gamepadSection(c),
     savesSection(c),
     offlineSection(c),

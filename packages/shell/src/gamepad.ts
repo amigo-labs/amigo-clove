@@ -1,4 +1,4 @@
-import type { GamepadBindings, KeyState } from "@clove/core";
+import type { GamepadBindings, KeyState, PadLayout } from "@clove/core";
 
 /** Ausschnitt aus `Gamepad`, den die Abbildung braucht (testbar ohne Browser). */
 export interface PadSnapshot {
@@ -10,13 +10,8 @@ export interface PadSnapshot {
 /** Stick-Totzone: erst ab halbem Ausschlag zählt die Richtung als gedrückt. */
 const DEADZONE = 0.5;
 
-/** Steuerkreuz der Standardbelegung (Buttons 12–15) → Pfeiltasten. */
-const DPAD: GamepadBindings = {
-  12: ["ArrowUp"],
-  13: ["ArrowDown"],
-  14: ["ArrowLeft"],
-  15: ["ArrowRight"],
-};
+/** Steuerkreuz (Buttons 12–15) und linker Stick → Pfeiltasten: hoch, runter, links, rechts. */
+const ARROWS = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"] as const;
 
 /**
  * Codes, die ein Pad gerade „hält“. Nur Pads mit Standardbelegung — bei
@@ -25,20 +20,26 @@ const DPAD: GamepadBindings = {
 export function padKeys(
   pads: Iterable<PadSnapshot | null>,
   bindings: GamepadBindings,
+  /** Eigene Belegung für das n-te Pad mit Standardbelegung (z. B. Spieler 2). */
+  layouts: readonly (PadLayout | undefined)[] = [],
 ): Set<string> {
   const down = new Set<string>();
+  let n = 0;
   for (const pad of pads) {
     if (!pad || pad.mapping !== "standard") continue;
-    for (const map of [DPAD, bindings]) {
+    const layout = layouts[n++];
+    const [up, dn, left, right] = layout?.directions ?? ARROWS;
+    const dpad = { 12: [up], 13: [dn], 14: [left], 15: [right] };
+    for (const map of [dpad, layout?.buttons ?? bindings]) {
       for (const [index, codes] of Object.entries(map)) {
         if (pad.buttons[Number(index)]?.pressed) for (const c of codes) down.add(c);
       }
     }
     const [x = 0, y = 0] = pad.axes;
-    if (x <= -DEADZONE) down.add("ArrowLeft");
-    if (x >= DEADZONE) down.add("ArrowRight");
-    if (y <= -DEADZONE) down.add("ArrowUp");
-    if (y >= DEADZONE) down.add("ArrowDown");
+    if (x <= -DEADZONE) down.add(left);
+    if (x >= DEADZONE) down.add(right);
+    if (y <= -DEADZONE) down.add(up);
+    if (y >= DEADZONE) down.add(dn);
   }
   return down;
 }
@@ -52,6 +53,7 @@ export function createPadState(
   now: () => number,
   bindings: GamepadBindings,
   interval = 4,
+  layouts: readonly (PadLayout | undefined)[] = [],
 ): KeyState {
   let down = new Set<string>();
   let polled = -Infinity;
@@ -60,7 +62,7 @@ export function createPadState(
       const t = now();
       if (t - polled >= interval) {
         polled = t;
-        down = padKeys(getPads(), bindings);
+        down = padKeys(getPads(), bindings, layouts);
       }
       return down.has(code);
     },

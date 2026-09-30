@@ -7,9 +7,13 @@ import {
   VbRnd,
   type World,
   contourHit,
+  SHIP_MAX_X,
+  SHIP_MIN_X,
   divRoundHalfEven,
   roundHalfEven,
   step,
+  targetOf,
+  withTarget,
 } from "../src/sim";
 import { newWorld, tinyLevel } from "./helpers";
 
@@ -114,6 +118,41 @@ describe("Spieler", () => {
     expect(fired).toBe(10);
     const i = w.shots.active.indexOf(1);
     expect(w.shotY[i]).toBe(100 + 7);
+  });
+
+  test("Zeigerziel: geradlinig mit Schiffstempo, hält exakt, Grenzen", () => {
+    const w = tinyLevel([]);
+    // längere Achse 6 px, kürzere anteilig
+    step(w, withTarget(0, 400, 150));
+    expect([w.px, w.py]).toEqual([106, 101]);
+    expect(w.tilt).toBe(2);
+    for (let t = 0; t < 100; t++) step(w, withTarget(0, 400, 150));
+    expect([w.px, w.py]).toEqual([400, 150]);
+    // am Ziel kein Zittern, keine Neigung
+    step(w, withTarget(0, 400, 150));
+    expect([w.px, w.py, w.tilt]).toEqual([400, 150, 0]);
+    step(w, withTarget(0, 403, 147));
+    expect([w.px, w.py, w.tilt]).toEqual([403, 147, 1]);
+    for (let t = 0; t < 200; t++) step(w, withTarget(0, 0, 479));
+    expect([w.px, w.py]).toEqual([SHIP_MIN_X, SHIP_MAX_Y]);
+    for (let t = 0; t < 200; t++) step(w, withTarget(0, 639, 0));
+    expect([w.px, w.py]).toEqual([SHIP_MAX_X, 0]);
+  });
+
+  test("Zeigerziel ersetzt die Pfeiltasten, Tastenkanten bleiben", () => {
+    const w = tinyLevel([]);
+    step(w, withTarget(Input.Left | Input.Faster, 100, 100));
+    expect([w.px, w.py, w.speed]).toEqual([100, 100, 8]);
+    step(w, withTarget(Input.Faster, 100, 100));
+    expect(w.speed).toBe(8);
+    expect(w.prevInput).toBe(Input.Faster);
+  });
+
+  test("Zielbits: Round-Trip und Begrenzung", () => {
+    expect(targetOf(Input.Fire)).toBeUndefined();
+    expect(targetOf(withTarget(Input.Fire, 639, 479))).toEqual({ x: 639, y: 479 });
+    expect(targetOf(withTarget(0, -5, 900))).toEqual({ x: 0, y: 479 });
+    expect(withTarget(Input.Swap, 12, 34) & 0x1ff).toBe(Input.Swap);
   });
 
   test("Bewegung mit Tempo 6, Grenzen, Q/W auf Tastendruck", () => {

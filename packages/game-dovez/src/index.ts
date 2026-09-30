@@ -32,6 +32,22 @@ const dovez: GameModule = {
     5: ["KeyE"],
     9: ["Escape"],
   },
+  // Zweites Pad: Spieler 2 im Zwei-Spieler-Spiel (Satz 2: Ziffernblock, Ende/Entf/Bild ab …)
+  pads: [
+    undefined,
+    {
+      buttons: {
+        0: ["End"],
+        1: ["Delete"],
+        2: ["PageDown"],
+        3: ["Home"],
+        4: ["Insert"],
+        5: ["PageUp"],
+        9: ["Escape"],
+      },
+      directions: ["Numpad8", "Numpad5", "Numpad4", "Numpad6"],
+    },
+  ],
   async boot(host: GameHost, options = {}): Promise<GameInstance> {
     if (options["view"] === "debug/assets") return bootAssetViewer(host);
     if (options["view"] === "debug/level") return bootLevelViewer(host);

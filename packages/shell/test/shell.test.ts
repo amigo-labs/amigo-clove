@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { combineKeys, createPadState, padKeys, type PadSnapshot } from "../src/gamepad";
+import { hudLayout } from "../src/hud";
+import { keyName, withSecondKeys } from "../src/keymap";
 import { parseRoute } from "../src/router";
 import { DEFAULT_SETTINGS, loadSettings, reducedMotion, sanitizeSettings } from "../src/settings";
 import { collectSaves, restoreSaves, storageFor } from "../src/storage";
@@ -35,6 +37,7 @@ describe("Einstellungen", () => {
       sanitizeSettings({ language: "fr", volume: { master: 2, music: -1, sfx: "x" }, gamepad: 0 }),
     ).toEqual({ ...DEFAULT_SETTINGS, volume: { master: 1, music: 0, sfx: 1 } });
     expect(sanitizeSettings({ language: "de", volume: { music: 0.25 }, gamepad: false })).toEqual({
+      ...DEFAULT_SETTINGS,
       language: "de",
       volume: { master: 1, music: 0.25, sfx: 1 },
       gamepad: false,
@@ -42,6 +45,20 @@ describe("Einstellungen", () => {
     });
     expect(sanitizeSettings({ motion: "reduce" }).motion).toBe("reduce");
     expect(sanitizeSettings({ motion: "viel" }).motion).toBe("auto");
+    expect(sanitizeSettings({ scale: "smooth", scanlines: true })).toMatchObject({
+      scale: "smooth",
+      scanlines: true,
+    });
+    expect(sanitizeSettings({}).hud).toBe("modern");
+    expect(sanitizeSettings({ hud: "original", pointer: false })).toMatchObject({
+      hud: "original",
+      pointer: false,
+    });
+    expect(sanitizeSettings({ hud: "bunt" }).hud).toBe("modern");
+    expect(sanitizeSettings({ scale: "riesig", scanlines: "ja" })).toMatchObject({
+      scale: "fit",
+      scanlines: false,
+    });
   });
 
   test("bewegungsarm: fest an oder aus, sonst nach dem System", () => {
@@ -178,5 +195,61 @@ describe("Texte", () => {
     for (const k of Object.keys(TEXTS.de) as (keyof typeof TEXTS.de)[]) {
       expect(vars(TEXTS.en[k])).toEqual(vars(TEXTS.de[k]));
     }
+  });
+});
+
+const rect = (x: number, y: number, w: number, hh: number) => ({ x, y, w, h: hh, px: 1 });
+
+describe("HUD-Layout", () => {
+  test("neben dem Spielfeld, darunter oder darin — nach dem freien Platz", () => {
+    expect(hudLayout(rect(320, 155, 640, 410), 1280, 720)).toBe("side");
+    expect(hudLayout(rect(0, 35, 640, 410), 640, 480)).toBe("inside");
+    expect(hudLayout(rect(0, 0, 640, 410), 640, 600)).toBe("below");
+  });
+});
+
+const held = (...down: string[]) => ({ isDown: (c: string) => down.includes(c) });
+
+describe("Zweite Tasten", () => {
+  const actions = [
+    { id: "fire", label: { de: "Feuer", en: "Fire", ru: "Огонь" }, codes: ["KeyS", "Space"] },
+    { id: "beam", label: { de: "Beam", en: "Beam", ru: "Луч" }, codes: ["KeyA"] },
+  ];
+
+  test("die zweite Taste hält alle Originaltasten der Aktion, die Originale bleiben", () => {
+    const kb = withSecondKeys(held("KeyX"), actions, () => ({ fire: "KeyX" }));
+    expect([kb.isDown("KeyS"), kb.isDown("Space"), kb.isDown("KeyA")]).toEqual([true, true, false]);
+    expect(withSecondKeys(held("KeyS"), actions, () => ({ fire: "KeyX" })).isDown("KeyS")).toBe(
+      true,
+    );
+    expect(withSecondKeys(held("KeyX"), actions, () => undefined).isDown("KeyS")).toBe(false);
+  });
+
+  test("Einstellungen: nur gültige Codes, Tastennamen kurz", () => {
+    expect(
+      sanitizeSettings({ keymap: { dove: { fire: "KeyX", beam: "<b>", "x y": "KeyA" }, "": {} } })
+        .keymap,
+    ).toEqual({ dove: { fire: "KeyX" } });
+    expect(["KeyA", "Digit3", "Numpad4", "ArrowUp", "F5"].map(keyName)).toEqual([
+      "A",
+      "3",
+      "Num 4",
+      "↑",
+      "F5",
+    ]);
+  });
+});
+
+describe("Pad-Belegung je Spieler", () => {
+  test("das zweite Pad nutzt seine eigene Belegung, das erste die gemeinsame", () => {
+    const layouts = [
+      undefined,
+      {
+        buttons: { 0: ["End"] },
+        directions: ["Numpad8", "Numpad5", "Numpad4", "Numpad6"] as const,
+      },
+    ];
+    const both = padKeys([pad([0], [-1, 0]), pad([0, 12], [1, 0])], { 0: ["KeyS"] }, layouts);
+    expect([...both].toSorted()).toEqual(["ArrowLeft", "End", "KeyS", "Numpad6", "Numpad8"]);
   });
 });
