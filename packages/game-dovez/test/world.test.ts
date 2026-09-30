@@ -222,6 +222,15 @@ describe("Spieler", () => {
     expect([p.x, p.y]).toEqual([736, -17]);
   });
 
+  test("Zeigerziel mit Trägheit: am Ziel kein Ausgleiten", () => {
+    const p = new Player(0, 0, 1);
+    const w = { ...open, realistic: true };
+    for (let i = 0; i < 100; i++) updatePlayer(p, { ...NO_INPUT, target: { x: 400, y: 300 } }, w);
+    expect([p.x, p.y, p.vx, p.vy]).toEqual([400, 300, 0, 0]);
+    for (let i = 0; i < 40; i++) updatePlayer(p, { ...NO_INPUT, target: { x: 400, y: 300 } }, w);
+    expect([p.x, p.y]).toEqual([400, 300]);
+  });
+
   test("Zeigerziel neigt nur bei echtem Querweg", () => {
     const p = new Player(0, 0, 1);
     for (let i = 0; i < 10; i++) updatePlayer(p, { ...NO_INPUT, target: { x: 700, y: 262 } }, open);

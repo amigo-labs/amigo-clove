@@ -546,7 +546,7 @@ Exportdatei (`amigo-clove-save`, Version 1, Migrationskette) definiert
 ### Optionale Modernisierungen
 
 *(nach M9)* Zusätze gegenüber dem Original folgen drei Regeln: **abschaltbar**,
-**Vorgabe Original** (Ausnahmen: HUD und Skalierung) und **ohne Zusatz bit-gleiche
+**Vorgabe Original** (Ausnahmen: HUD, Skalierung und Zeiger — der Zeiger wirkt erst, wenn Maus oder Finger ihn benutzen, Pfeiltasten übernehmen jederzeit) und **ohne Zusatz bit-gleiche
 Simulation**, also unveränderte Referenz-Replays und Level-Hashes.
 
 - **Zeiger:** `GameHost.pointer` (Maus/Touch in logischen Canvas-Pixeln),

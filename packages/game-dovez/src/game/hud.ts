@@ -65,12 +65,15 @@ export function dovezHud(
         variant: b?.type ?? 0,
       },
       { id: "speed", value: Math.max(0, p.speed - 4), max: 6 },
-      { id: "power", value: Math.min(p.shotPower, 3), max: 3 },
+      // wie `SpielDisplay`: bei Stärke 1 leer, 2 halb, 3 voll
+      { id: "power", value: Math.max(0, Math.min(p.shotPower, 3) - 1), max: 2 },
     ];
     const icons: HudIcon[] = [];
     if (p.extraWeapon > 0)
       icons.push(
-        ...icon(sprite(`interface_extra${p.extraWeapon - 1}`), { label: `Extra ${p.extraWeapon}` }),
+        ...icon(sprite(`${two ? "interface3" : "interface"}_extra${p.extraWeapon - 1}`), {
+          label: `Extra ${p.extraWeapon}`,
+        }),
       );
     if (!two && p.shipType === 0) {
       w.particles.forEach((r, k) => {
@@ -78,12 +81,19 @@ export function dovezHud(
           icons.push({ text: "□", dim: true, label: `D-Tonator ${k + 1}` });
           return;
         }
-        const shield = r.kind <= 0;
+        // Sorte 1…7: Symbol je Stufe; −1 Schild (dreimal `extra0`); 0: vorhanden, aber leer
+        const selected = k === p.selected;
+        const label = `D-Tonator ${k + 1}`;
+        if (r.kind === 0) {
+          icons.push({ text: "–", selected, label });
+          return;
+        }
+        const shield = r.kind < 0;
         icons.push(
           ...icon(sprite(shield ? "extra0" : `extra${r.kind}`), {
             count: shield ? 3 : Math.max(1, r.level),
-            selected: k === p.selected,
-            label: `D-Tonator ${k + 1}`,
+            selected,
+            label,
           }),
         );
       });
