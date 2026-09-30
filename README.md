@@ -92,8 +92,8 @@ wie im Original, siehe Spec „Optionale Modernisierungen“):
   Beam; Steuerkreuz, OK und Pause erscheinen im Overlay.
 - **HUD:** Vorgabe ist das HTML-HUD der Shell neben bzw. unter dem Spielfeld
   mit Boss-Lebensbalken; das Original-HUD lässt sich zurückholen.
-- **Darstellung:** Vollbild (`Alt+Enter` oder ⛶), Skalierung ganzzahlig,
-  fensterfüllend scharf oder weich, Rasterlinien.
+- **Darstellung:** Vollbild (`Alt+Enter` oder ⛶), Skalierung fensterfüllend
+  scharf (Vorgabe) oder weich bzw. ganzzahlig (1:1-Pixel), Rasterlinien.
 - **Komfort:** DOVE pausiert bei Fokusverlust; zweite Tasten je Aktion für
   DOVE; in DoveZ steuert das zweite Gamepad Spieler 2.
 

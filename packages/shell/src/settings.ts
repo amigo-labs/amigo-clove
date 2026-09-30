@@ -8,7 +8,7 @@ export interface Settings {
   readonly gamepad: boolean;
   /** Bewegungsarme Darstellung: nach dem System („auto“), an oder aus. */
   readonly motion: MotionPreference;
-  /** Skalierung des Spielbilds (Vorgabe ganzzahlig wie im Original-Fenster). */
+  /** Skalierung des Spielbilds (Vorgabe: fensterfüllend scharf; `integer` für 1:1-Pixel). */
   readonly scale: ScaleMode;
   /** Rasterlinien über dem Spielbild (reine CSS-Schicht). */
   readonly scanlines: boolean;
@@ -32,7 +32,7 @@ export const DEFAULT_SETTINGS: Settings = {
   volume: { master: 1, music: 1, sfx: 1 },
   gamepad: true,
   motion: "auto",
-  scale: "integer",
+  scale: "fit",
   scanlines: false,
   pointer: true,
   hud: "modern",

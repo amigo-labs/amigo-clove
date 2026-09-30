@@ -56,7 +56,7 @@ describe("Einstellungen", () => {
     });
     expect(sanitizeSettings({ hud: "bunt" }).hud).toBe("modern");
     expect(sanitizeSettings({ scale: "riesig", scanlines: "ja" })).toMatchObject({
-      scale: "integer",
+      scale: "fit",
       scanlines: false,
     });
   });

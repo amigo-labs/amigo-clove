@@ -127,7 +127,7 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
     scaleFit: "Fenster füllen (scharf)",
     scaleSmooth: "Fenster füllen (weich)",
     scaleHelp:
-      "Ganzzahlig lässt jedes Originalpixel gleich groß, „Fenster füllen“ nutzt den ganzen Platz. Vollbild: Alt+Enter oder ⛶ oben rechts.",
+      "„Fenster füllen“ (Vorgabe) nutzt den ganzen Platz, „ganzzahlig“ lässt jedes Originalpixel gleich groß. Vollbild: Alt+Enter oder ⛶ oben rechts.",
     scanlines: "Rasterlinien (Röhrenmonitor)",
     fullscreen: "Vollbild",
     fullscreenExit: "Vollbild beenden",
@@ -218,7 +218,7 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
     scaleFit: "fill window (sharp)",
     scaleSmooth: "fill window (smooth)",
     scaleHelp:
-      "Integer keeps every original pixel the same size; “fill window” uses all the space. Full screen: Alt+Enter or ⛶ at the top right.",
+      "“Fill window” (default) uses all the space; integer keeps every original pixel the same size. Full screen: Alt+Enter or ⛶ at the top right.",
     scanlines: "Scanlines (CRT look)",
     fullscreen: "Full screen",
     fullscreenExit: "Exit full screen",
@@ -309,7 +309,7 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
     scaleFit: "по размеру окна (чёткий)",
     scaleSmooth: "по размеру окна (сглаженный)",
     scaleHelp:
-      "Целочисленный масштаб сохраняет все пиксели одинаковыми, «по размеру окна» использует всё место. Полный экран: Alt+Enter или ⛶ справа вверху.",
+      "«По размеру окна» (по умолчанию) использует всё место, целочисленный масштаб сохраняет все пиксели одинаковыми. Полный экран: Alt+Enter или ⛶ справа вверху.",
     scanlines: "Строки развёртки (как на ЭЛТ)",
     fullscreen: "Полный экран",
     fullscreenExit: "Выйти из полноэкранного режима",

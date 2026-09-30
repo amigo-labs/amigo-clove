@@ -546,7 +546,7 @@ Exportdatei (`amigo-clove-save`, Version 1, Migrationskette) definiert
 ### Optionale Modernisierungen
 
 *(nach M9)* Zusätze gegenüber dem Original folgen drei Regeln: **abschaltbar**,
-**Vorgabe Original** (Ausnahme: das HUD) und **ohne Zusatz bit-gleiche
+**Vorgabe Original** (Ausnahmen: HUD und Skalierung) und **ohne Zusatz bit-gleiche
 Simulation**, also unveränderte Referenz-Replays und Level-Hashes.
 
 - **Zeiger:** `GameHost.pointer` (Maus/Touch in logischen Canvas-Pixeln),
@@ -563,7 +563,7 @@ Simulation**, also unveränderte Referenz-Replays und Level-Hashes.
   Level die sichtbare Höhe auf das Spielfeld (`setView`, 410 bzw. 550 px);
   DoveZ rückt Funkbild und Laufband ins Feld. Die Bitmap-Font-Regel oben gilt
   für alles im Canvas weiter.
-- **Darstellung:** `GameHost.scaleMode` (`integer` wie bisher, `fit`,
+- **Darstellung:** `GameHost.scaleMode` (Vorgabe `fit` fensterfüllend scharf, `integer` 1:1-Pixel wie bisher,
   `smooth`), Rasterlinien als CSS-Schicht, Vollbild über die ganze Seite.
 - **Komfort:** DOVE pausiert bei Fokusverlust wie DoveZ; zweite Tasten je
   Aktion (`KeyAction`, additiv wie `T2` in DoveZ); `GameModule.pads` belegt
