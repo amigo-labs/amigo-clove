@@ -234,7 +234,8 @@ function keys(p: Player, input: PlayerInput, w: PlayerWorld): void {
   if (w.underwater(p)) s = cint(p.speed - 3);
   if (s < 1) s = 1;
   const dir = input.target ? toward(p, input.target, s) : keyDir(input, s);
-  let moved = false;
+  // ein Zielpunkt gilt auch am Ziel als Steuerung: kein Ausgleiten („Realistic“) weg davon
+  let moved = input.target !== undefined;
   if (dir.right) {
     p.x = f32(p.x + dir.sx);
     p.keyTicks++;

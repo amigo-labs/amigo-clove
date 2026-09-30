@@ -38,9 +38,29 @@ describe("DoveZ-HUD", () => {
     expect(p.meters.map((m) => m.id)).toEqual(["energy", "beam", "speed", "power"]);
     const energy = p.meters[0]!;
     expect(energy.value / energy.max).toBe(1);
-    // D-Tonator: vier Slots, einer gewählt
+    // D-Tonator: vier Slots, einer gewählt; vorhandene leere Slots (Sorte 0) ohne Schild
     expect(p.icons.length).toBe(4);
     expect(p.icons.filter((i) => i.selected).length).toBeLessThanOrEqual(1);
+    w.particles.forEach((r, k) => {
+      if (r.present && r.kind === 0) expect(p.icons[k]).toMatchObject({ text: "–" });
+      if (r.present && r.kind < 0) expect(p.icons[k]).toMatchObject({ count: 3 });
+    });
+    // Schussstärke wie SpielDisplay: 1 leer, 2 halb, 3 voll
+    const power = (n: number) => {
+      w.players[0]!.shotPower = n;
+      const m = dovezHud(w, sprite, "de").players[0]!.meters.find((x) => x.id === "power")!;
+      return m.value / m.max;
+    };
+    expect([power(1), power(2), power(3)]).toEqual([0, 0.5, 1]);
+  });
+
+  test("Zwei Spieler: kleine Extrawaffen-Symbole wie interface3", async () => {
+    const { level, sprites } = await loadTestLevel("level1-1_skyfight");
+    const w = new World(level, sprites, { players: 2 });
+    run(w, 5);
+    w.players[1]!.extraWeapon = 1;
+    const p = dovezHud(w, sprite, "de").players[1]!;
+    expect(p.icons[0]?.sprite?.url).toBe("interface3_extra0");
   });
 
   test("Boss: Lebenspunkte bis zum Abschuss, danach keiner mehr", async () => {

@@ -83,7 +83,9 @@ Steuerung wie im Original:
   `Q`/`W` Tempo, `Esc` Pause.
 
 Modernisierungen (alle abschaltbar; ohne sie läuft die Simulation bit-gleich
-wie im Original, siehe Spec „Optionale Modernisierungen“):
+wie im Original, siehe Spec „Optionale Modernisierungen“). Vorgabe ist das
+Original bis auf HUD, Skalierung und Zeiger; der Zeiger wirkt erst, wenn Maus
+oder Finger ihn benutzen:
 
 - **Maus:** das Schiff folgt dem Zeiger, links Feuer, rechts Beam, Mitte
   Extrawaffe drehen (DOVE) bzw. Super-Nova (DoveZ), Rad Tempo (DOVE) bzw.
