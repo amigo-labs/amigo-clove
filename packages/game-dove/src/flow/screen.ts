@@ -31,6 +31,8 @@ export interface Screen<R> {
   update(): R | undefined;
   render(): void;
   dispose(): void;
+  /** Sichtbare Höhe (von oben); fehlt oder `null`: der ganze Bildschirm. */
+  viewHeight?(): number | null;
 }
 
 /** `Rnd` als Zahl in [0, 1). */

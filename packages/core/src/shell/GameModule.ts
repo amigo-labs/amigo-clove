@@ -17,6 +17,29 @@ export interface KeyState {
 }
 
 /**
+ * Maus bzw. Touch über dem Canvas, in logischen Canvas-Koordinaten (ganzzahlig,
+ * auf den Canvas begrenzt). Fehlt, wenn die Einstellung den Zeiger abschaltet.
+ */
+export interface PointerState {
+  /**
+   * Der Zeiger steuert: seit der letzten Zeigerbewegung wurde nicht mit Tasten
+   * oder Pad gelenkt. Ohne je bewegte Maus `false`, dann bleibt alles wie im Original.
+   */
+  readonly active: boolean;
+  readonly kind: "mouse" | "touch";
+  readonly x: number;
+  readonly y: number;
+  /** Maustasten wie `PointerEvent.buttons`: Bit 0 links, Bit 1 rechts, Bit 2 Mitte. */
+  readonly buttons: number;
+  /** Aufliegende Finger (Touch). */
+  readonly touches: number;
+  /** Rad-Rasten seit dem letzten Aufruf (negativ: vom Spieler weg / nach oben). */
+  takeWheel(): number;
+  /** Tasten oder Pad lenken: der Zeiger ruht, bis er wieder bewegt wird. */
+  deactivate(): void;
+}
+
+/**
  * Audio der Shell: ein AudioContext mit getrennten Pegeln für Musik und Effekte.
  * Fehlt, wenn ohne Ton gestartet wird (Original: „Dove - NOSOUND.bat“).
  */
@@ -34,6 +57,12 @@ export interface KeyValueStore {
   set(key: string, value: string): void;
 }
 
+/**
+ * Skalierung des Canvas: `integer` ganzzahlig und scharf (Vorgabe, 1:1-Pixel),
+ * `fit` füllt bruchteilig und scharf, `smooth` füllt bruchteilig gefiltert.
+ */
+export type ScaleMode = "integer" | "fit" | "smooth";
+
 export interface GameHost {
   readonly canvas: HTMLCanvasElement;
   readonly audio?: AudioHost;
@@ -42,6 +71,8 @@ export interface GameHost {
   exit(): void;
   readonly assets: AssetStore;
   readonly keys: KeyState;
+  /** Zeiger über dem Canvas; `undefined`, solange die Einstellung ihn abschaltet (live). */
+  readonly pointer?: PointerState | undefined;
   readonly locale: string;
   /**
    * Bewegungsarme Darstellung (Einstellung der Shell, Vorgabe die des Systems): kein
@@ -53,15 +84,81 @@ export interface GameHost {
    * Pad, 0 beendet sie. Fehlt, wenn der Browser oder die Einstellung keine Vibration erlaubt.
    */
   readonly rumble?: (pad: number, magnitude: number) => void;
+  /**
+   * `modern`: die Shell zeigt das HUD (`GameInstance.hud`), das Spiel lässt
+   * sein Original-HUD weg und zeigt nur das Spielfeld. Live gelesen.
+   */
+  readonly hudMode?: () => HudMode;
+  /** Skalierung nach der Einstellung der Shell, bei jeder Größenänderung neu gelesen. */
+  readonly scaleMode?: () => ScaleMode;
   /** Anzahl der Pads mit Vibrationsmotor (für die Optionen des Spiels). */
   readonly rumblePads?: () => number;
   /** Monotone Zeit in ms (`performance.now` im Browser). */
   now(): number;
 }
 
+/** HUD der Shell statt des Original-HUDs (Vorgabe) oder das Original im Canvas. */
+export type HudMode = "modern" | "original";
+
+/** Ausschnitt eines Original-Bildes (für Symbole im HTML-HUD). */
+export interface HudSprite {
+  readonly url: string;
+  readonly x: number;
+  readonly y: number;
+  readonly w: number;
+  readonly h: number;
+  /** Größe des ganzen Bildes (für die Skalierung per CSS). */
+  readonly sheetW: number;
+  readonly sheetH: number;
+}
+
+export interface HudMeter {
+  /** Art der Anzeige; die Shell beschriftet sie. */
+  readonly id: "energy" | "beam" | "shield" | "speed" | "power";
+  readonly value: number;
+  readonly max: number;
+  /** Voll geladen (blinkt). */
+  readonly full?: boolean;
+  /** Variante, z. B. Beam-Typ; ändert die Farbe. */
+  readonly variant?: number;
+}
+
+export interface HudIcon {
+  /** Bild aus den Original-Assets, sonst `text`. */
+  readonly sprite?: HudSprite;
+  readonly text?: string;
+  /** So oft nebeneinander (z. B. Waffenstufe). */
+  readonly count?: number;
+  /** Hervorgehoben (gewählter Slot) bzw. blass (leerer Slot). */
+  readonly selected?: boolean;
+  readonly dim?: boolean;
+  /** Kurzer Name für Screenreader und Tooltip. */
+  readonly label?: string;
+}
+
+export interface HudPlayer {
+  readonly score: number;
+  readonly meters: readonly HudMeter[];
+  readonly icons: readonly HudIcon[];
+}
+
+/**
+ * Was das Original-HUD zeigt, als Daten für das HTML-HUD der Shell. Rein
+ * lesend aus dem Weltzustand, einmal pro Bild abgefragt.
+ */
+export interface HudSnapshot {
+  readonly lives: number;
+  readonly players: readonly HudPlayer[];
+  /** Lebenspunkte des Bosses, solange einer kämpft. */
+  readonly boss?: { readonly hp: number; readonly max: number };
+  readonly combo?: { readonly hits: number; readonly bonus: number };
+}
+
 export interface GameInstance {
   /** Muss hart aufräumen: Ticker, Texturen, Listener. Danach ist der Canvas frei. */
   dispose(): void;
+  /** HUD-Daten, solange ein Level läuft (sonst `null`); fehlt bei Spielen ohne HTML-HUD. */
+  hud?(): HudSnapshot | null;
 }
 
 /**
@@ -71,11 +168,33 @@ export interface GameInstance {
  */
 export type GamepadBindings = Readonly<Record<number, readonly string[]>>;
 
+/**
+ * Eine Aktion für die Tastenbelegung der Shell: Name je Sprache und die
+ * Originaltasten. Die Shell legt auf Wunsch eine zweite Taste dazu (wie T2 in
+ * DoveZ); das Spiel sieht dann bei jedem seiner Codes auch diese Taste.
+ */
+export interface KeyAction {
+  readonly id: string;
+  readonly label: Readonly<Record<"de" | "en" | "ru", string>>;
+  readonly codes: readonly string[];
+}
+
+/**
+ * Belegung eines einzelnen Pads (z. B. Spieler 2): Tasten und die Codes für
+ * Steuerkreuz und linken Stick in der Reihenfolge hoch, runter, links, rechts.
+ */
+export interface PadLayout {
+  readonly buttons: GamepadBindings;
+  readonly directions: readonly [string, string, string, string];
+}
+
 export interface GameModule {
   readonly id: string;
   readonly title: string;
   /** Bundles, die die Shell vor `boot()` mit Fortschrittsanzeige lädt. */
   readonly preload?: readonly string[];
   readonly gamepad?: GamepadBindings;
+  /** Belegung je Pad (n-tes Pad mit Standardbelegung); fehlt ein Eintrag, gilt `gamepad`. */
+  readonly pads?: readonly (PadLayout | undefined)[];
   boot(host: GameHost, options?: Readonly<Record<string, string>>): Promise<GameInstance>;
 }

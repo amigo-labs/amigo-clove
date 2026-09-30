@@ -27,6 +27,7 @@ export {
   type LocalePreference,
   type Translate,
 } from "./i18n/i18n";
+export { PointerSteer, type PointerSample } from "./input/PointerSteer";
 export { FixedStepLoop } from "./loop/FixedStepLoop";
 export {
   FX_HALF,
@@ -63,6 +64,16 @@ export type {
   GameInstance,
   GameModule,
   GamepadBindings,
+  HudIcon,
+  HudMeter,
+  HudMode,
+  HudPlayer,
+  HudSnapshot,
+  HudSprite,
+  KeyAction,
   KeyState,
   KeyValueStore,
+  PadLayout,
+  PointerState,
+  ScaleMode,
 } from "./shell/GameModule";

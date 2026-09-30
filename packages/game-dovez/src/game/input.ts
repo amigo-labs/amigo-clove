@@ -1,5 +1,5 @@
-import type { GameHost } from "@clove/core";
-import type { PlayerInput } from "../sim/player";
+import { PointerSteer, type GameHost } from "@clove/core";
+import { HIT_BOTTOM, HIT_LEFT, HIT_RIGHT, HIT_TOP, type PlayerInput } from "../sim/player";
 
 /**
  * Tastenbelegung wie im Original (`InitKeyConfig` `0x504BA0`, `Taste` `0x54FE40`):
@@ -365,4 +365,35 @@ export function okKey(host: GameHost): boolean {
 /** `TastePause`: Esc (am Pad Start). */
 export function pauseKey(host: GameHost): boolean {
   return host.keys.isDown("Escape");
+}
+
+/**
+ * Maus/Touch für Spieler 1 (Erweiterung): die Maus legt die Schiffsmitte unter
+ * den Zeiger, links Feuer, rechts Beam, Mitte Super-Nova, Rad wechselt die
+ * Extrawaffe. Touch zieht das Schiff relativ, ein Finger feuert, zwei laden.
+ */
+export class PointerControl {
+  private readonly steer = new PointerSteer({
+    x: (HIT_LEFT + HIT_RIGHT) >> 1,
+    y: (HIT_TOP + HIT_BOTTOM) >> 1,
+  });
+
+  apply(
+    host: GameHost,
+    input: PlayerInput,
+    ship: { readonly x: number; readonly y: number } | undefined,
+  ): PlayerInput {
+    const keysSteer = input.left || input.right || input.up || input.down;
+    const p = this.steer.sample(host.pointer, ship, keysSteer);
+    if (!p.target && !p.fire && !p.beam && !p.middle && p.wheel === 0) return input;
+    return {
+      ...input,
+      fire: input.fire || p.fire,
+      beam: input.beam || p.beam,
+      nova: input.nova || p.middle,
+      switchWeapon: input.switchWeapon || p.wheel !== 0,
+      // ganze Pixel: die Simulation bleibt mit jeder Eingabequelle reproduzierbar
+      target: p.target && { x: Math.round(p.target.x), y: Math.round(p.target.y) },
+    };
+  }
 }

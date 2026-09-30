@@ -34,6 +34,11 @@ export interface PlayerInput {
   nova: boolean;
   /** F11: Hupe (`SpielHupe`, nur Spieler 1). */
   horn?: boolean;
+  /**
+   * Erweiterung (Maus/Touch): Ziel für den Bezugspunkt des Schiffs in ganzen
+   * Pixeln; ersetzt die Richtungstasten. Ohne Ziel läuft alles wie im Original.
+   */
+  target?: { readonly x: number; readonly y: number } | undefined;
 }
 
 export const NO_INPUT: Readonly<PlayerInput> = {
@@ -167,6 +172,60 @@ export interface PlayerWorld {
   vibrate?(strength: number, ticks: number, player: number): void;
 }
 
+/** Bewegung eines Ticks: Richtungen und Schrittweite je Achse. */
+interface Direction {
+  readonly left: boolean;
+  readonly right: boolean;
+  readonly up: boolean;
+  readonly down: boolean;
+  readonly sx: number;
+  readonly sy: number;
+  /** Senkrechte Bewegung neigt das Schiff (Tasten immer). */
+  readonly tilt: boolean;
+}
+
+function keyDir(input: PlayerInput, s: number): Direction {
+  return {
+    left: input.left,
+    right: input.right,
+    up: input.up,
+    down: input.down,
+    sx: s,
+    sy: s,
+    tilt: true,
+  };
+}
+
+/**
+ * Zeigersteuerung (keine Entsprechung im Original): geradlinig aufs Ziel, die
+ * längere Achse mit Schiffstempo, die kürzere anteilig; das letzte Stück exakt.
+ * Unter einem Pixel Querweg je Tick neigt sich das Schiff nicht.
+ */
+function toward(
+  p: Player,
+  target: { readonly x: number; readonly y: number },
+  s: number,
+): Direction {
+  // Ziel auf den erreichbaren Bereich (Grenzen wie in `updatePlayer`)
+  const tx = Math.max(-HIT_LEFT, Math.min(800 - HIT_RIGHT, target.x));
+  const ty = Math.max(-HIT_TOP, Math.min(550 - HIT_BOTTOM, target.y));
+  const dx = tx - p.x;
+  const dy = ty - p.y;
+  const major = Math.max(Math.abs(dx), Math.abs(dy));
+  const k = major <= s ? 1 : s / major;
+  const sx = Math.abs(dx) * k;
+  const sy = Math.abs(dy) * k;
+  return {
+    left: dx < 0,
+    right: dx > 0,
+    up: dy < 0,
+    down: dy > 0,
+    sx,
+    sy,
+    tilt: sy >= 1,
+  };
+}
+
 /** `SpielTastenCheck`: Tasten in Bewegung und Neigung (Arcade: ohne Trägheit, Realistic: gleitet aus). */
 function keys(p: Player, input: PlayerInput, w: PlayerWorld): void {
   const oldX = p.x;
@@ -174,39 +233,45 @@ function keys(p: Player, input: PlayerInput, w: PlayerWorld): void {
   let s = cint(p.speed);
   if (w.underwater(p)) s = cint(p.speed - 3);
   if (s < 1) s = 1;
-  let moved = false;
-  if (input.right) {
-    p.x = f32(p.x + s);
+  const dir = input.target ? toward(p, input.target, s) : keyDir(input, s);
+  // ein Zielpunkt gilt auch am Ziel als Steuerung: kein Ausgleiten („Realistic“) weg davon
+  let moved = input.target !== undefined;
+  if (dir.right) {
+    p.x = f32(p.x + dir.sx);
     p.keyTicks++;
     moved = true;
   }
-  if (input.left) {
-    p.x = f32(p.x - s);
+  if (dir.left) {
+    p.x = f32(p.x - dir.sx);
     p.keyTicks++;
     moved = true;
   }
   let vert = false;
-  if (input.up) {
+  if (dir.up) {
     moved = true;
-    vert = true;
     p.keyTicks++;
-    p.y = f32(p.y - s);
-    if (p.tiltTimer === 0) {
-      p.tilt--;
-      p.tiltTimer = 5;
-    } else p.tiltTimer--;
-    if (p.tilt < 0) p.tilt = 0;
+    p.y = f32(p.y - dir.sy);
+    if (dir.tilt) {
+      vert = true;
+      if (p.tiltTimer === 0) {
+        p.tilt--;
+        p.tiltTimer = 5;
+      } else p.tiltTimer--;
+      if (p.tilt < 0) p.tilt = 0;
+    }
   }
-  if (input.down) {
+  if (dir.down) {
     moved = true;
-    vert = true;
     p.keyTicks++;
-    p.y = f32(p.y + s);
-    if (p.tiltTimer === 0) {
-      p.tilt++;
-      p.tiltTimer = 5;
-    } else p.tiltTimer--;
-    if (p.tilt > 4) p.tilt = 4;
+    p.y = f32(p.y + dir.sy);
+    if (dir.tilt) {
+      vert = true;
+      if (p.tiltTimer === 0) {
+        p.tilt++;
+        p.tiltTimer = 5;
+      } else p.tiltTimer--;
+      if (p.tilt > 4) p.tilt = 4;
+    }
   }
   if (!vert) {
     if (p.tilt > 3) {

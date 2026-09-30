@@ -203,6 +203,42 @@ describe("Spieler", () => {
     expect([p.x, p.y]).toEqual([0, -17]);
   });
 
+  test("Zeigerziel: geradlinig mit Schiffstempo, exakt am Ziel, Grenzen", () => {
+    const p = new Player(0, 0, 1);
+    const go = (x: number, y: number, n = 1) => {
+      for (let i = 0; i < n; i++) updatePlayer(p, { ...NO_INPUT, target: { x, y } }, open);
+    };
+    go(400, 290);
+    expect(p.x).toBe(106);
+    expect(p.y).toBeCloseTo(260.6, 4);
+    go(400, 290, 100);
+    expect([p.x, p.y]).toEqual([400, 290]);
+    // am Ziel steht es still und richtet sich auf
+    go(400, 290, 30);
+    expect([p.x, p.y, p.tilt]).toEqual([400, 290, 2]);
+    go(-100, 900, 300);
+    expect([p.x, p.y]).toEqual([0, 496]);
+    go(2000, -300, 300);
+    expect([p.x, p.y]).toEqual([736, -17]);
+  });
+
+  test("Zeigerziel mit Trägheit: am Ziel kein Ausgleiten", () => {
+    const p = new Player(0, 0, 1);
+    const w = { ...open, realistic: true };
+    for (let i = 0; i < 100; i++) updatePlayer(p, { ...NO_INPUT, target: { x: 400, y: 300 } }, w);
+    expect([p.x, p.y, p.vx, p.vy]).toEqual([400, 300, 0, 0]);
+    for (let i = 0; i < 40; i++) updatePlayer(p, { ...NO_INPUT, target: { x: 400, y: 300 } }, w);
+    expect([p.x, p.y]).toEqual([400, 300]);
+  });
+
+  test("Zeigerziel neigt nur bei echtem Querweg", () => {
+    const p = new Player(0, 0, 1);
+    for (let i = 0; i < 10; i++) updatePlayer(p, { ...NO_INPUT, target: { x: 700, y: 262 } }, open);
+    expect(p.tilt).toBe(2);
+    for (let i = 0; i < 10; i++) updatePlayer(p, { ...NO_INPUT, target: { x: 700, y: 100 } }, open);
+    expect(p.tilt).toBe(0);
+  });
+
   const glideRun = (realistic: boolean) => {
     const p = new Player(0, 0, 1);
     const w = { ...open, realistic };

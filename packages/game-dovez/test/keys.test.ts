@@ -9,9 +9,11 @@ import {
   keyLabel,
   keyName,
   keyText,
+  PointerControl,
   readInput,
   useKeys,
 } from "../src/game/input";
+import { NO_INPUT } from "../src/sim/player";
 
 const host = (...down: string[]): GameHost =>
   ({ keys: { isDown: (c: string) => down.includes(c), held: () => down } }) as unknown as GameHost;
@@ -95,5 +97,47 @@ describe("Tastenbelegung", () => {
       DEFAULT_KEYS,
     );
     expect(parseConfig(null).keys).toEqual(DEFAULT_KEYS);
+  });
+});
+
+const withMouse = (buttons: number, wheel = 0, ...down: string[]): GameHost => {
+  let w = wheel;
+  return {
+    keys: { isDown: (c: string) => down.includes(c) },
+    pointer: {
+      active: true,
+      kind: "mouse",
+      x: 432,
+      y: 335,
+      buttons,
+      touches: 0,
+      takeWheel: () => {
+        const n = w;
+        w = 0;
+        return n;
+      },
+      deactivate() {},
+    },
+  } as unknown as GameHost;
+};
+
+describe("Maus für Spieler 1", () => {
+  test("Schiffsmitte unter den Zeiger, links Feuer, rechts Beam, Mitte Nova, Rad Wechsel", () => {
+    const h = withMouse(7, 1);
+    const i = new PointerControl().apply(h, readInput(h), { x: 0, y: 0 });
+    expect(i).toMatchObject({
+      target: { x: 400, y: 300 },
+      fire: true,
+      beam: true,
+      nova: true,
+      switchWeapon: true,
+    });
+  });
+
+  test("ohne Zeiger bleibt die Eingabe unverändert, Pfeiltasten haben Vorrang", () => {
+    const plain = { keys: { isDown: () => false } } as unknown as GameHost;
+    expect(new PointerControl().apply(plain, NO_INPUT, undefined)).toBe(NO_INPUT);
+    const h = withMouse(0, 0, "ArrowLeft");
+    expect(new PointerControl().apply(h, readInput(h), undefined).target).toBeUndefined();
   });
 });

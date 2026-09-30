@@ -35,6 +35,303 @@
         align-items: center;
         justify-content: center;
       }
+      .stage {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+      }
+      .overlay {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+      .scanlines {
+        position: absolute;
+        left: var(--game-x);
+        top: var(--game-y);
+        width: var(--game-w);
+        height: var(--game-h);
+        background: linear-gradient(to bottom, transparent 50%, rgb(0 0 0 / 0.35) 50%);
+        background-size: 100% calc(var(--px) * 1px);
+      }
+      .overlay .fullscreen {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+        padding: 0.2rem 0.5rem;
+        font-size: 1.25rem;
+        line-height: 1;
+        border-color: #666;
+        background: rgb(0 0 0 / 0.6);
+        color: #ccc;
+        opacity: 0;
+        transition: opacity 0.3s;
+        pointer-events: auto;
+      }
+      .overlay .fullscreen[data-visible],
+      .overlay .fullscreen:focus-visible {
+        opacity: 1;
+      }
+      .touch-keys {
+        position: absolute;
+        inset: auto 0 0 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        padding: 0.75rem;
+        pointer-events: none;
+      }
+      .touch-pad {
+        display: grid;
+        grid-template-areas: ". up ." "left . right" ". down .";
+        gap: 0.25rem;
+      }
+      .touch-actions {
+        display: flex;
+        gap: 0.75rem;
+      }
+      .touch-key {
+        width: 3.25rem;
+        height: 3.25rem;
+        padding: 0;
+        border-radius: 50%;
+        border-color: rgb(255 204 102 / 0.5);
+        background: rgb(0 0 0 / 0.45);
+        font-size: 1.1rem;
+        pointer-events: auto;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      .touch-key:active {
+        background: rgb(255 204 102 / 0.35);
+      }
+      .touch-key.up {
+        grid-area: up;
+      }
+      .touch-key.left {
+        grid-area: left;
+      }
+      .touch-key.right {
+        grid-area: right;
+      }
+      .touch-key.down {
+        grid-area: down;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+      }
+      .hud {
+        position: absolute;
+        inset: 0;
+        font:
+          600 14px/1.2 system-ui,
+          sans-serif;
+        color: #eee;
+        text-shadow: 0 1px 2px #000;
+        --hud-side: min(15rem, calc(var(--game-x) - 1.5rem));
+      }
+      .hud-value {
+        font-variant-numeric: tabular-nums;
+        color: #fc6;
+        font-size: 1.35em;
+      }
+      .hud-score,
+      .hud-lives {
+        display: flex;
+        align-items: baseline;
+        gap: 0.5rem;
+      }
+      .hud-score span,
+      .hud-lives span,
+      .hud-meter span,
+      .hud-boss span {
+        font-size: 0.75em;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #aaa;
+      }
+      .hud-player {
+        display: grid;
+        gap: 0.35rem;
+      }
+      .hud-meters {
+        display: grid;
+        gap: 0.3rem;
+      }
+      .hud-meter {
+        display: grid;
+        grid-template-columns: 4.5rem 1fr;
+        align-items: center;
+        gap: 0.4rem;
+      }
+      .hud-meter b,
+      .hud-boss b {
+        display: block;
+        height: 0.6rem;
+        border: 1px solid rgb(255 255 255 / 0.35);
+        border-radius: 3px;
+        background: rgb(0 0 0 / 0.5);
+        overflow: hidden;
+      }
+      .hud-meter i,
+      .hud-boss i {
+        display: block;
+        height: 100%;
+        width: 0;
+        background: var(--meter, #fc6);
+        transition: width 80ms linear;
+      }
+      .hud-meter[data-id="energy"] {
+        --meter: linear-gradient(90deg, #3c3, #9f6);
+      }
+      .hud-meter[data-id="beam"] {
+        --meter: linear-gradient(90deg, #a00, #f55);
+      }
+      .hud-meter[data-id="beam"][data-variant="1"] {
+        --meter: linear-gradient(90deg, #06c, #6cf);
+      }
+      .hud-meter[data-id="shield"] {
+        --meter: linear-gradient(90deg, #099, #6ff);
+      }
+      .hud-meter[data-id="speed"] {
+        --meter: linear-gradient(90deg, #960, #fc6);
+      }
+      .hud-meter[data-id="power"] {
+        --meter: linear-gradient(90deg, #c60, #fa3);
+      }
+      .hud-meter[data-full] i {
+        animation: hud-blink 0.14s steps(2) infinite;
+      }
+      @keyframes hud-blink {
+        50% {
+          filter: brightness(1.8);
+        }
+      }
+      .hud-icons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+        align-items: center;
+      }
+      .hud-icon {
+        display: inline-flex;
+        gap: 2px;
+        align-items: center;
+      }
+      .hud-icon[data-dim] {
+        opacity: 0.35;
+      }
+      .hud-icon[data-selected] {
+        outline: 2px solid #fc6;
+        outline-offset: 1px;
+        border-radius: 2px;
+      }
+      .hud-sprite {
+        display: inline-block;
+        background-repeat: no-repeat;
+        image-rendering: pixelated;
+      }
+      .hud-glyph {
+        color: #fc6;
+        font-size: 1.1em;
+      }
+      .hud-combo {
+        color: #fc6;
+      }
+      .hud-boss {
+        position: absolute;
+        left: calc(var(--game-x) + var(--game-w) * 0.2);
+        width: calc(var(--game-w) * 0.6);
+        top: calc(var(--game-y) + 0.5rem);
+        display: grid;
+        grid-template-columns: auto 1fr;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .hud-boss b {
+        height: 0.75rem;
+      }
+      .hud-boss i {
+        background: linear-gradient(90deg, #a00, #f63);
+      }
+      /* neben dem Spielfeld: Spieler 1 links, Spieler 2 rechts, Leben unten links */
+      .hud[data-layout="side"] .hud-player {
+        position: absolute;
+        top: calc(var(--game-y) + 1rem);
+        width: var(--hud-side);
+      }
+      .hud[data-layout="side"] .hud-player[data-player="0"] {
+        left: calc(var(--game-x) - var(--hud-side) - 0.75rem);
+      }
+      .hud[data-layout="side"] .hud-player[data-player="1"] {
+        left: calc(var(--game-x) + var(--game-w) + 0.75rem);
+      }
+      .hud[data-layout="side"] .hud-lives,
+      .hud[data-layout="side"] .hud-combo {
+        position: absolute;
+        left: calc(var(--game-x) - var(--hud-side) - 0.75rem);
+        width: var(--hud-side);
+      }
+      .hud[data-layout="side"] .hud-lives {
+        top: calc(var(--game-y) + var(--game-h) - 2.5rem);
+      }
+      .hud[data-layout="side"] .hud-combo {
+        top: calc(var(--game-y) + var(--game-h) - 4.5rem);
+      }
+      /* darunter bzw. als Leiste im Spielfeld */
+      .hud[data-layout="below"] .hud-bar,
+      .hud[data-layout="inside"] .hud-bar {
+        position: absolute;
+        left: var(--game-x);
+        width: var(--game-w);
+        box-sizing: border-box;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.4rem 1.25rem;
+        padding: 0.35rem 0.75rem;
+      }
+      .hud[data-layout="below"] .hud-bar {
+        top: calc(var(--game-y) + var(--game-h) + 0.25rem);
+      }
+      /* im Spielfeld oben: unten liegen Funkbild und Laufband (DoveZ) */
+      .hud[data-layout="inside"] .hud-bar {
+        top: var(--game-y);
+        background: linear-gradient(rgb(0 0 0 / 0.6), transparent);
+        font-size: 12px;
+      }
+      .hud[data-layout="inside"] .hud-boss {
+        top: calc(var(--game-y) + 3.25rem);
+      }
+      .hud[data-layout="below"] .hud-player,
+      .hud[data-layout="inside"] .hud-player {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.4rem 1rem;
+      }
+      .hud[data-layout="below"] .hud-meters,
+      .hud[data-layout="inside"] .hud-meters {
+        grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+        min-width: 12rem;
+        flex: 1;
+      }
+      .hud[data-layout="below"] .hud-meter,
+      .hud[data-layout="inside"] .hud-meter {
+        grid-template-columns: auto 1fr;
+      }
       #launcher,
       #settings,
       #loading {
@@ -132,6 +429,16 @@
       }
       .row > span:first-child {
         min-width: 5rem;
+      }
+      .keys {
+        display: grid;
+        grid-template-columns: max-content max-content 7rem;
+        align-items: center;
+        gap: 0.4rem 1rem;
+        margin: 0.5rem 0;
+      }
+      .key-row {
+        display: contents;
       }
       input[type="range"] {
         width: 12rem;

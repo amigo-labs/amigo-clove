@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { decodeInput, firstDivergence, type Replay } from "@clove/core";
 import { runReplay } from "../src/replay";
-import { BOT_TICKS, REPLAYS, botInput } from "../scripts/record-replay";
+import { BOT_TICKS, REPLAYS } from "../scripts/record-replay";
 import { level } from "./helpers";
 
-describe.each(REPLAYS.map((r) => r.name))("Referenz-Replay %s", (name) => {
+describe.each(REPLAYS.map((r) => [r.name, r.bot] as const))("Referenz-Replay %s", (name, bot) => {
   const load = async () =>
     (await Bun.file(`${import.meta.dir}/replays/${name}.json`).json()) as Replay;
 
@@ -12,7 +12,7 @@ describe.each(REPLAYS.map((r) => r.name))("Referenz-Replay %s", (name) => {
     const r = await load();
     expect(r.ticks).toBe(BOT_TICKS);
     const inputs = decodeInput(r.input);
-    for (let t = 0; t < BOT_TICKS; t++) if (inputs[t] !== botInput(t)) throw new Error(`Tick ${t}`);
+    for (let t = 0; t < BOT_TICKS; t++) if (inputs[t] !== bot(t)) throw new Error(`Tick ${t}`);
   });
 
   test("reproduziert jeden Kontroll-Hash bit-identisch", async () => {
