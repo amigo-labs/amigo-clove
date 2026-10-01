@@ -81,3 +81,20 @@ export type {
   PointerState,
   ScaleMode,
 } from "./shell/GameModule";
+export type {
+  GameUi,
+  UiBlock,
+  UiConfirm,
+  UiField,
+  UiForm,
+  UiImage,
+  UiInput,
+  UiItem,
+  UiMenu,
+  UiNotice,
+  UiReply,
+  UiScreen,
+  UiText,
+  UiValues,
+  UiVideo,
+} from "./shell/ui";

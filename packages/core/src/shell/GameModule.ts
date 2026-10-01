@@ -1,11 +1,13 @@
 import type { AssetStore } from "../asset/AssetStore";
+import type { GameUi } from "./ui";
 
 /**
  * Der Vertrag zwischen Shell und Spiel.
  *
  * Die **Shell besitzt** Canvas, Asset-Zugriff, Eingabegeräte, Locale und
- * Routing. Das **Spiel besitzt** alles ab `boot()` — Renderer auf dem
- * übergebenen Canvas, Szenen, Pause. Das Spiel fasst nie `location`,
+ * Routing, dazu alle HTML-Bildschirme außerhalb der Level (`GameHost.ui`).
+ * Das **Spiel besitzt** Ablauf, Regeln und Speicherstände sowie alles im Canvas ab
+ * `boot()` — Renderer, Level, Original-Animationen. Das Spiel fasst nie `location`,
  * `document.title` oder die Erzeugung von Canvas und AudioContext an.
  */
 
@@ -95,6 +97,8 @@ export interface GameHost {
   readonly rumblePads?: () => number;
   /** Monotone Zeit in ms (`performance.now` im Browser). */
   now(): number;
+  /** HTML-Bildschirme der Shell für alles außerhalb der Level (Menüs, Pause, Continue …). */
+  readonly ui: GameUi;
 }
 
 /** HUD der Shell statt des Original-HUDs (Vorgabe) oder das Original im Canvas. */

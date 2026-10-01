@@ -432,6 +432,270 @@
         margin-top: 0.5rem;
         overflow-x: auto;
       }
+      /* HTML-Bildschirme der Spiele (Menüs, Pause, Continue …) über bzw. statt des Canvas */
+      .stage[data-ui="page"] canvas {
+        visibility: hidden;
+      }
+      .stage[data-ui] .hud,
+      .stage[data-ui] .touch-keys {
+        display: none;
+      }
+      .ui-root:empty {
+        display: none;
+      }
+      .ui-screen {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        padding: 1rem;
+        box-sizing: border-box;
+        pointer-events: auto;
+        background:
+          radial-gradient(ellipse at 50% 30%, rgb(255 204 102 / 0.08), transparent 60%), #050505;
+      }
+      .stage[data-ui="over"] .ui-screen {
+        background: rgb(0 0 0 / 0.55);
+      }
+      .ui-panel {
+        box-sizing: border-box;
+        width: min(52rem, 100%);
+        max-height: 100%;
+        overflow: auto;
+        padding: 1.25rem 1.5rem;
+        border: 1px solid rgb(255 204 102 / 0.35);
+        border-radius: 8px;
+        background: rgb(12 10 6 / 0.92);
+        box-shadow: 0 0.5rem 2rem rgb(0 0 0 / 0.6);
+      }
+      .ui-screen[data-kind="confirm"] .ui-panel,
+      .ui-screen[data-kind="input"] .ui-panel,
+      .ui-screen[data-kind="notice"] .ui-panel {
+        width: min(34rem, 100%);
+        text-align: center;
+      }
+      .ui-title {
+        margin: 0 0 1rem;
+        font-size: 1.5rem;
+      }
+      .ui-body.split {
+        display: grid;
+        grid-template-columns: minmax(14rem, 1fr) minmax(14rem, 1fr);
+        gap: 1.5rem;
+        align-items: start;
+      }
+      @media (max-width: 40rem) {
+        .ui-body.split {
+          grid-template-columns: 1fr;
+        }
+      }
+      .ui-logo {
+        margin-bottom: 1rem;
+      }
+      .ui-image {
+        display: block;
+        max-width: 100%;
+        height: auto;
+        margin: 0 auto;
+        image-rendering: pixelated;
+      }
+      .ui-sprite {
+        background-repeat: no-repeat;
+      }
+      .ui-items {
+        display: grid;
+        gap: 0.4rem;
+      }
+      .ui-items[data-grid] {
+        grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+      }
+      .ui-items[data-row] {
+        grid-auto-flow: column;
+        justify-content: center;
+        margin-top: 1rem;
+      }
+      .ui-item,
+      .ui-field {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 1rem;
+        width: 100%;
+        box-sizing: border-box;
+        padding: 0.55rem 0.9rem;
+        border: 1px solid #3a3020;
+        border-radius: 4px;
+        background: rgb(255 255 255 / 0.03);
+        color: #eee;
+        text-align: left;
+        font: inherit;
+      }
+      .ui-items[data-grid] .ui-item {
+        padding: 0.35rem 0.5rem;
+        font-size: 0.85rem;
+      }
+      .ui-item:hover,
+      .ui-field:hover {
+        border-color: #866a33;
+      }
+      .ui-item:focus,
+      .ui-field:focus,
+      .ui-text:focus {
+        outline: none;
+        border-color: #fc6;
+        background: #221a08;
+        color: #fc6;
+        box-shadow: 0 0 0 1px #fc6;
+      }
+      .ui-item:disabled {
+        opacity: 0.4;
+      }
+      .ui-hint,
+      .ui-info {
+        color: #999;
+        font-size: 0.85rem;
+      }
+      .ui-value {
+        color: #fc6;
+        white-space: nowrap;
+        display: inline-flex;
+        gap: 0.5rem;
+        align-items: center;
+      }
+      .ui-value meter {
+        width: 6rem;
+      }
+      .ui-field[data-capture] {
+        border-color: #fc6;
+        animation: hud-blink 0.5s steps(2) infinite;
+      }
+      .ui-fields {
+        display: grid;
+        gap: 0.4rem;
+      }
+      .ui-group {
+        margin: 0.75rem 0 0.25rem;
+      }
+      .ui-input {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.35rem;
+      }
+      .ui-text {
+        font: inherit;
+        font-size: 1.25rem;
+        padding: 0.4rem 0.6rem;
+        border: 1px solid #666;
+        border-radius: 4px;
+        background: #000;
+        color: #fff;
+      }
+      .ui-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        justify-content: flex-end;
+        margin-top: 1rem;
+      }
+      .ui-actions .ui-item {
+        width: auto;
+      }
+      .ui-blocks {
+        display: grid;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+      }
+      .ui-lines p {
+        margin: 0.15rem 0;
+      }
+      .ui-lines[data-align="center"] {
+        text-align: center;
+      }
+      .ui-lines[data-tone="accent"] {
+        color: #fc6;
+      }
+      .ui-lines[data-tone="dim"] {
+        color: #999;
+      }
+      .ui-lines.mono p {
+        font-family: ui-monospace, monospace;
+        font-size: 0.85rem;
+        white-space: pre-wrap;
+      }
+      .ui-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-variant-numeric: tabular-nums;
+      }
+      .ui-table caption {
+        text-align: left;
+        color: #fc6;
+        padding-bottom: 0.3rem;
+      }
+      .ui-table th {
+        text-align: left;
+        color: #999;
+        font-size: 0.75em;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .ui-table td {
+        padding: 0.15rem 0.5rem 0.15rem 0;
+      }
+      .ui-table td:last-child {
+        text-align: right;
+      }
+      .ui-table tr[data-highlight] td {
+        color: #fc6;
+      }
+      .ui-preview {
+        margin-top: 1rem;
+      }
+      .ui-figure {
+        margin: 0.5rem 0;
+      }
+      .ui-scroll {
+        max-height: min(60vh, 32rem);
+        overflow-y: auto;
+        outline: none;
+      }
+      .ui-panel[data-auto] .ui-scroll {
+        overflow: hidden;
+        mask-image: linear-gradient(transparent, #000 10%, #000 90%, transparent);
+      }
+      .ui-countdown {
+        font-size: 3rem;
+        color: #fc6;
+        font-variant-numeric: tabular-nums;
+      }
+      .ui-progress {
+        width: 100%;
+        margin-top: 1rem;
+      }
+      .ui-prompt {
+        color: #fc6;
+        animation: hud-blink 1s steps(2) infinite;
+      }
+      .ui-video-box {
+        position: absolute;
+        inset: 0;
+        background: #000;
+        outline: none;
+      }
+      .ui-video {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+      .ui-video-loading {
+        position: absolute;
+        inset: auto 0 1rem;
+        text-align: center;
+        color: #999;
+      }
+      .ui-screen[data-kind="video"] {
+        padding: 0;
+      }
       #launcher,
       #settings,
       #loading {

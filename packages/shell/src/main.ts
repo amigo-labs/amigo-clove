@@ -18,7 +18,7 @@ import { KEY_ACTIONS as DOVE_KEYS } from "@clove/game-dove/keys";
 import { DOVEZ_GAMEPAD, DOVEZ_PADS, dovezAllControls } from "@clove/game-dovez/controls";
 import { ControlsView, controlsElement, controlsTables, type ControlsOptions } from "./controls";
 import { h } from "./dom";
-import { createPadState, startPadNavigation } from "./gamepad";
+import { NAV_BINDINGS, createPadState, padKeys, startPadNavigation } from "./gamepad";
 import { HudView } from "./hud";
 import { createKeyState } from "./keys";
 import { withSecondKeys } from "./keymap";
@@ -32,6 +32,8 @@ import { storageFor, webStorage } from "./storage";
 import { TEXTS, mb, type ShellText, type TextKey } from "./texts";
 import { launcherView } from "./views/launcher";
 import { settingsView } from "./views/settings";
+import { NAV_CODES, gateKeys } from "./ui/model";
+import { UiHost } from "./ui/UiHost";
 
 /**
  * Launcher. Hash-Routing: `#/` Spielauswahl, `#/settings` Einstellungen,
@@ -270,18 +272,36 @@ async function startGame(
       touch.dispose();
     });
     const audio = audioHost(params);
+    const navCodes = Object.keys(NAV_CODES);
+    const ui = new UiHost({
+      stage: s,
+      audio,
+      // Pad (Navigationsbelegung) und Touch-Tasten; die Tastatur liest der UiHost selbst
+      polled: () => {
+        const down = settings.gamepad
+          ? padKeys(navigator.getGamepads?.() ?? [], NAV_BINDINGS)
+          : new Set<string>();
+        for (const c of navCodes) if (touch.isDown(c)) down.add(c);
+        return down;
+      },
+      controls: (sheet) =>
+        controlsElement(controlsTables(sheet, controlsOptions(id, module.gamepad, module.pads)), t),
+    });
+    s.onDispose(() => ui.dispose());
     const instance = await module.boot(
       {
         canvas,
         assets,
-        keys: keysFor(id, module, touch),
+        ui,
+        keys: gateKeys(keysFor(id, module, touch), () => ui.state()),
         locale,
         rumble,
         rumblePads: () => rumblePads().length,
         scaleMode: () => settings.scale,
         hudMode: () => settings.hud,
+        // über HTML-Bildschirmen klickt der Zeiger Knöpfe, nicht ins Spiel
         get pointer() {
-          return settings.pointer ? pointer : undefined;
+          return settings.pointer && !ui.state().open ? pointer : undefined;
         },
         // folgt der Einstellung auch während des Spiels
         get reducedMotion() {
