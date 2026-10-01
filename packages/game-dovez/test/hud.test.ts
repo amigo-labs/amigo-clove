@@ -1,7 +1,7 @@
 /** HTML-HUD: Schnappschuss aus dem Weltzustand und Boss-Lebenspunkte. */
 import { describe, expect, test } from "bun:test";
 import type { HudSprite } from "@clove/core";
-import { dovezHud } from "../src/game/hud";
+import { RADIO_LIFT, TICKER_Y, dovezHud, dovezMessages } from "../src/game/hud";
 import { bossStatus } from "../src/sim/bossStatus";
 import { cint } from "../src/sim/vb";
 import { World } from "../src/sim/world";
@@ -79,5 +79,30 @@ describe("DoveZ-HUD", () => {
     const ew = w["makeEnemyWorld"]();
     w.enemies.hit(cint(x), cint(y), cint(x + s.rect.w), cint(y + s.rect.h), 1e9, 0, ew);
     expect(bossStatus(w.enemies, w.playersMinus1)).toBeUndefined();
+  });
+});
+
+/** Tastenname einer Aktion je Satz, für die Einblendungen. */
+const label = (a: number, set: number) => `${a}/${set}`;
+
+describe("DoveZ-HUD: Einblendungen", () => {
+  test("Tastenhinweis mit der belegten Taste und Laufband an ihrer Stelle", async () => {
+    const { level, sprites } = await loadTestLevel("level1-1_skyfight");
+    const w = new World(level, sprites);
+    run(w, 2);
+    w.env.hint = { action: 4, grey: 255 } as typeof w.env.hint;
+    w.radio.ticker = "     -Achtung!";
+    expect(dovezMessages(w, "de", label)).toEqual([
+      { id: "hint0", text: "Drücke: 4/0", at: { x: 11, y: 450 }, style: "hint", opacity: 1 },
+      {
+        id: "ticker",
+        text: "     -Achtung!",
+        at: { x: 575, y: TICKER_Y - RADIO_LIFT },
+        width: 225,
+        style: "ticker",
+      },
+    ]);
+    expect(dovezHud(w, sprite, "de", label).messages).toHaveLength(2);
+    expect(dovezHud(w, sprite, "de").messages).toBeUndefined();
   });
 });

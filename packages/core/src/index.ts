@@ -77,6 +77,7 @@ export {
 } from "./save/SaveFile";
 export type {
   AudioHost,
+  BoundKey,
   ControlGroup,
   ControlRow,
   ControlsSheet,
@@ -85,6 +86,7 @@ export type {
   GameModule,
   GamepadBindings,
   HudIcon,
+  HudMessage,
   HudMeter,
   HudMode,
   HudPlayer,

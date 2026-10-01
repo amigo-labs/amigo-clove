@@ -270,6 +270,11 @@ export interface GameUi {
    * so tragen Untermenüs, Texte und Hinweise beider Spiele denselben Kopf.
    */
   brand?(brand: UiBrand): void;
+  /**
+   * Untertitel unten über dem Spielbild, ohne Tasten zu sperren (Story-Zeilen
+   * der Original-Animationen); `null` blendet ihn aus.
+   */
+  caption?(text: string | null): void;
 }
 
 export interface UiBrand {

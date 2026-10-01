@@ -13,7 +13,7 @@ import { creditsScreen } from "./credits";
 import { FadeLogic, FadeScene } from "./fadeOut";
 import { atlasTexture } from "./gdi";
 import { parseHighscores, HIGHSCORE_KEY } from "./highscore";
-import { pauseKey } from "./input";
+import { keyLabel, pauseKey } from "./input";
 import { atlasSprites, dovezHud } from "./hud";
 import { type Lang, loadingText, resolveLang } from "./lang";
 import { type GameContext, LevelScene, levelBundles } from "./level";
@@ -525,7 +525,7 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
     hud() {
       const level = current;
       if (!level || scene !== level || !level.playing) return null;
-      return dovezHud(level.world, hudSprite, lang);
+      return dovezHud(level.world, hudSprite, lang, (a, set) => keyLabel(host, a, set));
     },
     dispose() {
       disposed = true;
