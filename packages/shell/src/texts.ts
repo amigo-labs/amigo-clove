@@ -2,7 +2,6 @@ import type { Dictionary, Locale, Translate } from "@clove/core";
 
 /** Texte der Shell. Die Spiele bringen ihre eigenen (aus den Originalen). */
 type Key =
-  | "play"
   | "settings"
   | "back"
   | "comingSoon"
@@ -13,7 +12,6 @@ type Key =
   | "offlineReady"
   | "offlinePartial"
   | "offlineNone"
-  | "loading"
   | "loadFailed"
   | "notFound"
   | "language"
@@ -85,7 +83,6 @@ type Key =
   | "volumeVoice"
   | "on"
   | "off"
-  | "gamepadState"
   | "loadingBar"
   | "gameCanvas"
   | "saves"
@@ -97,7 +94,6 @@ type Key =
   | "offline"
   | "offlineHelp"
   | "install"
-  | "installing"
   | "remove"
   | "persisted"
   | "notPersisted"
@@ -109,7 +105,6 @@ export type ShellText = Translate<Key>;
 
 export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
   de: {
-    play: "Spielen",
     settings: "Einstellungen",
     back: "Zurück",
     comingSoon: "folgt",
@@ -120,7 +115,6 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
     offlineReady: "offline spielbar",
     offlinePartial: "{percent} % offline gespeichert",
     offlineNone: "nicht offline gespeichert",
-    loading: "Lade {title} … {loaded} / {total} MB",
     loadFailed: "{title} konnte nicht gestartet werden.",
     notFound: "Unbekannte Seite „{path}“.",
     language: "Sprache",
@@ -198,7 +192,6 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
     volumeVoice: "Sprache",
     on: "an",
     off: "aus",
-    gamepadState: "Status",
     loadingBar: "Ladefortschritt",
     gameCanvas: "{title}: Spielfläche. Bedienung mit Tastatur oder Gamepad, Esc pausiert.",
     saves: "Spielstände",
@@ -212,7 +205,6 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
     offlineHelp:
       "Lädt alle Spieldaten einmal vollständig in den Browser-Cache; danach startet das Spiel ohne Netz.",
     install: "Spieldaten installieren ({size} MB)",
-    installing: "Installiere … {loaded} / {total} MB",
     remove: "Entfernen",
     persisted: "Der Browser behält die Daten dauerhaft.",
     notPersisted: "Der Browser darf die Daten bei Platzmangel löschen.",
@@ -221,7 +213,6 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
       "Offline-Betrieb nicht verfügbar (Entwicklungsserver oder Browser ohne Service Worker).",
   },
   en: {
-    play: "Play",
     settings: "Settings",
     back: "Back",
     comingSoon: "coming later",
@@ -232,7 +223,6 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
     offlineReady: "playable offline",
     offlinePartial: "{percent} % stored offline",
     offlineNone: "not stored offline",
-    loading: "Loading {title} … {loaded} / {total} MB",
     loadFailed: "{title} could not be started.",
     notFound: "Unknown page “{path}”.",
     language: "Language",
@@ -309,7 +299,6 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
     volumeVoice: "Voices",
     on: "on",
     off: "off",
-    gamepadState: "Status",
     loadingBar: "Loading progress",
     gameCanvas: "{title}: play area. Controls: keyboard or gamepad, Esc pauses.",
     saves: "Saved games",
@@ -323,7 +312,6 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
     offlineHelp:
       "Downloads all game data into the browser cache once; afterwards the game starts without a network.",
     install: "Install game data ({size} MB)",
-    installing: "Installing … {loaded} / {total} MB",
     remove: "Remove",
     persisted: "The browser keeps the data permanently.",
     notPersisted: "The browser may delete the data when space runs low.",
@@ -331,7 +319,6 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
     noServiceWorker: "Offline mode unavailable (dev server or browser without service workers).",
   },
   ru: {
-    play: "Играть",
     settings: "Настройки",
     back: "Назад",
     comingSoon: "скоро",
@@ -342,7 +329,6 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
     offlineReady: "доступно офлайн",
     offlinePartial: "{percent} % сохранено офлайн",
     offlineNone: "не сохранено офлайн",
-    loading: "Загрузка {title} … {loaded} / {total} МБ",
     loadFailed: "Не удалось запустить {title}.",
     notFound: "Неизвестная страница «{path}».",
     language: "Язык",
@@ -420,7 +406,6 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
     volumeVoice: "Речь",
     on: "вкл.",
     off: "выкл.",
-    gamepadState: "Состояние",
     loadingBar: "Ход загрузки",
     gameCanvas: "{title}: игровое поле. Управление: клавиатура или геймпад, Esc — пауза.",
     saves: "Сохранения",
@@ -434,7 +419,6 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
     offlineHelp:
       "Один раз загружает все данные игры в кэш браузера; после этого игра запускается без сети.",
     install: "Установить данные игры ({size} МБ)",
-    installing: "Установка … {loaded} / {total} МБ",
     remove: "Удалить",
     persisted: "Браузер хранит данные постоянно.",
     notPersisted: "Браузер может удалить данные при нехватке места.",

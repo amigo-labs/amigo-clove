@@ -171,9 +171,6 @@ export class Renderer {
   /** Abblende-Schwarz über dem Spielfeld (Alpha je Frame). */
   private readonly fade = new Graphics().rect(0, 0, 800, 550).fill(0x000000);
   private frameNo = 0;
-  /** Bildschirm-Overlays (Speicherbildschirm): GDI-Texte unter, Logo über der Abblende. */
-  readonly underFade = new Container();
-  readonly overFade = new Container();
 
   constructor(
     private readonly textures: TextureRegistry,
@@ -192,7 +189,7 @@ export class Renderer {
       this.layers.set(name, c);
       this.batches.set(name, new SpriteBatch(c));
     }
-    this.root.addChild(this.underFade, this.fade, this.overFade);
+    this.root.addChild(this.fade);
     this.root.addChild(this.hudLayer);
     this.hud = new SpriteBatch(this.hudLayer);
     this.ticker.position.set(575, TICKER_Y);
@@ -270,7 +267,6 @@ export class Renderer {
     // Abblenden in den letzten 50 Ticks
     const left = w.level.levelLength - w.tick;
     this.fade.alpha = left < 50 && !w.nova ? (50 - left) / 50 : 0;
-    this.fade.scale.y = 1;
     const modern = this.modernHud();
     if (!modern) {
       this.drawHud();
@@ -281,29 +277,6 @@ export class Renderer {
     // mit dem HTML-HUD zeigen Laufband und Tastenhinweis die Shell (`dovezMessages`)
     this.ticker.visible = !modern;
     this.ticker.text = modern ? "" : w.radio.ticker;
-    for (const b of this.batches.values()) b.end();
-    this.hud.end();
-    this.compose();
-  }
-
-  /**
-   * Speicherbildschirm (`SaveGame`): nur `SpielMoveHintergrund` und das HUD,
-   * dazu Schwarz mit `fade` über dem Spielfeld (unter `overFade` und HUD).
-   */
-  drawBackdrop(fade: number): void {
-    const w = this.world;
-    if (w.env.frame === this.lastFrame) return;
-    this.lastFrame = w.env.frame;
-    this.frameNo++;
-    for (const b of this.batches.values()) b.begin();
-    this.hud.begin();
-    this.drawHint();
-    this.screen.position.set(0, 0);
-    this.fade.alpha = Math.max(0, Math.min(1, fade));
-    this.fade.scale.y = 600 / 550;
-    this.placeRadio(false);
-    if (!this.modernHud()) this.drawHud();
-    this.ticker.text = w.radio.ticker;
     for (const b of this.batches.values()) b.end();
     this.hud.end();
     this.compose();
