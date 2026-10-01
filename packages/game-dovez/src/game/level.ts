@@ -1,29 +1,20 @@
 import { FixedStepLoop, type AtlasJson, type GameHost } from "@clove/core";
 import type { TextureRegistry } from "@clove/pixi-kit";
-import { type Application, Graphics, Sprite } from "pixi.js";
+import type { Application } from "pixi.js";
 import { DovezAudio } from "../audio/DovezAudio";
 import { loadLevelPack } from "../data/LevelPack";
 import { Renderer } from "../render/Renderer";
 import { NO_INPUT } from "../sim/player";
 import type { SpriteSource } from "../sim/surfaces";
-import { f32, type VbRnd } from "../sim/vb";
+import type { VbRnd } from "../sim/vb";
 import { type Carry, TICK_MS, World } from "../sim/world";
-import {
-  CONTINUE_MS,
-  ContinueLogic,
-  applyContinue,
-  continueRanks,
-  rankTexts,
-} from "./continueScreen";
-import { ContinueView } from "./continueView";
-import { GdiText, atlasTexture } from "./gdi";
-import { addHighscore } from "./highscore";
-import { PointerControl, keyLabel, readInput, screenKeys } from "./input";
+import { dovezControls } from "../controls";
+import { applyContinue, runContinue } from "./continueScreen";
+import { PointerControl, currentKeys, keyLabel, readInput } from "./input";
 import type { Lang } from "./lang";
 import { type DovezConfig, audioGains } from "./config";
 import type { Mosaic } from "./mosaic";
-import { PAUSE_MS, PauseLogic, pauseMenu, pauseTitle, wrapRadioLog } from "./pauseScreen";
-import { PauseView } from "./pauseView";
+import { runPause } from "./pauseScreen";
 import type { Profile } from "./profile";
 import type { Scene } from "./scene";
 import type { ScreenTargets } from "./screenTargets";
@@ -33,8 +24,8 @@ export interface GameContext {
   readonly host: GameHost;
   readonly app: Application;
   readonly textures: TextureRegistry;
-  /** Atlanten `spiel`, `standart`, `pause`. */
-  readonly globals: readonly [AtlasJson, AtlasJson, AtlasJson];
+  /** Atlanten `spiel` und `standart`. */
+  readonly globals: readonly [AtlasJson, AtlasJson];
   readonly targets: ScreenTargets;
   /** Spielsprache (`Me.588070`). */
   readonly lang: Lang;
@@ -58,20 +49,8 @@ export interface LevelOptions {
   readonly screen?: "continue" | "pause" | undefined;
 }
 
-type Mode =
-  | { readonly kind: "play" }
-  | {
-      readonly kind: "pause";
-      readonly logic: PauseLogic;
-      readonly view: PauseView;
-      readonly loop: FixedStepLoop;
-    }
-  | {
-      readonly kind: "continue";
-      readonly logic: ContinueLogic;
-      readonly view: ContinueView;
-      readonly loop: FixedStepLoop;
-    };
+/** Spiel läuft, oder ein HTML-Bildschirm der Shell steht über dem eingefrorenen Bild. */
+type Mode = "play" | "pause" | "continue";
 
 /** Bundles eines Levels (Ladefortschritt). */
 export const levelBundles = (slug: string): string[] => [`level/${slug}`, `voice/${slug}`];
@@ -79,27 +58,21 @@ export const levelBundles = (slug: string): string[] => [`level/${slug}`, `voice
 /**
  * Ein Level spielen (`SpielLoop` `0x53D170`): Welt im 16-ms-Takt, Zeichnen,
  * Ton und Funk; Esc oder Fokusverlust öffnet die Pause, ohne Leben folgt der
- * Continue-Bildschirm. Ergebnis `done` (Level geschafft, `Me.580 = 2`) oder
- * `exit` (Game Over, Pause „EXIT“: `mode = 9` → Hauptmenü).
+ * Continue-Bildschirm — beide als HTML der Shell über dem eingefrorenen Bild
+ * (`over: "level"`), solange steht die Welt. Ergebnis `done` (Level geschafft,
+ * `Me.580 = 2`) oder `exit` (Game Over, Pause „EXIT“: `mode = 9` → Hauptmenü).
  */
 export class LevelScene implements Scene {
   result: "done" | "exit" | undefined;
   private readonly loop = new FixedStepLoop(TICK_MS);
-  private mode: Mode = { kind: "play" };
+  private mode: Mode = "play";
   private showcase: "continue" | "pause" | undefined;
-  /** `Me.518` nach der Pause: α des letzten Pausebilds, −0,05 je Tick (`OverlayEffekte`). */
-  private afterPauseAlpha = 0;
   private windowFocus = true;
   private readonly win: Window | null;
   private readonly onBlur = () => (this.windowFocus = false);
   private readonly onFocus = () => (this.windowFocus = true);
-  private readonly afterPause: Sprite;
-  private readonly screenSprite: Sprite;
-  private readonly darken = new Graphics().rect(0, 0, 800, 600).fill(0x000000);
-  private readonly logFont = new GdiText(18, 0);
-  private readonly kreis;
-  private readonly balken;
-  private readonly pauseImage;
+  /** Schließt einen offenen HTML-Bildschirm, wenn das Level vorher endet. */
+  private readonly screens = new AbortController();
   private readonly pages: string[];
   private readonly pointer = new PointerControl();
 
@@ -112,18 +85,8 @@ export class LevelScene implements Scene {
     private readonly music: string,
     pages: readonly string[],
   ) {
-    const { targets, textures, globals } = ctx;
     this.pages = [...pages];
     this.showcase = opts.screen;
-    const [, standart, pauseAtlas] = globals;
-    this.kreis = atlasTexture(textures, standart, "a_kreis2");
-    this.balken = atlasTexture(textures, standart, "balken");
-    this.pauseImage = atlasTexture(textures, pauseAtlas, "pausescreen");
-    this.afterPause = new Sprite(targets.afterPause);
-    this.screenSprite = new Sprite(targets.back);
-    this.afterPause.visible = false;
-    this.screenSprite.visible = false;
-    this.darken.alpha = 0.3;
     // Fokus (`GetFocus() = hWnd`): Fokusverlust öffnet die Pause, ohne Fokus zählen keine Tasten
     this.win = ctx.host.canvas.ownerDocument.defaultView;
     this.win?.addEventListener("blur", this.onBlur);
@@ -134,7 +97,7 @@ export class LevelScene implements Scene {
   private attached = false;
   private attach(): void {
     this.attached = true;
-    this.ctx.app.stage.addChild(this.renderer.root, this.afterPause, this.screenSprite);
+    this.ctx.app.stage.addChild(this.renderer.root);
     this.audio?.playMusic(this.music);
     this.loop.reset(this.ctx.host.now());
   }
@@ -193,28 +156,11 @@ export class LevelScene implements Scene {
     return this.windowFocus && !this.ctx.host.canvas.ownerDocument.hidden;
   }
 
-  private keys() {
-    const { host, players } = this.ctx;
-    return screenKeys(
-      host,
-      players === 2 ? 1 : 0,
-      this.world.players[0]?.exitState ?? 0,
-      this.focused(),
-    );
-  }
-
-  /** Letztes Spielbild nach `shot` (Continue: mit 30 % Schwarz überdeckt). */
-  private captureShot(dark: boolean): void {
-    const { app, targets } = this.ctx;
-    this.screenSprite.visible = false;
+  /** `NewPictureToLoadingscreen`: das letzte Spielbild ins Mosaik. */
+  private snapshot(): void {
+    const { app, targets, mosaic } = this.ctx;
     targets.draw(app.stage, targets.shot, true);
-    if (dark) targets.draw(this.darken, targets.shot);
-  }
-
-  private showScreen(on: boolean): void {
-    this.screenSprite.visible = on;
-    this.renderer.root.visible = !on;
-    if (on) this.afterPause.visible = false;
+    mosaic.add(app.renderer, targets.shot);
   }
 
   /** Vibration je Tick erneuern (der Motorimpuls des Hosts ist kurz), Ende einmal melden. */
@@ -229,62 +175,59 @@ export class LevelScene implements Scene {
     }
   }
 
+  private get persist(): boolean {
+    return !this.opts.screen;
+  }
+
+  /** `Pause`: Ton anhalten, Momentaufnahme, dann das Pausemenü der Shell. */
   private enterPause(): void {
     const { ctx, world } = this;
     this.rumble(true);
     this.audio?.pause();
-    this.captureShot(false);
-    // NewPictureToLoadingscreen beim Öffnen der Pause
-    ctx.mosaic.add(ctx.app.renderer, ctx.targets.shot);
-    const log = wrapRadioLog(world.radio.log, (s) => this.logFont.width(s));
-    const view = new PauseView(ctx.targets, this.balken, this.pauseImage, {
-      menu: pauseMenu(ctx.lang),
-      title: pauseTitle(this.opts.name, ctx.profile.names, ctx.lang),
-      log,
-    });
-    const logic = new PauseLogic(world.rnd);
-    this.mode = { kind: "pause", logic, view, loop: new FixedStepLoop(PAUSE_MS) };
+    this.snapshot();
+    this.mode = "pause";
+    void runPause(ctx.host.ui, {
+      lang: ctx.lang,
+      level: this.opts.name,
+      profile: ctx.profile,
+      score: world.score,
+      log: world.radio.log,
+      controls: dovezControls(ctx.players, currentKeys()),
+      persist: this.persist,
+      signal: this.screens.signal,
+    }).then((r) => this.leavePause(r === "exit"));
   }
 
-  private leavePause(view: PauseView, exit: boolean, restore: boolean): void {
-    const { ctx } = this;
-    ctx.targets.keepAfterPause();
-    view.destroy();
-    this.showScreen(false);
-    this.mode = { kind: "play" };
+  private leavePause(exit: boolean): void {
+    if (this.screens.signal.aborted) return;
+    this.mode = "play";
     if (exit) {
-      // „EXIT“: Highscore mit dem aktuellen Stand, dann Hauptmenü
-      let list = ctx.profile.highscores;
-      ctx.profile.names.forEach((name, p) => {
-        list = addHighscore(list, name, this.world.score[p] ?? 0, ctx.profile.ids[p]!).list;
-      });
-      if (!this.opts.screen) ctx.profile.store(list);
+      // „EXIT“: der Highscore steht schon, dann Hauptmenü
       this.result = "exit";
       return;
     }
-    this.audio?.resume(restore);
-    this.afterPauseAlpha = 1;
-    this.loop.reset(ctx.host.now());
+    this.audio?.resume(true);
+    this.loop.reset(this.ctx.host.now());
   }
 
+  /** `Continue`: Highscore eintragen, `Continue.ogg`, die Abfrage der Shell. */
   private enterContinue(): void {
     const { ctx, world } = this;
     this.audio?.stopVoice();
-    const { names, ids } = ctx.profile;
-    const players = names.map((name, p) => ({ name, score: world.score[p] ?? 0, id: ids[p]! }));
-    const r = continueRanks(ctx.profile.highscores, players);
-    if (!this.opts.screen) ctx.profile.store(r.list);
-    this.captureShot(true);
-    const view = new ContinueView(ctx.targets, this.kreis, rankTexts(names, r.ranks, ctx.lang));
     this.audio?.playContinueMusic();
-    const logic = new ContinueLogic(world.rnd);
-    this.mode = { kind: "continue", logic, view, loop: new FixedStepLoop(CONTINUE_MS) };
+    this.mode = "continue";
+    void runContinue(ctx.host.ui, {
+      lang: ctx.lang,
+      profile: ctx.profile,
+      score: world.score,
+      persist: this.persist,
+      signal: this.screens.signal,
+    }).then((ok) => this.leaveContinue(ok));
   }
 
-  private leaveContinue(view: ContinueView, ok: boolean): void {
-    view.destroy();
-    this.showScreen(false);
-    this.mode = { kind: "play" };
+  private leaveContinue(ok: boolean): void {
+    if (this.screens.signal.aborted) return;
+    this.mode = "play";
     this.audio?.stopMusic();
     if (!ok) {
       // Game Over → Hauptmenü (der Highscore steht schon)
@@ -300,68 +243,14 @@ export class LevelScene implements Scene {
     this.loop.reset(this.ctx.host.now());
   }
 
-  /**
-   * `n` fällige Durchläufe des laufenden Bildschirms. Die Logik (und ihr
-   * `Rnd`) läuft jeden Durchlauf; gezeichnet wird wie beim Bildauslassen des
-   * Originals nur der letzte je Anzeigebild.
-   */
-  private runScreen(n: number): void {
-    let pending: (() => void) | undefined;
-    const flush = () => {
-      pending?.();
-      pending = undefined;
-    };
-    for (let i = 0; i < n; i++) {
-      if (this.result) return;
-      const m = this.mode;
-      if (m.kind === "pause") {
-        const pass = m.logic.step(this.keys());
-        if (pass)
-          pending = () => {
-            m.view.draw(pass);
-            this.showScreen(true);
-          };
-        const r = m.logic.result;
-        if (r) {
-          flush();
-          this.leavePause(m.view, r.exit, r.restore);
-          return;
-        }
-      } else if (m.kind === "continue") {
-        // Die Schleife endet erst nach dem Durchlauf (und `Wait 40`), in dem `ok` bzw. das Ende fiel
-        if (m.logic.result !== undefined) {
-          flush();
-          this.leaveContinue(m.view, m.logic.result);
-          return;
-        }
-        const pass = m.logic.step(this.keys());
-        pending = () => {
-          m.view.draw(pass);
-          this.showScreen(true);
-        };
-      } else break;
-    }
-    flush();
-  }
-
   /** Das Spielfeld läuft (keine Pause, kein Continue, nicht fertig). */
   get playing(): boolean {
-    return this.mode.kind === "play" && this.result === undefined;
+    return this.mode === "play" && this.result === undefined;
   }
 
-  /** Das Pausemenü ist offen (für die Tastenübersicht der Shell). */
-  get paused(): boolean {
-    return this.mode.kind === "pause";
-  }
-
-  /** Spieleranzahl dieses Levels. */
-  get players(): 1 | 2 {
-    return this.ctx.players;
-  }
-
-  /** Mit dem HTML-HUD zeigt der laufende Level nur das Spielfeld (800 × 550). */
+  /** Mit dem HTML-HUD zeigt das Level nur das Spielfeld (800 × 550), auch eingefroren unter Pause und Continue. */
   get fieldOnly(): boolean {
-    return this.playing && this.ctx.host.hudMode?.() === "modern";
+    return this.result === undefined && this.ctx.host.hudMode?.() === "modern";
   }
 
   /** Levelname wie im Original (`[0x5880C4]`). */
@@ -374,19 +263,14 @@ export class LevelScene implements Scene {
     if (!this.attached) this.attach();
     const { ctx, world } = this;
     const { host } = ctx;
-    if (this.mode.kind !== "play") {
-      this.runScreen(this.mode.loop.frame(now));
-      return this.result !== undefined;
-    }
+    // Pause und Continue: die Welt steht, bis die Shell antwortet
+    if (this.mode !== "play") return this.result !== undefined;
     let next: "pause" | "continue" | undefined;
     const n = this.loop.frame(now);
     // Tod: Neustart erst nach dem gezeichneten Todesbild (Standbild für die Überblendung)
     if (world.state === 1) {
       // NewPictureToLoadingscreen: das Todesbild ins Mosaik
-      if (n > 0) {
-        this.captureShot(false);
-        ctx.mosaic.add(ctx.app.renderer, ctx.targets.shot);
-      }
+      if (n > 0) this.snapshot();
       if (!world.respawn()) next = "continue";
     }
     let done = false;
@@ -400,8 +284,6 @@ export class LevelScene implements Scene {
         for (const p of world.players) p.invulnerable = Math.max(p.invulnerable, 2);
       world.step(inputs);
       this.rumble();
-      if (this.afterPauseAlpha > 0)
-        this.afterPauseAlpha = Math.max(0, f32(this.afterPauseAlpha - 0.05));
       // Tod: Neustart am Checkpoint im nächsten Frame, ohne Leben der Continue-Bildschirm
       if (world.state === 1) break;
       // Level geschafft (`Me.580 = 2`): der Tick läuft zu Ende, die Schleife bricht ab
@@ -417,8 +299,6 @@ export class LevelScene implements Scene {
     this.audio?.update(world);
     world.events.length = 0;
     this.renderer.draw();
-    this.afterPause.visible = this.afterPauseAlpha > 0;
-    this.afterPause.alpha = this.afterPauseAlpha;
     if (done) {
       // SpielSoundOFF, `StopOgg`
       this.audio?.stopLevel();
@@ -428,22 +308,16 @@ export class LevelScene implements Scene {
     if (!next) return false;
     if (next === "pause") this.enterPause();
     else this.enterContinue();
-    this.runScreen(1);
-    return this.result !== undefined;
+    return false;
   }
 
   destroy(): void {
+    this.screens.abort();
     this.rumble(true);
     this.win?.removeEventListener("blur", this.onBlur);
     this.win?.removeEventListener("focus", this.onFocus);
-    if (this.mode.kind !== "play") this.mode.view.destroy();
     this.audio?.dispose();
     this.renderer.destroy();
-    this.logFont.destroy();
-    this.darken.destroy();
-    this.afterPause.destroy();
-    this.screenSprite.destroy();
-    for (const t of [this.kreis, this.balken, this.pauseImage]) t?.destroy(false);
     this.ctx.textures.unload(this.pages);
   }
 }

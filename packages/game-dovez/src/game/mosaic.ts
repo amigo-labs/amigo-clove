@@ -1,5 +1,5 @@
-import type { KeyValueStore } from "@clove/core";
-import { type Renderer, type RenderTexture, Texture } from "pixi.js";
+import type { KeyValueStore, UiImage } from "@clove/core";
+import type { Renderer, RenderTexture } from "pixi.js";
 
 /**
  * Das Ladebild ohne `Take`-Bild (`App\Loadingscreen.bmp`, Einzellevel und
@@ -42,9 +42,10 @@ export class Mosaic {
     }
   }
 
-  /** Das Mosaik als 800 × 600-Textur (leere Plätze schwarz). */
-  async texture(): Promise<Texture> {
+  /** Das Mosaik als 800 × 600-Bild für den Ladebildschirm der Shell (leere Plätze schwarz). */
+  async image(): Promise<UiImage | undefined> {
     const doc = globalThis.document;
+    if (!doc) return undefined;
     const canvas = doc.createElement("canvas");
     canvas.width = 800;
     canvas.height = 600;
@@ -65,6 +66,10 @@ export class Mosaic {
         }
       }),
     );
-    return Texture.from(canvas);
+    try {
+      return { url: canvas.toDataURL("image/webp", 0.85), w: 800, h: 600, alt: "" };
+    } catch {
+      return undefined;
+    }
   }
 }

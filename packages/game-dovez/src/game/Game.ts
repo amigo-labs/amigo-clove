@@ -1,44 +1,32 @@
 import { LoveLogic } from "./love";
 import { LoveScene } from "./loveScene";
-import type { AtlasJson, ControlsSheet, GameHost, GameInstance } from "@clove/core";
+import type { AtlasJson, GameHost, GameInstance, UiImage, UiScreen } from "@clove/core";
 import { StreamPlayer } from "@clove/audio";
 import { dovezSlug, type PlayStep } from "@clove/formats";
 import { TextureRegistry, createScreen, setView } from "@clove/pixi-kit";
-import type { Texture } from "pixi.js";
 import { Renderer } from "../render/Renderer";
-import { VbRnd, vbInt } from "../sim/vb";
+import { VbRnd } from "../sim/vb";
 import type { Carry } from "../sim/world";
 import { Campaign, type CampaignAction, languageVideo } from "./campaign";
 import { type DovezConfig, loadConfig, saveConfig } from "./config";
-import { CreditsLogic, CreditsScene, creditsMask } from "./credits";
+import { creditsScreen } from "./credits";
 import { FadeLogic, FadeScene } from "./fadeOut";
 import { atlasTexture } from "./gdi";
 import { parseHighscores, HIGHSCORE_KEY } from "./highscore";
-import { dovezControls } from "../controls";
-import { codeOfDik, currentKeys, keyText, okKey, pauseKey, readInput, useKeys } from "./input";
+import { pauseKey, useKeys } from "./input";
 import { atlasSprites, dovezHud } from "./hud";
-import { resolveLang } from "./lang";
+import { type Lang, loadingText, resolveLang } from "./lang";
 import { type GameContext, LevelScene, levelBundles } from "./level";
-import { LoadingScene } from "./loadingScreen";
+import { loadingNotice } from "./loadingScreen";
+import { type MenuResult, htmlMenu } from "./menu/htmlMenu";
 import { LogoGlitch, LogoShow, LogoTunnel } from "./menu/logos";
-import { MenuLogic, type MenuResult } from "./menu/menuLogic";
-import { MenuAudio, MenuScene } from "./menu/menuScene";
-import { MenuView } from "./menu/menuView";
+import { MenuAudio } from "./menu/menuAudio";
 import { Mosaic } from "./mosaic";
 import { Profile } from "./profile";
-import {
-  EMPTY_SLOT,
-  type SaveFile,
-  parseSave,
-  saveKey,
-  saveLabel,
-  serializeSave,
-  slotLabels,
-} from "./saveGame";
-import { SaveScene, savePlaces } from "./saveScreen";
+import { EMPTY_SLOT, type SaveFile, parseSave, saveKey, saveLabel, slotLabels } from "./saveGame";
+import { runSaveScreen, savePlaces } from "./saveScreen";
 import type { Scene } from "./scene";
 import { ScreenTargets } from "./screenTargets";
-import { VideoScene } from "./videoScene";
 
 /**
  * DoveZ spielen (M8) wie die Hauptschleife des Originals (`0x54E430`):
@@ -48,6 +36,11 @@ import { VideoScene } from "./videoScene";
  * führen zurück ins Menü, „Exit“ im Menü zur Shell. Mit `level`, `step` oder
  * `load` geht es ohne Menü direkt ins Spiel (danach zur Shell). Befund:
  * `docs/measurements/dovez-runtime.md` („Kampagne“, „Hauptmenü“).
+ *
+ * Im Canvas laufen nur die Level, die Start-Logos und das Osterei. Menü,
+ * Ladebild, Speicherbildschirm, Pause, Continue, Videos und Abspann sind
+ * HTML-Bildschirme der Shell (`GameHost.ui`), gebaut aus den Texten und Bildern
+ * des Originals.
  */
 
 export const SCREEN_WIDTH = 800;
@@ -106,6 +99,26 @@ interface Start {
   readonly step?: number | undefined;
 }
 
+/** Video der Original-Assets über die Shell; fehlt es, geht es gleich weiter. */
+async function playVideo(
+  host: GameHost,
+  id: string,
+  lang: Lang,
+  /** „Loading“, bis es läuft (Kampagne, nicht beim Intro). */
+  showLoading: boolean,
+  signal: AbortSignal,
+): Promise<void> {
+  if (!host.assets.has(id)) return;
+  await host.ui.show(
+    {
+      kind: "video",
+      url: host.assets.url(id),
+      ...(showLoading ? { loading: loadingText(lang).text } : {}),
+    },
+    signal,
+  );
+}
+
 export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameInstance> {
   const app = await createScreen({
     canvas: host.canvas,
@@ -115,16 +128,21 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
   });
   const textures = new TextureRegistry(host.assets);
   const globals = (await Promise.all(
-    ["atlas/spiel", "atlas/standart", "atlas/pause"].map((id) => host.assets.json<AtlasJson>(id)),
-  )) as [AtlasJson, AtlasJson, AtlasJson];
+    ["atlas/spiel", "atlas/standart"].map((id) => host.assets.json<AtlasJson>(id)),
+  )) as [AtlasJson, AtlasJson];
   await textures.load(Renderer.pageIds(globals.map((json) => ({ json }))));
   const standart = globals[1];
+  /** Das DoveZ-Logo (`Standart.d2p`, wie auf dem Mosaik-Ladebild) für Menü und Speicherbildschirm. */
+  const logoSprite = atlasSprites(host.assets, standart)("logo");
+  const dovezLogo: UiImage | undefined = logoSprite
+    ? { sprite: logoSprite, alt: "DoveZ" }
+    : undefined;
   /** `Me.588070`: `lang=` der URL, sonst die Locale des Hosts (`de`, `ru`, sonst Englisch). */
   const lang = resolveLang(opts.lang, host.locale);
   const persist = opts.screen === undefined;
   const targets = new ScreenTargets(app.renderer);
   const mosaic = new Mosaic(host.storage, persist);
-  /** Die eine `Rnd`-Folge des Programms (Menü, Logos, alle Level). */
+  /** Die eine `Rnd`-Folge des Programms (Logos, Spiel-IDs, alle Level). */
   const rnd = new VbRnd();
   let config: DovezConfig = loadConfig(host.storage);
   useKeys(config.keys);
@@ -137,6 +155,9 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
   let scene: Scene | undefined;
   let finish: (() => void) | undefined;
   let disposed = false;
+  /** Schließt beim Beenden einen offenen HTML-Bildschirm. */
+  const screens = new AbortController();
+  const show = (screen: UiScreen) => host.ui.show(screen, screens.signal);
   let music: StreamPlayer | undefined;
   /** Die Level-Szene, solange sie lebt (auch im Speicherbildschirm). */
   let current: LevelScene | undefined;
@@ -152,7 +173,7 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
         resolve();
       };
     });
-  /** Wie `play`, aber ohne aufzuräumen (die Level-Szene lebt im Speicherbildschirm weiter). */
+  /** Wie `play`, aber ohne aufzuräumen (das Level spielt im Speicherbildschirm noch die Musik). */
   const run = (s: Scene): Promise<void> =>
     new Promise((resolve) => {
       scene = s;
@@ -213,28 +234,29 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
       a: Extract<CampaignAction, { kind: "level" }>,
       first: boolean,
     ): Promise<LevelScene | undefined> => {
-      let image: Texture | undefined;
+      let sprite: UiImage | undefined;
       if (a.loading) {
         const atlas = await host.assets.json<AtlasJson>("atlas/loading");
-        await textures.load(atlas.pages);
-        image = atlasTexture(textures, atlas, a.loading);
+        const take = atlasSprites(host.assets, atlas)(a.loading);
+        if (take) sprite = { sprite: take };
       }
       // ohne Ladebild (Einzellevel, Epilog): das Mosaik, ohne Tastendruck
-      const isMosaic = image === undefined;
-      const loading = new LoadingScene(
-        host,
-        app,
-        textures,
-        standart,
-        image ?? (await mosaic.texture()),
-        isMosaic,
-        lang,
+      const isMosaic = a.loading === undefined || sprite === undefined;
+      const image = isMosaic ? await mosaic.image() : sprite;
+      let loaded = 0;
+      let ready = false;
+      const shown = show(
+        loadingNotice({
+          lang,
+          image,
+          mosaic: isMosaic,
+          progress: () => (ready ? 1 : Math.min(loaded, 0.99)),
+        }),
       );
-      const shown = play(loading);
       const bundles = levelBundles(a.slug).filter((b) => host.assets.bundle(b).length > 0);
-      await host.assets.preload(bundles, (done, total) =>
-        loading.progress(total > 0 ? done / total : 1),
-      );
+      await host.assets.preload(bundles, (done, total) => {
+        loaded = total > 0 ? done / total : 1;
+      });
       const level = await LevelScene.create(ctx, {
         slug: a.slug,
         name: a.name,
@@ -247,12 +269,12 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
             ? opts.screen
             : undefined,
       });
+      ready = true;
+      await shown;
       if (disposed) {
         level.destroy();
         return undefined;
       }
-      loading.finish();
-      await shown;
       current = level;
       await run(level);
       if (level.result !== "done") {
@@ -264,38 +286,27 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
       return level;
     };
 
-    /** `SaveGame`: Speicherbildschirm auf dem geschafften Level, dann Abblende. */
+    /**
+     * `SaveGame`: Highscore eintragen, Speicherbildschirm der Shell mit
+     * `Save_Screen.ogg`; gespeichert wird der Stand nach dem Level, danach
+     * „Gespeichert“ mit `Save.wav`.
+     */
     const saveScreen = async (level: LevelScene) => {
-      const ranks = savePlaces(ctx.profile.addAll(level.world.score));
-      const screen = new SaveScene(
-        level,
-        textures,
-        standart,
-        {
-          lang,
-          level: level.name,
-          scores: level.world.score.slice(0, players),
-          places: ranks,
-          highscores: ctx.profile.highscores,
-          ids: ctx.profile.ids,
-          slots: slotLabels(host.storage),
-        },
-        () => {
-          const i = readInput(host, players === 2 ? 1 : 0);
-          return {
-            ok: okKey(host),
-            esc: pauseKey(host),
-            up: i.up,
-            down: i.down,
-            left: i.left,
-            right: i.right,
-          };
-        },
-      );
-      await run(screen);
-      const slot = screen.logic.result?.slot;
-      if (slot !== undefined && persist) {
-        const file: SaveFile = {
+      const score = level.world.score;
+      const ranks = savePlaces(ctx.profile.addAll(score));
+      level.audio?.playSaveMusic();
+      await runSaveScreen(host.ui, {
+        lang,
+        level: level.name,
+        scores: score.slice(0, players),
+        places: ranks,
+        highscores: ctx.profile.highscores,
+        ids: ctx.profile.ids,
+        slots: slotLabels(host.storage),
+        logo: dovezLogo,
+        storage: host.storage,
+        persist,
+        file: () => ({
           version: 1,
           label: saveLabel(players, ship, campaign.pass, level.name, new Date(), lang),
           step: campaign.step,
@@ -305,13 +316,14 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
           names: ctx.profile.names,
           ids: ctx.profile.ids,
           carry: level.world.carry(),
-        };
-        host.storage.set(saveKey(slot), serializeSave(file));
-        screen.showSaved();
-        level.renderer.drawBackdrop(screen.logic.fade);
-      }
-      await play(new FadeScene(app, targets, new FadeLogic(0, rnd)));
-      screen.destroy();
+        }),
+        saved: () => {
+          level.audio?.stopMusic();
+          level.audio?.effect("save", true);
+        },
+        signal: screens.signal,
+      });
+      level.audio?.stopMusic();
     };
 
     let action: CampaignAction = start.single
@@ -340,7 +352,7 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
           action = campaign.next(lang);
           break;
         case "video":
-          if (opts.videos) await play(new VideoScene(host, app, action.id, lang));
+          if (opts.videos) await playVideo(host, action.id, lang, true, screens.signal);
           action = campaign.next(lang);
           break;
         case "credits":
@@ -357,21 +369,18 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
     }
   };
 
-  /** Outro, Abspann, Abblende, Musik aus. */
+  /** Outro, Abspann mit dem Originalbild, Musik aus. */
   const credits = async (outro: string) => {
-    if (opts.videos) await play(new VideoScene(host, app, outro, lang));
+    if (opts.videos) await playVideo(host, outro, lang, true, screens.signal);
+    if (disposed) return;
     const logoAtlas = await host.assets.json<AtlasJson>("atlas/logo");
-    await textures.load(logoAtlas.pages);
-    const mask = await creditsMask(host, logoAtlas);
     if (host.audio) {
       music ??= new StreamPlayer(host.audio.context, host.audio.music);
       music.setVolume(config.music / 100);
       if (host.assets.has("music/enhaced_credits"))
         music.play(host.assets.url("music/enhaced_credits"), false);
     }
-    const logic = new CreditsLogic(rnd, mask);
-    await play(new CreditsScene(host, app, targets, textures, logoAtlas, standart, logic));
-    await play(new FadeScene(app, targets, new FadeLogic(1, rnd)));
+    await show(creditsScreen(lang, atlasSprites(host.assets, logoAtlas)("credits")));
     music?.setVolume(0, 0.18);
     await new Promise((r) => setTimeout(r, 180));
     music?.stop();
@@ -403,65 +412,58 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
     noise?.destroy(false);
   };
 
-  /** Ein Aufruf von `MenuLoop`; `first`: nach dem Intro aus dem Hangar einblenden. */
-  const menu = async (first: boolean, hangar: 0 | 1): Promise<MenuResult | undefined> => {
-    const atlas = await host.assets.json<AtlasJson>("atlas/menu");
-    await textures.load(atlas.pages);
-    const view = new MenuView(app.renderer, textures, atlas, standart, hangar);
-    if (first) {
-      const h = atlasTexture(textures, atlas, `hangar${hangar}`);
-      view.startStill(h);
-      h?.destroy(false);
-    }
-    const logic = new MenuLogic({
+  /** Ein Aufruf von `MenuLoop` als HTML-Menü, mit `intro.ogg` in Schleife. */
+  const menu = async (): Promise<MenuResult> => {
+    const menuAtlas = await host.assets.json<AtlasJson>("atlas/menu");
+    const menuSprite = atlasSprites(host.assets, menuAtlas);
+    menuAudio?.startMusic(config.music);
+    const result = await htmlMenu({
+      ui: host.ui,
       lang,
       rnd,
       passes: passes(),
       highscores: parseHighscores(host.storage.get(HIGHSCORE_KEY)),
       slots: slotLabels(host.storage).map((s) => (s === EMPTY_SLOT ? undefined : s)),
       config,
-      playersMinus1: (lastPlayers - 1) as 0 | 1,
+      players: lastPlayers,
       names: lastNames,
       ids: lastIds,
-      keyText,
-      codeOfDik,
-      pads: () => host.rumblePads?.() ?? 0,
-    });
-    app.stage.addChild(view.root);
-    await play(
-      new MenuScene(host, logic, view, menuAudio, (c) => {
+      onConfig: (c) => {
+        if (c.music !== config.music) menuAudio?.music.setVolume(c.music / 100);
         config = c;
         useKeys(c.keys);
         if (persist) saveConfig(host.storage, c);
-      }),
-    );
-    // `mode = 1` → `FadeOut 1, False` über dem letzten Menübild
-    // Osterei: `FadeOut(0, False)` statt `FadeOut(1, False)` über dem Menübild
-    if (logic.result?.kind === "love")
-      await play(new FadeScene(app, targets, new FadeLogic(0, rnd)));
-    else if (logic.result && logic.result.kind !== "exit")
-      await play(new FadeScene(app, targets, new FadeLogic(1, rnd)));
-    view.destroy();
-    textures.unload(atlas.pages);
-    return logic.result;
+      },
+      sound: (name) => menuAudio?.play(name, name === "speech" ? config.speech : config.sfx),
+      pads: () => host.rumblePads?.() ?? 0,
+      rumble: host.rumble,
+      logo: dovezLogo,
+      // erstes Bild der Schiffsdrehung: D-Tonator `shipselect1…`, D-Phyton `shipselect0…`
+      shipImage: (ship) => {
+        const s = menuSprite(`shipselect${ship === 0 ? 1 : 0}0000`);
+        return s ? { sprite: s, alt: ship === 0 ? "D-Tonator" : "D-Phyton" } : undefined;
+      },
+      signal: screens.signal,
+    });
+    menuAudio?.music.stop();
+    return result;
   };
 
   const menuFlow = async () => {
     let first = true;
     for (;;) {
       if (disposed) return;
-      // `LoadMenuSurfaces`: Hangar `Int(Rnd · 2)` vor dem Menü (und vor den Logos)
-      const hangar = vbInt(rnd.next() * 2) as 0 | 1;
       if (first && opts.intro) {
         await logos();
         if (opts.videos)
-          await play(new VideoScene(host, app, languageVideo("intro", lang), lang, false));
+          await playVideo(host, languageVideo("intro", lang), lang, false, screens.signal);
       }
-      const r = await menu(first, hangar);
       first = false;
-      if (!r || r.kind === "exit") return;
+      if (disposed) return;
+      const r = await menu();
+      if (disposed || r.kind === "exit") return;
       if (r.kind === "love") {
-        // L + O + V im Hauptmenü (`0x546C30`): Osterei, danach wie „Exit“ zurück zur Shell
+        // „lov“ im Hauptmenü (`0x546C30`): Osterei, danach wie „Exit“ zurück zur Shell
         await play(new LoveScene(host, app, textures, standart, new LoveLogic(rnd)));
         await play(new FadeScene(app, targets, new FadeLogic(0, rnd)));
         return;
@@ -521,24 +523,15 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
     });
 
   const hudSprite = atlasSprites(host.assets, globals[0]);
-  let sheet: { players: 1 | 2; keys: readonly string[]; controls: ControlsSheet } | undefined;
   return {
     hud() {
       const level = current;
       if (!level || scene !== level || !level.playing) return null;
       return dovezHud(level.world, hudSprite, lang);
     },
-    controls() {
-      const level = current;
-      if (!level || scene !== level || !level.paused) return null;
-      // dieselbe Übersicht, solange sich Spieleranzahl und Tasten nicht ändern
-      const keys = currentKeys();
-      if (sheet?.players !== level.players || sheet.keys !== keys)
-        sheet = { players: level.players, keys, controls: dovezControls(level.players, keys) };
-      return sheet.controls;
-    },
     dispose() {
       disposed = true;
+      screens.abort();
       app.ticker.remove(frame);
       if (scene !== current) scene?.destroy();
       scene = undefined;

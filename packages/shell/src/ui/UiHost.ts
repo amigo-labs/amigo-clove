@@ -453,7 +453,7 @@ export class UiHost implements GameUi {
       const out: Node[] = [];
       let group: string | undefined;
       for (const f of fields) {
-        if (f.kind === "key" && f.group && f.group !== group) {
+        if (f.group && f.group !== group) {
           group = f.group;
           out.push(h("h2", { class: "ui-group" }, group));
         }
@@ -616,14 +616,19 @@ export class UiHost implements GameUi {
     );
     const count = h("div", { class: "ui-countdown", "aria-live": "polite" });
     let timer: ReturnType<typeof setInterval> | undefined;
-    if (s.countdown) {
-      let n = s.countdown.from;
-      count.textContent = String(n);
+    const countdown = s.countdown;
+    let n = countdown?.from ?? 0;
+    const run = (ms: number) => {
+      clearInterval(timer);
       timer = setInterval(() => {
         n--;
         count.textContent = String(Math.max(0, n));
         if (n < 0) this.reply("timeout");
-      }, s.countdown.ms);
+      }, ms);
+    };
+    if (countdown) {
+      count.textContent = String(n);
+      run(countdown.ms);
     }
     const el = this.panel(
       s,
@@ -637,6 +642,11 @@ export class UiHost implements GameUi {
       focusables: () => buttons.filter((b) => !b.disabled),
       columns: buttons.length,
       initial: buttons.find((b) => b.dataset["id"] === s.selected) ?? buttons[0],
+      handle: (action) => {
+        if (action !== "back" || !countdown?.faster) return false;
+        run(countdown.ms / countdown.faster);
+        return true;
+      },
       stop: () => clearInterval(timer),
     };
   }
@@ -676,6 +686,11 @@ export class UiHost implements GameUi {
       el,
       focusables: () => [],
       initial: el,
+      key: (e) => {
+        if (s.until !== "any" || e.repeat) return false;
+        if (ready()) this.reply("ok");
+        return true;
+      },
       handle: (action) => {
         if (s.until === "progress") return true;
         if (action === "back" && s.back) return false;

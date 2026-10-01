@@ -8,7 +8,8 @@ import { bootGame } from "./game/Game";
  * DoveZ als `GameModule`. M8 im Aufbau: `#/dovez` zeigt Logos, Intro und das
  * Hauptmenü, daraus die Kampagne aus `Play.txt` (Ladebild, Level,
  * Speicherbildschirm, Videos, Outro, Abspann, Epilog), Bonuslevel und
- * Spielstände. URL-Optionen: `nointro=1` gleich ins Menü; ohne Menü
+ * Spielstände. Nur Level, Logos und Osterei zeichnet das Spiel im Canvas; alles
+ * andere sind HTML-Bildschirme der Shell (`GameHost.ui`). URL-Optionen: `nointro=1` gleich ins Menü; ohne Menü
  * `level=<slug>` ein einzelnes Level, `step=<n>` Kampagne ab Anweisung n,
  * `load=<1…21>` Spielstand; `video=0` ohne Videos,
  * `from=<Tick>` wie die Kommandozeile `-Tick N` des Originals (erstes Level),
@@ -25,8 +26,6 @@ const dovez: GameModule = {
   preload: ["core"],
   gamepad: DOVEZ_GAMEPAD,
   pads: DOVEZ_PADS,
-  // das Pausemenü steht oben links
-  controlsAt: "bottom",
   async boot(host: GameHost, options = {}): Promise<GameInstance> {
     if (options["view"] === "debug/assets") return bootAssetViewer(host);
     if (options["view"] === "debug/level") return bootLevelViewer(host);

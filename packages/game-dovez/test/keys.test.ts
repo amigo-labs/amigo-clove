@@ -7,7 +7,6 @@ import {
   ACTIONS,
   DEFAULT_KEYS,
   DIK,
-  heldDiks,
   keyLabel,
   keyName,
   keyText,
@@ -83,10 +82,6 @@ describe("Tastenbelegung", () => {
     keys[4] = "KeyY";
     expect(keyText(0, 4, keys)).toBe("S / Z");
     expect(keyLabel(4)).toBe("S");
-  });
-
-  test("gehaltene Tasten als DIK-Codes aufsteigend, Unbekanntes entfällt", () => {
-    expect(heldDiks(host("KeyS", "Escape", "Unbekannt", "ArrowLeft"))).toEqual([1, 31, 203]);
   });
 
   test("Konfiguration: Belegung wird gelesen, ungültige Werte fallen auf die Vorgabe", () => {

@@ -1,120 +1,80 @@
-/** Continue- und Pause-Bildschirm: Zustandslogik ohne Pixi. */
+/** Continue- und Pause-Bildschirm: Abläufe mit den HTML-Bildschirmen der Shell, ohne Pixi. */
 import { describe, expect, test } from "bun:test";
+import { dovezControls } from "../src/controls";
 import {
   CONTINUE_MS,
-  ContinueLogic,
+  DIGIT_MS,
   STEP_PASSES,
   applyContinue,
   continueRanks,
   rankTexts,
-  type ContinueKeys,
+  runContinue,
 } from "../src/game/continueScreen";
 import {
+  HIGHSCORE_KEY,
   NOT_RANKED,
   addHighscore,
   emptyHighscores,
   parseHighscores,
   serializeHighscores,
 } from "../src/game/highscore";
-import { PauseLogic, wrapRadioLog, type PauseKeys } from "../src/game/pauseScreen";
-import { VbRnd } from "../src/sim/vb";
+import { creditsScreen } from "../src/game/credits";
+import { loadingNotice } from "../src/game/loadingScreen";
+import { runPause, wrapRadioLog } from "../src/game/pauseScreen";
+import { Profile } from "../src/game/profile";
 import { World } from "../src/sim/world";
 import { loadTestLevel } from "./assets";
+import { ScriptUi, memoryStore } from "./fakeUi";
 
-const NONE: ContinueKeys = { ok: false, back: false, focus: true };
-
-/** `VbRnd`, der die Aufrufe zählt. */
-function countingRnd(): { next(): number; calls: number } {
-  const r = new VbRnd();
-  return {
-    calls: 0,
-    next() {
-      this.calls++;
-      return r.next();
-    },
-  };
-}
+const profile = (store = memoryStore()) =>
+  new Profile(store, 1, true, { names: ["Bruce"], ids: [7] });
 
 describe("Continue", () => {
-  test("Countdown: 28 Durchläufe à 40 ms je Schritt, die 0 steht einen Durchlauf", () => {
-    const c = new ContinueLogic(new VbRnd());
-    const digits: number[] = [];
-    let passes = 0;
-    while (!c.finishing) {
-      const p = c.step(NONE);
-      passes++;
-      if (p.kind === "normal") digits.push(p.digit);
-    }
-    expect(passes).toBe(9 * STEP_PASSES);
-    expect(passes * CONTINUE_MS).toBe(10_080);
-    expect(digits.filter((d) => d === 9).length).toBe(STEP_PASSES - 1);
-    expect(digits.filter((d) => d === 5).length).toBe(STEP_PASSES);
-    expect(digits.filter((d) => d === 0).length).toBe(1);
-    expect(c.result).toBeUndefined();
+  test("Abfrage über dem Level: Countdown 9 à 28 × 40 ms, Rang-Zeile, Highscore vorher gespeichert", async () => {
+    const store = memoryStore();
+    const ui = new ScriptUi([{ id: "yes" }]);
+    const ok = await runContinue(ui, {
+      lang: "de",
+      profile: profile(store),
+      score: [500],
+      persist: true,
+    });
+    expect(ok).toBe(true);
+    const s = ui.shown[0]!;
+    expect(s.kind).toBe("confirm");
+    if (s.kind !== "confirm") return;
+    expect(s.over).toBe("level");
+    expect(s.title).toBe("Continue");
+    expect(s.countdown).toEqual({ from: 9, ms: STEP_PASSES * CONTINUE_MS, faster: 3 });
+    expect(DIGIT_MS).toBe(1120);
+    expect(s.items.map((i) => [i.id, i.label])).toEqual([
+      ["yes", "Ja"],
+      ["no", "Nein"],
+    ]);
+    expect(s.lines).toEqual(["Bruce landet auf Platz 1!"]);
+    expect(parseHighscores(store.get(HIGHSCORE_KEY))[0]).toEqual({
+      name: "Bruce",
+      score: 500,
+      id: 7,
+    });
   });
 
-  test("Ablauf ohne Bestätigung: 72 Durchläufe Ausschalten, dann „nein“", () => {
-    const c = new ContinueLogic(new VbRnd());
-    for (let i = 0; i < 9 * STEP_PASSES; i++) c.step(NONE);
-    const shrink: (readonly number[])[] = [];
-    const glow: (readonly number[])[] = [];
-    let off = 0;
-    while (c.result === undefined) {
-      // Tasten zählen beim Ausschalten nicht mehr
-      const p = c.step({ ok: true, back: true, focus: true });
-      off++;
-      if (p.kind !== "off") throw new Error("erwartet Ausschalten");
-      if (p.shrink) shrink.push([p.shrink.x1, p.shrink.y1, p.shrink.x2, p.shrink.y2]);
-      if (p.glow) glow.push([p.glow.x1, p.glow.y1, p.glow.x2, p.glow.y2]);
+  test("„Nein“, Ablauf und Abbruch: Game Over; Sichtprüfung speichert nichts", async () => {
+    for (const id of ["no", "timeout", "aborted"]) {
+      const store = memoryStore();
+      const ok = await runContinue(new ScriptUi([{ id }]), {
+        lang: "en",
+        profile: profile(store),
+        score: [10],
+        persist: id !== "aborted",
+      });
+      expect(ok).toBe(false);
+      expect(store.get(HIGHSCORE_KEY) !== null).toBe(id !== "aborted");
     }
-    expect(off).toBe(72);
-    expect(c.result).toBe(false);
-    expect(shrink.length).toBe(50);
-    expect(shrink[0]).toEqual([8, 6, 792, 594]);
-    expect(shrink[49]).toEqual([400, 300, 400, 300]);
-    expect(glow.length).toBe(7);
-    expect(glow[0]).toEqual([320, 298, 480, 302]);
-    expect(glow[6]).toEqual([-160, 286, 960, 314]);
-  });
-
-  test("Esc/D/Q halten: drei Durchläufe je Schritt", () => {
-    const c = new ContinueLogic(new VbRnd());
-    let passes = 0;
-    while (!c.finishing) {
-      c.step({ ok: false, back: true, focus: true });
-      passes++;
-    }
-    expect(passes).toBe(27);
-  });
-
-  test("Bestätigen nur mit Fokus; die Schleife endet nach diesem Durchlauf", () => {
-    const c = new ContinueLogic(new VbRnd());
-    for (let i = 0; i < 40; i++) c.step({ ok: true, back: true, focus: false });
-    expect(c.result).toBeUndefined();
-    expect(c.count).toBe(8);
-    c.step({ ok: true, back: false, focus: true });
-    expect(c.result).toBe(true);
-  });
-
-  test("Rnd je Durchlauf wie im Original: 207…211 normal, 1 beim Ausschalten", () => {
-    const r = countingRnd();
-    const c = new ContinueLogic(r);
-    for (let i = 0; i < 9 * STEP_PASSES; i++) {
-      const before = r.calls;
-      const p = c.step(NONE);
-      if (p.kind !== "normal") throw new Error("erwartet normal");
-      const n = r.calls - before;
-      const jitter = c.sub < 15 ? 1 : 0;
-      expect(n).toBe(1 + 202 + 3 + p.stripes.length + jitter + 1 + 1 + 1);
-      expect(p.flakes.length).toBe(202);
-      expect(p.digitY).toBeGreaterThanOrEqual(190);
-      expect(p.digitY).toBeLessThanOrEqual(210);
-      expect(p.blurAlpha).toBeGreaterThanOrEqual(0.1);
-      expect(p.blurAlpha).toBeLessThan(0.6);
-    }
-    const before = r.calls;
-    c.step(NONE);
-    expect(r.calls - before).toBe(1);
+    const ui = new ScriptUi([{ id: "timeout" }]);
+    await runContinue(ui, { lang: "ru", profile: profile(), score: [0, 0], persist: false });
+    const s = ui.shown[0]!;
+    expect(s.kind === "confirm" && s.items.map((i) => i.label)).toEqual(["Да", "Нет"]);
   });
 
   test("Annehmen: Leben 4, Punkte ÷ 3, dann Neustart mit 3 Leben", async () => {
@@ -207,79 +167,58 @@ describe("Highscore", () => {
 /** Feste Zeichenbreite 10 px. */
 const measure = (s: string) => s.length * 10;
 
-const P: PauseKeys = { ok: false, back: false, up: false, down: false, focus: true };
+const runPauseWith = (reply: string, store = memoryStore(), persist = true) =>
+  runPause(new ScriptUi([{ id: reply }]), {
+    lang: "de",
+    level: "Level1-1 Skyfight",
+    profile: new Profile(store, 2, true, { names: ["Bruce", "Kim"], ids: [1, 2] }),
+    score: [300, 100],
+    log: ["Achtung!", "", "Feind voraus"],
+    controls: dovezControls(2),
+    persist,
+  });
 
 describe("Pause", () => {
-  test("wartet auf das Loslassen von Esc, dann Menü; Esc setzt fort", () => {
-    const p = new PauseLogic(new VbRnd());
-    expect(p.step({ ...P, back: true })).toBeUndefined();
-    expect(p.phase).toBe("enter");
-    expect(p.step(P)?.sel).toBe(0);
-    expect(p.step({ ...P, down: true })?.sel).toBe(1);
-    // ohne Fokus zählen keine Tasten
-    expect(p.step({ ...P, up: true, focus: false })?.sel).toBe(1);
-    expect(p.step({ ...P, back: true, focus: false })).toBeDefined();
-    expect(p.step({ ...P, up: true })?.sel).toBe(0);
-    expect(p.step({ ...P, back: true })).toBeUndefined();
-    // gehalten: noch nicht zurück
-    expect(p.result).toBeUndefined();
-    p.step(P);
-    expect(p.result).toEqual({ exit: false, restore: true });
+  test("Menü über dem Level: Titel, WEITER/EXIT, Funkprotokoll, Tastenübersicht; Esc setzt fort", async () => {
+    const ui = new ScriptUi([{ id: "resume" }]);
+    const store = memoryStore();
+    const r = await runPause(ui, {
+      lang: "de",
+      level: "Level1-1 Skyfight",
+      profile: new Profile(store, 1, true, { names: ["Bruce"], ids: [1] }),
+      score: [300],
+      log: ["Achtung!"],
+      controls: dovezControls(1),
+      persist: true,
+    });
+    expect(r).toBe("resume");
+    expect(store.get(HIGHSCORE_KEY)).toBeNull();
+    const s = ui.shown[0]!;
+    if (s.kind !== "menu") throw new Error("Menü erwartet");
+    expect(s.over).toBe("level");
+    expect(s.title).toBe("Level1-1 Skyfight (Bruce)");
+    expect(s.items.map((i) => [i.id, i.label])).toEqual([
+      ["resume", "WEITER"],
+      ["exit", "EXIT"],
+    ]);
+    expect(s.back).toBe("resume");
+    expect(s.blocks).toEqual([{ kind: "lines", lines: ["Achtung!"], tone: "dim" }]);
+    expect(s.aside?.[0]?.kind).toBe("controls");
   });
 
-  test("EXIT nur mit OK; Esc bei EXIT setzt ohne Ton fort", () => {
-    const exit = new PauseLogic(new VbRnd());
-    exit.step({ ...P, down: true });
-    exit.step({ ...P, ok: true });
-    expect(exit.result).toEqual({ exit: true, restore: false });
-    const back = new PauseLogic(new VbRnd());
-    back.step({ ...P, down: true });
-    back.step({ ...P, back: true });
-    back.step(P);
-    expect(back.result).toEqual({ exit: false, restore: false });
-    const ok = new PauseLogic(new VbRnd());
-    ok.step({ ...P, ok: true });
-    expect(ok.result).toEqual({ exit: false, restore: true });
-  });
-
-  test("Einblendung α 0,95 … 0,05, im 20. Bild 0; Abtastzeile 1…300", () => {
-    const p = new PauseLogic(new VbRnd());
-    const fades: (number | undefined)[] = [];
-    const pos: number[] = [];
-    for (let i = 0; i < 310; i++) {
-      const s = p.step(P)!;
-      fades.push(s.fade);
-      pos.push(s.pos);
-    }
-    expect(fades[0]).toBeCloseTo(0.95, 5);
-    expect(fades[18]).toBeCloseTo(0.05, 5);
-    expect(fades[19]).toBe(0);
-    expect(fades[20]).toBeUndefined();
-    expect(pos[0]).toBe(1);
-    expect(pos[299]).toBe(300);
-    expect(pos[300]).toBe(1);
-  });
-
-  test("Linsenstörung: 45 Bilder, Stärke 3…15, Rauschen 3 · amp Rnd", () => {
-    const r = countingRnd();
-    const p = new PauseLogic(r);
-    p.g = 1;
-    p.pos = 30;
-    const amps: number[] = [];
-    while (p.g !== 0) {
-      const before = r.calls;
-      const s = p.step(P)!;
-      const lens = s.lens!;
-      amps.push(lens.amp);
-      expect(s.noise.length).toBe(4 * lens.amp);
-      const lines = Math.max(0, Math.trunc(lens.g / 45) - 1);
-      expect(s.lines.length).toBe(lines);
-      expect(r.calls - before).toBe(3 * lens.amp + 2 * lines);
-    }
-    expect(amps.length).toBe(45);
-    expect(Math.min(...amps)).toBeGreaterThanOrEqual(3);
-    expect(Math.max(...amps)).toBeLessThanOrEqual(15);
-    expect(amps.slice(0, 11).every((a) => a >= 3 && a <= 5)).toBe(true);
+  test("EXIT trägt beide Spieler in die Highscoreliste ein", async () => {
+    const store = memoryStore();
+    expect(await runPauseWith("exit", store)).toBe("exit");
+    const list = parseHighscores(store.get(HIGHSCORE_KEY));
+    expect(list.slice(0, 2).map((e) => [e.name, e.score, e.id])).toEqual([
+      ["Bruce", 300, 1],
+      ["Kim", 100, 2],
+    ]);
+    // Sichtprüfung: nichts gespeichert; abgebrochen: weiter
+    const quiet = memoryStore();
+    expect(await runPauseWith("exit", quiet, false)).toBe("exit");
+    expect(quiet.get(HIGHSCORE_KEY)).toBeNull();
+    expect(await runPauseWith("aborted")).toBe("resume");
   });
 
   test("Funkprotokoll: vorne Wörter abnehmen, Rest unten, Trenner als Leerzeile", () => {
@@ -299,5 +238,41 @@ describe("Pause", () => {
     // mehr als sieben Zeilen: die ältesten fallen weg
     const many = Array.from({ length: 9 }, (_, i) => `m${i}`);
     expect(wrapRadioLog(many, measure)).toEqual(many.slice(2));
+  });
+});
+
+describe("Ladebild und Abspann", () => {
+  const sprite = { url: "x.webp", x: 0, y: 0, w: 500, h: 3000, sheetW: 500, sheetH: 3000 };
+
+  test("Ladebild: mit Take-Bild bis zur Taste, Mosaik bis alles geladen ist", () => {
+    const take = loadingNotice({
+      lang: "de",
+      image: { sprite },
+      mosaic: false,
+      progress: () => 0.5,
+    });
+    expect(take).toMatchObject({
+      kind: "notice",
+      lines: ["Loading"],
+      until: "any",
+      prompt: "Press any key to start!",
+    });
+    expect(take.progress?.()).toBe(0.5);
+    const mosaic = loadingNotice({ lang: "ru", image: undefined, mosaic: true, progress: () => 1 });
+    expect(mosaic).toMatchObject({ lines: ["Загрузка"], until: "progress" });
+    expect(mosaic.prompt).toBeUndefined();
+    expect(mosaic.image).toBeUndefined();
+  });
+
+  test("Abspann: das Originalbild mit 40 px/s (1 px je 25 ms), Esc beendet", () => {
+    const c = creditsScreen("de", sprite);
+    expect(c).toMatchObject({
+      kind: "text",
+      image: { sprite },
+      scroll: { pxPerSecond: 1000 / 25 },
+      done: "Weiter",
+      back: "done",
+    });
+    expect(creditsScreen("en", undefined).image).toBeUndefined();
   });
 });
