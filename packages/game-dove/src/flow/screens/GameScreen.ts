@@ -4,7 +4,7 @@ import { Renderer } from "../../render/Renderer";
 import { DEATH_END, DEATH_STEP, FIELD_H } from "../../sim/constants";
 import { step } from "../../sim/step";
 import type { World } from "../../sim/world";
-import { Gfx } from "../gfx";
+import { pauseMenu } from "../menus";
 import type { FlowEnv, Screen } from "../screen";
 
 /**
@@ -20,23 +20,16 @@ export type GameResult =
 /** Mitschnitt für das Replay: jede Eingabe nach ihrem Tick. */
 export type TickRecorder = (input: number, world: World) => void;
 
-const PANEL_X = 270;
-const PANEL_BOTTOM = 410;
-const PANEL_H = 30;
-const MARKER_X = 317;
-
 /**
  * Das laufende Level: `World` + `Renderer` im 14-ms-Takt, dazu die Pause
- * (ESC, `0x4708E6`): Panel `konsole.spr` (0, 70)–(100, 70 + k) fährt mit
- * k = 0…30 an (270, 410 − k) hoch, Marker (100, 70)–(148, 83) an x = 317
- * wandert zwischen „Weiter“ (Versatz 3) und „Ende“ (14). Musik 25 %, Effekte
- * stumm. Überlebt einen Continue-Bildschirm (die Welt läuft danach weiter).
+ * (ESC oder Fokusverlust, `0x4708E6`): das Spielbild bleibt stehen, die Shell
+ * zeigt „Weiter“/„Ende“ als HTML darüber. Musik 25 %, Effekte stumm. Überlebt
+ * einen Continue-Bildschirm (die Welt läuft danach weiter).
  */
 export class GameScreen implements Screen<GameResult> {
   readonly images: string[];
   readonly root = new Container();
   private readonly renderer: Renderer;
-  private readonly overlay: Gfx;
   private readonly input: DoveInput;
   private paused = false;
   /** Fenster ohne Fokus oder Tab verdeckt (Erweiterung wie in DoveZ): öffnet die Pause. */
@@ -44,9 +37,8 @@ export class GameScreen implements Screen<GameResult> {
   private readonly win: Window | null | undefined;
   private readonly onBlur = () => (this.windowFocus = false);
   private readonly onFocus = () => (this.windowFocus = true);
-  private panel = 0;
-  private marker = 3;
-  private pauseSel = 0;
+  /** Antwort des Pausemenüs, sobald gewählt. */
+  private pauseReply: string | undefined;
 
   constructor(
     private readonly env: FlowEnv,
@@ -66,8 +58,6 @@ export class GameScreen implements Screen<GameResult> {
       () => this.modernHud(),
     );
     this.root.addChild(this.renderer.root);
-    this.overlay = new Gfx(env.frames);
-    this.root.addChild(this.overlay.root);
   }
 
   update(): GameResult | undefined {
@@ -77,10 +67,11 @@ export class GameScreen implements Screen<GameResult> {
     // Pause nur, wenn der Todeszähler nicht läuft
     if ((keys.hit("escape") || !this.focused()) && !w.dead) {
       this.paused = true;
-      this.panel = 0;
-      this.marker = 3;
-      this.pauseSel = 0;
+      this.pauseReply = undefined;
       audio?.pause(true);
+      void this.env.host.ui.show(pauseMenu(this.env.german)).then((r) => {
+        this.pauseReply = r.id;
+      });
       return undefined;
     }
     // Leben < 0 nach diesem Tick? Dann setzt die Simulation Punkte und Leben zurück.
@@ -99,23 +90,11 @@ export class GameScreen implements Screen<GameResult> {
   }
 
   private updatePause(): GameResult | undefined {
-    const { keys, audio } = this.env;
-    if (this.panel < PANEL_H) this.panel++;
-    if (keys.hit("up")) this.pauseSel = 0;
-    if (keys.hit("down")) this.pauseSel = 1;
-    if (this.pauseSel === 1 && this.marker < 14) this.marker++;
-    if (this.pauseSel === 0 && this.marker > 3) this.marker--;
-    const resume = keys.hit("escape") || (keys.hit("confirm") && this.pauseSel === 0);
-    if (keys.hit("confirm") && this.pauseSel === 1) {
-      this.paused = false;
-      audio?.pause(false);
-      return { kind: "abort" };
-    }
-    if (resume) {
-      this.paused = false;
-      audio?.pause(false);
-    }
-    return undefined;
+    const reply = this.pauseReply;
+    if (reply === undefined) return undefined;
+    this.paused = false;
+    this.env.audio?.pause(false);
+    return reply === "abort" ? { kind: "abort" } : undefined;
   }
 
   /** HTML-HUD der Shell statt der Konsole: nur das Spielfeld zeigen. */
@@ -128,27 +107,16 @@ export class GameScreen implements Screen<GameResult> {
   }
 
   render(): void {
-    const g = this.overlay;
-    g.begin();
-    if (!this.paused) {
-      this.env.audio?.update(this.world);
-      this.renderer.render();
-    } else {
-      const k = this.panel;
-      g.blit(0, "image/konsole", 0, 70, 100, k, PANEL_X, PANEL_BOTTOM - k);
-      const h = Math.min(13, k - (this.marker - 3));
-      if (h > 0) {
-        g.blit(0, "image/konsole", 100, 70, 48, h, MARKER_X, PANEL_BOTTOM - k + this.marker - 3);
-      }
-    }
-    g.end();
+    // in der Pause bleibt das letzte Bild stehen
+    if (this.paused) return;
+    this.env.audio?.update(this.world);
+    this.renderer.render();
   }
 
   dispose(): void {
     this.win?.removeEventListener("blur", this.onBlur);
     this.win?.removeEventListener("focus", this.onFocus);
     this.renderer.destroy();
-    this.overlay.destroy();
     this.root.destroy({ children: true });
   }
 }

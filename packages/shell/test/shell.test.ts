@@ -1,4 +1,8 @@
 import { describe, expect, test } from "bun:test";
+import { translator } from "@clove/core";
+import { DOVE_CONTROLS, DOVE_GAMEPAD } from "@clove/game-dove/controls";
+import { DOVEZ_GAMEPAD, DOVEZ_PADS, dovezControls } from "@clove/game-dovez/controls";
+import { controlsTables, padButtons } from "../src/controls";
 import { combineKeys, createPadState, padKeys, type PadSnapshot } from "../src/gamepad";
 import { hudLayout } from "../src/hud";
 import { keyName, withSecondKeys } from "../src/keymap";
@@ -6,6 +10,7 @@ import { parseRoute } from "../src/router";
 import { DEFAULT_SETTINGS, loadSettings, reducedMotion, sanitizeSettings } from "../src/settings";
 import { collectSaves, restoreSaves, storageFor } from "../src/storage";
 import { TEXTS } from "../src/texts";
+import { NavEdges, SecretMatcher, gateKeys, moveIndex } from "../src/ui/model";
 
 describe("Routing", () => {
   const games = new Set(["dove"]);
@@ -251,5 +256,114 @@ describe("Pad-Belegung je Spieler", () => {
     ];
     const both = padKeys([pad([0], [-1, 0]), pad([0, 12], [1, 0])], { 0: ["KeyS"] }, layouts);
     expect([...both].toSorted()).toEqual(["ArrowLeft", "End", "KeyS", "Numpad6", "Numpad8"]);
+  });
+});
+
+describe("Tastenübersicht", () => {
+  const t = translator(TEXTS, "de");
+  const base = { t, locale: "de" as const, showPad: true, showPointer: true };
+
+  test("Pad-Tasten aus der Belegung: Steuerkreuz zuerst, mehrere Tasten je Aktion", () => {
+    expect(padButtons(["KeyS", "Space"], DOVE_GAMEPAD)).toEqual(["A"]);
+    expect(padButtons(["Escape"], DOVE_GAMEPAD)).toEqual(["Back", "Start"]);
+    expect(padButtons(["ArrowUp", "Numpad8"], DOVE_GAMEPAD)).toEqual(["✚ ↑"]);
+    expect(padButtons(["KeyJ"], DOVE_GAMEPAD)).toEqual([]);
+  });
+
+  test("DOVE: Tastennamen, zweite Taste aus den Einstellungen, Maus", () => {
+    const [table] = controlsTables(DOVE_CONTROLS, {
+      ...base,
+      gamepad: DOVE_GAMEPAD,
+      second: { fire: "KeyK" },
+    });
+    expect(table?.pad).toBe(true);
+    expect(table?.pointer).toBe(true);
+    const fire = table?.lines.find((l) => l.action === "Feuer");
+    expect(fire).toEqual({
+      action: "Feuer",
+      keys: ["S", "Leertaste", "K"],
+      pad: ["A"],
+      pointer: "linke Taste",
+    });
+    expect(table?.lines.at(-1)).toMatchObject({ keys: ["Esc"], pad: ["Back", "Start"] });
+  });
+
+  test("ausgeschaltete Geräte und leere Spalten entfallen", () => {
+    const [table] = controlsTables(DOVE_CONTROLS, {
+      ...base,
+      gamepad: DOVE_GAMEPAD,
+      showPad: false,
+      showPointer: false,
+    });
+    expect(table).toMatchObject({ pad: false, pointer: false });
+    expect(table?.lines.every((l) => l.pad.length === 0 && l.pointer === "")).toBe(true);
+    const [noPad] = controlsTables(DOVE_CONTROLS, base);
+    expect(noPad?.pad).toBe(false);
+  });
+
+  test("DoveZ zu zweit: Spieler 2 mit eigenem Pad und Ziffernblock, ohne Maus", () => {
+    const [p1, p2] = controlsTables(dovezControls(2), {
+      ...base,
+      gamepad: DOVEZ_GAMEPAD,
+      pads: DOVEZ_PADS,
+    });
+    expect(p1?.label).toBe("Spieler 1");
+    expect(p1?.lines[0]).toMatchObject({ keys: ["J", "←"], pad: ["✚ ←"] });
+    expect(p2?.label).toBe("Spieler 2");
+    expect(p2?.pointer).toBe(false);
+    expect(p2?.lines[0]).toMatchObject({ keys: ["Num 4"], pad: ["✚ ←"] });
+    expect(p2?.lines[4]).toMatchObject({ keys: ["End"], pad: ["A"] });
+  });
+});
+
+describe("HTML-Bildschirme", () => {
+  test("Tastensperre: offen sieht das Spiel nichts, danach erst nach dem Loslassen", () => {
+    const pressed = new Set<string>(["Enter"]);
+    let state = { open: true, generation: 1 };
+    const keys = gateKeys({ isDown: (c) => pressed.has(c) }, () => state);
+    expect(keys.isDown("Enter")).toBe(false);
+    state = { open: false, generation: 1 };
+    // Enter wählte „Weiter“ und ist noch gedrückt
+    expect(keys.isDown("Enter")).toBe(false);
+    pressed.delete("Enter");
+    expect(keys.isDown("Enter")).toBe(false);
+    pressed.add("Enter");
+    expect(keys.isDown("Enter")).toBe(true);
+    // eine neu gedrückte Taste gilt, sobald sie einmal losgelassen abgefragt wurde
+    expect(keys.isDown("KeyS")).toBe(false);
+    pressed.add("KeyS");
+    expect(keys.isDown("KeyS")).toBe(true);
+    // nächster Bildschirm: wieder alles gesperrt bis zum Loslassen
+    state = { open: false, generation: 2 };
+    expect(keys.isDown("KeyS")).toBe(false);
+  });
+
+  test("ohne je geöffneten Bildschirm gelten Tasten sofort", () => {
+    const keys = gateKeys({ isDown: (c) => c === "KeyS" }, () => ({ open: false, generation: 0 }));
+    expect(keys.isDown("KeyS")).toBe(true);
+  });
+
+  test("Navigation in Liste und Raster, umlaufend", () => {
+    expect(moveIndex(-1, 3, "down")).toBe(0);
+    expect(moveIndex(-1, 3, "up")).toBe(2);
+    expect(moveIndex(2, 3, "down")).toBe(0);
+    expect(moveIndex(0, 3, "left")).toBe(0);
+    // 3 Spalten × 3 Zeilen
+    expect(moveIndex(1, 9, "down", 3)).toBe(4);
+    expect(moveIndex(4, 9, "right", 3)).toBe(5);
+    expect(moveIndex(0, 9, "up", 3)).toBe(6);
+    expect(moveIndex(0, 0, "down")).toBe(-1);
+  });
+
+  test("Tippfolge und Kanten von Pad/Touch", () => {
+    const secret = new SecretMatcher({ lov: "love" });
+    expect(["x", "L", "o"].map((c) => secret.feed(c))).toEqual([undefined, undefined, undefined]);
+    expect(secret.feed("v")).toBe("love");
+    expect(secret.feed("v")).toBeUndefined();
+    const edges = new NavEdges();
+    expect(edges.next(new Set(["ArrowDown"]))).toEqual(["down"]);
+    expect(edges.next(new Set(["ArrowDown", "Enter"]))).toEqual(["ok"]);
+    expect(edges.next(new Set())).toEqual([]);
+    expect(edges.next(new Set(["Escape", "KeyQ"]))).toEqual(["back"]);
   });
 });

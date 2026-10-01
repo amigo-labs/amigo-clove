@@ -152,11 +152,6 @@ export const LEVEL_SELECT_NAMES: readonly string[] = [
   "10. Final Fight",
 ];
 
-/** Laufschrift des Get-Ready-Bildschirms (`0x45E9C8`). */
-export function getReadyText(level: number, score: number, lives: number): string {
-  return `           Level ${level} - ${levelName(level)} - GET READY Points:${score} Ships:${lives}             `;
-}
-
 /** Vorschaubild `data\grafik\<L>.spr`, sonst `Extralevel.spr`. */
 export function previewImage(level: number): string {
   return level >= 0 && level <= FINAL_LEVEL ? `image/${level}` : "image/extralevel";

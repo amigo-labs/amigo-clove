@@ -1,11 +1,13 @@
 import type { AssetStore } from "../asset/AssetStore";
+import type { GameUi } from "./ui";
 
 /**
  * Der Vertrag zwischen Shell und Spiel.
  *
  * Die **Shell besitzt** Canvas, Asset-Zugriff, Eingabegeräte, Locale und
- * Routing. Das **Spiel besitzt** alles ab `boot()` — Renderer auf dem
- * übergebenen Canvas, Szenen, Pause. Das Spiel fasst nie `location`,
+ * Routing, dazu alle HTML-Bildschirme außerhalb der Level (`GameHost.ui`).
+ * Das **Spiel besitzt** Ablauf, Regeln und Speicherstände sowie alles im Canvas ab
+ * `boot()` — Renderer, Level, Original-Animationen. Das Spiel fasst nie `location`,
  * `document.title` oder die Erzeugung von Canvas und AudioContext an.
  */
 
@@ -95,6 +97,8 @@ export interface GameHost {
   readonly rumblePads?: () => number;
   /** Monotone Zeit in ms (`performance.now` im Browser). */
   now(): number;
+  /** HTML-Bildschirme der Shell für alles außerhalb der Level (Menüs, Pause, Continue …). */
+  readonly ui: GameUi;
 }
 
 /** HUD der Shell statt des Original-HUDs (Vorgabe) oder das Original im Canvas. */
@@ -161,6 +165,30 @@ export interface GameInstance {
   hud?(): HudSnapshot | null;
 }
 
+/** Name je Sprache der Shell. */
+export type LocalLabel = Readonly<Record<"de" | "en" | "ru", string>>;
+
+/** Eine Zeile der Tastenübersicht: Aktion, Tasten und Maustaste. */
+export interface ControlRow {
+  readonly id: string;
+  readonly label: LocalLabel;
+  /** Tasten als `KeyboardEvent.code`; die Shell leitet daraus auch die Pad-Tasten ab. */
+  readonly codes: readonly string[];
+  /** Maus-Bedienung derselben Aktion (Rad hoch = vom Spieler weg). */
+  readonly pointer?: "left" | "right" | "middle" | "wheel" | "wheelUp" | "wheelDown";
+}
+
+/** Abschnitt der Tastenübersicht, z. B. ein Spieler im Zwei-Spieler-Spiel. */
+export interface ControlGroup {
+  readonly label?: LocalLabel;
+  /** Pad, dessen Belegung gilt (n-tes Pad, `GameModule.pads`); Vorgabe 0. */
+  readonly pad?: number;
+  readonly rows: readonly ControlRow[];
+}
+
+/** Tastenübersicht eines Spiels: reine Daten, die Shell beschriftet und zeichnet sie. */
+export type ControlsSheet = readonly ControlGroup[];
+
 /**
  * Gamepad-Belegung eines Spiels: Taste der Standardbelegung (`Gamepad.buttons`-Index,
  * W3C „standard“ mapping) → `KeyboardEvent.code`, die das Spiel als gehalten sieht.
@@ -175,7 +203,7 @@ export type GamepadBindings = Readonly<Record<number, readonly string[]>>;
  */
 export interface KeyAction {
   readonly id: string;
-  readonly label: Readonly<Record<"de" | "en" | "ru", string>>;
+  readonly label: LocalLabel;
   readonly codes: readonly string[];
 }
 

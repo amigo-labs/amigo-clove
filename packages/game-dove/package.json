@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./controls": "./src/controls.ts",
     "./keys": "./src/keys.ts",
     "./sim": "./src/sim/index.ts"
   },

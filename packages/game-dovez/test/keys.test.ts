@@ -1,11 +1,12 @@
 /** Tastenbelegung (`InitKeyConfig`, `Taste`, `KeyName`, `GetKeyText`) und ihre Konfiguration. */
 import { afterEach, describe, expect, test } from "bun:test";
 import type { GameHost } from "@clove/core";
+import { dovezAllControls, dovezControls } from "../src/controls";
 import { DEFAULT_CONFIG, parseConfig } from "../src/game/config";
 import {
+  ACTIONS,
   DEFAULT_KEYS,
   DIK,
-  heldDiks,
   keyLabel,
   keyName,
   keyText,
@@ -83,10 +84,6 @@ describe("Tastenbelegung", () => {
     expect(keyLabel(4)).toBe("S");
   });
 
-  test("gehaltene Tasten als DIK-Codes aufsteigend, Unbekanntes entfällt", () => {
-    expect(heldDiks(host("KeyS", "Escape", "Unbekannt", "ArrowLeft"))).toEqual([1, 31, 203]);
-  });
-
   test("Konfiguration: Belegung wird gelesen, ungültige Werte fallen auf die Vorgabe", () => {
     const keys = [...DEFAULT_KEYS];
     keys[0] = "KeyY";
@@ -139,5 +136,37 @@ describe("Maus für Spieler 1", () => {
     expect(new PointerControl().apply(plain, NO_INPUT, undefined)).toBe(NO_INPUT);
     const h = withMouse(0, 0, "ArrowLeft");
     expect(new PointerControl().apply(h, readInput(h), undefined).target).toBeUndefined();
+  });
+});
+
+describe("Tastenübersicht", () => {
+  test("Einzelspiel: alle Aktionen mit Zusatztasten, Hupe und Pause", () => {
+    const [solo] = dovezControls(1);
+    expect(solo?.rows.map((r) => r.id)).toEqual([...ACTIONS, "horn", "pause"]);
+    expect(solo?.rows.find((r) => r.id === "fire")).toMatchObject({
+      codes: ["KeyS", "Space"],
+      pointer: "left",
+    });
+    expect(solo?.rows.find((r) => r.id === "horn")?.codes).toEqual(["F11"]);
+  });
+
+  test("umbelegte zweite Tasten erscheinen, zu zweit je Spieler ein Abschnitt", () => {
+    const keys = [...DEFAULT_KEYS];
+    keys[4] = "KeyX";
+    expect(dovezControls(1, keys)[0]?.rows[4]?.codes).toEqual(["KeyS", "KeyX", "Space"]);
+    const [p1, p2] = dovezControls(2);
+    expect(p1).toMatchObject({ pad: 0 });
+    expect(p1?.rows[0]?.codes).toEqual(["KeyJ", "ArrowLeft"]);
+    expect(p2).toMatchObject({ pad: 1 });
+    expect(p2?.rows[3]?.codes).toEqual(["Numpad5", "Numpad2"]);
+    expect(p2?.rows.some((r) => r.pointer)).toBe(false);
+  });
+
+  test("Launcher: Einzelspieler und beide Spieler", () => {
+    expect(dovezAllControls().map((g) => g.label?.de)).toEqual([
+      "Einzelspieler",
+      "Spieler 1",
+      "Spieler 2",
+    ]);
   });
 });

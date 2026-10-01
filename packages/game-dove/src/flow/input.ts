@@ -13,21 +13,7 @@ export const KEYS = {
 
 export type KeyGroup = keyof typeof KEYS;
 
-/** Codes der Namenseingabe: Buchstaben, Ziffern, Satzzeichen, Löschen, Umschalt. */
-export const NAME_KEYS: readonly string[] = [
-  ...Array.from({ length: 26 }, (_, i) => `Key${String.fromCharCode(65 + i)}`),
-  ...Array.from({ length: 10 }, (_, i) => `Digit${i}`),
-  ...Array.from({ length: 10 }, (_, i) => `Numpad${i}`),
-  "Space",
-  "Minus",
-  "Period",
-  "Comma",
-  "Backspace",
-  "ShiftLeft",
-  "ShiftRight",
-];
-
-const ALL = [...new Set([...Object.values(KEYS).flat(), ...NAME_KEYS])];
+const ALL = [...new Set(Object.values(KEYS).flat())];
 
 /**
  * Tastenflanken pro 14-ms-Tick. `sample()` einmal zu Beginn jedes Ticks;
@@ -61,11 +47,6 @@ export class KeyEdges {
 
   hit(g: KeyGroup): boolean {
     return KEYS[g].some((c) => this.now.has(c) && !this.prev.has(c));
-  }
-
-  /** Flanke eines einzelnen Codes aus `KEYS` oder `NAME_KEYS`. */
-  hitCode(code: string): boolean {
-    return this.now.has(code) && !this.prev.has(code);
   }
 
   isDown(code: string): boolean {

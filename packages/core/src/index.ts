@@ -60,6 +60,9 @@ export {
 } from "./save/SaveFile";
 export type {
   AudioHost,
+  ControlGroup,
+  ControlRow,
+  ControlsSheet,
   GameHost,
   GameInstance,
   GameModule,
@@ -73,7 +76,25 @@ export type {
   KeyAction,
   KeyState,
   KeyValueStore,
+  LocalLabel,
   PadLayout,
   PointerState,
   ScaleMode,
 } from "./shell/GameModule";
+export type {
+  GameUi,
+  UiBlock,
+  UiConfirm,
+  UiField,
+  UiForm,
+  UiImage,
+  UiInput,
+  UiItem,
+  UiMenu,
+  UiNotice,
+  UiReply,
+  UiScreen,
+  UiText,
+  UiValues,
+  UiVideo,
+} from "./shell/ui";

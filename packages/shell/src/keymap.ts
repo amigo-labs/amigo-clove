@@ -55,6 +55,11 @@ const NAMES: Readonly<Record<string, string>> = {
   AltRight: "AltGr",
   Backspace: "⌫",
   Tab: "Tab",
+  Escape: "Esc",
+  PageUp: "PgUp",
+  PageDown: "PgDn",
+  Insert: "Ins",
+  Delete: "Del",
 };
 
 /** Kurzer Name einer Taste für die Einstellungen (`KeyA` → „A“, `Numpad4` → „Num 4“). */
