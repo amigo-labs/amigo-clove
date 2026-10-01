@@ -70,20 +70,28 @@ function watch(page: Page, label: string): void {
   });
 }
 
-/** Esc kurz halten (die Spiele fragen den Tastenzustand pro Tick ab). */
-async function tapEscape(page: Page): Promise<void> {
-  await page.keyboard.down("Escape");
-  await page.waitForTimeout(150);
-  await page.keyboard.up("Escape");
-  await page.waitForTimeout(800);
-}
-
-/** Pause: die Tastenübersicht der Shell erscheint mit Zeilen und verschwindet beim Weiterspielen. */
+/**
+ * Pause: die Tastenübersicht der Shell erscheint mit Zeilen und verschwindet beim
+ * Weiterspielen. Esc bleibt gehalten, bis die Pause da ist (die Spiele fragen den
+ * Tastenzustand pro Tick ab, auf langsamen Rechnern ist ein Tick länger als ein
+ * Tippen); weiter geht es mit Enter auf „Weiter“, das nicht erneut pausiert.
+ */
 async function checkPauseControls(page: Page, label: string): Promise<void> {
-  await tapEscape(page);
-  const rows = await page.locator(".controls-overlay:not([hidden]) tbody tr").count();
-  await tapEscape(page);
-  const after = await page.locator(".controls-overlay:not([hidden])").count();
+  const overlay = ".controls-overlay:not([hidden])";
+  const hold = async (key: string, until: () => Promise<unknown>) => {
+    await page.keyboard.down(key);
+    try {
+      await until();
+    } catch {
+      // gemeldet wird unten am Ergebnis
+    }
+    await page.keyboard.up(key);
+    await page.waitForTimeout(500);
+  };
+  await hold("Escape", () => page.waitForSelector(overlay, { timeout: 10_000 }));
+  const rows = await page.locator(`${overlay} tbody tr`).count();
+  await hold("Enter", () => page.waitForSelector(overlay, { state: "detached", timeout: 10_000 }));
+  const after = await page.locator(overlay).count();
   console.log(`${label}: Tastenübersicht in der Pause mit ${rows} Zeilen`);
   if (rows < 10) failures.push(`${label}: Tastenübersicht fehlt in der Pause (${rows} Zeilen)`);
   if (after !== 0) failures.push(`${label}: Tastenübersicht bleibt nach der Pause stehen`);
