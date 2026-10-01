@@ -1,6 +1,5 @@
 import type { ControlRow, ControlsSheet, GamepadBindings, Locale, PadLayout } from "@clove/core";
 import { h } from "./dom";
-import type { GameRect, Stage } from "./overlay";
 import { keyName, type SecondKeys } from "./keymap";
 import type { ShellText, TextKey } from "./texts";
 
@@ -19,13 +18,6 @@ const POINTER_TEXT: Readonly<Record<NonNullable<ControlRow["pointer"]>, TextKey>
   wheelUp: "mouseWheelUp",
   wheelDown: "mouseWheelDown",
 };
-
-/** Ab so viel Platz rechts vom Spielbild steht die Übersicht daneben statt darüber. */
-const SIDE_MIN = 300;
-/** Kleinste Schrift (px) neben dem Spielbild; braucht es weniger, rückt die Übersicht ins Bild. */
-const SIDE_FONT = 11;
-/** Kleinste Schrift (px), auf die die Übersicht im Spielbild schrumpft, damit sie ganz hineinpasst. */
-const MIN_FONT = 8;
 
 export interface ControlsOptions {
   readonly t: ShellText;
@@ -131,80 +123,4 @@ export function controlsElement(tables: readonly ControlsTable[], t: ShellText):
     );
   }
   return box;
-}
-
-/**
- * Tastenübersicht während der Pause: liest einmal pro Bild `GameInstance.controls()`
- * und zeigt sie rechts neben dem Spielbild, wenn Platz ist, sonst darin (`GameModule.controlsAt`).
- */
-export class ControlsView {
-  private readonly root: HTMLElement;
-  private raf = 0;
-  private shown: ControlsSheet | null = null;
-
-  constructor(
-    private readonly stage: Stage,
-    private readonly t: ShellText,
-    private readonly source: () => ControlsSheet | null,
-    private readonly options: () => ControlsOptions,
-    /** Lage im Spielbild ohne Platz daneben (`GameModule.controlsAt`). */
-    at: "top" | "center" | "bottom" = "center",
-  ) {
-    this.root = h("section", {
-      class: "controls-overlay",
-      hidden: true,
-      "aria-label": t("controls"),
-      "data-at": at,
-    });
-    stage.layer.append(this.root);
-    stage.onLayout((r) => this.place(r));
-    const tick = () => {
-      this.update();
-      this.raf = requestAnimationFrame(tick);
-    };
-    this.raf = requestAnimationFrame(tick);
-  }
-
-  /**
-   * Rechts daneben, wenn die Übersicht dort mit lesbarer Schrift ganz Platz hat,
-   * sonst im Spielbild; verkleinert die Schrift, bis alles hineinpasst.
-   */
-  private place(r: GameRect): void {
-    if (this.root.hidden) return;
-    const right = this.stage.root.clientWidth - r.x - r.w;
-    const fits = (layout: string, min: number) => {
-      this.root.style.fontSize = "";
-      this.root.dataset["layout"] = layout;
-      let size = Number.parseFloat(getComputedStyle(this.root).fontSize);
-      while (this.overflows() && size > min) {
-        size -= 0.5;
-        this.root.style.fontSize = `${size}px`;
-      }
-      return !this.overflows();
-    };
-    if (right < SIDE_MIN || !fits("side", SIDE_FONT)) fits("inside", MIN_FONT);
-  }
-
-  private overflows(): boolean {
-    const el = this.root;
-    return el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1;
-  }
-
-  private update(): void {
-    const sheet = this.source();
-    if (sheet === this.shown) return;
-    this.shown = sheet;
-    this.root.hidden = !sheet;
-    if (!sheet) return;
-    this.root.replaceChildren(
-      h("h2", {}, this.t("controls")),
-      controlsElement(controlsTables(sheet, this.options()), this.t),
-    );
-    this.place(this.stage.rect());
-  }
-
-  dispose(): void {
-    cancelAnimationFrame(this.raf);
-    this.root.remove();
-  }
 }

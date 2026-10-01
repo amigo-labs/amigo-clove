@@ -163,11 +163,6 @@ export interface GameInstance {
   dispose(): void;
   /** HUD-Daten, solange ein Level läuft (sonst `null`); fehlt bei Spielen ohne HTML-HUD. */
   hud?(): HudSnapshot | null;
-  /**
-   * Tastenübersicht, solange das Spiel pausiert (sonst `null`); die Shell zeigt sie
-   * neben dem Pausemenü. Fehlt bei Spielen ohne Übersicht.
-   */
-  controls?(): ControlsSheet | null;
 }
 
 /** Name je Sprache der Shell. */
@@ -229,10 +224,5 @@ export interface GameModule {
   readonly gamepad?: GamepadBindings;
   /** Belegung je Pad (n-tes Pad mit Standardbelegung); fehlt ein Eintrag, gilt `gamepad`. */
   readonly pads?: readonly (PadLayout | undefined)[];
-  /**
-   * Wo die Tastenübersicht der Pause im Spielbild steht, wenn daneben kein Platz ist:
-   * so, dass das Pausemenü des Spiels frei bleibt (Vorgabe `center`).
-   */
-  readonly controlsAt?: "top" | "center" | "bottom";
   boot(host: GameHost, options?: Readonly<Record<string, string>>): Promise<GameInstance>;
 }

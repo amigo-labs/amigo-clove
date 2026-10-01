@@ -485,10 +485,11 @@ Ziffern, Satzzeichen, Umlaute); geschnitten zur Laufzeit als Teiltexturen.
 
 Vertrag `GameModule` in `@clove/core`: Die **Shell besitzt** Canvas,
 AudioContext, SaveStore, Input-Geräteschicht, Locale, Ladebildschirm und
-Routing. Das **Spiel besitzt** alles ab `boot()` — Pixi-Application auf dem
-übergebenen Canvas, Szenen, Pausenoverlay (DoveZ hat ein eigenes
-`Pause.d2p`-Bild). Das Spiel fasst nie `location`, `document.title` oder die
-Erzeugung von Canvas und AudioContext an.
+Routing, dazu *(nach M9)* alle HTML-Bildschirme außerhalb der Level
+(`GameHost.ui`, siehe „Menüs als HTML“). Das **Spiel besitzt** Ablauf, Regeln
+und Speicherstände sowie alles im Canvas ab `boot()` — Pixi-Application auf dem
+übergebenen Canvas, Level, Original-Animationen. Das Spiel fasst nie
+`location`, `document.title` oder die Erzeugung von Canvas und AudioContext an.
 
 `dispose()` muss hart aufräumen; in Dev-Builds verifiziert die Shell das über
 einen Ressourcenzähler und wirft, wenn nach `dispose()` noch Texturen leben —
@@ -546,7 +547,7 @@ Exportdatei (`amigo-clove-save`, Version 1, Migrationskette) definiert
 ### Optionale Modernisierungen
 
 *(nach M9)* Zusätze gegenüber dem Original folgen drei Regeln: **abschaltbar**,
-**Vorgabe Original** (Ausnahmen: HUD, Skalierung und Zeiger — der Zeiger wirkt erst, wenn Maus oder Finger ihn benutzen, Pfeiltasten übernehmen jederzeit) und **ohne Zusatz bit-gleiche
+**Vorgabe Original** (Ausnahmen: HUD, Skalierung, Zeiger und die Menüs als HTML, die die Original-Menüs ersetzen — der Zeiger wirkt erst, wenn Maus oder Finger ihn benutzen, Pfeiltasten übernehmen jederzeit) und **ohne Zusatz bit-gleiche
 Simulation**, also unveränderte Referenz-Replays und Level-Hashes.
 
 - **Zeiger:** `GameHost.pointer` (Maus/Touch in logischen Canvas-Pixeln),
@@ -565,6 +566,20 @@ Simulation**, also unveränderte Referenz-Replays und Level-Hashes.
   für alles im Canvas weiter.
 - **Darstellung:** `GameHost.scaleMode` (Vorgabe `fit` fensterfüllend scharf, `integer` 1:1-Pixel wie bisher,
   `smooth`), Rasterlinien als CSS-Schicht, Vollbild über die ganze Seite.
+- **Menüs als HTML** *(keine Option, ersetzt die Original-Menüs):* Alles
+  außerhalb der Level — Titel/Hauptmenü, Optionen, Levelauswahl, Info,
+  Highscores, Namenseingabe, Laden/Speichern, Ladebildschirm, Get Ready, Pause,
+  Continue, Credits — beschreibt das Spiel als Daten (`UiScreen` in
+  `core/src/shell/ui.ts`: Menü, Formular, Text, Eingabe, Abfrage, Hinweis,
+  Video) und wartet mit `GameHost.ui.show()` auf die Antwort; die Shell
+  zeichnet generische HTML-Bausteine und kennt keine spielspezifischen Seiten.
+  Ablauf, Regeln (Punktefaktor, Freischaltungen, Kampagne) und
+  Speicherformate bleiben im Spiel und unverändert. Im Canvas bleiben die
+  Level und die Original-Animationen (Logos, Story-Intro und -Abspann von
+  DOVE, Osterei „LOV“); DoveZ-Videos spielt die Shell als `<video>`. Solange
+  ein Bildschirm offen ist, sieht das Spiel keine Tasten und keinen Zeiger,
+  danach gilt eine Taste erst nach dem Loslassen. Level-Simulation, Replays
+  und Level-Hashes sind davon nicht berührt.
 - **Komfort:** DOVE pausiert bei Fokusverlust wie DoveZ; zweite Tasten je
   Aktion (`KeyAction`, additiv wie `T2` in DoveZ); `GameModule.pads` belegt
   einzelne Pads (DoveZ: Pad 2 = Satz 2 für Spieler 2); Touch-Tasten speisen

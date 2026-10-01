@@ -48,13 +48,14 @@ laufenden Original (Referenzaufnahme mit OBS, 60 fps).
       nicht nur exaktes Schwarz. Der Port keyt exakt RGB(0,0,0) — fast
       schwarze Ränder an Sprites (z. B. Menügrafik in titel.spr) vergleichen.
 
-- [ ] **Menüs und Ablauf:** NEO-ARTS-Logo, Titel mit Rasterbalken (Farben
-      geschätzt), Optionen (Speichern, Punktefaktor), Levelauswahl
-      (Rahmenfarbe geschätzt), Info mit Readme (Aufbau und Scrollen
-      geschätzt), Abschiedsbild; Intro, Get Ready, Pause, Continue,
-      Highscore-Eingabe; Musik blendet vor dem Levelstart aus.
-- [ ] **Abspann:** Dia-Timings und Credits-Rasterbalken (Farben geschätzt),
-      Name von Platz 1 im Jubeltext.
+- [ ] **Ablauf (Menüs als HTML):** NEO-ARTS-Logo und Intro im Original; Titel,
+      Optionen (Speichern, Punktefaktor, Freischalt-Hinweis), Levelauswahl,
+      Info mit Readme, Abschied, Get Ready, Pause, Continue und
+      Highscore-Eingabe als HTML mit Tastatur, Maus, Touch und Pad; Effekte
+      (Get Ready, Yes/No) und Musik wie im Original, Musik blendet vor dem
+      Levelstart aus.
+- [ ] **Abspann:** Dia-Timings und Name von Platz 1 im Jubeltext; danach die
+      Credits (alle Beteiligten) als HTML mit Musik `credits`.
 
 ## Stand M5 — Shell, auf echten Geräten prüfen
 
