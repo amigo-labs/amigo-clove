@@ -10,7 +10,9 @@ export function createKeyState(target: Window): KeyState & { dispose(): void } {
     // Alt+Enter schaltet das Vollbild der Shell, das Spiel sieht davon kein Enter
     if (e.code === "Enter" && e.altKey) return;
     down.add(e.code);
-    if (e.code.startsWith("Arrow") || SCROLL_KEYS.has(e.code)) e.preventDefault();
+    // in Eingabefeldern (Namen) tippen Leertaste und Pfeile ganz normal
+    const typing = e.target instanceof HTMLInputElement && e.target.type === "text";
+    if (!typing && (e.code.startsWith("Arrow") || SCROLL_KEYS.has(e.code))) e.preventDefault();
   };
   const onUp = (e: KeyboardEvent) => down.delete(e.code);
   const onBlur = () => down.clear();
