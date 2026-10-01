@@ -82,6 +82,11 @@ Steuerung wie im Original:
   `A` Beam laden (Loslassen feuert), `D` Options-Richtung umkehren,
   `Q`/`W` Tempo, `Esc` Pause.
 
+Die vollständige Belegung (Tastatur, Gamepad, Maus) zeigt der Launcher je Spiel
+unter „Steuerung“ zum Aufklappen und die Shell während jeder Pause neben bzw.
+über dem Pausemenü (`GameInstance.controls()`); DoveZ zeigt dort die im Spiel
+umbelegten Tasten, DOVE die zweiten Tasten aus den Einstellungen.
+
 Modernisierungen (alle abschaltbar; ohne sie läuft die Simulation bit-gleich
 wie im Original, siehe Spec „Optionale Modernisierungen“). Vorgabe ist das
 Original bis auf HUD, Skalierung und Zeiger; der Zeiger wirkt erst, wenn Maus

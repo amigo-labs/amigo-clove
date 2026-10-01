@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import type { KeyState, PointerState } from "@clove/core";
+import { DOVE_CONTROLS } from "../src/controls";
 import { DoveInput } from "../src/input";
+import { KEY_ACTIONS } from "../src/keys";
 import { Input, targetOf } from "../src/sim";
 
 const keys = (...down: string[]): KeyState => ({ isDown: (c) => down.includes(c) });
@@ -39,5 +41,21 @@ describe("DOVE-Eingabe mit Zeiger", () => {
     const m = new DoveInput(keys("ArrowLeft"), () => mouse(320, 200)).read({ x: 0, y: 0 });
     expect(targetOf(m)).toBeUndefined();
     expect(m).toBe(Input.Left);
+  });
+});
+
+describe("Tastenübersicht", () => {
+  test("alle Aktionen der Tastenbelegung (gleiche IDs) plus Pause, Maus wie DoveInput", () => {
+    const rows = DOVE_CONTROLS.flatMap((g) => g.rows);
+    expect(rows.map((r) => r.id)).toEqual([...KEY_ACTIONS.map((a) => a.id), "pause"]);
+    expect(rows.find((r) => r.id === "pause")?.codes).toEqual(["Escape"]);
+    const pointer = Object.fromEntries(rows.filter((r) => r.pointer).map((r) => [r.id, r.pointer]));
+    expect(pointer).toEqual({
+      fire: "left",
+      beam: "right",
+      swap: "middle",
+      faster: "wheelUp",
+      slower: "wheelDown",
+    });
   });
 });

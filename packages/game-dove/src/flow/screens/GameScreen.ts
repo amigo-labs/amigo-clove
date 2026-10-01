@@ -70,6 +70,11 @@ export class GameScreen implements Screen<GameResult> {
     this.root.addChild(this.overlay.root);
   }
 
+  /** Pausemenü offen (für die Tastenübersicht der Shell). */
+  get isPaused(): boolean {
+    return this.paused;
+  }
+
   update(): GameResult | undefined {
     const { keys, audio } = this.env;
     const w = this.world;

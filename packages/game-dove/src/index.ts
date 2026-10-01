@@ -12,6 +12,7 @@ import { Flow, type DebugStart, type FlowOptions } from "./flow/Flow";
 import { FrameCache } from "./flow/gfx";
 import { KeyEdges } from "./flow/input";
 import type { FlowEnv } from "./flow/screen";
+import { DOVE_CONTROLS, DOVE_GAMEPAD } from "./controls";
 import { doveHud, spriteSheet } from "./hud";
 import { VbRnd } from "./sim/VbRnd";
 import type { SimOptions, World } from "./sim/world";
@@ -71,20 +72,9 @@ const dove: GameModule = {
   title: "DOVE",
   // Grafik, Sounds und Menübilder; Musik und Level lädt der Ablauf bei Bedarf nach.
   preload: ["core", "screens"],
-  // A Feuer/Bestätigen, B Beam, X Extrawaffe drehen, Y Enter (Namenseingabe),
-  // Schultertasten Tempo, Start/Back Pause bzw. zurück.
-  gamepad: {
-    0: ["Space"],
-    1: ["KeyA"],
-    2: ["KeyD"],
-    3: ["Enter"],
-    4: ["KeyQ"],
-    5: ["KeyW"],
-    6: ["KeyQ"],
-    7: ["KeyW"],
-    8: ["Escape"],
-    9: ["Escape"],
-  },
+  gamepad: DOVE_GAMEPAD,
+  // das Pausemenü fährt unten in der Mitte ein
+  controlsAt: "top",
   async boot(host: GameHost, options = {}): Promise<DoveInstance> {
     const app = await createScreen({
       canvas: host.canvas,
@@ -144,6 +134,7 @@ const dove: GameModule = {
         const w = flow.playing;
         return w ? doveHud(w, ss, env.german) : null;
       },
+      controls: () => (flow.paused ? DOVE_CONTROLS : null),
       replay: () => ({
         version: 1,
         game: "dove",

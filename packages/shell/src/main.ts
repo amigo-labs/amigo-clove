@@ -4,13 +4,19 @@ import {
   resolveLocale,
   translator,
   type AudioHost,
+  type ControlsSheet,
   type GameInstance,
   type GameModule,
   type KeyAction,
+  type GamepadBindings,
   type KeyState,
   type Locale,
+  type PadLayout,
 } from "@clove/core";
+import { DOVE_CONTROLS, DOVE_GAMEPAD } from "@clove/game-dove/controls";
 import { KEY_ACTIONS as DOVE_KEYS } from "@clove/game-dove/keys";
+import { DOVEZ_GAMEPAD, DOVEZ_PADS, dovezAllControls } from "@clove/game-dovez/controls";
+import { ControlsView, controlsElement, controlsTables, type ControlsOptions } from "./controls";
 import { h } from "./dom";
 import { createPadState, startPadNavigation } from "./gamepad";
 import { HudView } from "./hud";
@@ -46,6 +52,12 @@ interface GameInfo {
   readonly debug?: readonly DebugLink[];
   /** Aktionen für die Tastenbelegung der Shell (DoveZ hat seine eigene im Spiel). */
   readonly keys?: readonly KeyAction[];
+  /** Tastenübersicht im Launcher, mit der Pad-Belegung des Spiels (ohne es zu laden). */
+  readonly controls?: {
+    readonly sheet: ControlsSheet;
+    readonly gamepad: GamepadBindings;
+    readonly pads?: readonly (PadLayout | undefined)[];
+  };
   load(): Promise<GameModule>;
 }
 
@@ -55,6 +67,7 @@ const GAMES: Readonly<Record<string, GameInfo>> = {
     subtitle: "doveSub",
     playable: true,
     keys: DOVE_KEYS,
+    controls: { sheet: DOVE_CONTROLS, gamepad: DOVE_GAMEPAD },
     load: async () => (await import("@clove/game-dove")).default,
   },
   dovez: {
@@ -65,6 +78,7 @@ const GAMES: Readonly<Record<string, GameInfo>> = {
       { path: "debug/assets", label: "debugAssets" },
       { path: "debug/level", label: "debugLevel" },
     ],
+    controls: { sheet: dovezAllControls(), gamepad: DOVEZ_GAMEPAD, pads: DOVEZ_PADS },
     load: async () => (await import("@clove/game-dovez")).default,
   },
 };
@@ -157,6 +171,23 @@ function rumble(pad: number, magnitude: number): void {
       weakMagnitude: 0.6 * m,
     })
     .catch(() => undefined);
+}
+
+/** Optionen der Tastenübersicht nach den aktuellen Einstellungen. */
+function controlsOptions(
+  id: string,
+  gamepad: GamepadBindings | undefined,
+  pads: readonly (PadLayout | undefined)[] | undefined,
+): ControlsOptions {
+  return {
+    t,
+    locale,
+    gamepad,
+    pads,
+    second: GAMES[id]?.keys ? settings.keymap[id] : undefined,
+    showPad: settings.gamepad,
+    showPointer: settings.pointer,
+  };
 }
 
 /** Gehaltene Tastaturtasten für die Tastenaufnahme (ohne Pad und Touch). */
@@ -275,6 +306,17 @@ async function startGame(
       const hudView = new HudView(s, t, hud, () => settings.hud === "modern");
       s.onDispose(() => hudView.dispose());
     }
+    if (instance.controls) {
+      const controls = instance.controls.bind(instance);
+      const controlsView = new ControlsView(
+        s,
+        t,
+        controls,
+        () => controlsOptions(id, module.gamepad, module.pads),
+        module.controlsAt,
+      );
+      s.onDispose(() => controlsView.dispose());
+    }
     document.body.dataset["game"] = id;
   } catch (err) {
     if (gen !== generation) return;
@@ -315,6 +357,17 @@ async function route(): Promise<void> {
             title: g.title,
             subtitle: t(g.subtitle),
             available: g.playable,
+            ...(g.controls
+              ? {
+                  controls: controlsElement(
+                    controlsTables(
+                      g.controls.sheet,
+                      controlsOptions(id, g.controls.gamepad, g.controls.pads),
+                    ),
+                    t,
+                  ),
+                }
+              : {}),
             ...(g.debug
               ? { debug: g.debug.map((d) => ({ path: d.path, label: t(d.label) })) }
               : {}),

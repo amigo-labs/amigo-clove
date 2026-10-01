@@ -60,6 +60,9 @@ export {
 } from "./save/SaveFile";
 export type {
   AudioHost,
+  ControlGroup,
+  ControlRow,
+  ControlsSheet,
   GameHost,
   GameInstance,
   GameModule,
@@ -73,6 +76,7 @@ export type {
   KeyAction,
   KeyState,
   KeyValueStore,
+  LocalLabel,
   PadLayout,
   PointerState,
   ScaleMode,

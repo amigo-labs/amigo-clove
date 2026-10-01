@@ -1,4 +1,5 @@
 import type { GameHost, GameInstance, GameModule } from "@clove/core";
+import { DOVEZ_GAMEPAD, DOVEZ_PADS } from "./controls";
 import { bootAssetViewer } from "./debug/AssetViewer";
 import { bootLevelViewer } from "./debug/LevelViewer";
 import { bootGame } from "./game/Game";
@@ -22,32 +23,10 @@ const dovez: GameModule = {
   id: "dovez",
   title: "DoveZ",
   preload: ["core"],
-  // A Feuer, B Beam, X Wechsel, Y Drehen, Schultertasten Force/Beam-Modus und Nova, Start Pause
-  gamepad: {
-    0: ["KeyS"],
-    1: ["KeyA"],
-    2: ["KeyD"],
-    3: ["KeyW"],
-    4: ["KeyQ"],
-    5: ["KeyE"],
-    9: ["Escape"],
-  },
-  // Zweites Pad: Spieler 2 im Zwei-Spieler-Spiel (Satz 2: Ziffernblock, Ende/Entf/Bild ab …)
-  pads: [
-    undefined,
-    {
-      buttons: {
-        0: ["End"],
-        1: ["Delete"],
-        2: ["PageDown"],
-        3: ["Home"],
-        4: ["Insert"],
-        5: ["PageUp"],
-        9: ["Escape"],
-      },
-      directions: ["Numpad8", "Numpad5", "Numpad4", "Numpad6"],
-    },
-  ],
+  gamepad: DOVEZ_GAMEPAD,
+  pads: DOVEZ_PADS,
+  // das Pausemenü steht oben links
+  controlsAt: "bottom",
   async boot(host: GameHost, options = {}): Promise<GameInstance> {
     if (options["view"] === "debug/assets") return bootAssetViewer(host);
     if (options["view"] === "debug/level") return bootLevelViewer(host);

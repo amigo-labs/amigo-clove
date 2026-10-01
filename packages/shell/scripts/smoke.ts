@@ -3,7 +3,8 @@
  * in Chromium (WebGL über SwiftShader):
  * 1. DOVE startet aus kaltem Cache fehlerfrei und rendert, die DoveZ-Asset-
  *    Ansicht zeigt Sprites, die Level-Ansicht zeichnet Routen und Schüsse,
- * 2. Launcher und Einstellungen (Sprachwechsel) funktionieren,
+ *    in der Pause erscheint die Tastenübersicht,
+ * 2. Launcher (aufklappbare Tastenübersicht) und Einstellungen (Sprachwechsel) funktionieren,
  * 3. nach „Spieldaten installieren“ startet DOVE bei beendetem Server
  *    vollständig aus dem Service-Worker-Cache.
  * Aufruf: `bun run smoke` (baut vorher mit Vite).
@@ -69,6 +70,25 @@ function watch(page: Page, label: string): void {
   });
 }
 
+/** Esc kurz halten (die Spiele fragen den Tastenzustand pro Tick ab). */
+async function tapEscape(page: Page): Promise<void> {
+  await page.keyboard.down("Escape");
+  await page.waitForTimeout(150);
+  await page.keyboard.up("Escape");
+  await page.waitForTimeout(800);
+}
+
+/** Pause: die Tastenübersicht der Shell erscheint mit Zeilen und verschwindet beim Weiterspielen. */
+async function checkPauseControls(page: Page, label: string): Promise<void> {
+  await tapEscape(page);
+  const rows = await page.locator(".controls-overlay:not([hidden]) tbody tr").count();
+  await tapEscape(page);
+  const after = await page.locator(".controls-overlay:not([hidden])").count();
+  console.log(`${label}: Tastenübersicht in der Pause mit ${rows} Zeilen`);
+  if (rows < 10) failures.push(`${label}: Tastenübersicht fehlt in der Pause (${rows} Zeilen)`);
+  if (after !== 0) failures.push(`${label}: Tastenübersicht bleibt nach der Pause stehen`);
+}
+
 /** DOVE Level 1 ab Tick 2100 direkt starten und prüfen, dass HUD und Spielfeld rendern. */
 async function playDove(page: Page, label: string): Promise<void> {
   await page.goto(`${ORIGIN}/#/dove?level=1&seed=1&invincible=1&from=2100`);
@@ -90,6 +110,7 @@ async function playDove(page: Page, label: string): Promise<void> {
   console.log(`${label}: HUD „${hud}“, Spielfeld ${(field * 100).toFixed(1)} % hell`);
   if (!hud?.match(/\d/)) failures.push(`${label}: HTML-HUD fehlt`);
   if (field < 0.05) failures.push(`${label}: Spielfeld leer (${(field * 100).toFixed(1)} %)`);
+  await checkPauseControls(page, label);
 }
 
 /** Original-HUD (Einstellung): die Konsole (konsole.spr) ist opak und hell. */
@@ -173,6 +194,7 @@ try {
   const field = await litShare(played, 0, 0, 800, 550);
   console.log(`dovez-game: Spielfeld ${(field * 100).toFixed(1)} % hell`);
   if (field < 0.2) failures.push("dovez-game: Spielfeld leer");
+  await checkPauseControls(game, "dovez-game");
   if (process.env["SMOKE_SHOTS"])
     await Bun.write(`${process.env["SMOKE_SHOTS"]}/dovez-game.png`, played);
   await game.close();
@@ -269,6 +291,11 @@ try {
   watch(page, "shell");
   await page.goto(`${ORIGIN}/`);
   await page.waitForSelector("#launcher [data-play=dove]");
+  for (const id of ["dove", "dovez"]) {
+    await page.click(`details[data-controls=${id}] summary`);
+    const rows = await page.locator(`details[data-controls=${id}][open] tbody tr`).count();
+    if (rows < 10) failures.push(`launcher: Tastenübersicht ${id} fehlt (${rows} Zeilen)`);
+  }
   await page.click("a[href='#/settings']");
   await page.waitForSelector("#settings");
   await page.selectOption("#language", "en");
