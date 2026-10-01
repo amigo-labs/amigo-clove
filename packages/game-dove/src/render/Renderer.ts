@@ -17,7 +17,7 @@ import {
 } from "../sim/constants";
 import { roundHalfEven } from "../sim/math";
 import { BAND_SIZE, DECO_RECT, SCRIPT_TEXTS } from "../sim/scripts";
-import { E7_TEXTS, E7_WEAPON_NAMES } from "../sim/bosses/e7";
+import { levelMessages } from "../levelMessages";
 import type { World } from "../sim/world";
 import { GLYPH_W, glyph } from "./font";
 import { Particles } from "./Particles";
@@ -48,8 +48,14 @@ export class Renderer {
     private readonly german = true,
     /** Bewegungsarme Darstellung (Einstellung der Shell): kein Bildschirmwackeln. */
     private readonly calm: () => boolean = () => false,
-    /** HTML-HUD der Shell: Konsole und Anzeigen entfallen, Texte im Spielfeld bleiben. */
+    /**
+     * HTML-HUD der Shell: Konsole und Anzeigen entfallen, die Texte im Spielfeld
+     * (Skripttexte, Scan-Meldungen in Level 7) zeigt die Shell (`levelMessages`).
+     */
     private readonly modernHud: () => boolean = () => false,
+    /** Skripttext mit den belegten Tasten (Namen in ASCII für die 8-px-Schrift). */
+    private readonly scriptLine: (index: number) => string | undefined = (i) =>
+      SCRIPT_TEXTS[i]?.[german ? 0 : 1],
   ) {
     const n = world.level.number;
     this.feinde = `image/feinde${n}`;
@@ -129,7 +135,7 @@ export class Renderer {
     }
   }
 
-  render(overlay?: string): void {
+  render(): void {
     const w = this.world;
     const lvl = w.level;
     for (const p of Object.values(this.pools)) p.begin();
@@ -308,26 +314,22 @@ export class Renderer {
       this.field.position.set(0, 0);
     }
 
-    // HUD
-    if (!this.modernHud()) this.drawHud(w);
+    // HUD und Texte im Spielfeld; mit dem HTML-HUD zeigt beides die Shell
+    const modern = this.modernHud();
+    if (!modern) this.drawHud(w);
     this.frameNo++;
-    // Boss Level 7: Scan-Texte (bossC[7] Meldung, [8] Optionen, [9] Waffe; Position nahe am Schiff)
-    if (lvl.number === 7 && w.bossMode) {
-      const msg = E7_TEXTS[w.bossC[7]!];
-      if (msg) this.text(msg, Math.floor((SCREEN_W - msg.length * GLYPH_W) / 2), 60);
-      const tx = w.px > 300 ? w.px - 100 : w.px + 60;
-      if (w.bossC[8])
-        this.text(`${w.optionCount} Option${w.optionCount === 1 ? "" : "s"}`, tx, w.py - 4);
-      if (w.bossC[9]) this.text(E7_WEAPON_NAMES[w.bossC[2]!] ?? "", tx, w.py + 17);
+    if (!modern) {
+      for (const m of levelMessages(w)) {
+        if (m.at) this.text(m.text, m.at.x, m.at.y);
+      }
+      const script = this.scriptLine(w.scriptText);
+      if (script) {
+        const lines = wrap(script, 76);
+        lines.forEach((line, k) =>
+          this.text(line, Math.floor((SCREEN_W - line.length * GLYPH_W) / 2), 20 + 14 * k),
+        );
+      }
     }
-    const script = SCRIPT_TEXTS[w.scriptText];
-    if (script) {
-      const lines = wrap(script[this.german ? 0 : 1], 76);
-      lines.forEach((line, k) =>
-        this.text(line, Math.floor((SCREEN_W - line.length * GLYPH_W) / 2), 20 + 14 * k),
-      );
-    }
-    if (overlay) this.text(overlay, Math.floor((SCREEN_W - overlay.length * GLYPH_W) / 2), 190);
 
     for (const p of Object.values(this.pools)) p.end();
   }

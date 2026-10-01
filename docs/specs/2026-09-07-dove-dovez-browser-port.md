@@ -569,21 +569,54 @@ Simulation**, also unveränderte Referenz-Replays und Level-Hashes.
 - **Menüs als HTML** *(keine Option, ersetzt die Original-Menüs):* Alles
   außerhalb der Level — Titel/Hauptmenü, Optionen, Levelauswahl, Info,
   Highscores, Namenseingabe, Laden/Speichern, Ladebildschirm, Get Ready, Pause,
-  Continue, Credits — beschreibt das Spiel als Daten (`UiScreen` in
-  `core/src/shell/ui.ts`: Menü, Formular, Text, Eingabe, Abfrage, Hinweis,
+  Continue, Credits, NEO-ARTS-Logo — beschreibt das Spiel als Daten (`UiScreen`
+  in `core/src/shell/ui.ts`: Menü, Formular, Text, Eingabe, Abfrage, Hinweis,
   Video) und wartet mit `GameHost.ui.show()` auf die Antwort; die Shell
   zeichnet generische HTML-Bausteine und kennt keine spielspezifischen Seiten.
+  Launcher, Einstellungen, Ladebildschirm und Fehlerseiten der Shell sind
+  dieselben Bausteine (`UiHost` auf einer Seite statt über dem Canvas).
   Ablauf, Regeln (Punktefaktor, Freischaltungen, Kampagne) und
   Speicherformate bleiben im Spiel und unverändert. Im Canvas bleiben die
-  Level und die Original-Animationen (Logos, Story-Intro und -Abspann von
-  DOVE, Osterei „LOV“); DoveZ-Videos spielt die Shell als `<video>`. Solange
-  ein Bildschirm offen ist, sieht das Spiel keine Tasten und keinen Zeiger,
-  danach gilt eine Taste erst nach dem Loslassen. Level-Simulation, Replays
-  und Level-Hashes sind davon nicht berührt.
-- **Komfort:** DOVE pausiert bei Fokusverlust wie DoveZ; zweite Tasten je
-  Aktion (`KeyAction`, additiv wie `T2` in DoveZ); `GameModule.pads` belegt
-  einzelne Pads (DoveZ: Pad 2 = Satz 2 für Spieler 2); Touch-Tasten speisen
-  gewöhnliche Tastencodes ein.
+  Level und die Original-Animationen (DoveZ-Logos, Story-Intro und
+  Abspannbilder von DOVE, Osterei „LOV“, Funkbild); DoveZ-Videos spielt die
+  Shell als `<video>`. Solange ein Bildschirm offen ist, sieht das Spiel keine
+  Tasten und keinen Zeiger, danach gilt eine Taste erst nach dem Loslassen.
+  Level-Simulation, Replays und Level-Hashes sind davon nicht berührt.
+- **Ein Gesamtbild für beide Spiele:** ein Designsystem (CSS-Tokens in
+  `shell/index.html`; `data-game` setzt den Akzent, DOVE Gold, DoveZ das Oliv
+  seines Logos). `GameUi.brand` gibt das Spiel-Logo für den Kopf jeder
+  Seite, `UiMenu.logo` bleibt das große Logo der Hauptmenüs (beide mit den
+  Highscores daneben). Gleichartige Bildschirme sind gleich aufgebaut: Pause
+  („Pause“, das Level als `subtitle`, `PAUSE_TEXTS`, Tastenübersicht), Continue
+  über dem eingefrorenen Level, Credits als Abschnitte je Rolle (DoveZ aus dem
+  Originalbild abgeschrieben, Publisher-Logo und Teamfoto als Ausschnitte),
+  Optionen mit den gemeinsamen Seiten der Shell (`GameUi.settings`:
+  Tastenbelegung, Ton, Darstellung; Beschriftung `SETTINGS_PAGES`).
+- **Einblendungen im Level** *(mit `hudMode = modern`)*: `HudSnapshot.messages`
+  trägt die Texte im Spielfeld — DOVE-Skript- und Tutorialtexte, Scan-Meldungen
+  des Level-7-Bosses, DoveZ-Tastenhinweis „Drücke: …“ und das Funk-Laufband an
+  den Original-Positionen in Spielpixeln; die Shell zeichnet sie, das Spiel lässt
+  sie im Canvas weg. `GameUi.caption` zeigt die Story-Zeilen des
+  DOVE-Abspanns als Untertitel. Reine Darstellung, die Simulation bleibt gleich.
+- **Tastenbelegung** *(Vorgabe Original)*: Die Shell belegt je Spiel und Aktion
+  (`KeyAction`, mit `group`, `player`, `nav`) bis zu drei Tasten; Vorlagen
+  „Pfeiltasten + linke Hand (Original)“ und „WASD + rechte Hand“ (Waffen auf
+  J K L / U I O) in `keys.ts` beider Spiele. `bindKeys` (`core/src/input/
+  keyBindings.ts`) beantwortet die Frage des Spiels nach einem Originalcode mit
+  den belegten Tasten der Aktion; andere Codes (Esc, Enter, F-Tasten) gehen
+  durch, Pad und Touch speisen dahinter ein. DoveZ fragt nur die festen Tasten
+  `T1` (Spieler 1: Sätze 0 und 1, Spieler 2: Satz 2), die zweiten Tasten der
+  alten Tastenkonfiguration werden einmalig zur eigenen Belegung, ebenso die
+  zweiten Tasten von DOVE. `GameHost.boundKeys` liefert die belegten Tasten für
+  Hinweistexte; mit der Original-Belegung bleiben die Texte des Originals.
+  Die belegten Bewegungstasten und die Feuertaste bedienen auch die
+  HTML-Bildschirme. Replay-Format und Simulation sind unberührt.
+- **Ton:** Die Shell regelt Gesamt, Musik, Effekte und Sprache für beide
+  Spiele (`AudioHost.voice` für die DoveZ-Funkstimmen); DoveZ hält das
+  Mischverhältnis seiner Vorgaben fest, seine Lautstärkeseite entfällt.
+- **Komfort:** DOVE pausiert bei Fokusverlust wie DoveZ; `GameModule.pads`
+  belegt einzelne Pads (DoveZ: Pad 2 = Satz 2 für Spieler 2); Touch-Tasten
+  speisen gewöhnliche Tastencodes ein.
 
 ---
 

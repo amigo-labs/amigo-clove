@@ -95,3 +95,10 @@ export interface AudioGains {
 export function audioGains(c: DovezConfig): AudioGains {
   return { sfx: dbGain(c.sfx), speech: dbGain(c.speech), music: c.music / 100 };
 }
+
+/**
+ * Das Mischverhältnis des Originals (Vorgaben der Optionen). Die Lautstärken
+ * stellt die Shell für beide Spiele gleich ein (Gesamt, Musik, Effekte,
+ * Sprache); die Pegel der Konfiguration bleiben in der Datei, gelten aber nicht.
+ */
+export const ORIGINAL_GAINS: AudioGains = audioGains(DEFAULT_CONFIG);

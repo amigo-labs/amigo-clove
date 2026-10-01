@@ -10,9 +10,9 @@ import type { VbRnd } from "../sim/vb";
 import { type Carry, TICK_MS, World } from "../sim/world";
 import { dovezControls } from "../controls";
 import { applyContinue, runContinue } from "./continueScreen";
-import { PointerControl, currentKeys, keyLabel, readInput } from "./input";
+import { PointerControl, keyLabel, readInput } from "./input";
 import type { Lang } from "./lang";
-import { type DovezConfig, audioGains } from "./config";
+import { type DovezConfig, ORIGINAL_GAINS } from "./config";
 import type { Mosaic } from "./mosaic";
 import { runPause } from "./pauseScreen";
 import type { Profile } from "./profile";
@@ -127,7 +127,7 @@ export class LevelScene implements Scene {
       ...(opts.rnd ? { rnd: opts.rnd } : {}),
     });
     const audio = host.audio
-      ? await DovezAudio.create(host.audio, host.assets, pack.slug, audioGains(ctx.config)).catch(
+      ? await DovezAudio.create(host.audio, host.assets, pack.slug, ORIGINAL_GAINS).catch(
           () => undefined,
         )
       : undefined;
@@ -142,7 +142,7 @@ export class LevelScene implements Scene {
     world.rumbleBase = [ctx.config.vibrationStrength[0], ctx.config.vibrationStrength[1]];
     const renderer = new Renderer(textures, world, atlases, ctx.app.renderer, {
       lang,
-      keyLabel,
+      keyLabel: (action, set) => keyLabel(host, action, set),
       calm: () => host.reducedMotion === true,
       modernHud: () => host.hudMode?.() === "modern",
     });
@@ -192,7 +192,7 @@ export class LevelScene implements Scene {
       profile: ctx.profile,
       score: world.score,
       log: world.radio.log,
-      controls: dovezControls(ctx.players, currentKeys()),
+      controls: dovezControls(ctx.players),
       persist: this.persist,
       signal: this.screens.signal,
     }).then((r) => this.leavePause(r === "exit"));

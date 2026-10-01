@@ -1,11 +1,18 @@
-import type { ControlsSheet, GameUi, UiBlock, UiMenu } from "@clove/core";
+import {
+  PAUSE_TEXTS,
+  type ControlsSheet,
+  type GameUi,
+  type UiBlock,
+  type UiMenu,
+} from "@clove/core";
 import { type HighscoreEntry, addHighscore } from "./highscore";
-import { type Lang, levelRu, pick } from "./lang";
+import { type Lang, levelRu } from "./lang";
 
 /**
  * Pause-Bildschirm (`Pause` `0x524610`) als HTML-Menü der Shell über dem
- * eingefrorenen Spielbild: Titel `Levelname (Namen)`, WEITER/EXIT, das
- * Funkprotokoll und die Tastenübersicht. Esc setzt fort; „EXIT“ trägt den
+ * eingefrorenen Spielbild, im Aufbau wie in DOVE: „Pause“, darunter
+ * `Levelname (Namen)`, Weiter/Spiel beenden, das Funkprotokoll und die
+ * Tastenübersicht. Esc setzt fort; „Spiel beenden“ (EXIT) trägt den
  * aktuellen Stand in die Highscoreliste ein und führt ins Hauptmenü.
  * Befund: `docs/measurements/dovez-runtime.md` („Pause“).
  */
@@ -77,11 +84,11 @@ export function pauseTitle(level: string, names: readonly string[], lang: Lang):
 }
 
 /**
- * Menüpunkte je Sprache (`0x527187…0x527413`): „WEITER“/„RESUME“/„Продолжить“
- * und „EXIT“/„Выход“; Position und Größe sind in allen Sprachen gleich.
+ * Menüpunkte je Sprache, wie in der Pause von DOVE (`PAUSE_TEXTS`); das Original
+ * (`0x527187…0x527413`) zeigt „WEITER“/„RESUME“/„Продолжить“ und „EXIT“/„Выход“.
  */
 export function pauseMenu(lang: Lang): readonly [string, string] {
-  return [pick(lang, "WEITER", "RESUME", "Продолжить"), pick(lang, "EXIT", "EXIT", "Выход")];
+  return [PAUSE_TEXTS.resume[lang], PAUSE_TEXTS.quit[lang]];
 }
 
 let measureCtx: OffscreenCanvasRenderingContext2D | null | undefined;
@@ -103,7 +110,7 @@ export function logTextWidth(s: string): number {
   return measureCtx ? measureCtx.measureText(s).width : s.length * 9;
 }
 
-/** Das Pausemenü: WEITER/EXIT, Funkprotokoll darüber, Tastenübersicht daneben. */
+/** Das Pausemenü: Weiter/Spiel beenden, Funkprotokoll darüber, Tastenübersicht daneben. */
 export function pauseScreen(o: {
   readonly lang: Lang;
   readonly level: string;
@@ -119,7 +126,8 @@ export function pauseScreen(o: {
   return {
     kind: "menu",
     over: "level",
-    title: pauseTitle(o.level, o.names, o.lang),
+    title: PAUSE_TEXTS.title[o.lang],
+    subtitle: pauseTitle(o.level, o.names, o.lang),
     items: [
       { id: "resume", label: resume },
       { id: "exit", label: exit },

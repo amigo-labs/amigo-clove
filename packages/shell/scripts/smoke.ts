@@ -3,8 +3,11 @@
  * in Chromium (WebGL über SwiftShader):
  * 1. DOVE startet aus kaltem Cache fehlerfrei und rendert, die DoveZ-Asset-
  *    Ansicht zeigt Sprites, die Level-Ansicht zeichnet Routen und Schüsse,
- *    Titelmenü, Optionen und Pause (mit Tastenübersicht) erscheinen als HTML,
- * 2. Launcher (aufklappbare Tastenübersicht) und Einstellungen (Sprachwechsel) funktionieren,
+ *    Titelmenü, Optionen (mit den Seiten der Shell) und Pause (mit
+ *    Tastenübersicht) erscheinen als HTML; mit der Vorlage „WASD“ nennt das
+ *    Tutorial die neue Feuertaste und die Pause zeigt die neue Belegung,
+ * 2. Launcher (Pfeiltasten, Tastenübersicht der gewählten Karte) und
+ *    Einstellungen (Sprachwechsel, Tastenbelegung) funktionieren,
  * 3. nach „Spieldaten installieren“ startet DOVE bei beendetem Server
  *    vollständig aus dem Service-Worker-Cache.
  * Aufruf: `bun run smoke` (baut vorher mit Vite).
@@ -46,6 +49,10 @@ async function litShare(png: Buffer, x: number, y: number, w: number, h: number)
 }
 
 const failures: string[] = [];
+
+/** Spielkarte im Launcher bzw. Eintrag eines HTML-Menüs. */
+const card = (id: string) => `.ui-item[data-id="#/${id}"]`;
+const item = (id: string) => `.ui-screen[data-kind=menu] .ui-item[data-id="${id}"]`;
 
 /** Fehler der Seite sammeln; `requestfailed` nur, solange das Netz da sein soll. */
 /**
@@ -98,7 +105,11 @@ async function checkPauseControls(page: Page, label: string): Promise<void> {
   if (after !== 0) failures.push(`${label}: Pausemenü bleibt nach „Weiter“ stehen`);
 }
 
-/** DOVE-Titelmenü als HTML: sechs Einträge, Optionen öffnen und mit Esc zurück. */
+/**
+ * DOVE-Titelmenü als HTML: sechs Einträge; die Optionen bieten Spielregeln und
+ * die Seiten der Shell, die Tastenbelegung öffnet den gemeinsamen Editor; Esc
+ * führt zurück bis zum Titel.
+ */
 async function checkDoveMenus(page: Page, label: string): Promise<void> {
   await page.goto(`${ORIGIN}/#/dove?nointro=1&nosound`);
   await page.waitForSelector("body[data-game=dove]", { timeout: 30_000 });
@@ -106,15 +117,71 @@ async function checkDoveMenus(page: Page, label: string): Promise<void> {
   await page.waitForSelector(title, { timeout: 30_000 });
   const items = await page.locator(title).count();
   await page.click(`${title}[data-id="4"]`);
+  const options = await page
+    .waitForSelector(`${title}[data-id=keys]`, { timeout: 10_000 })
+    .catch(() => null);
+  await page.click(`${title}[data-id=rules]`).catch(() => undefined);
   const form = await page
     .waitForSelector(".ui-screen[data-kind=form]", { timeout: 10_000 })
     .catch(() => null);
   await page.keyboard.press("Escape");
-  const back = await page.waitForSelector(title, { timeout: 10_000 }).catch(() => null);
-  console.log(`${label}: Titelmenü mit ${items} Einträgen, Optionen ${form ? "ok" : "fehlen"}`);
+  await page.click(`${title}[data-id=keys]`).catch(() => undefined);
+  const keys = await page
+    .waitForSelector(".ui-screen[data-kind=form] .ui-key", { timeout: 10_000 })
+    .catch(() => null);
+  await page.keyboard.press("Escape");
+  await page.waitForSelector(`${title}[data-id=rules]`, { timeout: 10_000 }).catch(() => null);
+  await page.keyboard.press("Escape");
+  const back = await page
+    .waitForSelector(`${title}[data-id="0"]`, { timeout: 10_000 })
+    .catch(() => null);
+  console.log(
+    `${label}: Titelmenü mit ${items} Einträgen, Optionen ${options && form ? "ok" : "fehlen"}, Tastenbelegung ${keys ? "ok" : "fehlt"}`,
+  );
   if (items !== 6) failures.push(`${label}: Titelmenü hat ${items} statt 6 Einträge`);
-  if (!form) failures.push(`${label}: Optionen öffnen nicht`);
+  if (!options || !form) failures.push(`${label}: Optionen bzw. Spielregeln öffnen nicht`);
+  if (!keys) failures.push(`${label}: Tastenbelegung öffnet nicht aus den Optionen`);
   if (!back) failures.push(`${label}: Esc führt nicht zum Titel zurück`);
+}
+
+/**
+ * Vorlage „WASD + rechte Hand“: J bestätigt Get Ready, das Tutorial nennt J als
+ * Feuertaste (HTML-Einblendung), die Pause zeigt W für „Hoch“.
+ */
+async function checkWasd(page: Page, label: string): Promise<void> {
+  await page.addInitScript(() =>
+    localStorage.setItem(
+      "clove:settings",
+      JSON.stringify({ keybindings: { dove: { preset: "wasd" } } }),
+    ),
+  );
+  await page.goto(`${ORIGIN}/#/dove?level=0&nosound`);
+  await page.waitForSelector("body[data-game=dove]", { timeout: 30_000 });
+  await page.waitForSelector(".ui-screen[data-kind=notice]", { timeout: 30_000 }).catch(() => null);
+  await page.keyboard.press("KeyJ");
+  const fire = await page
+    .waitForFunction(
+      () =>
+        [...document.querySelectorAll(".hud-messages .hud-message")].some((m) =>
+          / J[!.]/.test(m.textContent ?? ""),
+        ),
+      undefined,
+      { timeout: 20_000 },
+    )
+    .catch(() => null);
+  await page.keyboard.down("Escape");
+  await page.waitForSelector(".ui-screen[data-kind=menu]", { timeout: 10_000 }).catch(() => null);
+  await page.keyboard.up("Escape");
+  const up = await page
+    .locator(".ui-controls tbody tr")
+    .first()
+    .locator("kbd")
+    .first()
+    .textContent()
+    .catch(() => null);
+  console.log(`${label}: Tutorial nennt J ${fire ? "ja" : "nein"}, Pause „Hoch“ = ${up}`);
+  if (!fire) failures.push(`${label}: Tutorial nennt die belegte Feuertaste nicht`);
+  if (up !== "W") failures.push(`${label}: Pause zeigt nicht die WASD-Belegung (${up})`);
 }
 
 /** DOVE Level 1 ab Tick 2100 direkt starten und prüfen, dass HUD und Spielfeld rendern. */
@@ -161,9 +228,9 @@ async function playDoveZMenu(page: Page, label: string): Promise<number> {
   await page.setViewportSize({ width: 800, height: 600 });
   await page.goto(`${ORIGIN}/#/dovez?nointro=1`);
   await page.waitForSelector("body[data-game=dovez]", { timeout: 60_000 });
-  const item = ".ui-screen[data-kind=menu] .ui-item";
-  await page.waitForSelector(item, { timeout: 60_000 }).catch(() => undefined);
-  const items = await page.locator(item).count();
+  const entry = ".ui-screen[data-kind=menu] .ui-item";
+  await page.waitForSelector(entry, { timeout: 60_000 }).catch(() => undefined);
+  const items = await page.locator(entry).count();
   console.log(`${label}: Hauptmenü mit ${items} Einträgen`);
   if (items < 4) failures.push(`${label}: Hauptmenü nicht gezeigt (${items} Einträge)`);
   return items;
@@ -181,6 +248,12 @@ try {
   await playDove(cold, "kalt");
   await checkDoveMenus(cold, "dove-menü");
   await cold.close();
+
+  // 1a0. Tastenbelegung „WASD + rechte Hand“
+  const wasd = await browser.newPage({ viewport: { width: 640, height: 480 } });
+  watch(wasd, "wasd");
+  await checkWasd(wasd, "wasd");
+  await wasd.close();
 
   // 1a. Original-HUD per Einstellung
   const original = await browser.newPage({ viewport: { width: 640, height: 480 } });
@@ -314,24 +387,38 @@ try {
   const page = await context.newPage();
   watch(page, "shell");
   await page.goto(`${ORIGIN}/`);
-  await page.waitForSelector("#launcher [data-play=dove]");
+  await page.waitForSelector(card("dove"));
   for (const id of ["dove", "dovez"]) {
-    await page.click(`details[data-controls=${id}] summary`);
-    const rows = await page.locator(`details[data-controls=${id}][open] tbody tr`).count();
+    const rows = await page.locator(".ui-aside .controls-sheet tbody tr").count();
     if (rows < 10) failures.push(`launcher: Tastenübersicht ${id} fehlt (${rows} Zeilen)`);
+    // Pfeiltasten wählen die nächste Karte, die Übersicht folgt
+    await page.keyboard.press("ArrowDown");
   }
-  await page.click("a[href='#/settings']");
-  await page.waitForSelector("#settings");
-  await page.selectOption("#language", "en");
-  await page.waitForFunction(
-    () => document.querySelector("#settings h1")?.textContent === "Settings",
+  const focused = await page.evaluate(() =>
+    (document.activeElement as HTMLElement | null)?.getAttribute("data-id"),
   );
+  if (focused !== "#/settings") failures.push(`launcher: Pfeiltasten ohne Wirkung (${focused})`);
+  await page.keyboard.press("Enter");
+  await page.waitForSelector(item("language"));
+  await page.click(item("language"));
+  await page.click(item("en"));
+  await page.waitForFunction(() => document.querySelector(".ui-title")?.textContent === "Settings");
+  await page.click(item("keys:dovez"));
+  const dovezKeys = await page
+    .waitForSelector(".ui-screen[data-game=dovez] .ui-key", { timeout: 10_000 })
+    .catch(() => null);
+  if (!dovezKeys) failures.push("einstellungen: Tastenbelegung DoveZ fehlt");
+  await page.keyboard.press("Escape");
   await page.evaluate(() => navigator.serviceWorker.ready);
-  await page.waitForSelector("[data-install=dove][data-state=missing]");
-  await page.click("[data-install=dove]");
-  await page.waitForSelector("[data-install=dove][data-state=ready]", { timeout: 120_000 });
-  await page.click("[data-install=dovez]");
-  await page.waitForSelector("[data-install=dovez][data-state=ready]", { timeout: 300_000 });
+  await page.click(item("offline"));
+  for (const [id, timeout] of [
+    ["dove", 120_000],
+    ["dovez", 300_000],
+  ] as const) {
+    await page.waitForSelector(`${item(`install:${id}`)}:not([disabled])`);
+    await page.click(item(`install:${id}`));
+    await page.waitForSelector(`${item(`install:${id}`)}[disabled]`, { timeout });
+  }
   console.log("Offline-Installation abgeschlossen (DOVE und DoveZ).");
 
   // 3. Server beenden: DOVE und das DoveZ-Hauptmenü müssen vollständig aus dem Cache starten
@@ -339,7 +426,7 @@ try {
   await server.exited;
   page.removeAllListeners("requestfailed");
   await page.goto(`${ORIGIN}/`);
-  await page.waitForSelector("#launcher [data-play=dove]");
+  await page.waitForSelector('.ui-item[data-id="#/dove"]');
   await playDove(page, "offline");
   await playDoveZMenu(page, "offline-dovez");
   await browser.close();

@@ -3,7 +3,7 @@
  * Optionen mit einer Shell, die aus einem Skript antwortet; dazu die Regeln aus
  * `MenuLoop` (Pegel, IDs, Namen) und die Texte je Sprache.
  */
-import { afterEach, describe, expect, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import type { UiField, UiForm, UiMenu } from "@clove/core";
 import {
   DEFAULT_CONFIG,
@@ -13,23 +13,12 @@ import {
   saveConfig,
 } from "../src/game/config";
 import { DEFAULT_NAME, emptyHighscores, type HighscoreEntry } from "../src/game/highscore";
-import { DEFAULT_KEYS, useKeys } from "../src/game/input";
 import { LANGS } from "../src/game/lang";
 import { type HtmlMenuOptions, htmlMenu, splitChoice } from "../src/game/menu/htmlMenu";
-import {
-  VOLUME_STEPS,
-  newPlayerIds,
-  playerName,
-  volumeIndex,
-  volumeLevel,
-  volumeOfIndex,
-  volumeStep,
-} from "../src/game/menu/menuRules";
+import { newPlayerIds, playerName } from "../src/game/menu/menuRules";
 import { menuTexts } from "../src/game/menu/menuTexts";
 import { VbRnd } from "../src/sim/vb";
 import { ScriptUi, memoryStore, submitForm } from "./fakeUi";
-
-afterEach(() => useKeys(DEFAULT_KEYS));
 
 const SLOTS = Array.from({ length: 21 }, (_, i) => (i === 4 ? "P1S1A - Level1-2" : undefined));
 
@@ -160,46 +149,25 @@ describe("Hauptmenü (HTML)", () => {
     );
   });
 
-  test("Tastenkonfiguration: Übernehmen schreibt die zweite Taste in die Konfiguration", async () => {
+  test("Optionen: Tastenbelegung, Ton und Darstellung sind die Seiten der Shell", async () => {
     const ui = new ScriptUi([
       { id: "options" },
       { id: "keys" },
-      submitForm("apply", { key4: "KeyY" }),
-      { id: "back" },
-      { id: "exit" },
-    ]);
-    const { opts, store } = options(ui);
-    await htmlMenu(opts);
-    expect(loadConfig(store).keys[4]).toBe("KeyY");
-    expect(loadConfig(store).keys[0]).toBe(DEFAULT_KEYS[0]);
-    const f = formAt(ui, 2);
-    expect(f.title).toBe("Tastenkonfiguration");
-    expect(f.actions.map((a) => a.id)).toEqual(["apply", "back"]);
-    // 3 Sätze × 10 Aktionen, gruppiert; ohne Gamepad keine Vibration
-    expect(f.fields).toHaveLength(30);
-    expect(field(f, "key0")).toMatchObject({ kind: "key", label: "Links", group: "Einzelspieler" });
-    expect(field(f, "key10")).toMatchObject({ group: "Zweispielermodus: Spieler 1" });
-    expect(field(f, "key20")).toMatchObject({ group: "Zweispielermodus: Spieler 2" });
-    expect(field(f, "key4")).toMatchObject({ text: "S" });
-    expect(f.acceptKey?.("KeyY")).toBe(true);
-    expect(f.acceptKey?.("Escape")).toBe(false);
-    expect(f.acceptKey?.("MediaPlay")).toBe(false);
-    expect(f.keyText?.("KeyY")).toBe("Z");
-    // die Anzeige nach der Aufnahme: erste und zweite Taste
-    const next = f.onChange?.({ key4: "KeyY" }, "key4");
-    expect(next?.find((x) => x.id === "key4")).toMatchObject({ value: "KeyY", text: "S / Z" });
-  });
-
-  test("Tastenkonfiguration: Zurück verwirft die Änderungen", async () => {
-    const ui = new ScriptUi([
-      { id: "options" },
-      { id: "keys" },
-      submitForm("back", { key4: "KeyY" }),
+      { id: "audio" },
+      { id: "display" },
       { id: "back" },
       { id: "exit" },
     ]);
     const { opts, configs } = options(ui);
     await htmlMenu(opts);
+    expect(ui.pages).toEqual(["keys", "audio", "display"]);
+    expect(menuAt(ui, 1).items.map((i) => i.label)).toEqual([
+      "Grundeinstellungen",
+      "Tastenbelegung",
+      "Ton",
+      "Darstellung",
+      "Zurück",
+    ]);
     expect(configs).toEqual([]);
   });
 
@@ -207,7 +175,7 @@ describe("Hauptmenü (HTML)", () => {
     const pulses: [number, number][] = [];
     const ui = new ScriptUi([
       { id: "options" },
-      { id: "keys" },
+      { id: "vibration" },
       submitForm("back", { vibration0: "off", strength0: 3000 }),
       { id: "back" },
       { id: "exit" },
@@ -218,7 +186,9 @@ describe("Hauptmenü (HTML)", () => {
     });
     await htmlMenu(opts);
     const f = formAt(ui, 2);
-    expect(f.fields).toHaveLength(32);
+    expect(f.title).toBe("Vibration");
+    expect(f.fields).toHaveLength(2);
+    expect(menuAt(ui, 1).items.map((i) => i.id)).toContain("vibration");
     expect(field(f, "vibration0")).toMatchObject({ kind: "choice", value: "on" });
     expect(field(f, "strength0")).toMatchObject({
       kind: "range",
@@ -235,27 +205,6 @@ describe("Hauptmenü (HTML)", () => {
       [0, 1],
       [0, 0.3],
     ]);
-  });
-
-  test("Lautstärke: Regler in den Stufen des Originals, Musik in Fünfern", async () => {
-    const sounds: string[] = [];
-    const ui = new ScriptUi([
-      { id: "options" },
-      { id: "volume" },
-      submitForm("back", { music: 50, sfx: VOLUME_STEPS, speech: 0 }),
-      { id: "back" },
-      { id: "exit" },
-    ]);
-    const { opts, store } = options(ui, { sound: (s) => sounds.push(s) });
-    await htmlMenu(opts);
-    await Promise.resolve();
-    const f = formAt(ui, 2);
-    expect(f.title).toBe("Lautstärkeeinstellungen");
-    expect(field(f, "music")).toMatchObject({ min: 0, max: 100, step: 5, value: 90, text: "90" });
-    expect(field(f, "sfx")).toMatchObject({ value: volumeIndex(-1000), text: "80" });
-    expect(field(f, "speech")).toMatchObject({ value: VOLUME_STEPS, text: "100" });
-    expect(loadConfig(store)).toMatchObject({ music: 50, sfx: 0, speech: -10000 });
-    expect(sounds).toContain("speech");
   });
 
   test("Grundeinstellungen: drei Schalter, sofort gespeichert", async () => {
@@ -286,7 +235,13 @@ describe("Hauptmenü (HTML)", () => {
   test("Bonus erst nach einem Durchgang; Start als Einzellevel", async () => {
     const zero = new ScriptUi([{ id: "options" }, { id: "back" }, { id: "exit" }]);
     await htmlMenu(options(zero).opts);
-    expect(menuAt(zero, 1).items.map((i) => i.id)).toEqual(["game", "volume", "keys", "back"]);
+    expect(menuAt(zero, 1).items.map((i) => i.id)).toEqual([
+      "game",
+      "keys",
+      "audio",
+      "display",
+      "back",
+    ]);
     const ui = new ScriptUi([
       { id: "options" },
       { id: "bonus" },
@@ -334,23 +289,9 @@ describe("Hauptmenü (HTML)", () => {
 });
 
 describe("Regeln aus MenuLoop", () => {
-  test("Pegel: +250 dB/100 bis stumm, Reglerstufen auf denselben Werten", () => {
-    let v = -1000;
-    const seq: string[] = [];
-    for (let i = 0; i < 6; i++) {
-      v = volumeStep(v);
-      seq.push(volumeLevel(v));
-    }
-    expect(seq).toEqual(["85", "90", "95", "100", "-100", "10"]);
+  test("Pegel der Konfiguration: Hundertstel dB, −10000 stumm", () => {
     expect(dbGain(-10000)).toBe(0);
     expect(dbGain(0)).toBe(1);
-    // jede Stufe des Reglers ist ein Wert, den `volumeStep` durchläuft
-    const cycle = new Set<number>();
-    let w = -10000;
-    for (let i = 0; i < 25; i++) cycle.add((w = volumeStep(w)));
-    for (let i = 0; i <= VOLUME_STEPS; i++) expect(cycle.has(volumeOfIndex(i))).toBe(true);
-    expect(volumeIndex(volumeOfIndex(7))).toBe(7);
-    expect([volumeIndex(-10000), volumeIndex(0), volumeIndex(-4600)]).toEqual([0, VOLUME_STEPS, 1]);
   });
 
   test("Namen: Steuerzeichen fallen weg, Kyrillisch nur auf Russisch, leer → „Bruce“", () => {

@@ -1,4 +1,4 @@
-import type { GameUi, KeyValueStore, UiImage, UiMenu } from "@clove/core";
+import type { GameUi, KeyValueStore, UiMenu } from "@clove/core";
 import type { HighscoreEntry } from "./highscore";
 import type { Lang } from "./lang";
 import { SAVE_SLOTS, type SaveFile, saveKey, serializeSave } from "./saveGame";
@@ -79,7 +79,6 @@ export interface SaveTexts {
   readonly ids: readonly number[];
   /** Beschriftungen der Plätze 1…21. */
   readonly slots: readonly string[];
-  readonly logo?: UiImage | undefined;
 }
 
 /** Antwort-ID des Platzes `n` (1…21). */
@@ -102,7 +101,6 @@ export function saveMenu(d: SaveTexts): UiMenu {
   return {
     kind: "menu",
     title: str.cleared(d.level),
-    ...(d.logo ? { logo: d.logo } : {}),
     blocks: [
       {
         kind: "lines",

@@ -1,6 +1,13 @@
-import type { ControlRow, ControlsSheet, GamepadBindings, Locale, PadLayout } from "@clove/core";
+import type {
+  ControlRow,
+  ControlsSheet,
+  GamepadBindings,
+  KeyBindings,
+  Locale,
+  PadLayout,
+} from "@clove/core";
 import { h } from "./dom";
-import { keyName, type SecondKeys } from "./keymap";
+import { keyName } from "./keymap";
 import type { ShellText, TextKey } from "./texts";
 
 /** Tasten der W3C-Standardbelegung (`Gamepad.buttons`) mit ihren üblichen Namen. */
@@ -25,8 +32,8 @@ export interface ControlsOptions {
   /** Pad-Belegung des Spiels; ohne sie entfällt die Gamepad-Spalte. */
   readonly gamepad?: GamepadBindings | undefined;
   readonly pads?: readonly (PadLayout | undefined)[] | undefined;
-  /** Zweite Tasten aus den Einstellungen der Shell (Aktion → Code). */
-  readonly second?: SecondKeys | undefined;
+  /** Tastenbelegung der Shell: Zeilen mit der ID einer Aktion zeigen deren Tasten. */
+  readonly bindings?: KeyBindings | undefined;
   /** Gamepad- bzw. Maus-Spalte zeigen (Einstellungen). */
   readonly showPad: boolean;
   readonly showPointer: boolean;
@@ -68,12 +75,12 @@ export function controlsTables(sheet: ControlsSheet, o: ControlsOptions): Contro
     const layout = o.pads?.[group.pad ?? 0];
     const buttons = layout?.buttons ?? o.gamepad;
     const lines = group.rows.map((row) => {
-      const extra = o.second?.[row.id];
-      const codes = extra && !row.codes.includes(extra) ? [...row.codes, extra] : row.codes;
+      // die Tasten zeigt die Belegung, die Pad-Tasten folgen den Codes des Spiels
+      const bound = o.bindings?.[row.id] ?? row.codes;
       return {
         action: row.label[o.locale],
-        keys: [...new Set(codes.map((c) => (c === "Space" ? o.t("keySpace") : keyName(c))))],
-        pad: o.showPad && buttons ? padButtons(codes, buttons, layout?.directions) : [],
+        keys: [...new Set(bound.map((c) => (c === "Space" ? o.t("keySpace") : keyName(c))))],
+        pad: o.showPad && buttons ? padButtons(row.codes, buttons, layout?.directions) : [],
         pointer: o.showPointer && row.pointer ? o.t(POINTER_TEXT[row.pointer]) : "",
       };
     });

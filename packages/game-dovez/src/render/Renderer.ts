@@ -10,6 +10,7 @@ import {
   type Renderer as PixiRenderer,
 } from "pixi.js";
 import type { DrawList, DrawSlot, Quad } from "../sim/effects";
+import { RADIO_LIFT, TICKER_Y } from "../game/hud";
 import { type Lang, hintPrefix } from "../game/lang";
 import type { EnvSlot } from "../sim/envDraw";
 import { DeathState, type Enemy } from "../sim/enemies";
@@ -38,11 +39,6 @@ import type { StripTexture } from "./StripMesh";
 interface AtlasRef {
   readonly json: AtlasJson;
 }
-
-/** Laufband (`ShowMSGS`) über dem HUD-Grund. */
-const TICKER_Y = 552;
-/** So weit rücken Funkbild (y 542…592) und Laufband mit dem HTML-HUD nach oben ins Spielfeld. */
-const RADIO_LIFT = 52;
 
 /** HUD-Positionen (links oben) je Element, 1 Spieler. */
 const HUD_1P = {
@@ -175,9 +171,6 @@ export class Renderer {
   /** Abblende-Schwarz über dem Spielfeld (Alpha je Frame). */
   private readonly fade = new Graphics().rect(0, 0, 800, 550).fill(0x000000);
   private frameNo = 0;
-  /** Bildschirm-Overlays (Speicherbildschirm): GDI-Texte unter, Logo über der Abblende. */
-  readonly underFade = new Container();
-  readonly overFade = new Container();
 
   constructor(
     private readonly textures: TextureRegistry,
@@ -196,7 +189,7 @@ export class Renderer {
       this.layers.set(name, c);
       this.batches.set(name, new SpriteBatch(c));
     }
-    this.root.addChild(this.underFade, this.fade, this.overFade);
+    this.root.addChild(this.fade);
     this.root.addChild(this.hudLayer);
     this.hud = new SpriteBatch(this.hudLayer);
     this.ticker.position.set(575, TICKER_Y);
@@ -274,7 +267,6 @@ export class Renderer {
     // Abblenden in den letzten 50 Ticks
     const left = w.level.levelLength - w.tick;
     this.fade.alpha = left < 50 && !w.nova ? (50 - left) / 50 : 0;
-    this.fade.scale.y = 1;
     const modern = this.modernHud();
     if (!modern) {
       this.drawHud();
@@ -282,30 +274,9 @@ export class Renderer {
     }
     this.placeRadio(modern);
     this.drawList(this.hud, w.fx.lists.radio);
-    this.ticker.text = w.radio.ticker;
-    for (const b of this.batches.values()) b.end();
-    this.hud.end();
-    this.compose();
-  }
-
-  /**
-   * Speicherbildschirm (`SaveGame`): nur `SpielMoveHintergrund` und das HUD,
-   * dazu Schwarz mit `fade` über dem Spielfeld (unter `overFade` und HUD).
-   */
-  drawBackdrop(fade: number): void {
-    const w = this.world;
-    if (w.env.frame === this.lastFrame) return;
-    this.lastFrame = w.env.frame;
-    this.frameNo++;
-    for (const b of this.batches.values()) b.begin();
-    this.hud.begin();
-    this.drawHint();
-    this.screen.position.set(0, 0);
-    this.fade.alpha = Math.max(0, Math.min(1, fade));
-    this.fade.scale.y = 600 / 550;
-    this.placeRadio(false);
-    if (!this.modernHud()) this.drawHud();
-    this.ticker.text = w.radio.ticker;
+    // mit dem HTML-HUD zeigen Laufband und Tastenhinweis die Shell (`dovezMessages`)
+    this.ticker.visible = !modern;
+    this.ticker.text = modern ? "" : w.radio.ticker;
     for (const b of this.batches.values()) b.end();
     this.hud.end();
     this.compose();
@@ -383,7 +354,7 @@ export class Renderer {
    * (11, y + 1); 1P y = 450, 2P je Spieler y = 360 und 450.
    */
   private drawHint(): void {
-    const h = this.world.env.hint;
+    const h = this.modernHud() ? undefined : this.world.env.hint;
     const lines = h ? (this.world.playersMinus1 === 1 ? [1, 2] : [0]) : [];
     const need = lines.length * 3;
     while (this.hintTexts.length < need) {

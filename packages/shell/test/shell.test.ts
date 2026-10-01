@@ -1,11 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { translator } from "@clove/core";
+import { resolveBindings, translator } from "@clove/core";
 import { DOVE_CONTROLS, DOVE_GAMEPAD } from "@clove/game-dove/controls";
+import { KEY_LAYOUT as DOVE_KEYS } from "@clove/game-dove/keys";
 import { DOVEZ_GAMEPAD, DOVEZ_PADS, dovezControls } from "@clove/game-dovez/controls";
 import { controlsTables, padButtons } from "../src/controls";
 import { combineKeys, createPadState, padKeys, type PadSnapshot } from "../src/gamepad";
 import { hudLayout } from "../src/hud";
-import { keyName, withSecondKeys } from "../src/keymap";
+import { keyName } from "../src/keymap";
 import { parseRoute } from "../src/router";
 import { DEFAULT_SETTINGS, loadSettings, reducedMotion, sanitizeSettings } from "../src/settings";
 import { collectSaves, restoreSaves, storageFor } from "../src/storage";
@@ -40,11 +41,11 @@ describe("Einstellungen", () => {
     expect(sanitizeSettings(undefined)).toEqual(DEFAULT_SETTINGS);
     expect(
       sanitizeSettings({ language: "fr", volume: { master: 2, music: -1, sfx: "x" }, gamepad: 0 }),
-    ).toEqual({ ...DEFAULT_SETTINGS, volume: { master: 1, music: 0, sfx: 1 } });
+    ).toEqual({ ...DEFAULT_SETTINGS, volume: { master: 1, music: 0, sfx: 1, voice: 1 } });
     expect(sanitizeSettings({ language: "de", volume: { music: 0.25 }, gamepad: false })).toEqual({
       ...DEFAULT_SETTINGS,
       language: "de",
-      volume: { master: 1, music: 0.25, sfx: 1 },
+      volume: { master: 1, music: 0.25, sfx: 1, voice: 1 },
       gamepad: false,
       motion: "auto",
     });
@@ -213,28 +214,42 @@ describe("HUD-Layout", () => {
   });
 });
 
-const held = (...down: string[]) => ({ isDown: (c: string) => down.includes(c) });
-
-describe("Zweite Tasten", () => {
-  const actions = [
-    { id: "fire", label: { de: "Feuer", en: "Fire", ru: "Огонь" }, codes: ["KeyS", "Space"] },
-    { id: "beam", label: { de: "Beam", en: "Beam", ru: "Луч" }, codes: ["KeyA"] },
-  ];
-
-  test("die zweite Taste hält alle Originaltasten der Aktion, die Originale bleiben", () => {
-    const kb = withSecondKeys(held("KeyX"), actions, () => ({ fire: "KeyX" }));
-    expect([kb.isDown("KeyS"), kb.isDown("Space"), kb.isDown("KeyA")]).toEqual([true, true, false]);
-    expect(withSecondKeys(held("KeyS"), actions, () => ({ fire: "KeyX" })).isDown("KeyS")).toBe(
-      true,
-    );
-    expect(withSecondKeys(held("KeyX"), actions, () => undefined).isDown("KeyS")).toBe(false);
+describe("Tastenbelegung in den Einstellungen", () => {
+  test("Vorlage oder eigene Tasten; Ungültiges fällt weg", () => {
+    const s = sanitizeSettings({
+      keybindings: {
+        dove: { preset: "wasd" },
+        dovez: { preset: "custom", keys: { fire: ["KeyX", "<b>", "KeyX", 3], "x y": ["KeyA"] } },
+        "": { preset: "arrows" },
+        bad: { preset: "<script>" },
+      },
+    });
+    expect(s.keybindings).toEqual({
+      dove: { preset: "wasd" },
+      dovez: { preset: "custom", keys: { fire: ["KeyX"] } },
+    });
   });
 
-  test("Einstellungen: nur gültige Codes, Tastennamen kurz", () => {
+  test("alte zweite Tasten werden zur eigenen Belegung (Original plus Taste)", () => {
+    const s = sanitizeSettings(
+      { keymap: { dove: { fire: "KeyX", beam: "<b>" }, other: { fire: "KeyY" } } },
+      { dove: DOVE_KEYS },
+    );
+    expect(s.keybindings["dove"]?.preset).toBe("custom");
+    const keys = resolveBindings(DOVE_KEYS, s.keybindings["dove"]);
+    expect(keys["fire"]).toEqual(["KeyS", "Space", "KeyX"]);
+    expect(keys["beam"]).toEqual(["KeyA"]);
+    expect(s.keybindings["other"]).toBeUndefined();
+    // eine neue Belegung gewinnt gegen die alte
     expect(
-      sanitizeSettings({ keymap: { dove: { fire: "KeyX", beam: "<b>", "x y": "KeyA" }, "": {} } })
-        .keymap,
-    ).toEqual({ dove: { fire: "KeyX" } });
+      sanitizeSettings(
+        { keymap: { dove: { fire: "KeyX" } }, keybindings: { dove: { preset: "wasd" } } },
+        { dove: DOVE_KEYS },
+      ).keybindings["dove"],
+    ).toEqual({ preset: "wasd" });
+  });
+
+  test("Tastennamen kurz", () => {
     expect(["KeyA", "Digit3", "Numpad4", "ArrowUp", "F5"].map(keyName)).toEqual([
       "A",
       "3",
@@ -270,11 +285,11 @@ describe("Tastenübersicht", () => {
     expect(padButtons(["KeyJ"], DOVE_GAMEPAD)).toEqual([]);
   });
 
-  test("DOVE: Tastennamen, zweite Taste aus den Einstellungen, Maus", () => {
+  test("DOVE: Tastennamen aus der Belegung, Pad aus den Codes des Spiels, Maus", () => {
     const [table] = controlsTables(DOVE_CONTROLS, {
       ...base,
       gamepad: DOVE_GAMEPAD,
-      second: { fire: "KeyK" },
+      bindings: { ...resolveBindings(DOVE_KEYS), fire: ["KeyS", "Space", "KeyK"] },
     });
     expect(table?.pad).toBe(true);
     expect(table?.pointer).toBe(true);
@@ -286,6 +301,19 @@ describe("Tastenübersicht", () => {
       pointer: "linke Taste",
     });
     expect(table?.lines.at(-1)).toMatchObject({ keys: ["Esc"], pad: ["Back", "Start"] });
+    const [wasd] = controlsTables(DOVE_CONTROLS, {
+      ...base,
+      gamepad: DOVE_GAMEPAD,
+      bindings: resolveBindings(DOVE_KEYS, { preset: "wasd" }),
+    });
+    expect(wasd?.lines.find((l) => l.action === "Feuer")).toMatchObject({
+      keys: ["J", "Leertaste"],
+      pad: ["A"],
+    });
+    expect(wasd?.lines.find((l) => l.action === "Hoch")).toMatchObject({
+      keys: ["W"],
+      pad: ["✚ ↑"],
+    });
   });
 
   test("ausgeschaltete Geräte und leere Spalten entfallen", () => {
@@ -308,7 +336,7 @@ describe("Tastenübersicht", () => {
       pads: DOVEZ_PADS,
     });
     expect(p1?.label).toBe("Spieler 1");
-    expect(p1?.lines[0]).toMatchObject({ keys: ["J", "←"], pad: ["✚ ←"] });
+    expect(p1?.lines[0]).toMatchObject({ keys: ["←", "J"], pad: ["✚ ←"] });
     expect(p2?.label).toBe("Spieler 2");
     expect(p2?.pointer).toBe(false);
     expect(p2?.lines[0]).toMatchObject({ keys: ["Num 4"], pad: ["✚ ←"] });

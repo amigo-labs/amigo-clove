@@ -4,6 +4,7 @@ import { Renderer } from "../../render/Renderer";
 import { DEATH_END, DEATH_STEP, FIELD_H } from "../../sim/constants";
 import { step } from "../../sim/step";
 import type { World } from "../../sim/world";
+import { asciiKeyName, scriptText } from "../../scriptText";
 import { pauseMenu } from "../menus";
 import type { FlowEnv, Screen } from "../screen";
 
@@ -56,6 +57,16 @@ export class GameScreen implements Screen<GameResult> {
       env.german,
       () => env.host.reducedMotion === true,
       () => this.modernHud(),
+      (i) => {
+        const keys = env.host.boundKeys;
+        return scriptText(
+          i,
+          env.german,
+          keys
+            ? (a) => keys(a).map((k) => ({ code: k.code, name: asciiKeyName(k.code, env.german) }))
+            : undefined,
+        );
+      },
     );
     this.root.addChild(this.renderer.root);
   }
@@ -69,7 +80,7 @@ export class GameScreen implements Screen<GameResult> {
       this.paused = true;
       this.pauseReply = undefined;
       audio?.pause(true);
-      void this.env.host.ui.show(pauseMenu(this.env.german)).then((r) => {
+      void this.env.host.ui.show(pauseMenu(this.env.german, this.world.level.number)).then((r) => {
         this.pauseReply = r.id;
       });
       return undefined;

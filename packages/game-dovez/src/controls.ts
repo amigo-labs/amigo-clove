@@ -6,8 +6,8 @@ import type {
   LocalLabel,
   PadLayout,
 } from "@clove/core";
-import { ACTIONS, DEFAULT_KEYS, actionCodes, type Action } from "./game/keyTable";
-import { menuTexts } from "./game/menu/menuTexts";
+import { ACTIONS, type Action } from "./game/keyTable";
+import { HORN_LABEL, KEY_ACTIONS, actionId } from "./keys";
 
 /** A Feuer, B Beam, X Wechsel, Y Drehen, Schultertasten Force/Beam-Modus und Nova, Start Pause. */
 export const DOVEZ_GAMEPAD: GamepadBindings = {
@@ -45,59 +45,49 @@ const POINTER: Readonly<Partial<Record<Action, ControlRow["pointer"]>>> = {
   switchWeapon: "wheel",
 };
 
-/** Beschriftung einer Aktion wie in der Tastenkonfiguration des Spiels. */
-function label(a: number): LocalLabel {
-  return {
-    de: menuTexts("de").keys.labels[a]!,
-    en: menuTexts("en").keys.labels[a]!,
-    ru: menuTexts("ru").keys.labels[a]!,
-  };
-}
-
-const HORN: LocalLabel = { de: "Hupe", en: "Horn", ru: "Гудок" };
 const PAUSE: ControlRow = {
   id: "pause",
   label: { de: "Pause", en: "Pause", ru: "Пауза" },
   codes: ["Escape"],
 };
-const SOLO: LocalLabel = { de: "Einzelspieler", en: "Single player", ru: "Один игрок" };
 const PLAYER: readonly LocalLabel[] = [
   { de: "Spieler 1", en: "Player 1", ru: "Игрок 1" },
   { de: "Spieler 2", en: "Player 2", ru: "Игрок 2" },
 ];
 
-/** Zeilen eines Tastensatzes (0 allein, 1/2 im Zwei-Spieler-Spiel) samt Pause; Maus nur für Spieler 1. */
-function rows(set: number, second: readonly string[], mouse: boolean): ControlRow[] {
-  const out: ControlRow[] = ACTIONS.map((id, a) => {
-    const pointer = mouse ? POINTER[id] : undefined;
-    const codes = actionCodes(set, id, second);
-    return pointer ? { id, label: label(a), codes, pointer } : { id, label: label(a), codes };
+/**
+ * Zeilen eines Spielers samt Hupe und Pause, mit den IDs der Tastenbelegung
+ * (`KEY_ACTIONS`): die Shell setzt die belegten Tasten ein, die Codes bestimmen
+ * die Pad-Tasten. Maus nur für Spieler 1.
+ */
+function rows(player: number): ControlRow[] {
+  const out: ControlRow[] = ACTIONS.map((a) => {
+    const action = KEY_ACTIONS.find((k) => k.id === actionId(player, a))!;
+    const pointer = player === 0 ? POINTER[a] : undefined;
+    const row = { id: action.id, label: action.label, codes: action.codes };
+    return pointer ? { ...row, pointer } : row;
   });
-  out.push({ id: "horn", label: HORN, codes: actionCodes(set, "horn", second) }, PAUSE);
+  out.push({ id: "horn", label: HORN_LABEL, codes: ["F11"] }, PAUSE);
   return out;
 }
 
 /** Die beiden Spieler im Zwei-Spieler-Spiel, jeder mit seinem Pad. */
-function duo(second: readonly string[]): ControlGroup[] {
+function duo(): ControlGroup[] {
   return [
-    { label: PLAYER[0]!, pad: 0, rows: rows(1, second, true) },
-    { label: PLAYER[1]!, pad: 1, rows: rows(2, second, false) },
+    { label: PLAYER[0]!, pad: 0, rows: rows(0) },
+    { label: PLAYER[1]!, pad: 1, rows: rows(1) },
   ];
 }
 
 /**
- * Tastenübersicht der Pause: `second` sind die zweiten Tasten der Tastenkonfiguration
- * (30 Einträge, Vorgabe `DEFAULT_KEYS`); im Zwei-Spieler-Spiel je Spieler ein Abschnitt.
+ * Tastenübersicht der Pause; im Zwei-Spieler-Spiel je Spieler ein Abschnitt.
  * Reine Daten ohne Pixi, damit der Launcher sie lädt, ohne das Spiel zu laden.
  */
-export function dovezControls(
-  players: 1 | 2,
-  second: readonly string[] = DEFAULT_KEYS,
-): ControlsSheet {
-  return players === 1 ? [{ rows: rows(0, second, true) }] : duo(second);
+export function dovezControls(players: 1 | 2): ControlsSheet {
+  return players === 1 ? [{ rows: rows(0) }] : duo();
 }
 
-/** Für den Launcher: Einzelspieler und beide Spieler des Zwei-Spieler-Spiels (Vorgabetasten). */
+/** Für den Launcher: Spieler 1 (allein wie zu zweit) und Spieler 2. */
 export function dovezAllControls(): ControlsSheet {
-  return [{ label: SOLO, rows: rows(0, DEFAULT_KEYS, true) }, ...duo(DEFAULT_KEYS)];
+  return duo();
 }

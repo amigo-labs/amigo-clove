@@ -8,12 +8,12 @@ import { Renderer } from "../render/Renderer";
 import { VbRnd } from "../sim/vb";
 import type { Carry } from "../sim/world";
 import { Campaign, type CampaignAction, languageVideo } from "./campaign";
-import { type DovezConfig, loadConfig, saveConfig } from "./config";
+import { DEFAULT_CONFIG, type DovezConfig, loadConfig, saveConfig } from "./config";
 import { creditsScreen } from "./credits";
 import { FadeLogic, FadeScene } from "./fadeOut";
 import { atlasTexture } from "./gdi";
 import { parseHighscores, HIGHSCORE_KEY } from "./highscore";
-import { pauseKey, useKeys } from "./input";
+import { keyLabel, pauseKey } from "./input";
 import { atlasSprites, dovezHud } from "./hud";
 import { type Lang, loadingText, resolveLang } from "./lang";
 import { type GameContext, LevelScene, levelBundles } from "./level";
@@ -137,6 +137,8 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
   const dovezLogo: UiImage | undefined = logoSprite
     ? { sprite: logoSprite, alt: "DoveZ" }
     : undefined;
+  // die Marke im Kopf aller Seiten, wie in DOVE
+  host.ui.brand?.({ name: "DoveZ", ...(dovezLogo ? { logo: dovezLogo } : {}) });
   /** `Me.588070`: `lang=` der URL, sonst die Locale des Hosts (`de`, `ru`, sonst Englisch). */
   const lang = resolveLang(opts.lang, host.locale);
   const persist = opts.screen === undefined;
@@ -145,7 +147,6 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
   /** Die eine `Rnd`-Folge des Programms (Logos, Spiel-IDs, alle Level). */
   const rnd = new VbRnd();
   let config: DovezConfig = loadConfig(host.storage);
-  useKeys(config.keys);
   const menuAudio = await MenuAudio.create(host);
   /** Spieler aus dem letzten Spiel der Sitzung (`Me.1288.7B4`, `P[p].68`, `P[p].6C`). */
   let lastPlayers: 1 | 2 = opts.players;
@@ -303,7 +304,6 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
         highscores: ctx.profile.highscores,
         ids: ctx.profile.ids,
         slots: slotLabels(host.storage),
-        logo: dovezLogo,
         storage: host.storage,
         persist,
         file: () => ({
@@ -376,7 +376,7 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
     const logoAtlas = await host.assets.json<AtlasJson>("atlas/logo");
     if (host.audio) {
       music ??= new StreamPlayer(host.audio.context, host.audio.music);
-      music.setVolume(config.music / 100);
+      music.setVolume(DEFAULT_CONFIG.music / 100);
       if (host.assets.has("music/enhaced_credits"))
         music.play(host.assets.url("music/enhaced_credits"), false);
     }
@@ -395,7 +395,7 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
     const esc = () => pauseKey(host);
     const intergenies = logo("logo_intergenies");
     if (intergenies) {
-      menuAudio?.play("logo", config.sfx);
+      menuAudio?.play("logo", DEFAULT_CONFIG.sfx);
       await play(new LogoGlitch(host, app, targets, intergenies, noise, rnd));
       await play(new LogoShow(host, app, intergenies, 42, 30, 0, rnd));
       await play(new FadeScene(app, targets, new FadeLogic(0, rnd), esc));
@@ -416,7 +416,7 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
   const menu = async (): Promise<MenuResult> => {
     const menuAtlas = await host.assets.json<AtlasJson>("atlas/menu");
     const menuSprite = atlasSprites(host.assets, menuAtlas);
-    menuAudio?.startMusic(config.music);
+    menuAudio?.startMusic(DEFAULT_CONFIG.music);
     const result = await htmlMenu({
       ui: host.ui,
       lang,
@@ -429,12 +429,10 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
       names: lastNames,
       ids: lastIds,
       onConfig: (c) => {
-        if (c.music !== config.music) menuAudio?.music.setVolume(c.music / 100);
         config = c;
-        useKeys(c.keys);
         if (persist) saveConfig(host.storage, c);
       },
-      sound: (name) => menuAudio?.play(name, name === "speech" ? config.speech : config.sfx),
+      sound: (name) => menuAudio?.play(name, DEFAULT_CONFIG.sfx),
       pads: () => host.rumblePads?.() ?? 0,
       rumble: host.rumble,
       logo: dovezLogo,
@@ -527,7 +525,7 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
     hud() {
       const level = current;
       if (!level || scene !== level || !level.playing) return null;
-      return dovezHud(level.world, hudSprite, lang);
+      return dovezHud(level.world, hudSprite, lang, (a, set) => keyLabel(host, a, set));
     },
     dispose() {
       disposed = true;

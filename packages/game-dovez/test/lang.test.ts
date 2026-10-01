@@ -95,10 +95,11 @@ describe("Sprache (Me.588070)", () => {
 
 describe("Bildschirme auf Russisch", () => {
   test("Pause: Menü und Titel (0x527187, 0x5275BF)", () => {
+    // wie in DOVE: gemeinsame Texte der Pause
     expect(LANGS.map(pauseMenu)).toEqual([
-      ["WEITER", "EXIT"],
-      ["RESUME", "EXIT"],
-      ["Продолжить", "Выход"],
+      ["Weiter", "Spiel beenden"],
+      ["Resume", "Quit game"],
+      ["Продолжить", "Выйти из игры"],
     ]);
     const names = ["Bruce", "Kim"];
     expect(pauseTitle("Level1-1 Skyfight", names, "de")).toBe("Level1-1 Skyfight (Bruce & Kim)");
