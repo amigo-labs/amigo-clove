@@ -46,7 +46,6 @@ export function continueRankText(german: boolean, rank: number): string {
 export const HIGHSCORE_TEXT = {
   youPlaced: "You placed",
   enterName: "Enter your name here:",
-  cursor: "§",
   title: "HighScore:",
 } as const;
 

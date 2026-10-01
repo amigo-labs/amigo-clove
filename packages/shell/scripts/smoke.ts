@@ -3,7 +3,8 @@
  * in Chromium (WebGL über SwiftShader):
  * 1. DOVE startet aus kaltem Cache fehlerfrei und rendert, die DoveZ-Asset-
  *    Ansicht zeigt Sprites, die Level-Ansicht zeichnet Routen und Schüsse,
- * 2. Launcher und Einstellungen (Sprachwechsel) funktionieren,
+ *    Titelmenü, Optionen und Pause (mit Tastenübersicht) erscheinen als HTML,
+ * 2. Launcher (aufklappbare Tastenübersicht) und Einstellungen (Sprachwechsel) funktionieren,
  * 3. nach „Spieldaten installieren“ startet DOVE bei beendetem Server
  *    vollständig aus dem Service-Worker-Cache.
  * Aufruf: `bun run smoke` (baut vorher mit Vite).
@@ -69,6 +70,53 @@ function watch(page: Page, label: string): void {
   });
 }
 
+/**
+ * Pause als HTML: das Pausemenü der Shell erscheint mit Tastenübersicht und verschwindet
+ * beim Weiterspielen. Esc bleibt gehalten, bis die Pause da ist (die Spiele fragen den
+ * Tastenzustand pro Tick ab, auf langsamen Rechnern ist ein Tick länger als ein
+ * Tippen); weiter geht es mit Enter auf dem vorgewählten „Weiter“.
+ */
+async function checkPauseControls(page: Page, label: string): Promise<void> {
+  const pause = ".ui-screen[data-kind=menu]";
+  const hold = async (key: string, until: () => Promise<unknown>) => {
+    await page.keyboard.down(key);
+    try {
+      await until();
+    } catch {
+      // gemeldet wird unten am Ergebnis
+    }
+    await page.keyboard.up(key);
+    await page.waitForTimeout(500);
+  };
+  await hold("Escape", () => page.waitForSelector(pause, { timeout: 10_000 }));
+  const rows = await page.locator(`${pause} .ui-controls tbody tr`).count();
+  await page.keyboard.press("Enter");
+  await page.waitForSelector(pause, { state: "detached", timeout: 10_000 }).catch(() => undefined);
+  const after = await page.locator(pause).count();
+  console.log(`${label}: Pausemenü mit Tastenübersicht (${rows} Zeilen)`);
+  if (rows < 10) failures.push(`${label}: Tastenübersicht fehlt in der Pause (${rows} Zeilen)`);
+  if (after !== 0) failures.push(`${label}: Pausemenü bleibt nach „Weiter“ stehen`);
+}
+
+/** DOVE-Titelmenü als HTML: sechs Einträge, Optionen öffnen und mit Esc zurück. */
+async function checkDoveMenus(page: Page, label: string): Promise<void> {
+  await page.goto(`${ORIGIN}/#/dove?nointro=1&nosound`);
+  await page.waitForSelector("body[data-game=dove]", { timeout: 30_000 });
+  const title = ".ui-screen[data-kind=menu] .ui-item";
+  await page.waitForSelector(title, { timeout: 30_000 });
+  const items = await page.locator(title).count();
+  await page.click(`${title}[data-id="4"]`);
+  const form = await page
+    .waitForSelector(".ui-screen[data-kind=form]", { timeout: 10_000 })
+    .catch(() => null);
+  await page.keyboard.press("Escape");
+  const back = await page.waitForSelector(title, { timeout: 10_000 }).catch(() => null);
+  console.log(`${label}: Titelmenü mit ${items} Einträgen, Optionen ${form ? "ok" : "fehlen"}`);
+  if (items !== 6) failures.push(`${label}: Titelmenü hat ${items} statt 6 Einträge`);
+  if (!form) failures.push(`${label}: Optionen öffnen nicht`);
+  if (!back) failures.push(`${label}: Esc führt nicht zum Titel zurück`);
+}
+
 /** DOVE Level 1 ab Tick 2100 direkt starten und prüfen, dass HUD und Spielfeld rendern. */
 async function playDove(page: Page, label: string): Promise<void> {
   await page.goto(`${ORIGIN}/#/dove?level=1&seed=1&invincible=1&from=2100`);
@@ -90,6 +138,7 @@ async function playDove(page: Page, label: string): Promise<void> {
   console.log(`${label}: HUD „${hud}“, Spielfeld ${(field * 100).toFixed(1)} % hell`);
   if (!hud?.match(/\d/)) failures.push(`${label}: HTML-HUD fehlt`);
   if (field < 0.05) failures.push(`${label}: Spielfeld leer (${(field * 100).toFixed(1)} %)`);
+  await checkPauseControls(page, label);
 }
 
 /** Original-HUD (Einstellung): die Konsole (konsole.spr) ist opak und hell. */
@@ -107,16 +156,17 @@ async function playDoveOriginalHud(page: Page, label: string): Promise<void> {
     failures.push(`${label}: Original-HUD nicht gerendert (${(hud * 100).toFixed(1)} %)`);
 }
 
-/** DoveZ-Hauptmenü ohne Logos: Knopfleiste links muss gezeichnet sein. */
-async function playDoveZMenu(page: Page, label: string): Promise<void> {
+/** DoveZ-Hauptmenü ohne Logos als HTML: mindestens „Neu“, „Laden“, „Optionen“, „Exit“. */
+async function playDoveZMenu(page: Page, label: string): Promise<number> {
   await page.setViewportSize({ width: 800, height: 600 });
   await page.goto(`${ORIGIN}/#/dovez?nointro=1`);
   await page.waitForSelector("body[data-game=dovez]", { timeout: 60_000 });
-  await page.waitForTimeout(4000);
-  const shot = await page.screenshot();
-  const buttons = await litShare(shot, 150, 160, 470, 420);
-  console.log(`${label}: Knopfleiste ${(buttons * 100).toFixed(1)} % hell`);
-  if (buttons < 0.3) failures.push(`${label}: Hauptmenü nicht gerendert`);
+  const item = ".ui-screen[data-kind=menu] .ui-item";
+  await page.waitForSelector(item, { timeout: 60_000 }).catch(() => undefined);
+  const items = await page.locator(item).count();
+  console.log(`${label}: Hauptmenü mit ${items} Einträgen`);
+  if (items < 4) failures.push(`${label}: Hauptmenü nicht gezeigt (${items} Einträge)`);
+  return items;
 }
 
 try {
@@ -129,6 +179,7 @@ try {
   const cold = await browser.newPage({ viewport: { width: 640, height: 480 } });
   watch(cold, "kalt");
   await playDove(cold, "kalt");
+  await checkDoveMenus(cold, "dove-menü");
   await cold.close();
 
   // 1a. Original-HUD per Einstellung
@@ -173,31 +224,26 @@ try {
   const field = await litShare(played, 0, 0, 800, 550);
   console.log(`dovez-game: Spielfeld ${(field * 100).toFixed(1)} % hell`);
   if (field < 0.2) failures.push("dovez-game: Spielfeld leer");
+  await checkPauseControls(game, "dovez-game");
   if (process.env["SMOKE_SHOTS"])
     await Bun.write(`${process.env["SMOKE_SHOTS"]}/dovez-game.png`, played);
   await game.close();
 
-  // 1b3. DoveZ-Hauptmenü ohne Logos: Knopfleiste links, dann „Neu“ → Spieleranzahl
+  // 1b3. DoveZ-Hauptmenü ohne Logos als HTML, dann „Neu“ → Spieleranzahl
   const menu = await browser.newPage({ viewport: { width: 800, height: 600 } });
   watch(menu, "dovez-menu");
-  await menu.goto(`${ORIGIN}/#/dovez?nointro=1`);
-  await menu.waitForSelector("body[data-game=dovez]", { timeout: 30_000 });
-  await menu.waitForTimeout(4000);
-  const main = await menu.screenshot();
-  await menu.waitForTimeout(500);
-  await menu.keyboard.down("Enter");
-  await menu.waitForTimeout(400);
-  await menu.keyboard.up("Enter");
-  await menu.waitForTimeout(2000);
-  const newPage = await menu.screenshot();
-  const buttons = await litShare(main, 150, 160, 470, 420);
-  console.log(`dovez-menu: Knopfleiste ${(buttons * 100).toFixed(1)} % hell`);
-  if (buttons < 0.3) failures.push("dovez-menu: Hauptmenü leer");
-  if (Buffer.compare(main, newPage) === 0) failures.push("dovez-menu: „Neu“ ohne Wirkung");
-  if (process.env["SMOKE_SHOTS"]) {
-    await Bun.write(`${process.env["SMOKE_SHOTS"]}/dovez-menu-1.png`, main);
-    await Bun.write(`${process.env["SMOKE_SHOTS"]}/dovez-menu-2.png`, newPage);
-  }
+  await playDoveZMenu(menu, "dovez-menu");
+  const mainTitle = await menu.locator(".ui-title").textContent();
+  await menu.keyboard.press("Enter");
+  await menu.waitForTimeout(1000);
+  const nextTitle = await menu
+    .locator(".ui-title")
+    .textContent()
+    .catch(() => null);
+  console.log(`dovez-menu: „${mainTitle}“ → „${nextTitle}“`);
+  if (!nextTitle || nextTitle === mainTitle) failures.push("dovez-menu: „Neu“ ohne Wirkung");
+  if (process.env["SMOKE_SHOTS"])
+    await Bun.write(`${process.env["SMOKE_SHOTS"]}/dovez-menu.png`, await menu.screenshot());
   await menu.close();
 
   // 1b4. DoveZ mit Logos und Intro: die Content-Security-Policy darf Video und Musik nicht sperren
@@ -269,6 +315,11 @@ try {
   watch(page, "shell");
   await page.goto(`${ORIGIN}/`);
   await page.waitForSelector("#launcher [data-play=dove]");
+  for (const id of ["dove", "dovez"]) {
+    await page.click(`details[data-controls=${id}] summary`);
+    const rows = await page.locator(`details[data-controls=${id}][open] tbody tr`).count();
+    if (rows < 10) failures.push(`launcher: Tastenübersicht ${id} fehlt (${rows} Zeilen)`);
+  }
   await page.click("a[href='#/settings']");
   await page.waitForSelector("#settings");
   await page.selectOption("#language", "en");

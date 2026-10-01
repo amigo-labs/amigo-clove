@@ -4,11 +4,13 @@ import type { DoveIntro } from "@clove/formats";
 import type { Container } from "pixi.js";
 import { DoveAudio } from "../audio/DoveAudio";
 import { loadLevel } from "../data/loadLevel";
+import { spriteSheet } from "../hud";
 import { TICK_MS } from "../sim/constants";
 import { continueInNextLevel, restartAtCheckpoint, startLevel } from "../sim/step";
 import { World, type SimOptions } from "../sim/world";
 import {
   type HighscoreEntry,
+  cleanName,
   defaultHighscores,
   insertHighscore,
   parseHighscores,
@@ -26,22 +28,25 @@ import {
   simOptionsFor,
   unlockAfter,
 } from "./rules";
-import type { FlowEnv, Screen } from "./screen";
-import { ContinueScreen } from "./screens/ContinueScreen";
-import { GameScreen, type TickRecorder } from "./screens/GameScreen";
-import { GetReadyScreen } from "./screens/GetReadyScreen";
-import { HighscoreScreen } from "./screens/HighscoreScreen";
-import { IntroScreen } from "./screens/IntroScreen";
-import { OutroScreen } from "./screens/OutroScreen";
 import {
-  FarewellScreen,
-  InfoScreen,
-  LevelSelectScreen,
-  NeoArtsScreen,
-  OptionsScreen,
-} from "./screens/simple";
-import { MenuItem, type TitleResult, TitleScreen } from "./screens/TitleScreen";
-import { TitleStars } from "./stars";
+  MenuItem,
+  type SpriteOf,
+  configFrom,
+  continueConfirm,
+  creditsText,
+  farewellNotice,
+  getReadyNotice,
+  highscoreInput,
+  infoText,
+  levelSelectMenu,
+  optionsForm,
+  titleMenu,
+} from "./menus";
+import { type FlowEnv, type Screen, rndFloat } from "./screen";
+import { GameScreen, type TickRecorder } from "./screens/GameScreen";
+import { IntroScreen } from "./screens/IntroScreen";
+import { NeoArtsScreen } from "./screens/NeoArtsScreen";
+import { OutroScreen } from "./screens/OutroScreen";
 
 const CONFIG_KEY = "config";
 const HIGHSCORE_KEY = "highscores";
@@ -87,7 +92,7 @@ export class Flow {
   private readonly live = new Set<Screen<unknown>>();
   private config: Config;
   private highscores: HighscoreEntry[];
-  private readonly stars: TitleStars;
+  private readonly sprite: SpriteOf;
 
   constructor(
     private readonly env: FlowEnv,
@@ -97,7 +102,7 @@ export class Flow {
     const storage = env.host.storage;
     this.config = parseConfig(storage.get(CONFIG_KEY));
     this.highscores = parseHighscores(storage.get(HIGHSCORE_KEY)) ?? defaultHighscores(env.rnd);
-    this.stars = new TitleStars(env.rnd);
+    this.sprite = (id, r) => spriteSheet(env.host.assets, id)(r);
   }
 
   /** Einmal pro Anzeigebild: fällige Ticks des aktiven Bildschirms, dann zeichnen. */
@@ -168,11 +173,12 @@ export class Flow {
     if (this.live.delete(screen)) screen.dispose();
   }
 
-  /** Readme-Text je Sprache für den Info-Bildschirm (fehlt er, nur der Kopf). */
-  private async readme(): Promise<string> {
+  /** Readme-Zeilen je Sprache für den Info-Bildschirm (fehlt sie, nur der Kopf). */
+  private async readme(): Promise<string[]> {
     const id = this.env.german ? "data/liesmich" : "data/readme";
-    if (!this.env.host.assets.has(id)) return "";
-    return (await this.env.host.assets.json<{ text: string }>(id)).text;
+    if (!this.env.host.assets.has(id)) return [];
+    const { text } = await this.env.host.assets.json<{ text: string }>(id);
+    return text.replace(/\t/g, "    ").split("\n");
   }
 
   private music(id: string): void {
@@ -194,24 +200,24 @@ export class Flow {
       await this.run(new NeoArtsScreen(env));
     }
     let item: MenuItem = MenuItem.Play;
+    const ui = env.host.ui;
     for (;;) {
       this.music("music/titel");
-      const r: TitleResult = await this.run(
-        new TitleScreen(env, this.stars, this.highscores, item),
-      );
-      if (r === "escape" || r === MenuItem.Quit) {
-        await this.run(new FarewellScreen(env));
+      const r = await ui.show(titleMenu(this.sprite, this.highscores, item));
+      if (this.disposed) return;
+      if (r.id === "escape" || r.id === String(MenuItem.Quit)) {
+        await ui.show(farewellNotice(env.german));
         env.host.exit();
         return;
       }
-      item = r;
-      switch (r) {
+      item = Number(r.id) as MenuItem;
+      switch (item) {
         case MenuItem.Play: {
           let level = 1;
           if (hasLevelSelect(this.config)) {
-            const sel = await this.run(new LevelSelectScreen(env, this.config, 1));
-            if (sel.level === undefined) break;
-            level = sel.level;
+            const sel = await ui.show(levelSelectMenu(this.sprite, this.config, env.german));
+            if (sel.id === "back" || sel.id === "aborted") break;
+            level = Number(sel.id);
           }
           await this.playGame(level);
           break;
@@ -223,27 +229,36 @@ export class Flow {
           await this.playGame(TUTORIAL_LEVEL);
           break;
         case MenuItem.Info:
-          await this.run(new InfoScreen(env, await this.readme()));
+          await ui.show(infoText(this.sprite, await this.readme(), env.german));
           break;
-        case MenuItem.Options: {
-          const o = await this.run(
-            new OptionsScreen(env, this.config, (c) => {
-              this.config = c;
-              this.saveConfig();
-            }),
-          );
-          this.config = o.config;
+        case MenuItem.Options:
+          await this.options(true);
           break;
-        }
         default:
           break;
       }
     }
   }
 
+  /**
+   * Optionen: „Speichern“ schreibt die Konfiguration und zeigt „gespeichert“,
+   * „Zurück“ übernimmt die Werte nur für diese Sitzung (wie das Original).
+   */
+  private async options(persist: boolean): Promise<void> {
+    let saved = false;
+    for (;;) {
+      const r = await this.env.host.ui.show(optionsForm(this.config, this.env.german, saved));
+      if (r.values) this.config = configFrom(this.config, r.values);
+      if (r.id !== "save") return;
+      if (persist) this.saveConfig();
+      saved = true;
+    }
+  }
+
   /** Debug-Einstieg `screen=…` für Sichtprüfungen einzelner Bildschirme. */
   private async showcase(name: string): Promise<void> {
     const env = this.env;
+    const ui = env.host.ui;
     switch (name) {
       case "intro":
         this.music("music/intro");
@@ -251,33 +266,62 @@ export class Flow {
         break;
       case "getready":
         this.music(this.levelMusic(1));
-        await this.run(new GetReadyScreen(env, 1, 0, 2));
+        await ui.show(getReadyNotice(this.sprite, 1, 0, 2, env.german));
         break;
       case "continue":
         this.music("music/gameover");
-        await this.run(new ContinueScreen(env, 42000, rankFor(this.highscores, 42000)));
+        await this.continueGame(42000);
         break;
       case "highscore":
         await this.enterHighscore(this.highscores[0]!.score + 1);
         break;
       case "outro":
-        await this.run(new OutroScreen(env, this.highscores[0]?.name ?? ""));
+        await this.outro();
+        break;
+      case "credits":
+        await this.credits();
         break;
       case "options":
-        this.config = (await this.run(new OptionsScreen(env, this.config, () => {}))).config;
+        await this.options(false);
         break;
       case "levelselect":
-        await this.run(new LevelSelectScreen(env, { ...this.config, unlocked: [2, 3] }, 1));
+        await ui.show(
+          levelSelectMenu(this.sprite, { ...this.config, unlocked: [2, 3] }, env.german),
+        );
         break;
       case "info":
-        await this.run(new InfoScreen(env, await this.readme()));
+        await ui.show(infoText(this.sprite, await this.readme(), env.german));
         break;
       case "farewell":
-        await this.run(new FarewellScreen(env));
+        await ui.show(farewellNotice(env.german));
         break;
       default:
         break;
     }
+  }
+
+  /** Abspann (`ShowOutro`): Story im Original, danach die Credits als HTML. */
+  private async outro(): Promise<void> {
+    await this.run(new OutroScreen(this.env, this.highscores[0]?.name ?? ""));
+    await this.credits();
+  }
+
+  /** Credits mit allen Beteiligten, Musik `credits`. */
+  private async credits(): Promise<void> {
+    this.music("music/credits");
+    await this.env.host.ui.show(creditsText(this.sprite, this.env.german));
+  }
+
+  /** Continue-Abfrage; `true` = weiterspielen. Sounds wie `ContinueScreen` (`0x4A0050`). */
+  private async continueGame(score: number): Promise<boolean> {
+    const { audio, rnd, german } = this.env;
+    const r = await this.env.host.ui.show(
+      continueConfirm(this.sprite, score, rankFor(this.highscores, score), german),
+    );
+    const yes = r.id === "yes";
+    if (yes) audio?.effect(rndFloat(rnd) < 0.5 ? "yesjo" : "yesjo2", 50);
+    else audio?.effect(rndFloat(rnd) < 0.5 ? "fertig" : "fertig2");
+    return yes;
   }
 
   private simOptions(): SimOptions {
@@ -333,9 +377,7 @@ export class Flow {
           if (level === TUTORIAL_LEVEL) return;
           if (level >= FINAL_LEVEL) {
             await this.enterHighscore(world.score);
-            if (level === FINAL_LEVEL) {
-              await this.run(new OutroScreen(env, this.highscores[0]?.name ?? ""));
-            }
+            if (level === FINAL_LEVEL) await this.outro();
             return;
           }
           const next = await loadLevel(env.host.assets, level + 1);
@@ -352,10 +394,7 @@ export class Flow {
           return;
         } else {
           this.music("music/gameover");
-          const yes = await this.run(
-            new ContinueScreen(env, r.score, rankFor(this.highscores, r.score)),
-          );
-          if (!yes) {
+          if (!(await this.continueGame(r.score))) {
             await this.enterHighscore(r.score);
             return;
           }
@@ -368,9 +407,15 @@ export class Flow {
     }
   }
 
-  private getReady(world: World): Promise<"start" | "abort"> {
+  /** Get Ready vor jedem Level (`effect getready` wie im Original); ESC bricht ab. */
+  private async getReady(world: World): Promise<"start" | "abort"> {
+    const { audio, german } = this.env;
+    audio?.effect("getready");
     const n = world.level.number;
-    return this.run(new GetReadyScreen(this.env, n, world.score, world.lives));
+    const r = await this.env.host.ui.show(
+      getReadyNotice(this.sprite, n, world.score, world.lives, german),
+    );
+    return r.id === "back" ? "abort" : "start";
   }
 
   /** `HighScore`: nur wenn die Punkte in die Liste kommen; Name eingeben, speichern. */
@@ -378,7 +423,8 @@ export class Flow {
     const rank = rankFor(this.highscores, score);
     if (rank === 0) return;
     this.music("music/highscore");
-    const name = await this.run(new HighscoreScreen(this.env, rank));
+    const r = await this.env.host.ui.show(highscoreInput(rank, this.env.german));
+    const name = cleanName(String(r.values?.["name"] ?? ""));
     this.highscores = insertHighscore(this.highscores, rank, name, score);
     this.env.host.storage.set(HIGHSCORE_KEY, serializeHighscores(this.highscores));
   }

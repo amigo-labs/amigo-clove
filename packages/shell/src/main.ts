@@ -4,15 +4,21 @@ import {
   resolveLocale,
   translator,
   type AudioHost,
+  type ControlsSheet,
   type GameInstance,
   type GameModule,
   type KeyAction,
+  type GamepadBindings,
   type KeyState,
   type Locale,
+  type PadLayout,
 } from "@clove/core";
+import { DOVE_CONTROLS, DOVE_GAMEPAD } from "@clove/game-dove/controls";
 import { KEY_ACTIONS as DOVE_KEYS } from "@clove/game-dove/keys";
+import { DOVEZ_GAMEPAD, DOVEZ_PADS, dovezAllControls } from "@clove/game-dovez/controls";
+import { controlsElement, controlsTables, type ControlsOptions } from "./controls";
 import { h } from "./dom";
-import { createPadState, startPadNavigation } from "./gamepad";
+import { NAV_BINDINGS, createPadState, padKeys, startPadNavigation } from "./gamepad";
 import { HudView } from "./hud";
 import { createKeyState } from "./keys";
 import { withSecondKeys } from "./keymap";
@@ -26,6 +32,8 @@ import { storageFor, webStorage } from "./storage";
 import { TEXTS, mb, type ShellText, type TextKey } from "./texts";
 import { launcherView } from "./views/launcher";
 import { settingsView } from "./views/settings";
+import { NAV_CODES, gateKeys } from "./ui/model";
+import { UiHost } from "./ui/UiHost";
 
 /**
  * Launcher. Hash-Routing: `#/` Spielauswahl, `#/settings` Einstellungen,
@@ -46,6 +54,12 @@ interface GameInfo {
   readonly debug?: readonly DebugLink[];
   /** Aktionen für die Tastenbelegung der Shell (DoveZ hat seine eigene im Spiel). */
   readonly keys?: readonly KeyAction[];
+  /** Tastenübersicht im Launcher, mit der Pad-Belegung des Spiels (ohne es zu laden). */
+  readonly controls?: {
+    readonly sheet: ControlsSheet;
+    readonly gamepad: GamepadBindings;
+    readonly pads?: readonly (PadLayout | undefined)[];
+  };
   load(): Promise<GameModule>;
 }
 
@@ -55,6 +69,7 @@ const GAMES: Readonly<Record<string, GameInfo>> = {
     subtitle: "doveSub",
     playable: true,
     keys: DOVE_KEYS,
+    controls: { sheet: DOVE_CONTROLS, gamepad: DOVE_GAMEPAD },
     load: async () => (await import("@clove/game-dove")).default,
   },
   dovez: {
@@ -65,6 +80,7 @@ const GAMES: Readonly<Record<string, GameInfo>> = {
       { path: "debug/assets", label: "debugAssets" },
       { path: "debug/level", label: "debugLevel" },
     ],
+    controls: { sheet: dovezAllControls(), gamepad: DOVEZ_GAMEPAD, pads: DOVEZ_PADS },
     load: async () => (await import("@clove/game-dovez")).default,
   },
 };
@@ -159,6 +175,23 @@ function rumble(pad: number, magnitude: number): void {
     .catch(() => undefined);
 }
 
+/** Optionen der Tastenübersicht nach den aktuellen Einstellungen. */
+function controlsOptions(
+  id: string,
+  gamepad: GamepadBindings | undefined,
+  pads: readonly (PadLayout | undefined)[] | undefined,
+): ControlsOptions {
+  return {
+    t,
+    locale,
+    gamepad,
+    pads,
+    second: GAMES[id]?.keys ? settings.keymap[id] : undefined,
+    showPad: settings.gamepad,
+    showPointer: settings.pointer,
+  };
+}
+
 /** Gehaltene Tastaturtasten für die Tastenaufnahme (ohne Pad und Touch). */
 const held = () => keyboard.held?.() ?? [];
 
@@ -239,18 +272,36 @@ async function startGame(
       touch.dispose();
     });
     const audio = audioHost(params);
+    const navCodes = Object.keys(NAV_CODES);
+    const ui = new UiHost({
+      stage: s,
+      audio,
+      // Pad (Navigationsbelegung) und Touch-Tasten; die Tastatur liest der UiHost selbst
+      polled: () => {
+        const down = settings.gamepad
+          ? padKeys(navigator.getGamepads?.() ?? [], NAV_BINDINGS)
+          : new Set<string>();
+        for (const c of navCodes) if (touch.isDown(c)) down.add(c);
+        return down;
+      },
+      controls: (sheet) =>
+        controlsElement(controlsTables(sheet, controlsOptions(id, module.gamepad, module.pads)), t),
+    });
+    s.onDispose(() => ui.dispose());
     const instance = await module.boot(
       {
         canvas,
         assets,
-        keys: keysFor(id, module, touch),
+        ui,
+        keys: gateKeys(keysFor(id, module, touch), () => ui.state()),
         locale,
         rumble,
         rumblePads: () => rumblePads().length,
         scaleMode: () => settings.scale,
         hudMode: () => settings.hud,
+        // über HTML-Bildschirmen klickt der Zeiger Knöpfe, nicht ins Spiel
         get pointer() {
-          return settings.pointer ? pointer : undefined;
+          return settings.pointer && !ui.state().open ? pointer : undefined;
         },
         // folgt der Einstellung auch während des Spiels
         get reducedMotion() {
@@ -315,6 +366,17 @@ async function route(): Promise<void> {
             title: g.title,
             subtitle: t(g.subtitle),
             available: g.playable,
+            ...(g.controls
+              ? {
+                  controls: controlsElement(
+                    controlsTables(
+                      g.controls.sheet,
+                      controlsOptions(id, g.controls.gamepad, g.controls.pads),
+                    ),
+                    t,
+                  ),
+                }
+              : {}),
             ...(g.debug
               ? { debug: g.debug.map((d) => ({ path: d.path, label: t(d.label) })) }
               : {}),

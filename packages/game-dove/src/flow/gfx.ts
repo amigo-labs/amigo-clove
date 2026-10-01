@@ -2,7 +2,6 @@ import type { TextureRegistry } from "@clove/pixi-kit";
 import { Container, type Sprite, Texture } from "pixi.js";
 import { GLYPH_H, GLYPH_W, glyph } from "../render/font";
 import { SpritePool } from "../render/SpritePool";
-import { BIG_H, BIG_W, layoutBigText } from "./bigfont";
 
 /**
  * Teiltexturen aus der `TextureRegistry`, einmal je Rechteck erzeugt. Die
@@ -88,13 +87,6 @@ export class Gfx {
       const g = glyph(ch);
       if (g) this.blit(layer, "image/text", g[0], g[1], GLYPH_W, GLYPH_H, cx, y);
       cx += advance;
-    }
-  }
-
-  /** `PutBigText(x, y, s)`: `text2.spr`, 60 px je Zeichen, Clipping an 0…640. */
-  bigText(layer: number, s: string, x: number, y: number): void {
-    for (const [dx, sx, sy] of layoutBigText(x, s)) {
-      this.blit(layer, "image/text2", sx, sy, BIG_W, BIG_H, dx, y);
     }
   }
 

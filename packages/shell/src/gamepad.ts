@@ -74,8 +74,10 @@ export function combineKeys(...sources: readonly KeyState[]): KeyState {
   return { isDown: (code) => sources.some((s) => s.isDown(code)) };
 }
 
-const NAV_BINDINGS: GamepadBindings = { 0: ["Enter"], 1: ["Escape"], 9: ["Enter"] };
-const FOCUSABLE = "a[href], button:not([disabled]), select, input:not([type=hidden]):not([hidden])";
+/** Pad-Belegung der HTML-Seiten und Spielbildschirme: A und Start bestätigen, B zurück. */
+export const NAV_BINDINGS: GamepadBindings = { 0: ["Enter"], 1: ["Escape"], 9: ["Enter"] };
+const FOCUSABLE =
+  "a[href], button:not([disabled]), summary, select, input:not([type=hidden]):not([hidden])";
 
 /**
  * Pad-Bedienung der HTML-Seiten (Launcher, Einstellungen): hoch/runter wandert
