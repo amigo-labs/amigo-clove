@@ -177,7 +177,8 @@ export class UiHost implements GameUi {
     if (typing && (action === "left" || action === "right" || e.code === "Space")) return;
     if (action) {
       e.preventDefault();
-      if (!e.repeat || action !== "ok") this.act(action);
+      // gehaltene Enter/Esc (die die Pause öffnete) wiederholen nicht
+      if (!e.repeat || (action !== "ok" && action !== "back")) this.act(action);
       return;
     }
     if (this.secret && e.key.length === 1) {
@@ -626,6 +627,7 @@ export class UiHost implements GameUi {
     }
     const el = this.panel(
       s,
+      s.image ? h("div", { class: "ui-figure" }, imageNode(s.image)) : false,
       s.lines ? this.block({ kind: "lines", lines: s.lines, align: "center" }) : false,
       s.countdown ? count : false,
       h("div", { class: "ui-items", "data-row": "" }, ...buttons),

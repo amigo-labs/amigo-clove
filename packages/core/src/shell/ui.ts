@@ -156,6 +156,7 @@ export interface UiInput extends UiBase {
  */
 export interface UiConfirm extends UiBase {
   readonly kind: "confirm";
+  readonly image?: UiImage;
   readonly lines?: readonly string[];
   readonly items: readonly UiItem[];
   readonly selected?: string;
