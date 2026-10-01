@@ -75,7 +75,8 @@ export function combineKeys(...sources: readonly KeyState[]): KeyState {
 }
 
 const NAV_BINDINGS: GamepadBindings = { 0: ["Enter"], 1: ["Escape"], 9: ["Enter"] };
-const FOCUSABLE = "a[href], button:not([disabled]), select, input:not([type=hidden]):not([hidden])";
+const FOCUSABLE =
+  "a[href], button:not([disabled]), summary, select, input:not([type=hidden]):not([hidden])";
 
 /**
  * Pad-Bedienung der HTML-Seiten (Launcher, Einstellungen): hoch/runter wandert

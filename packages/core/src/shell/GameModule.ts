@@ -159,7 +159,36 @@ export interface GameInstance {
   dispose(): void;
   /** HUD-Daten, solange ein Level läuft (sonst `null`); fehlt bei Spielen ohne HTML-HUD. */
   hud?(): HudSnapshot | null;
+  /**
+   * Tastenübersicht, solange das Spiel pausiert (sonst `null`); die Shell zeigt sie
+   * neben dem Pausemenü. Fehlt bei Spielen ohne Übersicht.
+   */
+  controls?(): ControlsSheet | null;
 }
+
+/** Name je Sprache der Shell. */
+export type LocalLabel = Readonly<Record<"de" | "en" | "ru", string>>;
+
+/** Eine Zeile der Tastenübersicht: Aktion, Tasten und Maustaste. */
+export interface ControlRow {
+  readonly id: string;
+  readonly label: LocalLabel;
+  /** Tasten als `KeyboardEvent.code`; die Shell leitet daraus auch die Pad-Tasten ab. */
+  readonly codes: readonly string[];
+  /** Maus-Bedienung derselben Aktion (Rad hoch = vom Spieler weg). */
+  readonly pointer?: "left" | "right" | "middle" | "wheel" | "wheelUp" | "wheelDown";
+}
+
+/** Abschnitt der Tastenübersicht, z. B. ein Spieler im Zwei-Spieler-Spiel. */
+export interface ControlGroup {
+  readonly label?: LocalLabel;
+  /** Pad, dessen Belegung gilt (n-tes Pad, `GameModule.pads`); Vorgabe 0. */
+  readonly pad?: number;
+  readonly rows: readonly ControlRow[];
+}
+
+/** Tastenübersicht eines Spiels: reine Daten, die Shell beschriftet und zeichnet sie. */
+export type ControlsSheet = readonly ControlGroup[];
 
 /**
  * Gamepad-Belegung eines Spiels: Taste der Standardbelegung (`Gamepad.buttons`-Index,
@@ -175,7 +204,7 @@ export type GamepadBindings = Readonly<Record<number, readonly string[]>>;
  */
 export interface KeyAction {
   readonly id: string;
-  readonly label: Readonly<Record<"de" | "en" | "ru", string>>;
+  readonly label: LocalLabel;
   readonly codes: readonly string[];
 }
 
@@ -196,5 +225,10 @@ export interface GameModule {
   readonly gamepad?: GamepadBindings;
   /** Belegung je Pad (n-tes Pad mit Standardbelegung); fehlt ein Eintrag, gilt `gamepad`. */
   readonly pads?: readonly (PadLayout | undefined)[];
+  /**
+   * Wo die Tastenübersicht der Pause im Spielbild steht, wenn daneben kein Platz ist:
+   * so, dass das Pausemenü des Spiels frei bleibt (Vorgabe `center`).
+   */
+  readonly controlsAt?: "top" | "center" | "bottom";
   boot(host: GameHost, options?: Readonly<Record<string, string>>): Promise<GameInstance>;
 }

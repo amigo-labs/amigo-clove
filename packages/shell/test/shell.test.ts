@@ -1,4 +1,8 @@
 import { describe, expect, test } from "bun:test";
+import { translator } from "@clove/core";
+import { DOVE_CONTROLS, DOVE_GAMEPAD } from "@clove/game-dove/controls";
+import { DOVEZ_GAMEPAD, DOVEZ_PADS, dovezControls } from "@clove/game-dovez/controls";
+import { controlsTables, padButtons } from "../src/controls";
 import { combineKeys, createPadState, padKeys, type PadSnapshot } from "../src/gamepad";
 import { hudLayout } from "../src/hud";
 import { keyName, withSecondKeys } from "../src/keymap";
@@ -251,5 +255,62 @@ describe("Pad-Belegung je Spieler", () => {
     ];
     const both = padKeys([pad([0], [-1, 0]), pad([0, 12], [1, 0])], { 0: ["KeyS"] }, layouts);
     expect([...both].toSorted()).toEqual(["ArrowLeft", "End", "KeyS", "Numpad6", "Numpad8"]);
+  });
+});
+
+describe("Tastenübersicht", () => {
+  const t = translator(TEXTS, "de");
+  const base = { t, locale: "de" as const, showPad: true, showPointer: true };
+
+  test("Pad-Tasten aus der Belegung: Steuerkreuz zuerst, mehrere Tasten je Aktion", () => {
+    expect(padButtons(["KeyS", "Space"], DOVE_GAMEPAD)).toEqual(["A"]);
+    expect(padButtons(["Escape"], DOVE_GAMEPAD)).toEqual(["Back", "Start"]);
+    expect(padButtons(["ArrowUp", "Numpad8"], DOVE_GAMEPAD)).toEqual(["✚ ↑"]);
+    expect(padButtons(["KeyJ"], DOVE_GAMEPAD)).toEqual([]);
+  });
+
+  test("DOVE: Tastennamen, zweite Taste aus den Einstellungen, Maus", () => {
+    const [table] = controlsTables(DOVE_CONTROLS, {
+      ...base,
+      gamepad: DOVE_GAMEPAD,
+      second: { fire: "KeyK" },
+    });
+    expect(table?.pad).toBe(true);
+    expect(table?.pointer).toBe(true);
+    const fire = table?.lines.find((l) => l.action === "Feuer");
+    expect(fire).toEqual({
+      action: "Feuer",
+      keys: ["S", "Leertaste", "K"],
+      pad: ["A"],
+      pointer: "linke Taste",
+    });
+    expect(table?.lines.at(-1)).toMatchObject({ keys: ["Esc"], pad: ["Back", "Start"] });
+  });
+
+  test("ausgeschaltete Geräte und leere Spalten entfallen", () => {
+    const [table] = controlsTables(DOVE_CONTROLS, {
+      ...base,
+      gamepad: DOVE_GAMEPAD,
+      showPad: false,
+      showPointer: false,
+    });
+    expect(table).toMatchObject({ pad: false, pointer: false });
+    expect(table?.lines.every((l) => l.pad.length === 0 && l.pointer === "")).toBe(true);
+    const [noPad] = controlsTables(DOVE_CONTROLS, base);
+    expect(noPad?.pad).toBe(false);
+  });
+
+  test("DoveZ zu zweit: Spieler 2 mit eigenem Pad und Ziffernblock, ohne Maus", () => {
+    const [p1, p2] = controlsTables(dovezControls(2), {
+      ...base,
+      gamepad: DOVEZ_GAMEPAD,
+      pads: DOVEZ_PADS,
+    });
+    expect(p1?.label).toBe("Spieler 1");
+    expect(p1?.lines[0]).toMatchObject({ keys: ["J", "←"], pad: ["✚ ←"] });
+    expect(p2?.label).toBe("Spieler 2");
+    expect(p2?.pointer).toBe(false);
+    expect(p2?.lines[0]).toMatchObject({ keys: ["Num 4"], pad: ["✚ ←"] });
+    expect(p2?.lines[4]).toMatchObject({ keys: ["End"], pad: ["A"] });
   });
 });

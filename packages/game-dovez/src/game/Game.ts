@@ -1,6 +1,6 @@
 import { LoveLogic } from "./love";
 import { LoveScene } from "./loveScene";
-import type { AtlasJson, GameHost, GameInstance } from "@clove/core";
+import type { AtlasJson, ControlsSheet, GameHost, GameInstance } from "@clove/core";
 import { StreamPlayer } from "@clove/audio";
 import { dovezSlug, type PlayStep } from "@clove/formats";
 import { TextureRegistry, createScreen, setView } from "@clove/pixi-kit";
@@ -14,7 +14,8 @@ import { CreditsLogic, CreditsScene, creditsMask } from "./credits";
 import { FadeLogic, FadeScene } from "./fadeOut";
 import { atlasTexture } from "./gdi";
 import { parseHighscores, HIGHSCORE_KEY } from "./highscore";
-import { codeOfDik, keyText, okKey, pauseKey, readInput, useKeys } from "./input";
+import { dovezControls } from "../controls";
+import { codeOfDik, currentKeys, keyText, okKey, pauseKey, readInput, useKeys } from "./input";
 import { atlasSprites, dovezHud } from "./hud";
 import { resolveLang } from "./lang";
 import { type GameContext, LevelScene, levelBundles } from "./level";
@@ -520,11 +521,21 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
     });
 
   const hudSprite = atlasSprites(host.assets, globals[0]);
+  let sheet: { players: 1 | 2; keys: readonly string[]; controls: ControlsSheet } | undefined;
   return {
     hud() {
       const level = current;
       if (!level || scene !== level || !level.playing) return null;
       return dovezHud(level.world, hudSprite, lang);
+    },
+    controls() {
+      const level = current;
+      if (!level || scene !== level || !level.paused) return null;
+      // dieselbe Übersicht, solange sich Spieleranzahl und Tasten nicht ändern
+      const keys = currentKeys();
+      if (sheet?.players !== level.players || sheet.keys !== keys)
+        sheet = { players: level.players, keys, controls: dovezControls(level.players, keys) };
+      return sheet.controls;
     },
     dispose() {
       disposed = true;

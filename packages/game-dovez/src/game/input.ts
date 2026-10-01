@@ -1,79 +1,8 @@
 import { PointerSteer, type GameHost } from "@clove/core";
 import { HIT_BOTTOM, HIT_LEFT, HIT_RIGHT, HIT_TOP, type PlayerInput } from "../sim/player";
+import { ACTIONS, DEFAULT_KEYS, T1, actionCodes, type Action } from "./keyTable";
 
-/**
- * Tastenbelegung wie im Original (`InitKeyConfig` `0x504BA0`, `Taste` `0x54FE40`):
- * je Satz (0 ein Spieler, 1 und 2 im Zwei-Spieler-Spiel) und Aktion zwei
- * DirectInput-Tasten. Eine Aktion gilt als gehalten, wenn **eine** der beiden
- * gehalten wird. Die erste (`T1`) ist fest, die zweite (`T2`) legt die
- * Tastenkonfiguration im Menü fest; dazu kommen feste Zusatztasten, die nicht in
- * der Tabelle stehen (Leertaste feuert im Einzelspiel, F11 hupt).
- */
-export const ACTIONS = [
-  "left",
-  "up",
-  "right",
-  "down",
-  "fire",
-  "beam",
-  "switchWeapon",
-  "switchBeam",
-  "rotate",
-  "nova",
-] as const;
-
-type Action = (typeof ACTIONS)[number];
-
-/** Erste Taste je Aktion (Reihenfolge `ACTIONS`) für die Sätze 0…2. */
-const T1: readonly (readonly string[])[] = [
-  [
-    "ArrowLeft",
-    "ArrowUp",
-    "ArrowRight",
-    "ArrowDown",
-    "KeyS",
-    "KeyA",
-    "KeyD",
-    "KeyQ",
-    "KeyW",
-    "KeyE",
-  ],
-  ["KeyJ", "KeyI", "KeyL", "KeyK", "KeyS", "KeyA", "KeyD", "KeyQ", "KeyW", "KeyE"],
-  [
-    "Numpad4",
-    "Numpad8",
-    "Numpad6",
-    "Numpad5",
-    "End",
-    "Delete",
-    "PageDown",
-    "Insert",
-    "Home",
-    "PageUp",
-  ],
-];
-
-/** Vorgabe der zweiten Tasten: 3 Sätze × 10 Aktionen, `""` = keine. */
-export const DEFAULT_KEYS: readonly string[] = [
-  ...Array.from({ length: 10 }, () => ""),
-  "ArrowLeft",
-  "ArrowUp",
-  "ArrowRight",
-  "ArrowDown",
-  ...Array.from({ length: 6 }, () => ""),
-  "",
-  "",
-  "",
-  "Numpad2",
-  ...Array.from({ length: 6 }, () => ""),
-];
-
-/** Feste Zusatztasten je Satz und Aktion (nicht umbelegbar). */
-const EXTRA: readonly Readonly<Partial<Record<keyof PlayerInput, readonly string[]>>>[] = [
-  { fire: ["Space"], horn: ["F11"] },
-  { horn: ["F11"] },
-  { horn: ["F11"] },
-];
+export { ACTIONS, DEFAULT_KEYS } from "./keyTable";
 
 /** `KeyboardEvent.code` → DirectInput-Code (DIK_*), soweit das Original die Taste kennt. */
 export const DIK: Readonly<Record<string, number>> = {
@@ -287,23 +216,19 @@ export function codeOfDik(dik: number): string {
 /** Zweite Tasten, wie sie das Menü zuletzt gültig gemacht hat (30 Einträge, `DEFAULT_KEYS`). */
 let secondKeys: readonly string[] = DEFAULT_KEYS;
 
+/** Die zuletzt übernommenen zweiten Tasten (für die Tastenübersicht). */
+export function currentKeys(): readonly string[] {
+  return secondKeys;
+}
+
 /** Übernimmt die zweiten Tasten der Konfiguration für Menü und Spiel. */
 export function useKeys(keys: readonly string[]): void {
   secondKeys = keys.length === DEFAULT_KEYS.length ? keys : DEFAULT_KEYS;
 }
 
-/** Tasten einer Aktion: fest, umbelegbar, Zusatz — leere entfallen. */
+/** Tasten einer Aktion mit den aktuellen zweiten Tasten. */
 function codesOf(set: number, name: Action | "horn"): string[] {
-  const s = T1[set] ? set : 0;
-  const a = ACTIONS.indexOf(name as Action);
-  const out: string[] = [];
-  if (a >= 0) {
-    out.push(T1[s]![a]!);
-    const t2 = secondKeys[s * 10 + a];
-    if (t2) out.push(t2);
-  }
-  out.push(...(EXTRA[s]?.[name] ?? []));
-  return out;
+  return actionCodes(set, name, secondKeys);
 }
 
 /** Eingabe eines Spielers; `set` wie `T1` (0 allein, 1/2 im Zwei-Spieler-Spiel). */

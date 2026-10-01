@@ -126,6 +126,11 @@ export class Flow {
     return this.current instanceof GameScreen ? this.current.world : undefined;
   }
 
+  /** Im Spiel und das Pausemenü ist offen. */
+  get paused(): boolean {
+    return this.current instanceof GameScreen && this.current.isPaused;
+  }
+
   private finish(result: unknown): void {
     const screen = this.current;
     const resolve = this.resolveCurrent;

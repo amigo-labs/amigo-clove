@@ -349,6 +349,16 @@ export class LevelScene implements Scene {
     return this.mode.kind === "play" && this.result === undefined;
   }
 
+  /** Das Pausemenü ist offen (für die Tastenübersicht der Shell). */
+  get paused(): boolean {
+    return this.mode.kind === "pause";
+  }
+
+  /** Spieleranzahl dieses Levels. */
+  get players(): 1 | 2 {
+    return this.ctx.players;
+  }
+
   /** Mit dem HTML-HUD zeigt der laufende Level nur das Spielfeld (800 × 550). */
   get fieldOnly(): boolean {
     return this.playing && this.ctx.host.hudMode?.() === "modern";
