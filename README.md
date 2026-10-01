@@ -16,14 +16,14 @@ Soundeffekte und Musik, Menüs, Intro, Continue, Highscore, Abspann) sind
 umgesetzt. Die Mechanik ist statisch aus der EXE bestimmt
 ([`docs/measurements/`](docs/measurements/)); der Abgleich am laufenden
 Original steht noch aus ([`docs/playtest-checklist.md`](docs/playtest-checklist.md)).
-**M5** (Shell) ebenso: Launcher, Einstellungen (Sprache, Lautstärken,
+**M5** (Shell) ebenso: Launcher, Einstellungen (Sprache, Lautstärken, Tastenbelegung,
 Gamepad), Spielstand-Export/-Import, Ladebildschirm mit Bundle-Vorladen und
 Offline-Betrieb per Service Worker. **M6** (DoveZ-Pakete und -Assets):
 Parser für Pakete, `.r`-Konturen, Masken, Funktexte und Kampagne,
 Asset-Pipeline mit Atlanten, Opus, Musik und Video, Debug-Seite
 `#/dovez/debug/assets`. **M7** (DoveZ-`.dat` vollständig dekodiert) ist
 fertig. **M8** (DoveZ-Engine) ist umgesetzt: `#/dovez` zeigt Logos, Intro und das
-Hauptmenü (Neu mit Schiff und Namen, Laden, Optionen mit Tastenkonfiguration,
+Hauptmenü (Neu mit Schiff und Namen, Laden, Optionen mit Vibration,
 Bonus, Highscore) und spielt die Kampagne aus `Play.txt` mit Ladebildern,
 Zwischensequenzen, Speicherbildschirm und Spielständen, Outro, Abspann und
 Epilog; alle 27 Level mit Gegnern, Bossen, allen Waffen, Beam, Super-Nova, Coop,
@@ -69,32 +69,45 @@ bun run levels:report  # docs/measurements/dovez-levels.md neu erzeugen
 bun run --cwd packages/shell dev   # Launcher unter http://localhost:5173
 ```
 
-Der Launcher (`#/`) listet die Spiele, `#/settings` enthält Sprache,
-Lautstärken, Darstellung (HUD, Skalierung, Rasterlinien), Bewegung, Steuerung
-(Maus/Touch), zweite Tasten für DOVE, Gamepad, Spielstand-Export/-Import und
+Der Launcher (`#/`) listet die Spiele (daneben die Tastenübersicht der gewählten
+Karte), `#/settings` enthält Sprache, Ton (Gesamt, Musik, Effekte, Sprache),
+Darstellung (HUD, Skalierung, Rasterlinien, Bewegung), Steuerung (Maus/Touch,
+Gamepad), die Tastenbelegung je Spiel, Spielstand-Export/-Import und
 „Spieldaten installieren“ (nur im Build, der Dev-Server registriert keinen
 Service Worker).
 DOVE starten: `http://localhost:5173/#/dove` (NEO-ARTS-Logo, Titelmenü).
 
-**Menüs als HTML:** Alles außerhalb der Level zeigt die Shell als HTML über bzw.
-statt des Spielbilds — Titel- und Hauptmenü, Optionen, Levelauswahl, Info,
-Highscores, Namenseingabe, Laden/Speichern, Ladebildschirm, Get Ready, Pause,
-Continue und die Credits mit allen Beteiligten. Die Spiele beschreiben diese
-Bildschirme als Daten (`GameHost.ui.show()`, `packages/core/src/shell/ui.ts`)
-und behalten Ablauf, Regeln und Speicherstände; im Canvas laufen nur noch die
-Level und die Original-Animationen (Logos, Story-Intro und -Abspann, Osterei).
-DoveZ-Videos spielt die Shell als `<video>`. Bedienung überall: Pfeiltasten,
-`Enter`/Leertaste bestätigen, `Esc` zurück; dazu Maus/Touch und Gamepad
-(Steuerkreuz, A/Start bestätigen, B zurück).
+**Alles außerhalb der Level als HTML, für beide Spiele gleich:** Launcher,
+Einstellungen, Ladebildschirm, Titel- und Hauptmenü, Optionen, Levelauswahl,
+Info, Highscores, Namenseingabe, Laden/Speichern, Get Ready, Pause, Continue,
+Credits und das NEO-ARTS-Logo zeigt die Shell aus denselben HTML-Bausteinen
+(`GameHost.ui`, `packages/core/src/shell/ui.ts`; Designsystem als CSS-Tokens in
+`packages/shell/index.html`, DoveZ mit eigenem Akzent über `data-game`). Beide
+Spiele geben ihr Logo als Marke für den Kopf jeder Seite; gleichartige
+Bildschirme (Hauptmenü mit Highscores, Optionen, Pause, Continue über dem
+Level, Credits je Rolle) sind gleich aufgebaut. Die Spiele behalten Ablauf,
+Regeln und Speicherstände; im Canvas laufen nur noch die Level und die
+Original-Animationen (DoveZ-Logos, Story-Intro und Abspannbilder von DOVE mit
+HTML-Untertiteln, Osterei, Funkbild). Mit dem HTML-HUD sind auch die Texte im
+Spielfeld HTML: Tutorial- und Skripttexte, Boss-Meldungen, der DoveZ-
+Tastenhinweis und das Funk-Laufband. DoveZ-Videos spielt die Shell als
+`<video>`. Bedienung überall: Pfeiltasten (und die belegten Bewegungstasten),
+`Enter`/Leertaste bzw. die Feuertaste bestätigen, `Esc` zurück; dazu
+Maus/Touch und Gamepad (Steuerkreuz, A/Start bestätigen, B zurück).
 
-Steuerung im Spiel wie im Original (DOVE): Pfeiltasten, `S`/Leertaste
-Dauerfeuer (Bomben feuern mit), `A` Beam laden (Loslassen feuert), `D`
-Options-Richtung umkehren, `Q`/`W` Tempo, `Esc` Pause.
+**Tastenbelegung:** frei je Spiel und Aktion (bis zu drei Tasten), unter
+`#/settings` und in den Optionen beider Spiele, mit zwei Vorlagen:
 
-Die vollständige Belegung (Tastatur, Gamepad, Maus) zeigt der Launcher je Spiel
-unter „Steuerung“ zum Aufklappen und das Pausemenü jedes Spiels; DoveZ zeigt
-dort die im Spiel umbelegten Tasten, DOVE die zweiten Tasten aus den
-Einstellungen.
+| Vorlage | Bewegen | Waffen DOVE | Waffen DoveZ |
+| --- | --- | --- | --- |
+| Pfeiltasten + linke Hand (Original, Vorgabe) | Pfeile, Ziffernblock | `S`/Leertaste Feuer, `A` Beam, `D` Extrawaffe drehen, `W`/`Q` Tempo | `S` `A` `D` `Q` `W` `E` |
+| WASD + rechte Hand | `W` `A` `S` `D` | `J`/Leertaste Feuer, `K` Beam, `L` drehen, `I`/`U` Tempo | `J` `K` `L` `U` `I` `O` |
+
+DoveZ-Spieler 2 hat in beiden den Ziffernblock-Satz. Die Spiele fragen weiter
+ihre Originaltasten ab, die Shell übersetzt (`bindKeys`); Simulation und
+Replays bleiben gleich. Texte, die Tasten nennen („Du schießt mit S!“), nennen
+die belegte Taste. Die vollständige Belegung (Tastatur, Gamepad, Maus) zeigen
+der Launcher und das Pausemenü jedes Spiels.
 
 Weitere Modernisierungen (abschaltbar; ohne sie läuft die Simulation bit-gleich
 wie im Original, siehe Spec „Optionale Modernisierungen“). Vorgabe ist das
@@ -110,8 +123,8 @@ oder Finger ihn benutzen:
   mit Boss-Lebensbalken; das Original-HUD lässt sich zurückholen.
 - **Darstellung:** Vollbild (`Alt+Enter` oder ⛶), Skalierung fensterfüllend
   scharf (Vorgabe) oder weich bzw. ganzzahlig (1:1-Pixel), Rasterlinien.
-- **Komfort:** DOVE pausiert bei Fokusverlust; zweite Tasten je Aktion für
-  DOVE; in DoveZ steuert das zweite Gamepad Spieler 2.
+- **Komfort:** DOVE pausiert bei Fokusverlust; freie Tastenbelegung (siehe
+  oben); in DoveZ steuert das zweite Gamepad Spieler 2.
 
 URL-Optionen: `nosound` (ohne Ton), `nointro=1`, `seed`, `shots=0|1|2`, `walls=1`;
 direkt ins Level mit `level=<n>`, zum Testen `invincible=1`, `from=<Tick>`,

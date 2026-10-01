@@ -39,7 +39,7 @@ import { createTouchKeys } from "./touchKeys";
 import { parseRoute } from "./router";
 import { loadSettings, reducedMotion, saveSettings, type Settings } from "./settings";
 import { storageFor, webStorage } from "./storage";
-import { TEXTS, mb, type ShellText, type TextKey } from "./texts";
+import { TEXTS, type ShellText, type TextKey } from "./texts";
 import { launcherMenu } from "./views/launcher";
 import { NAV_CODES, gateKeys, type NavAction } from "./ui/model";
 import { UiHost } from "./ui/UiHost";
@@ -384,7 +384,6 @@ async function startGame(
     await assets.preload(module.preload ?? [], (loaded, total) => {
       // ganz voll erst mit dem Spiel: „progress“ schlösse den Hinweis sonst vorher
       fraction = total ? Math.min(0.999, loaded / total) : 0;
-      document.body.dataset["loaded"] = `${mb(loaded, locale)} / ${mb(total, locale)}`;
     });
     loading.abort();
     if (gen !== generation) return;
