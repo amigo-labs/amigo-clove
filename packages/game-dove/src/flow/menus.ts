@@ -1,14 +1,17 @@
-import type {
-  HudSprite,
-  UiConfirm,
-  UiField,
-  UiForm,
-  UiImage,
-  UiInput,
-  UiMenu,
-  UiNotice,
-  UiText,
-  UiValues,
+import {
+  PAUSE_TEXTS,
+  SETTINGS_PAGES,
+  type HudSprite,
+  type SettingsPage,
+  type UiConfirm,
+  type UiField,
+  type UiForm,
+  type UiImage,
+  type UiInput,
+  type UiMenu,
+  type UiNotice,
+  type UiText,
+  type UiValues,
 } from "@clove/core";
 import { DOVE_CONTROLS } from "../controls";
 import { type HighscoreEntry, NAME_MAX, rankSuffix } from "./highscore";
@@ -27,7 +30,7 @@ import {
   INFO_LINES,
   OPTIONS_TEXT,
   continueRankText,
-  creditLines,
+  creditSections,
   farewellLines,
 } from "./texts";
 
@@ -64,8 +67,8 @@ const TITLE_CREDITS = [
   "Translation: Monty P, Mocs, Kauto",
 ];
 
-/** Erstes Bild des rotierenden DOVE-Logos (`logo.spr`, 235×100). */
-function logo(sprite: SpriteOf): UiImage {
+/** Erstes Bild des rotierenden DOVE-Logos (`logo.spr`, 235×100); auch die Marke im Kopf. */
+export function logo(sprite: SpriteOf): UiImage {
   return { sprite: sprite("image/logo", [0, 0, 235, 100]), alt: "DOVE" };
 }
 
@@ -145,12 +148,36 @@ export function configFrom(config: Config, v: UiValues): Config {
   };
 }
 
-/** Optionen (`Schwierigkeitsgrad` `0x457E80`): drei Schalter, Speichern, Zurück. */
+/** Titel der Spielregeln (die Optionen des Originals). */
+export function rulesTitle(german: boolean): string {
+  return german ? "Spielregeln" : "Game rules";
+}
+
+/**
+ * Optionen, im Aufbau wie die von DoveZ: die Spielregeln des Originals und die
+ * gemeinsamen Seiten der Shell (`shared`, sofern sie sie anbietet).
+ */
+export function optionsMenu(german: boolean, shared: boolean): UiMenu {
+  const lang = german ? "de" : "en";
+  const pages: readonly SettingsPage[] = shared ? ["keys", "audio", "display"] : [];
+  return {
+    kind: "menu",
+    title: german ? "Optionen" : "Options",
+    items: [
+      { id: "rules", label: rulesTitle(german) },
+      ...pages.map((id) => ({ id, label: SETTINGS_PAGES[id][lang] })),
+      { id: "back", label: back(german) },
+    ],
+    back: "back",
+  };
+}
+
+/** Spielregeln (`Schwierigkeitsgrad` `0x457E80`): drei Schalter, Speichern, Zurück. */
 export function optionsForm(config: Config, german: boolean, saved = false): UiForm {
   const t = OPTIONS_TEXT[german ? "de" : "en"];
   return {
     kind: "form",
-    title: german ? "Optionen" : "Options",
+    title: rulesTitle(german),
     fields: optionFields(config, german),
     ...(saved ? { blocks: [{ kind: "lines", lines: [t.saved], tone: "accent" }] } : {}),
     actions: [
@@ -167,7 +194,6 @@ export function levelSelectMenu(sprite: SpriteOf, config: Config, german: boolea
   return {
     kind: "menu",
     title: german ? "Levelauswahl" : "Select level",
-    logo: logo(sprite),
     items: selectableLevels(config).map((l) => ({
       id: String(l),
       label: LEVEL_SELECT_NAMES[l] ?? levelName(l),
@@ -178,14 +204,11 @@ export function levelSelectMenu(sprite: SpriteOf, config: Config, german: boolea
 }
 
 /** Info (`info` `0x490430`): Credits-Kopf und Readme, mit ↑/↓ scrollbar. */
-export function infoText(sprite: SpriteOf, readme: readonly string[], german: boolean): UiText {
+export function infoText(readme: readonly string[], german: boolean): UiText {
   return {
     kind: "text",
     title: "Info",
-    blocks: [
-      { kind: "image", image: logo(sprite) },
-      { kind: "lines", lines: [...INFO_LINES, ...readme], mono: true },
-    ],
+    blocks: [{ kind: "lines", lines: [...INFO_LINES, ...readme], mono: true }],
     scroll: "manual",
     done: back(german),
     back: "done",
@@ -211,7 +234,7 @@ export function getReadyNotice(
   };
 }
 
-/** Continue (`0x4A0050`): GAMEOVER, Punkte, Rang-Hinweis, „Yes, ya!“/„No!“. */
+/** Continue (`0x4A0050`): GAMEOVER, Punkte, Rang-Hinweis, „Yes, ya!“/„No!“; über dem Level wie in DoveZ. */
 export function continueConfirm(
   sprite: SpriteOf,
   score: number,
@@ -221,6 +244,7 @@ export function continueConfirm(
   return {
     kind: "confirm",
     title: "Continue Game?",
+    over: "level",
     image: { sprite: sprite("image/titel", [220, 323, 420, 94]), alt: "GAMEOVER" },
     lines: [`Score:${score}`, ...(rank > 0 ? [continueRankText(german, rank)] : [])],
     items: [
@@ -241,33 +265,59 @@ export function highscoreInput(rank: number, german: boolean): UiInput {
   };
 }
 
-/** Pause im Spiel: Weiter / Ende über dem eingefrorenen Level, dazu die Tastenübersicht. */
-export function pauseMenu(german: boolean): UiMenu {
+/**
+ * Pause im Spiel, im Aufbau wie in DoveZ: Titel, darunter das Level, Weiter /
+ * Spiel beenden über dem eingefrorenen Level, dazu die Tastenübersicht.
+ */
+export function pauseMenu(german: boolean, level?: number): UiMenu {
+  const lang = german ? "de" : "en";
   return {
     kind: "menu",
-    title: "Pause",
+    title: PAUSE_TEXTS.title[lang],
+    ...(level !== undefined ? { subtitle: `Level ${level} - ${levelName(level)}` } : {}),
     over: "level",
     items: [
-      { id: "resume", label: german ? "Weiter" : "Resume" },
-      { id: "abort", label: german ? "Ende" : "Quit game" },
+      { id: "resume", label: PAUSE_TEXTS.resume[lang] },
+      { id: "abort", label: PAUSE_TEXTS.quit[lang] },
     ],
     back: "resume",
     aside: [{ kind: "controls", sheet: DOVE_CONTROLS }],
   };
 }
 
-/** Credits nach dem Abspann (`For i = 1 To 27`): alle Beteiligten, laufen von selbst durch. */
-export function creditsText(sprite: SpriteOf, german: boolean): UiText {
+/**
+ * Credits nach dem Abspann (`For i = 1 To 27`): alle Beteiligten, je Rolle ein
+ * Abschnitt wie in DoveZ; laufen von selbst durch.
+ */
+export function creditsText(german: boolean): UiText {
   return {
     kind: "text",
     title: "Credits",
-    blocks: [
-      { kind: "image", image: logo(sprite) },
-      { kind: "lines", lines: creditLines(german).slice(1), mono: true },
-    ],
+    blocks: creditSections(german).map((s) => ({
+      kind: "lines",
+      heading: s.role,
+      lines: s.names,
+      align: "center",
+    })),
     scroll: { pxPerSecond: 24 },
     done: "OK",
     back: "done",
+  };
+}
+
+/**
+ * NEO-ARTS-Logo (`ShowNEOARTS` `0x4A7880`): `titel.spr` (0, 0)–(224, 241), nach
+ * 500 ms läuft „presents“ mit wachsendem Zeichenabstand auf, dann 1000 ms
+ * Standbild (115 Ticks à 14 ms); Bestätigen oder Esc überspringt.
+ */
+export function neoArtsNotice(sprite: SpriteOf): UiNotice {
+  return {
+    kind: "notice",
+    chrome: "none",
+    image: { sprite: sprite("image/titel", [0, 0, 224, 241]), alt: "NEO-ARTS" },
+    blocks: [{ kind: "lines", lines: ["presents"], align: "center", effect: "spread" }],
+    until: { ms: 115 * 14 },
+    back: "skip",
   };
 }
 

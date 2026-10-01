@@ -1,4 +1,4 @@
-import type { ControlsSheet, HudSprite } from "./GameModule";
+import type { ControlsSheet, HudSprite, LocalLabel } from "./GameModule";
 
 /**
  * HTML-Bildschirme der Shell. Das Spiel behält Ablauf, Regeln und Speicherstände;
@@ -22,6 +22,12 @@ export interface UiItem {
   readonly disabled?: boolean;
   /** Vorschaubild, gezeigt solange der Eintrag gewählt ist (z. B. Levelauswahl). */
   readonly image?: UiImage;
+  /** Weiterer Inhalt in der Vorschau, solange der Eintrag gewählt ist (z. B. Tastenübersicht). */
+  readonly preview?: readonly UiBlock[];
+  /** Bild im Eintrag selbst (Spielkarte im Launcher). */
+  readonly icon?: UiImage;
+  /** Akzent eines Spiels für diesen Eintrag (`data-game`, Spielkarten im Launcher). */
+  readonly theme?: string;
 }
 
 /** Inhalt neben oder über den Einträgen. */
@@ -34,6 +40,8 @@ export type UiBlock =
       readonly align?: "left" | "center";
       /** Feste Zeichenbreite (Readme, Tabellen aus dem Original). */
       readonly mono?: boolean;
+      /** Auftritt: `spread` läuft mit wachsendem Zeichenabstand auf (NEO-ARTS „presents“). */
+      readonly effect?: "spread";
     }
   | {
       readonly kind: "table";
@@ -43,7 +51,12 @@ export type UiBlock =
       /** Hervorgehobene Zeile (eigener Eintrag), 0-basiert. */
       readonly highlight?: number;
     }
-  | { readonly kind: "controls"; readonly sheet: ControlsSheet }
+  | {
+      readonly kind: "controls";
+      readonly sheet: ControlsSheet;
+      /** Spiel, dessen Belegung (Tasten, Pad) die Übersicht zeigt; Vorgabe das laufende. */
+      readonly game?: string;
+    }
   | { readonly kind: "image"; readonly image: UiImage };
 
 /** Gemeinsames aller Felder: Gruppe (Abschnittsüberschrift), z. B. „Spieler 2“. */
@@ -74,21 +87,39 @@ export type UiField = UiFieldBase &
         readonly text?: string;
       }
     | {
+        /**
+         * Tastenbelegung: Bestätigen nimmt die nächste Taste dazu (ist das Feld voll,
+         * ersetzt sie die letzte), Rücktaste entfernt die letzte. Wert in `UiValues`:
+         * die Codes durch Leerzeichen getrennt.
+         */
         readonly kind: "key";
         readonly id: string;
         readonly label: string;
-        /** `KeyboardEvent.code` oder `""` (keine Taste). */
-        readonly value: string;
-        /** Anzeigename des Werts. */
-        readonly text: string;
+        /** Belegte Tasten (`KeyboardEvent.code`). */
+        readonly value: readonly string[];
+        /** Höchstens so viele Tasten. */
+        readonly max: number;
+        /** Hervorheben, z. B. doppelt belegt. */
+        readonly warn?: boolean;
       }
-    | { readonly kind: "info"; readonly id: string; readonly text: string }
+    | {
+        readonly kind: "info";
+        readonly id: string;
+        readonly text: string;
+        readonly tone?: "normal" | "dim" | "warn";
+      }
   );
 
 export type UiValues = Readonly<Record<string, string | number>>;
 
 interface UiBase {
   readonly title?: string;
+  /** Zweite Titelzeile (z. B. der Levelname in der Pause). */
+  readonly subtitle?: string;
+  /** Akzent eines Spiels (`data-game`), wo die Seite selbst keinem gehört (Einstellungen). */
+  readonly theme?: string;
+  /** `none`: ohne Rahmen und Marke (Vorspann-Bilder wie das NEO-ARTS-Logo). */
+  readonly chrome?: "none";
   /** Über dem eingefrorenen Spielbild (Pause, Continue); sonst ersetzt der Bildschirm es. */
   readonly over?: "level";
   /** Antwort-ID für Esc bzw. Pad-B; ohne sie ist Zurück wirkungslos. */
@@ -100,6 +131,7 @@ interface UiBase {
 /** Menü: Einträge, Esc → `back`. Antwort `{ id }`. */
 export interface UiMenu extends UiBase {
   readonly kind: "menu";
+  /** Großes Logo (Hauptmenü); sonst zeigt die Shell das Markenlogo klein im Kopf (`brand`). */
   readonly logo?: UiImage;
   readonly items: readonly UiItem[];
   /** Vorgewählter Eintrag. */
@@ -127,7 +159,7 @@ export interface UiForm extends UiBase {
   readonly onChange?: (values: UiValues, changed: string) => readonly UiField[] | void;
   /** Prüft eine aufgenommene Taste; `false` verwirft sie. */
   readonly acceptKey?: (code: string) => boolean;
-  /** Anzeigename einer aufgenommenen Taste. */
+  /** Anzeigename einer Taste. */
   readonly keyText?: (code: string) => string;
 }
 
@@ -205,10 +237,47 @@ export interface UiReply {
   readonly values?: UiValues;
 }
 
+/** Einstellungsseiten der Shell, die die Spiele in ihren Optionen anbieten. */
+export type SettingsPage = "keys" | "audio" | "display";
+
+/** Gleiche Beschriftung der gemeinsamen Seiten in beiden Spielen. */
+export const SETTINGS_PAGES: Readonly<Record<SettingsPage, LocalLabel>> = {
+  keys: { de: "Tastenbelegung", en: "Key bindings", ru: "Раскладка клавиш" },
+  audio: { de: "Ton", en: "Sound", ru: "Звук" },
+  display: { de: "Darstellung", en: "Display", ru: "Изображение" },
+};
+
+/** Gleiche Texte der Pause in beiden Spielen. */
+export const PAUSE_TEXTS = {
+  title: { de: "Pause", en: "Pause", ru: "Пауза" },
+  resume: { de: "Weiter", en: "Resume", ru: "Продолжить" },
+  quit: { de: "Spiel beenden", en: "Quit game", ru: "Выйти из игры" },
+} as const satisfies Readonly<Record<string, LocalLabel>>;
+
 export interface GameUi {
   /**
    * Zeigt einen Bildschirm, bis er beantwortet ist. Ein neuer Aufruf ersetzt einen
    * offenen; `signal` schließt ihn vorzeitig (Antwort `{ id: "aborted" }`).
    */
   show(screen: UiScreen, signal?: AbortSignal): Promise<UiReply>;
+  /**
+   * Öffnet eine Einstellungsseite der Shell (dieselbe wie unter `#/settings`)
+   * und kehrt zurück, wenn sie geschlossen wird. Änderungen gelten sofort.
+   */
+  settings?(page: SettingsPage, signal?: AbortSignal): Promise<void>;
+  /**
+   * Marke des Spiels für den Kopf aller Seitenbildschirme (einmal beim Start):
+   * so tragen Untermenüs, Texte und Hinweise beider Spiele denselben Kopf.
+   */
+  brand?(brand: UiBrand): void;
+  /**
+   * Untertitel unten über dem Spielbild, ohne Tasten zu sperren (Story-Zeilen
+   * der Original-Animationen); `null` blendet ihn aus.
+   */
+  caption?(text: string | null): void;
+}
+
+export interface UiBrand {
+  readonly name: string;
+  readonly logo?: UiImage;
 }

@@ -1,41 +1,37 @@
-import type {
-  GameUi,
-  UiField,
-  UiForm,
-  UiImage,
-  UiItem,
-  UiReply,
-  UiScreen,
-  UiValues,
+import {
+  SETTINGS_PAGES,
+  type GameUi,
+  type UiBlock,
+  type UiField,
+  type UiForm,
+  type UiImage,
+  type UiItem,
+  type UiReply,
+  type UiScreen,
+  type UiValues,
 } from "@clove/core";
 import type { DovezConfig } from "../config";
 import { type HighscoreEntry, NAME_MAX } from "../highscore";
-import { isKeyCode, keyName, keyText } from "../input";
 import type { Lang } from "../lang";
 import { EMPTY_SLOT } from "../saveGame";
 import {
   BONUS_ENTRIES,
   BONUS_LEVELS,
-  MUSIC_STEP,
   type Rnd,
-  VOLUME_MUTE,
-  VOLUME_STEPS,
   bonusCount,
   newPlayerIds,
   playerName,
-  volumeIndex,
-  volumeLevel,
-  volumeOfIndex,
 } from "./menuRules";
 import { type MenuTexts, menuTexts } from "./menuTexts";
 
 /**
  * Hauptmenü als HTML-Bildschirme der Shell (`GameHost.ui`): dieselben Seiten
  * und Texte wie `MenuLoop` (`0x559630`) — Neu → Spieler → Schiff → Namen,
- * Laden, Optionen (Grundeinstellungen, Lautstärke, Tasten mit Vibration),
- * Bonuslevel, Highscore, Exit —, aber als Folge von `ui.show`-Aufrufen statt
- * der Knopfleiste im Canvas. Die Optionen werden bei jeder Änderung gespeichert
- * (wie bisher im Port), die Tastenbelegung erst mit „Übernehmen“.
+ * Laden, Optionen, Bonuslevel, Highscore, Exit —, aber als Folge von
+ * `ui.show`-Aufrufen statt der Knopfleiste im Canvas. Die Optionen werden bei
+ * jeder Änderung gespeichert (wie bisher im Port). Lautstärke und
+ * Tastenbelegung sind die gemeinsamen Seiten der Shell (`ui.settings`), die
+ * Vibration aus der Tastenkonfiguration hat eine eigene Seite.
  */
 
 export type MenuResult =
@@ -54,7 +50,7 @@ export type MenuResult =
   | { readonly kind: "exit" };
 
 /** Töne des Menüs (`LoadMenuSound`): `plingding` beim Bewegen, `dude` beim Bestätigen. */
-export type MenuSound = "dude" | "plingding" | "speech";
+export type MenuSound = "dude" | "plingding";
 
 export interface HtmlMenuOptions {
   readonly ui: GameUi;
@@ -94,8 +90,7 @@ type Page =
   | "load"
   | "options"
   | "game"
-  | "volume"
-  | "keys"
+  | "vibration"
   | "bonus"
   | "score";
 
@@ -229,10 +224,8 @@ class HtmlMenu {
         return this.optionsPage();
       case "game":
         return this.gamePage();
-      case "volume":
-        return this.volumePage();
-      case "keys":
-        return this.keysPage();
+      case "vibration":
+        return this.vibrationPage();
       case "bonus":
         return this.bonusPage();
       case "score":
@@ -271,6 +264,8 @@ class HtmlMenu {
       secret: { lov: "love" },
       sounds: this.sounds,
       ...(this.o.logo ? { logo: this.o.logo } : {}),
+      // wie das Titelmenü von DOVE: die Highscores daneben
+      aside: [this.highscoreTable("Highscore")],
     });
     switch (r.id) {
       case "new":
@@ -364,29 +359,52 @@ class HtmlMenu {
     return slot ? { kind: "load", slot: Number(slot) } : "main";
   }
 
-  /** Seite 30: Grundeinstellungen, Lautstärke, Tasten, (Bonus), Zurück. */
+  /**
+   * Seite 30, im Aufbau wie die Optionen von DOVE: Grundeinstellungen des Spiels,
+   * die gemeinsamen Seiten der Shell (Tastenbelegung, Ton, Darstellung), Vibration
+   * (nur mit Pad mit Motor), (Bonus), Zurück.
+   */
   private async optionsPage(): Promise<Page> {
     const m = this.t.options(this.bonusOn);
     const n = m.entries.length;
-    const ids = m.entries.map((_, i) =>
-      i === n - 1 ? "back" : (["game", "volume", "keys"][i] ?? "bonus"),
-    );
-    const r = await this.menu(
-      "options",
-      m.title,
-      m.entries.map((label, i) => ({ id: ids[i]!, label })),
-    );
+    const lang = this.o.lang;
+    const shared = this.o.ui.settings
+      ? (["keys", "audio", "display"] as const).map((id) => ({
+          id,
+          label: SETTINGS_PAGES[id][lang],
+        }))
+      : [];
+    const items: UiItem[] = [
+      // ausgeschrieben wie der Titel der Seite (das Original kürzt „Grundeins.“)
+      { id: "game", label: this.t.game.title },
+      ...shared,
+      ...(this.pads() > 0 ? [{ id: "vibration", label: this.t.keys.vibration }] : []),
+      // ohne „Lautstärke“ und „Tastenkonfiguration“ bleibt vom Original der Bonus (Index 3)
+      ...(n === 5 ? [{ id: "bonus", label: m.entries[3]! }] : []),
+      { id: "back", label: m.entries[n - 1]! },
+    ];
+    const r = await this.menu("options", m.title, items);
     switch (r.id) {
       case "game":
-      case "volume":
-      case "keys":
+      case "vibration":
         return r.id;
+      case "keys":
+      case "audio":
+      case "display":
+        await this.o.ui.settings?.(r.id, this.o.signal);
+        if (this.o.signal?.aborted) throw ABORTED;
+        return "options";
       case "bonus":
         this.bonusFrom = "options";
         return "bonus";
       default:
         return "main";
     }
+  }
+
+  /** Pads mit Vibrationsmotor, die die Vibrationsseite zeigt (höchstens zwei Spieler). */
+  private pads(): number {
+    return Math.min(2, this.o.pads?.() ?? 0);
   }
 
   /** Formular mit Zurück; jede Änderung gilt sofort. */
@@ -428,81 +446,13 @@ class HtmlMenu {
     return "options";
   }
 
-  /** Seite 32: Musik 0…100 in Fünfern, Sound und Sprache in den Stufen von `volumeStep`. */
-  private async volumePage(): Promise<Page> {
-    const v = this.t.volume;
-    const level = (db: number) => (db <= VOLUME_MUTE ? this.t.onOff(false) : volumeLevel(db));
-    const fields = (): UiField[] => {
-      const c = this.config;
-      return [
-        {
-          kind: "range",
-          id: "music",
-          label: v.music,
-          min: 0,
-          max: 100,
-          step: MUSIC_STEP,
-          value: c.music,
-          text: String(c.music),
-        },
-        {
-          kind: "range",
-          id: "sfx",
-          label: v.sound,
-          min: 0,
-          max: VOLUME_STEPS,
-          step: 1,
-          value: volumeIndex(c.sfx),
-          text: level(c.sfx),
-        },
-        {
-          kind: "range",
-          id: "speech",
-          label: v.voices,
-          min: 0,
-          max: VOLUME_STEPS,
-          step: 1,
-          value: volumeIndex(c.speech),
-          text: level(c.speech),
-        },
-      ];
-    };
-    /** Nur geänderte Regler schreiben: gespeicherte Zwischenwerte bleiben sonst erhalten. */
-    const apply = (vals: UiValues) => {
-      const c = this.config;
-      const db = (id: "sfx" | "speech") => {
-        const x = vals[id];
-        return x === undefined || Number(x) === volumeIndex(c[id]) ? c[id] : volumeOfIndex(+x);
-      };
-      const music =
-        vals["music"] === undefined ? c.music : Math.max(0, Math.min(100, +vals["music"]));
-      const next = { ...c, music, sfx: db("sfx"), speech: db("speech") };
-      if (next.music !== c.music || next.sfx !== c.sfx || next.speech !== c.speech)
-        this.setConfig(next);
-    };
-    const r = await this.form("volume", {
-      title: v.title,
-      fields: fields(),
-      actions: [{ id: "back", label: this.t.back }],
-      onChange: (vals, changed) => {
-        apply(vals);
-        if (changed === "speech") this.play("speech");
-        return fields();
-      },
-    });
-    if (r.values) apply(r.values);
-    return "options";
-  }
-
   /**
-   * Seite 33: die zweiten Tasten aller drei Sätze (die ersten sind fest), dazu
-   * Vibration und Stärke je Pad mit Motor (mit Probeimpuls). Tasten gelten erst
-   * mit „Übernehmen“, Zurück verwirft sie; die Vibration gilt sofort.
+   * Vibration und Stärke je Pad mit Motor (mit Probeimpuls), aus der
+   * Tastenkonfiguration des Originals (Seite 33); gilt sofort.
    */
-  private async keysPage(): Promise<Page> {
+  private async vibrationPage(): Promise<Page> {
     const kt = this.t.keys;
-    const working = [...this.config.keys];
-    const pads = Math.min(2, this.o.pads?.() ?? 0);
+    const pads = this.pads();
     const strength = (v: number) => (v / 1000).toFixed(1).replace(".", kt.decimal);
     const fields = (): UiField[] => {
       const c = this.config;
@@ -512,7 +462,7 @@ class HtmlMenu {
           {
             kind: "choice",
             id: `vibration${pad}`,
-            group: `${kt.vibration}: Pad ${pad + 1}`,
+            group: `Pad ${pad + 1}`,
             label: kt.vibration,
             options: [
               { value: "on", label: kt.bool[0] },
@@ -523,7 +473,7 @@ class HtmlMenu {
           {
             kind: "range",
             id: `strength${pad}`,
-            group: `${kt.vibration}: Pad ${pad + 1}`,
+            group: `Pad ${pad + 1}`,
             label: kt.strength,
             min: 500,
             max: 10000,
@@ -533,24 +483,7 @@ class HtmlMenu {
           },
         );
       }
-      for (let set = 0; set < 3; set++)
-        kt.labels.forEach((label, a) =>
-          out.push({
-            kind: "key",
-            id: `key${set * 10 + a}`,
-            label,
-            value: working[set * 10 + a] ?? "",
-            text: keyText(set, a, working),
-            group: kt.who[set]!,
-          }),
-        );
       return out;
-    };
-    const takeKeys = (vals: UiValues) => {
-      for (const [id, v] of Object.entries(vals)) {
-        const k = /^key(\d+)$/.exec(id)?.[1];
-        if (k !== undefined && Number(k) < working.length && isKeyCode(v)) working[Number(k)] = v;
-      }
     };
     /** Vibration übernehmen; das Pad des geänderten Felds (`changed`) bekommt einen Probeimpuls. */
     const vibration = (vals: UiValues, changed?: string) => {
@@ -576,26 +509,16 @@ class HtmlMenu {
         this.pulse(p, changed!.startsWith("strength") ? s[p]! / 10000 : 1);
       }
     };
-    const r = await this.form("keys", {
-      title: kt.title,
+    const r = await this.form("vibration", {
+      title: kt.vibration,
       fields: fields(),
-      actions: [
-        { id: "apply", label: kt.apply },
-        { id: "back", label: this.t.back },
-      ],
-      acceptKey: (code) => code !== "" && code !== "Escape" && isKeyCode(code),
-      keyText: keyName,
+      actions: [{ id: "back", label: this.t.back }],
       onChange: (vals, changed) => {
-        if (changed.startsWith("key")) takeKeys({ [changed]: vals[changed] ?? "" });
-        else vibration(vals, changed);
+        vibration(vals, changed);
         return fields();
       },
     });
     if (r.values) vibration(r.values);
-    if (r.id === "apply") {
-      if (r.values) takeKeys(r.values);
-      this.setConfig({ ...this.config, keys: [...working] });
-    }
     return "options";
   }
 
@@ -621,18 +544,21 @@ class HtmlMenu {
     return "players";
   }
 
+  private highscoreTable(caption?: string): UiBlock {
+    return {
+      kind: "table",
+      ...(caption ? { caption } : {}),
+      rows: this.o.highscores.map((e, i) => [`${i + 1}.`, e.name, String(e.score)]),
+    };
+  }
+
   /** Seite 50: die zehn Plätze der Highscoreliste. */
   private async scorePage(): Promise<Page> {
     const title = this.o.lang === "ru" ? "Highscore" : (this.t.main(false).entries[3] ?? "");
     await this.ask("score", {
       kind: "menu",
       title,
-      blocks: [
-        {
-          kind: "table",
-          rows: this.o.highscores.map((e, i) => [`${i + 1}.`, e.name, String(e.score)]),
-        },
-      ],
+      blocks: [this.highscoreTable()],
       items: [{ id: "back", label: this.t.scoreBack }],
       back: "back",
       sounds: this.sounds,

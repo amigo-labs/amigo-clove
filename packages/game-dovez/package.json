@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./controls": "./src/controls.ts"
+    "./controls": "./src/controls.ts",
+    "./keys": "./src/keys.ts"
   },
   "dependencies": {
     "@clove/audio": "workspace:*",

@@ -1,4 +1,4 @@
-import type { HudIcon, HudMeter, HudSnapshot, HudSprite } from "@clove/core";
+import type { HudIcon, HudMessage, HudMeter, HudSnapshot, HudSprite } from "@clove/core";
 import { h } from "./dom";
 import type { GameRect, Stage } from "./overlay";
 import type { ShellText, TextKey } from "./texts";
@@ -144,6 +144,54 @@ class PlayerBlock {
 }
 
 /**
+ * Einblendungen im Spielfeld: ohne Position oben mittig untereinander, sonst an
+ * der Stelle des Originals in Spielpixeln (skaliert mit `--px`). Nur geänderte
+ * Texte und Deckkräfte fassen das DOM an.
+ */
+class Messages {
+  readonly top = h("div", { class: "hud-messages", "aria-live": "polite" });
+  readonly placed = h("div", { class: "hud-placed", "aria-hidden": "true" });
+  private readonly shown = new Map<string, { el: HTMLElement; text: string; opacity: string }>();
+
+  set(list: readonly HudMessage[]): void {
+    const seen = new Set<string>();
+    for (const m of list) {
+      seen.add(m.id);
+      let cur = this.shown.get(m.id);
+      if (!cur) {
+        const el = h("p", { class: "hud-message", "data-style": m.style ?? "text" });
+        if (m.at) {
+          el.style.left = `calc(var(--game-x) + ${m.at.x} * var(--px) * 1px)`;
+          el.style.top = `calc(var(--game-y) + ${m.at.y} * var(--px) * 1px)`;
+          if (m.width !== undefined) el.style.width = `calc(${m.width} * var(--px) * 1px)`;
+          this.placed.append(el);
+        } else this.top.append(el);
+        cur = { el, text: "", opacity: "" };
+        this.shown.set(m.id, cur);
+      }
+      if (m.at) {
+        cur.el.style.left = `calc(var(--game-x) + ${m.at.x} * var(--px) * 1px)`;
+        cur.el.style.top = `calc(var(--game-y) + ${m.at.y} * var(--px) * 1px)`;
+      }
+      if (cur.text !== m.text) {
+        cur.text = m.text;
+        cur.el.textContent = m.text;
+      }
+      const opacity = m.opacity === undefined ? "" : m.opacity.toFixed(2);
+      if (cur.opacity !== opacity) {
+        cur.opacity = opacity;
+        cur.el.style.opacity = opacity;
+      }
+    }
+    for (const [id, cur] of this.shown) {
+      if (seen.has(id)) continue;
+      cur.el.remove();
+      this.shown.delete(id);
+    }
+  }
+}
+
+/**
  * HTML-HUD der Shell: liest einmal pro Bild `GameInstance.hud()` und zeigt
  * Punkte, Leben, Balken und Symbole beider Spiele — neben dem Spielfeld, wenn
  * Platz ist, sonst darunter bzw. als schmale Leiste darin. Oben erscheint im
@@ -157,6 +205,7 @@ export class HudView {
   private readonly combo = h("div", { class: "hud-combo", hidden: true });
   private readonly bar = h("div", { class: "hud-bar" });
   private readonly live = h("div", { class: "sr-only", "aria-live": "polite" });
+  private readonly messages = new Messages();
   private blocks: PlayerBlock[] = [];
   private raf = 0;
   private lastLives: number | undefined;
@@ -170,7 +219,7 @@ export class HudView {
   ) {
     this.boss.append(h("span", {}, t("hudBoss")), h("b", {}, this.bossFill));
     const livesBox = h("div", { class: "hud-lives" }, h("span", {}, t("hudLives")), this.lives);
-    this.root.append(this.boss, this.bar, this.live);
+    this.root.append(this.messages.placed, this.messages.top, this.boss, this.bar, this.live);
     this.bar.append(livesBox, this.combo);
     stage.layer.append(this.root);
     stage.onLayout((r) => this.place(r));
@@ -196,8 +245,10 @@ export class HudView {
       this.root.hidden = true;
       this.lastLives = undefined;
       this.bossShown = false;
+      this.messages.set([]);
       return;
     }
+    this.messages.set(snap.messages ?? []);
     if (this.root.hidden) {
       this.root.hidden = false;
       this.place(this.stage.rect());

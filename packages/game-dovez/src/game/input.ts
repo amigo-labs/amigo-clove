@@ -1,6 +1,7 @@
 import { PointerSteer, type GameHost } from "@clove/core";
 import { HIT_BOTTOM, HIT_LEFT, HIT_RIGHT, HIT_TOP, type PlayerInput } from "../sim/player";
-import { ACTIONS, DEFAULT_KEYS, T1, actionCodes, type Action } from "./keyTable";
+import { actionId } from "../keys";
+import { ACTIONS, DEFAULT_KEYS, actionCodes, type Action } from "./keyTable";
 
 export { ACTIONS, DEFAULT_KEYS } from "./keyTable";
 
@@ -195,22 +196,16 @@ export function isKeyCode(code: unknown): code is string {
   return code === "" || (typeof code === "string" && code in DIK);
 }
 
-/** Zweite Tasten, wie sie das Menü zuletzt gültig gemacht hat (30 Einträge, `DEFAULT_KEYS`). */
-let secondKeys: readonly string[] = DEFAULT_KEYS;
+/**
+ * Ohne zweite Tasten: das Spiel fragt nur die festen Tasten `T1` (und die
+ * Zusatztasten) ab; welche Taste der Spieler dafür drückt, legt die
+ * Tastenbelegung der Shell fest (`keys.ts`).
+ */
+const NO_SECOND: readonly string[] = DEFAULT_KEYS.map(() => "");
 
-/** Die zuletzt übernommenen zweiten Tasten (für die Tastenübersicht). */
-export function currentKeys(): readonly string[] {
-  return secondKeys;
-}
-
-/** Übernimmt die zweiten Tasten der Konfiguration für Menü und Spiel. */
-export function useKeys(keys: readonly string[]): void {
-  secondKeys = keys.length === DEFAULT_KEYS.length ? keys : DEFAULT_KEYS;
-}
-
-/** Tasten einer Aktion mit den aktuellen zweiten Tasten. */
+/** Tasten einer Aktion im Satz 0…2. */
 function codesOf(set: number, name: Action | "horn"): string[] {
-  return actionCodes(set, name, secondKeys);
+  return actionCodes(set, name, NO_SECOND);
 }
 
 /** Eingabe eines Spielers; `set` wie `T1` (0 allein, 1/2 im Zwei-Spieler-Spiel). */
@@ -231,23 +226,17 @@ export function readInput(host: GameHost, set = 0): PlayerInput {
   };
 }
 
-/** Tastenname einer Aktion für den Tastenhinweis (erste Taste des Satzes). */
-export function keyLabel(action: number, set = 0): string {
+/**
+ * Tastenname einer Aktion für den Tastenhinweis: die erste belegte Taste
+ * (Satz 2 gehört Spieler 2), sonst der Originalname der festen Taste.
+ */
+export function keyLabel(host: GameHost, action: number, set = 0): string {
   const name = ACTIONS[action];
-  const code = name ? codesOf(set, name)[0] : undefined;
+  if (!name) return "?";
+  const bound = host.boundKeys?.(actionId(set === 2 ? 1 : 0, name))[0];
+  if (bound) return bound.name;
+  const code = codesOf(set, name)[0];
   return code ? keyName(code) : "?";
-}
-
-/** `GetKeyText(T1, T2)` (`0x559400`): „a“ bzw. „a / b“ mit den Tasten einer Aktion (0…9) im Satz 0…2. */
-export function keyText(
-  set: number,
-  action: number,
-  second: readonly string[] = secondKeys,
-): string {
-  const s = T1[set] ? set : 0;
-  const first = keyName(T1[s]![action] ?? "");
-  const t2 = keyName(second[s * 10 + action] ?? "");
-  return t2 === "" ? first : `${first} / ${t2}`;
 }
 
 /** `TastePause`: Esc (am Pad Start). */

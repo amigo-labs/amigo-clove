@@ -42,13 +42,15 @@ export interface PointerState {
 }
 
 /**
- * Audio der Shell: ein AudioContext mit getrennten Pegeln für Musik und Effekte.
+ * Audio der Shell: ein AudioContext mit getrennten Pegeln für Musik, Effekte und Sprache.
  * Fehlt, wenn ohne Ton gestartet wird (Original: „Dove - NOSOUND.bat“).
  */
 export interface AudioHost {
   readonly context: AudioContext;
   readonly music: AudioNode;
   readonly sfx: AudioNode;
+  /** Sprachausgabe (DoveZ-Funk); fehlt sie, spielt Sprache über `sfx`. */
+  readonly voice?: AudioNode;
   /** URL des libopenmpt-AudioWorklets (`chiptune3.worklet.js`). */
   readonly moduleWorkletUrl: string;
 }
@@ -64,6 +66,12 @@ export interface KeyValueStore {
  * `fit` füllt bruchteilig und scharf, `smooth` füllt bruchteilig gefiltert.
  */
 export type ScaleMode = "integer" | "fit" | "smooth";
+
+/** Eine belegte Taste: `KeyboardEvent.code` und ihr Anzeigename. */
+export interface BoundKey {
+  readonly code: string;
+  readonly name: string;
+}
 
 export interface GameHost {
   readonly canvas: HTMLCanvasElement;
@@ -95,6 +103,12 @@ export interface GameHost {
   readonly scaleMode?: () => ScaleMode;
   /** Anzahl der Pads mit Vibrationsmotor (für die Optionen des Spiels). */
   readonly rumblePads?: () => number;
+  /**
+   * Tasten, die gerade auf einer Aktion der Tastenbelegung liegen (`KeyAction.id`),
+   * mit Anzeigenamen in der Sprache der Shell, für Hinweistexte („Drücke: J“).
+   * Leer ohne Belegung.
+   */
+  readonly boundKeys?: (action: string) => readonly BoundKey[];
   /** Monotone Zeit in ms (`performance.now` im Browser). */
   now(): number;
   /** HTML-Bildschirme der Shell für alles außerhalb der Level (Menüs, Pause, Continue …). */
@@ -150,12 +164,31 @@ export interface HudPlayer {
  * Was das Original-HUD zeigt, als Daten für das HTML-HUD der Shell. Rein
  * lesend aus dem Weltzustand, einmal pro Bild abgefragt.
  */
+/**
+ * Einblendung im Spielfeld als HTML (Tutorial- und Skripttexte, Boss-Meldungen,
+ * Tastenhinweis, Laufband). Nur Darstellung; die Simulation bleibt gleich.
+ */
+export interface HudMessage {
+  readonly id: string;
+  readonly text: string;
+  /** Linke obere Ecke in Spielpixeln; ohne: oben mittig im Spielfeld (untereinander). */
+  readonly at?: { readonly x: number; readonly y: number };
+  /** Breite in Spielpixeln (Laufband), der Text wird darin abgeschnitten. */
+  readonly width?: number;
+  /** `hint`: groß (Tastenhinweis), `ticker`: Laufband (Festbreite), sonst Meldung. */
+  readonly style?: "text" | "hint" | "ticker";
+  /** Deckkraft 0…1 (ein- und ausblendende Hinweise). */
+  readonly opacity?: number;
+}
+
 export interface HudSnapshot {
   readonly lives: number;
   readonly players: readonly HudPlayer[];
   /** Lebenspunkte des Bosses, solange einer kämpft. */
   readonly boss?: { readonly hp: number; readonly max: number };
   readonly combo?: { readonly hits: number; readonly bonus: number };
+  /** Einblendungen im Spielfeld (mit `hudMode = modern`; sonst zeichnet sie das Spiel). */
+  readonly messages?: readonly HudMessage[];
 }
 
 export interface GameInstance {
@@ -197,14 +230,21 @@ export type ControlsSheet = readonly ControlGroup[];
 export type GamepadBindings = Readonly<Record<number, readonly string[]>>;
 
 /**
- * Eine Aktion für die Tastenbelegung der Shell: Name je Sprache und die
- * Originaltasten. Die Shell legt auf Wunsch eine zweite Taste dazu (wie T2 in
- * DoveZ); das Spiel sieht dann bei jedem seiner Codes auch diese Taste.
+ * Eine Aktion für die Tastenbelegung der Shell: Name je Sprache und die Codes,
+ * nach denen das Spiel fragt (die Originaltasten). Die Shell belegt sie um
+ * (`bindKeys`): das Spiel sieht einen dieser Codes genau dann gehalten, wenn eine
+ * der dafür belegten Tasten gehalten ist.
  */
 export interface KeyAction {
   readonly id: string;
   readonly label: LocalLabel;
   readonly codes: readonly string[];
+  /** Abschnitt im Editor: Bewegen, Waffen, Sonstiges. */
+  readonly group?: "move" | "weapon" | "system";
+  /** Spieler (0, 1) bei zwei Spielern an einer Tastatur; fehlt = alle bzw. Einzelspieler. */
+  readonly player?: number;
+  /** Die belegten Tasten bedienen auch die HTML-Bildschirme (Richtung bzw. Bestätigen). */
+  readonly nav?: "up" | "down" | "left" | "right" | "ok";
 }
 
 /**

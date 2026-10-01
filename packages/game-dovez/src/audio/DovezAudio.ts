@@ -9,9 +9,9 @@ import type { World } from "../sim/world";
  * Ereignisse der Simulation einmal pro Frame, dedupliziert, und streamt
  * die Levelmusik. Befund: `docs/measurements/dovez-runtime.md` („Ton“).
  *
- * Pegel aus den Optionen (`game/config.ts`, Hundertstel dB, `10^(v/2000)`),
- * Vorgaben des Originals: Engine-Effekte −1000 (0,316), Level-Töne und
- * Funkstimmen 0 (1,0), Musik 90 %.
+ * Pegel wie die Vorgaben des Originals (`game/config.ts`, Hundertstel dB,
+ * `10^(v/2000)`): Engine-Effekte −1000 (0,316), Level-Töne und Funkstimmen 0
+ * (1,0), Musik 90 %. Die Funkstimmen laufen auf dem Sprachkanal der Shell.
  */
 const DEFAULT_GAINS: AudioGains = { sfx: 10 ** (-1000 / 2000), speech: 1, music: 0.9 };
 
@@ -32,6 +32,8 @@ export class DovezAudio {
     private readonly context: BaseAudioContext,
     private readonly assets: AssetStore,
     private readonly sfx: SfxPool,
+    /** Funkstimmen (`voice/<slug>`) auf dem Sprachkanal. */
+    private readonly voices: SfxPool,
     private readonly music: StreamPlayer,
     private readonly slug: string,
     private readonly gains: AudioGains,
@@ -45,23 +47,32 @@ export class DovezAudio {
     gains: AudioGains = DEFAULT_GAINS,
   ): Promise<DovezAudio> {
     const sfx = new SfxPool(host.context, host.sfx, { maxVoices: 24, maxPerSound: 6 });
-    const ids = [
-      ...assets.bundle("core").filter((id) => id.startsWith("sound/")),
-      ...assets.bundle(`voice/${slug}`),
-    ];
-    await Promise.all(
-      ids.map(async (id) => {
-        try {
-          await sfx.load(id, await assets.bytes(id));
-        } catch {
-          // nicht dekodierbar (z. B. Opus in altem Safari): stumm weiter
-        }
-      }),
-    );
+    const voices = new SfxPool(host.context, host.voice ?? host.sfx, {
+      maxVoices: 2,
+      maxPerSound: 1,
+    });
+    const load = (pool: SfxPool, ids: readonly string[]) =>
+      Promise.all(
+        ids.map(async (id) => {
+          try {
+            await pool.load(id, await assets.bytes(id));
+          } catch {
+            // nicht dekodierbar (z. B. Opus in altem Safari): stumm weiter
+          }
+        }),
+      );
+    await Promise.all([
+      load(
+        sfx,
+        assets.bundle("core").filter((id) => id.startsWith("sound/")),
+      ),
+      load(voices, assets.bundle(`voice/${slug}`)),
+    ]);
     return new DovezAudio(
       host.context,
       assets,
       sfx,
+      voices,
       new StreamPlayer(host.context, host.music),
       slug,
       gains,
@@ -126,7 +137,7 @@ export class DovezAudio {
     this.sfxLoops.clear();
     if (this.voice) {
       const at = this.context.currentTime - this.voiceStarted;
-      if (at < this.sfx.duration(this.voice)) this.pausedVoice = { id: this.voice, at };
+      if (at < this.voices.duration(this.voice)) this.pausedVoice = { id: this.voice, at };
       this.stopVoice();
     }
     this.music.setVolume(0);
@@ -148,7 +159,7 @@ export class DovezAudio {
     if (v) {
       this.voice = v.id;
       this.voiceStarted = this.context.currentTime - v.at;
-      this.sfx.play(v.id, 0, this.gains.speech, 1, v.at);
+      this.voices.play(v.id, 0, this.gains.speech, 1, v.at);
     }
   }
 
@@ -208,7 +219,7 @@ export class DovezAudio {
           this.stopVoice();
           this.voice = `voice/${this.slug}/${dovezSlug(e.wav)}`;
           this.voiceStarted = this.context.currentTime;
-          this.sfx.play(this.voice, 0, this.gains.speech);
+          this.voices.play(this.voice, 0, this.gains.speech);
           break;
         case "voiceStop":
           this.stopVoice();
@@ -219,7 +230,7 @@ export class DovezAudio {
 
   /** Funkstimme aus (`KillFunktionsSound`). */
   stopVoice(): void {
-    if (this.voice) this.sfx.stop(this.voice);
+    if (this.voice) this.voices.stop(this.voice);
     this.voice = undefined;
   }
 
@@ -227,6 +238,7 @@ export class DovezAudio {
     for (const stop of this.loops.values()) stop();
     for (const loop of this.sfxLoops.values()) loop.stop();
     this.sfx.stopAll();
+    this.voices.stopAll();
     this.music.dispose();
   }
 }

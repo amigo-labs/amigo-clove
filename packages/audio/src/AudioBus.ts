@@ -1,18 +1,21 @@
 /**
- * Ein AudioContext, drei Pegel: Master → Musik, Effekte. Die Shell erzeugt den
- * Bus (bei der ersten Nutzergeste), das Spiel spielt nur über ihn ab.
+ * Ein AudioContext, vier Pegel: Master → Musik, Effekte, Sprache. Die Shell
+ * erzeugt den Bus (bei der ersten Nutzergeste), das Spiel spielt nur über ihn ab.
  */
 export class AudioBus {
   readonly master: GainNode;
   readonly music: GainNode;
   readonly sfx: GainNode;
+  readonly voice: GainNode;
 
   constructor(readonly context: AudioContext) {
     this.master = context.createGain();
     this.music = context.createGain();
     this.sfx = context.createGain();
+    this.voice = context.createGain();
     this.music.connect(this.master);
     this.sfx.connect(this.master);
+    this.voice.connect(this.master);
     this.master.connect(context.destination);
   }
 
@@ -21,7 +24,7 @@ export class AudioBus {
     return this.context.state === "suspended" ? this.context.resume() : Promise.resolve();
   }
 
-  setVolume(channel: "master" | "music" | "sfx", value: number): void {
+  setVolume(channel: "master" | "music" | "sfx" | "voice", value: number): void {
     this[channel].gain.value = Math.max(0, Math.min(1, value));
   }
 

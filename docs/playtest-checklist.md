@@ -48,22 +48,33 @@ laufenden Original (Referenzaufnahme mit OBS, 60 fps).
       nicht nur exaktes Schwarz. Der Port keyt exakt RGB(0,0,0) — fast
       schwarze Ränder an Sprites (z. B. Menügrafik in titel.spr) vergleichen.
 
-- [ ] **Ablauf (Menüs als HTML):** NEO-ARTS-Logo und Intro im Original; Titel,
-      Optionen (Speichern, Punktefaktor, Freischalt-Hinweis), Levelauswahl,
+- [ ] **Ablauf (Menüs als HTML):** NEO-ARTS-Logo als HTML („presents“ läuft wie
+      im Original auf), Intro im Original; Titel, Optionen (Spielregeln mit
+      Speichern, Punktefaktor, Freischalt-Hinweis; Tastenbelegung, Ton und
+      Darstellung der Shell), Levelauswahl,
       Info mit Readme, Abschied, Get Ready, Pause, Continue und
       Highscore-Eingabe als HTML mit Tastatur, Maus, Touch und Pad; Effekte
       (Get Ready, Yes/No) und Musik wie im Original, Musik blendet vor dem
       Levelstart aus.
-- [ ] **Abspann:** Dia-Timings und Name von Platz 1 im Jubeltext; danach die
-      Credits (alle Beteiligten) als HTML mit Musik `credits`.
+- [ ] **Abspann:** Dia-Timings und Name von Platz 1 im Jubeltext (Story-Zeilen als
+      HTML-Untertitel); danach die Credits (alle Beteiligten, je Rolle) als HTML
+      mit Musik `credits`.
+- [ ] **Tutorial mit eigener Belegung:** Vorlage „WASD + rechte Hand“ — die Texte
+      nennen die neuen Tasten (J, K, L, U/I), mit dem Original-HUD in der 8-px-Schrift.
 
 ## Stand M5 — Shell, auf echten Geräten prüfen
 
 Der Smoke-Test deckt Chromium headless ab (Kaltstart, Sprachwechsel,
 Offline-Start bei beendetem Server). Von Hand:
 
-- [ ] **Gamepad:** Xbox- und PlayStation-Pad in Chrome und Firefox — Menüs der
-      Shell (hoch/runter, A, B), DOVE-Belegung, Stick-Totzone.
+- [ ] **Gamepad:** Xbox- und PlayStation-Pad in Chrome und Firefox — Launcher,
+      Einstellungen und Menüs (hoch/runter, links/rechts verstellt, A, B),
+      DOVE-Belegung, Stick-Totzone.
+- [ ] **Tastenbelegung:** beide Vorlagen in beiden Spielen, eigene Tasten
+      (Aufnahme, Rücktaste, ✕ mit der Maus), Warnung bei doppelten Tasten,
+      „Übernehmen“ gesperrt ohne Taste; WASD navigiert auch die Menüs.
+- [ ] **Gesamtbild:** Launcher, Einstellungen und alle Bildschirme beider Spiele
+      nebeneinander (DOVE Gold, DoveZ Oliv), schmale Fenster und Touch.
 - [ ] **Ton nur mit Pad:** Browser zählen Pad-Tasten meist nicht als
       Nutzergeste; ob der AudioContext ohne Tastatur/Klick anläuft, prüfen.
 - [ ] **Offline:** Firefox und Safari — „Spieldaten installieren“, Flugmodus,
@@ -96,9 +107,11 @@ klären müsste:
       sich wie im Original an (Frames überspringen bei Last).
 - [ ] **Trägheit „Realistic“:** Ausgleiten nach dem Loslassen (×0,85 je Tick, ab 10
       Ticks Tastendruck) — Reihenfolge im Tick und Länge des Ausgleitens.
-- [ ] **Tastenkonfiguration (HTML):** Aufnahme der zweiten Taste je Aktion und
-      Satz, Übernehmen und Zurück (verwirft); Tastennamen (deutsche Beschriftung:
-      DIK `0x15` = „Z“).
+- [ ] **Tastenbelegung (Shell):** Die Tastenkonfiguration des Originals ist durch
+      die Belegung der Shell ersetzt (Optionen → Tastenbelegung); die Vorlage
+      „Original“ belegt Satz 0/1 wie das Einzelspiel und Satz 2 mit Ziffernblock
+      und Num 2 — am Original vergleichen, ob das Zweispielerspiel mit IJKL
+      vermisst wird.
 - [ ] **Super-Nova:** alle zehn Varianten (Dauer, Zeitpunkt der Kills, Rauschen),
       Abschusszähler `B48[0].54`.
 - [ ] **Bosse:** Zustandsmaschinen und Finale (Zustand 4), Druckwelle als Spielwirkung.
@@ -106,12 +119,15 @@ klären müsste:
 - [ ] **Hintergründe, Wetter, Wasser, Overlays:** prozedurale Effekte (Partikelzahlen,
       Farben, Blendmodi) gegen Aufnahmen.
 - [ ] **Videos und Ladebilder:** Ladebild bzw. Mosaik mit Fortschritt als HTML,
-      Zwischensequenzen als `<video>`, Credits-Bild läuft mit 40 px/s (Original
-      1 px je 25 ms).
-- [ ] **Menü (HTML):** alle Seiten (Neu → Spieler → Schiff → Namen, Laden, Optionen,
-      Lautstärke, Tasten, Vibration, Bonus, Highscore), Menümusik und Klänge, Osterei
-      durch Tippen von „lov“; Speicherbildschirm, Continue (Esc zählt schneller) und
-      Pause mit Funklog und Tastenübersicht.
+      Zwischensequenzen als `<video>`, Credits als Text (aus dem Originalbild
+      abgeschrieben) mit 40 px/s (Original 1 px je 25 ms) — Namen und Reihenfolge
+      gegen das Bild prüfen.
+- [ ] **Menü (HTML):** alle Seiten (Neu → Spieler → Schiff → Namen, Laden, Optionen
+      mit Grundeinstellungen, Tastenbelegung/Ton/Darstellung der Shell, Vibration,
+      Bonus, Highscore), Menümusik und Klänge, Osterei durch Tippen von „lov“;
+      Speicherbildschirm, Continue (Esc zählt schneller) und Pause mit Funklog und
+      Tastenübersicht. Lautstärken: das Mischverhältnis des Originals bleibt fest,
+      die Pegel kommen aus der Shell.
 - [ ] **Level vor Tick 0** (`-Tick N` mit N < 0): die 118 Einträge mit negativem Tick.
 - [ ] **Vibration:** Stärke und Dauer je Quelle (siehe „Vibration“ in
       `dovez-runtime.md`), Gamepad-Motoren der Browser statt DirectInput-Kräfte.
@@ -125,7 +141,8 @@ klären müsste:
       im HTML-Menü die Bonusliste, im Original die Highscore-Seite).
 - [ ] **Speicherbildschirm:** „Уровень расчищен!“ ohne Levelnamen, Spielerzeile
       ohne Highscore-Platz, „Сохранено“ nach dem Speichern.
-- [ ] **Pause:** Titel „Уровень1-1 (Bruce)“, „Продолжить“/„Выход“.
+- [ ] **Pause:** „Пауза“, darunter „Уровень1-1 (Bruce)“; „Продолжить“/„Выйти из
+      игры“ (gemeinsame Texte beider Spiele statt „Выход“).
 - [ ] **Funk:** Untertitel im Laufband, kein Ton (RU-Aufnahmen fehlen);
       [Harbor] in Level 3-1 vollständig.
 - [ ] **Videos:** `introR`/`OutroR`/`Outro2R` fehlen in den Originaldaten — das
