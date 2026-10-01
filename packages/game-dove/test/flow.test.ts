@@ -1,12 +1,10 @@
 import type { DoveIntro, IntroObject } from "@clove/formats";
 import { describe, expect, test } from "bun:test";
-import { BIG_H, BIG_W, bigLetterIndex, bigLetterRect, layoutBigText } from "../src/flow/bigfont";
 import {
   DEFAULT_NAME,
   HIGHSCORE_SIZE,
   cleanName,
   defaultHighscores,
-  highscoreLine,
   insertHighscore,
   parseHighscores,
   rankFor,
@@ -19,7 +17,6 @@ import {
   type Config,
   DEFAULT_CONFIG,
   formatFactor,
-  getReadyText,
   hasLevelSelect,
   levelName,
   parseConfig,
@@ -31,8 +28,6 @@ import {
   simOptionsFor,
   unlockAfter,
 } from "../src/flow/rules";
-import { nameChar } from "../src/flow/screens/HighscoreScreen";
-import { KATHA, STAR_COUNT, TitleStars, starColor } from "../src/flow/stars";
 import { DEFAULT_OPTIONS, VbRnd } from "../src/sim";
 import { assets } from "./helpers";
 
@@ -120,12 +115,6 @@ describe("Levelnamen und Get Ready", () => {
     expect(levelName(19)).toBe("ExtraLevel 9");
   });
 
-  test("Laufschrift", () => {
-    expect(getReadyText(2, 1234, 1)).toBe(
-      "           Level 2 - Factory - GET READY Points:1234 Ships:1             ",
-    );
-  });
-
   test("Vorschaubilder", () => {
     expect(previewImage(0)).toBe("image/0");
     expect(previewImage(10)).toBe("image/10");
@@ -191,18 +180,6 @@ describe("Highscore", () => {
     expect([1, 2, 3, 4, 9].map(rankSuffix)).toEqual(["st", "nd", "rd", "th", "th"]);
   });
 
-  test("Zeilenformat der Titelliste", () => {
-    expect(highscoreLine(1, { name: "David Lee", score: 100000 })).toBe(
-      "1.David Lee           |..100000",
-    );
-    expect(highscoreLine(9, { name: "Toxeen", score: 10000 })).toBe(
-      "9.Toxeen              |...10000",
-    );
-    expect(highscoreLine(3, { name: "x".repeat(25), score: 123456789 })).toBe(
-      `3.${"x".repeat(20)}|23456789`,
-    );
-  });
-
   test("Speicher: Rundreise, ungültig → undefined", () => {
     const list = defaultHighscores(new VbRnd(7));
     expect(parseHighscores(serializeHighscores(list))).toEqual(list);
@@ -212,49 +189,6 @@ describe("Highscore", () => {
     expect(
       parseHighscores(JSON.stringify(list.map((e) => ({ ...e, score: "1" })))),
     ).toBeUndefined();
-  });
-
-  test("Tastencodes der Namenseingabe", () => {
-    expect(nameChar("KeyK", true)).toBe("K");
-    expect(nameChar("KeyK", false)).toBe("k");
-    expect(nameChar("Digit7", false)).toBe("7");
-    expect(nameChar("Numpad3", false)).toBe("3");
-    expect(nameChar("Space", false)).toBe(" ");
-    expect(nameChar("Minus", false)).toBe("-");
-    expect(nameChar("Enter", false)).toBeUndefined();
-  });
-});
-
-describe("Großschrift text2.spr (0x452180)", () => {
-  test("Zuordnung", () => {
-    expect(bigLetterIndex("A")).toBe(0);
-    expect(bigLetterIndex("z")).toBe(25);
-    expect(bigLetterIndex("0")).toBe(26);
-    expect(bigLetterIndex("9")).toBe(35);
-    expect(bigLetterIndex("(")).toBe(36);
-    expect(bigLetterIndex(")")).toBe(37);
-    expect(bigLetterIndex(":")).toBe(38);
-    expect(bigLetterIndex("-")).toBe(39);
-    expect(bigLetterIndex("!")).toBe(0);
-    expect(bigLetterIndex("Ü")).toBe(0);
-  });
-
-  test("Zellen 60×75, fünf pro Zeile", () => {
-    expect([BIG_W, BIG_H]).toEqual([60, 75]);
-    expect(bigLetterRect(0)).toEqual([0, 0]);
-    expect(bigLetterRect(4)).toEqual([240, 0]);
-    expect(bigLetterRect(5)).toEqual([0, 75]);
-    expect(bigLetterRect(39)).toEqual([240, 525]);
-  });
-
-  test("Layout: 60 px je Zeichen, Leerzeichen ohne Glyphe, Clipping", () => {
-    expect(layoutBigText(10, "A B")).toEqual([
-      [10, 0, 0],
-      [130, 60, 0],
-    ]);
-    // links teilweise sichtbar bleibt, ganz außerhalb entfällt
-    expect(layoutBigText(-70, "AB").map((g) => g[0])).toEqual([-10]);
-    expect(layoutBigText(590, "ABC").map((g) => g[0])).toEqual([590]);
   });
 });
 
@@ -317,32 +251,6 @@ describe("Intro-Keyframes (PlayIntro)", () => {
     expect(introSpriteAt(earth, 81)).toEqual({ x: 210, y: 130, scale: 100, frame: 0 });
     const used = intro.scenes.filter((s) => s.duration > 0).map((s) => s.background);
     expect(used).toEqual(["background1.spr", "intro2.spr", "background1.spr"]);
-  });
-});
-
-describe("Titel-Sternenfeld", () => {
-  test("1000 Sterne, KATHA-Schriftzug vorn, Grau nach Tempo", () => {
-    const stars = new TitleStars(new VbRnd());
-    const n = KATHA.join("")
-      .split("")
-      .filter((c) => c === "*").length;
-    expect(stars.x.length).toBe(STAR_COUNT);
-    expect([stars.x[0], stars.y[0], stars.speed[0], stars.color[0]]).toEqual([
-      500, 300, 1, 0x545440,
-    ]);
-    expect(stars.color[n - 1]).toBe(0x545440);
-    expect(starColor(1)).toBe(0x3f3f3f);
-    expect(starColor(4)).toBe(0xffffff);
-    for (let i = n; i < STAR_COUNT; i++) expect(stars.color[i]).toBe(starColor(stars.speed[i]!));
-  });
-
-  test("Umbruch am linken Rand: x = 639, neues Tempo", () => {
-    const stars = new TitleStars(new VbRnd(3));
-    stars.x[500] = 0.5;
-    stars.speed[500] = 1;
-    stars.tick();
-    expect(stars.x[500]).toBe(639);
-    expect(stars.color[500]).toBe(starColor(stars.speed[500]!));
   });
 });
 

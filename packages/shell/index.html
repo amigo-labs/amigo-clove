@@ -459,7 +459,7 @@
       }
       .ui-panel {
         box-sizing: border-box;
-        width: min(52rem, 100%);
+        width: min(60rem, 100%);
         max-height: 100%;
         overflow: auto;
         padding: 1.25rem 1.5rem;
@@ -480,9 +480,13 @@
       }
       .ui-body.split {
         display: grid;
-        grid-template-columns: minmax(14rem, 1fr) minmax(14rem, 1fr);
+        grid-template-columns: minmax(12rem, 18rem) minmax(0, 1fr);
         gap: 1.5rem;
         align-items: start;
+      }
+      .ui-aside {
+        min-width: 0;
+        overflow-x: auto;
       }
       @media (max-width: 40rem) {
         .ui-body.split {
@@ -537,6 +541,10 @@
       .ui-item:hover,
       .ui-field:hover {
         border-color: #866a33;
+      }
+      .ui-panel:focus,
+      .ui-video-box:focus {
+        outline: none;
       }
       .ui-item:focus,
       .ui-field:focus,

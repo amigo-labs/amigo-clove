@@ -82,15 +82,6 @@ export function rankSuffix(rank: number): string {
   return rank === 1 ? "st" : rank === 2 ? "nd" : rank === 3 ? "rd" : "th";
 }
 
-/**
- * Zeile der Titel-Highscoreliste (`0x4A05D8`):
- * `Platz & "." & Left$(Name & Leerzeichen, 20) & "|" & Right$("........" & Punkte, 8)`.
- */
-export function highscoreLine(rank: number, e: HighscoreEntry): string {
-  const name = `${e.name}${" ".repeat(NAME_MAX)}`.slice(0, NAME_MAX);
-  return `${rank}.${name}|${`........${e.score}`.slice(-8)}`;
-}
-
 /** Liste aus dem Speicher; ungültig oder fehlend → `undefined` (dann Standardliste). */
 export function parseHighscores(json: string | null): HighscoreEntry[] | undefined {
   if (!json) return undefined;
