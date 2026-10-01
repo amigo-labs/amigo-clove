@@ -1,7 +1,15 @@
-import type { AssetStore, AtlasJson, HudIcon, HudMeter, HudSnapshot, HudSprite } from "@clove/core";
+import type {
+  AssetStore,
+  AtlasJson,
+  HudIcon,
+  HudMessage,
+  HudMeter,
+  HudSnapshot,
+  HudSprite,
+} from "@clove/core";
 import { bossStatus } from "../sim/bossStatus";
 import type { World } from "../sim/world";
-import type { Lang } from "./lang";
+import { type Lang, hintPrefix } from "./lang";
 
 /** Sprites eines Atlas als `HudSprite` (Seite aus dem Manifest). */
 export function atlasSprites(
@@ -47,10 +55,52 @@ function icon(sprite: HudSprite | undefined, rest: Omit<HudIcon, "sprite">): Hud
  * Schussstärke, Extrawaffe; allein dazu D-Tonator-Slots bzw. Force; gemeinsame
  * Leben, Kombo und die Lebenspunkte des Bosses.
  */
+/** Laufband (`ShowMSGS`) über dem HUD-Grund, 225 px breit ab x 575. */
+export const TICKER_Y = 552;
+/** So weit rücken Funkbild (y 542…592) und Laufband mit dem HTML-HUD nach oben ins Spielfeld. */
+export const RADIO_LIFT = 52;
+
+/**
+ * Einblendungen im Spielfeld für das HTML-HUD, an den Stellen des Originals:
+ * der Tastenhinweis (`SpielSpezial` Typ 1, „Drücke: “ + belegte Taste, 1P bei
+ * y 450, 2P je Spieler bei 360 und 450, Grauwert als Deckkraft) und das
+ * Laufband mit den Funksprüchen (ins Spielfeld gerückt wie das Funkbild).
+ */
+export function dovezMessages(
+  w: World,
+  lang: Lang,
+  keyLabel: (action: number, set: number) => string,
+): HudMessage[] {
+  const out: HudMessage[] = [];
+  const h = w.env.hint;
+  if (h) {
+    const sets = w.playersMinus1 === 1 ? [1, 2] : [0];
+    sets.forEach((set, n) =>
+      out.push({
+        id: `hint${set}`,
+        text: hintPrefix(lang) + keyLabel(h.action, set),
+        at: { x: 11, y: sets.length === 2 && n === 0 ? 360 : 450 },
+        style: "hint",
+        opacity: Math.max(0, Math.min(255, h.grey)) / 255,
+      }),
+    );
+  }
+  if (w.radio.ticker)
+    out.push({
+      id: "ticker",
+      text: w.radio.ticker,
+      at: { x: 575, y: TICKER_Y - RADIO_LIFT },
+      width: 225,
+      style: "ticker",
+    });
+  return out;
+}
+
 export function dovezHud(
   w: World,
   sprite: (name: string) => HudSprite | undefined,
   lang: Lang,
+  keyLabel?: (action: number, set: number) => string,
 ): HudSnapshot {
   const two = w.playersMinus1 === 1;
   const players = w.players.map((p, n) => {
@@ -113,10 +163,12 @@ export function dovezHud(
   const combo =
     (hits > 1 || S.shown > 1) && S.timer > 0 ? { hits: S.shown, bonus: S.bonus } : undefined;
   const boss = bossStatus(w.enemies, w.playersMinus1);
+  const messages = keyLabel ? dovezMessages(w, lang, keyLabel) : [];
   return {
     lives: w.lives,
     players,
     ...(boss ? { boss } : {}),
     ...(combo ? { combo } : {}),
+    ...(messages.length > 0 ? { messages } : {}),
   };
 }

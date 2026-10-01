@@ -67,6 +67,12 @@ export interface KeyValueStore {
  */
 export type ScaleMode = "integer" | "fit" | "smooth";
 
+/** Eine belegte Taste: `KeyboardEvent.code` und ihr Anzeigename. */
+export interface BoundKey {
+  readonly code: string;
+  readonly name: string;
+}
+
 export interface GameHost {
   readonly canvas: HTMLCanvasElement;
   readonly audio?: AudioHost;
@@ -98,10 +104,11 @@ export interface GameHost {
   /** Anzahl der Pads mit Vibrationsmotor (für die Optionen des Spiels). */
   readonly rumblePads?: () => number;
   /**
-   * Namen der Tasten, die gerade auf einer Aktion der Tastenbelegung liegen
-   * (`KeyAction.id`), für Hinweistexte („Drücke: J“). Leer ohne Belegung.
+   * Tasten, die gerade auf einer Aktion der Tastenbelegung liegen (`KeyAction.id`),
+   * mit Anzeigenamen in der Sprache der Shell, für Hinweistexte („Drücke: J“).
+   * Leer ohne Belegung.
    */
-  readonly keyNames?: (action: string) => readonly string[];
+  readonly boundKeys?: (action: string) => readonly BoundKey[];
   /** Monotone Zeit in ms (`performance.now` im Browser). */
   now(): number;
   /** HTML-Bildschirme der Shell für alles außerhalb der Level (Menüs, Pause, Continue …). */
@@ -157,12 +164,31 @@ export interface HudPlayer {
  * Was das Original-HUD zeigt, als Daten für das HTML-HUD der Shell. Rein
  * lesend aus dem Weltzustand, einmal pro Bild abgefragt.
  */
+/**
+ * Einblendung im Spielfeld als HTML (Tutorial- und Skripttexte, Boss-Meldungen,
+ * Tastenhinweis, Laufband). Nur Darstellung; die Simulation bleibt gleich.
+ */
+export interface HudMessage {
+  readonly id: string;
+  readonly text: string;
+  /** Linke obere Ecke in Spielpixeln; ohne: oben mittig im Spielfeld (untereinander). */
+  readonly at?: { readonly x: number; readonly y: number };
+  /** Breite in Spielpixeln (Laufband), der Text wird darin abgeschnitten. */
+  readonly width?: number;
+  /** `hint`: groß (Tastenhinweis), `ticker`: Laufband (Festbreite), sonst Meldung. */
+  readonly style?: "text" | "hint" | "ticker";
+  /** Deckkraft 0…1 (ein- und ausblendende Hinweise). */
+  readonly opacity?: number;
+}
+
 export interface HudSnapshot {
   readonly lives: number;
   readonly players: readonly HudPlayer[];
   /** Lebenspunkte des Bosses, solange einer kämpft. */
   readonly boss?: { readonly hp: number; readonly max: number };
   readonly combo?: { readonly hits: number; readonly bonus: number };
+  /** Einblendungen im Spielfeld (mit `hudMode = modern`; sonst zeichnet sie das Spiel). */
+  readonly messages?: readonly HudMessage[];
 }
 
 export interface GameInstance {

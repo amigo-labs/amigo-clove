@@ -117,7 +117,12 @@ describe("Tastenbelegung", () => {
     expect(keyLabel(host(), 4)).toBe("S");
     expect(keyLabel(host(), 0, 2)).toBe("Num. 4");
     const named = {
-      keyNames: (a: string) => (a === "fire" ? ["J"] : a === "fire2" ? ["Ende"] : []),
+      boundKeys: (a: string) =>
+        a === "fire"
+          ? [{ code: "KeyJ", name: "J" }]
+          : a === "fire2"
+            ? [{ code: "End", name: "Ende" }]
+            : [],
     } as unknown as GameHost;
     expect(keyLabel(named, 4)).toBe("J");
     expect(keyLabel(named, 4, 2)).toBe("Ende");

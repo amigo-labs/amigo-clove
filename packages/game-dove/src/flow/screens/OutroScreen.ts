@@ -13,7 +13,9 @@ const SLIDE_H = 450;
 /**
  * Abspann-Story (`ShowOutro` `0x4A0D00`): Musik `over`, fünf Dias `B1`–`B5`
  * (640×450) mit je zwei Storyzeilen zentriert an y = 466 und Wellen-Überblendung.
- * ESC springt weiter; die Credits danach zeigt die Shell als HTML.
+ * Die Storyzeilen zeigt die Shell als HTML-Untertitel (`GameUi.caption`), ohne
+ * sie zeichnet sie der Canvas. ESC springt weiter; die Credits danach zeigt die
+ * Shell als HTML.
  */
 export class OutroScreen implements Screen<true> {
   readonly images = ["image/b1", "image/b2", "image/b3", "image/b4", "image/b5", "image/text"];
@@ -79,10 +81,13 @@ export class OutroScreen implements Screen<true> {
       }
     }
     const text = this.lines[this.line] ?? "";
-    g.text(0, text, Math.max(0, (640 - textWidth(text)) >> 1), 466);
+    const caption = this.env.host.ui.caption;
+    if (caption) caption.call(this.env.host.ui, text);
+    else g.text(0, text, Math.max(0, (640 - textWidth(text)) >> 1), 466);
   }
 
   dispose(): void {
+    this.env.host.ui.caption?.(null);
     this.g.destroy();
   }
 }

@@ -420,6 +420,7 @@ async function startGame(
     const gameUi: GameUi = {
       show: (screen2, signal) => ui.show(screen2, signal),
       brand: (b) => ui.brand(b),
+      caption: (text) => ui.caption(text),
       settings: (page, signal) =>
         runPage(() =>
           settingsPage(
@@ -435,7 +436,8 @@ async function startGame(
         canvas,
         assets,
         ui: gameUi,
-        keyNames: (action) => (bindingsFor(id)?.[action] ?? []).map((c) => keyLabel(t, c)),
+        boundKeys: (action) =>
+          (bindingsFor(id)?.[action] ?? []).map((code) => ({ code, name: keyLabel(t, code) })),
         keys: gateKeys(keysFor(id, module, touch), () => ui.state()),
         locale,
         rumble,

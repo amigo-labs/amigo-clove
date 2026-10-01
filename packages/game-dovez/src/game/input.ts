@@ -233,8 +233,8 @@ export function readInput(host: GameHost, set = 0): PlayerInput {
 export function keyLabel(host: GameHost, action: number, set = 0): string {
   const name = ACTIONS[action];
   if (!name) return "?";
-  const bound = host.keyNames?.(actionId(set === 2 ? 1 : 0, name))[0];
-  if (bound) return bound;
+  const bound = host.boundKeys?.(actionId(set === 2 ? 1 : 0, name))[0];
+  if (bound) return bound.name;
   const code = codesOf(set, name)[0];
   return code ? keyName(code) : "?";
 }

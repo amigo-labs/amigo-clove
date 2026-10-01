@@ -130,6 +130,21 @@ export class UiHost implements GameUi {
     this.brandInfo = b;
   }
 
+  private captionEl: HTMLElement | undefined;
+
+  /** Untertitel über dem Spielbild (`GameUi.caption`); sperrt keine Tasten. */
+  caption(text: string | null): void {
+    if (text === null || text === "") {
+      this.captionEl?.remove();
+      this.captionEl = undefined;
+      return;
+    }
+    this.captionEl ??= this.o.mount.appendChild(
+      h("p", { class: "ui-caption", "aria-live": "polite" }),
+    );
+    if (this.captionEl.textContent !== text) this.captionEl.textContent = text;
+  }
+
   /** Ist gerade ein Bildschirm offen? */
   isOpen(): boolean {
     return this.open !== undefined;
@@ -252,6 +267,7 @@ export class UiHost implements GameUi {
     this.open = undefined;
     cur?.view.stop?.();
     this.root.remove();
+    this.captionEl?.remove();
     delete this.o.frame.dataset["ui"];
   }
 

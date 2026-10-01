@@ -1,4 +1,13 @@
-import type { AssetStore, HudIcon, HudMeter, HudSnapshot, HudSprite } from "@clove/core";
+import type {
+  AssetStore,
+  HudIcon,
+  HudMessage,
+  HudMeter,
+  HudSnapshot,
+  HudSprite,
+} from "@clove/core";
+import { levelMessages } from "./levelMessages";
+import { type BoundKeys, scriptText } from "./scriptText";
 import { BEAM_MAX, SHIELD_TICKS } from "./sim/constants";
 import type { World } from "./sim/world";
 
@@ -21,9 +30,15 @@ export function spriteSheet(assets: AssetStore, id: string): (r: Rect) => HudSpr
 /**
  * Alles, was die Konsole zeigt, als Daten für das HTML-HUD der Shell:
  * Punkte (hochzählend), Schiffe, Tempo, Beam, Waffe mit Stufe, Options, Bombe,
- * Pod-Richtung; dazu Schild-Restzeit und Boss-Lebenspunkte.
+ * Pod-Richtung; dazu Schild-Restzeit, Boss-Lebenspunkte und die Texte im
+ * Spielfeld (mit den belegten Tasten, `bound`).
  */
-export function doveHud(w: World, sprite: (r: Rect) => HudSprite, german: boolean): HudSnapshot {
+export function doveHud(
+  w: World,
+  sprite: (r: Rect) => HudSprite,
+  german: boolean,
+  bound?: BoundKeys,
+): HudSnapshot {
   const meters: HudMeter[] = [
     // Tempo 2…8 als Zeiger 20…80 (`gauge` läuft dem Tempo nach)
     { id: "speed", value: Math.max(0, w.gauge - 10), max: 70 },
@@ -64,9 +79,15 @@ export function doveHud(w: World, sprite: (r: Rect) => HudSprite, german: boolea
       max += Math.max(0, w.bossHPMax[p]!);
     }
   }
+  // Texte im Spielfeld: Skripttext und die Scan-Meldung oben mittig, die übrigen am Schiff
+  const messages: HudMessage[] = [];
+  const script = scriptText(w.scriptText, german, bound);
+  if (script) messages.push({ id: `script${w.scriptText}`, text: script });
+  for (const m of levelMessages(w)) messages.push(m.id === "scan" ? { id: m.id, text: m.text } : m);
   return {
     lives: w.lives,
     players: [{ score: w.shownScore, meters, icons }],
     ...(max > 0 ? { boss: { hp, max } } : {}),
+    ...(messages.length > 0 ? { messages } : {}),
   };
 }

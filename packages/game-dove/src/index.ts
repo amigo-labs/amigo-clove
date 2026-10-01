@@ -14,6 +14,7 @@ import { KeyEdges } from "./flow/input";
 import type { FlowEnv } from "./flow/screen";
 import { DOVE_GAMEPAD } from "./controls";
 import { doveHud, spriteSheet } from "./hud";
+import type { BoundKeys } from "./scriptText";
 import { VbRnd } from "./sim/VbRnd";
 import type { SimOptions, World } from "./sim/world";
 
@@ -127,10 +128,11 @@ const dove: GameModule = {
     flow.main().catch((e: unknown) => console.error("DOVE-Ablauf abgebrochen:", e));
 
     const ss = spriteSheet(host.assets, "image/ss");
+    const bound: BoundKeys | undefined = host.boundKeys ? (a) => host.boundKeys!(a) : undefined;
     return {
       hud() {
         const w = flow.playing;
-        return w ? doveHud(w, ss, env.german) : null;
+        return w ? doveHud(w, ss, env.german, bound) : null;
       },
       replay: () => ({
         version: 1,

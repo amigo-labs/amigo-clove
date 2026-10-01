@@ -50,3 +50,20 @@ describe("DOVE-HUD", () => {
     expect(doveHud(w, sprite, false).boss).toEqual({ hp: 350, max: 500 });
   });
 });
+
+/** Feuer auf J, alles andere auf X. */
+const bound = (a: string) =>
+  a === "fire" ? [{ code: "KeyJ", name: "J" }] : [{ code: "KeyX", name: "X" }];
+
+describe("DOVE-HUD: Texte im Spielfeld", () => {
+  test("Skripttext oben mittig, mit den belegten Tasten", () => {
+    const w = tinyLevel([]);
+    w.scriptText = 2;
+    const hud = doveHud(w, sprite, true, bound);
+    expect(hud.messages).toEqual([
+      { id: "script2", text: "Uh, da kommt ein Gegner! Du schießt mit J! Mach ihn fertig!" },
+    ]);
+    w.scriptText = 0;
+    expect(doveHud(w, sprite, true, bound).messages).toBeUndefined();
+  });
+});
