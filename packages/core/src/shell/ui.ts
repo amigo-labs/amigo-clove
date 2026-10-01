@@ -40,6 +40,8 @@ export type UiBlock =
       readonly align?: "left" | "center";
       /** Feste Zeichenbreite (Readme, Tabellen aus dem Original). */
       readonly mono?: boolean;
+      /** Auftritt: `spread` läuft mit wachsendem Zeichenabstand auf (NEO-ARTS „presents“). */
+      readonly effect?: "spread";
     }
   | {
       readonly kind: "table";
@@ -116,6 +118,8 @@ interface UiBase {
   readonly subtitle?: string;
   /** Akzent eines Spiels (`data-game`), wo die Seite selbst keinem gehört (Einstellungen). */
   readonly theme?: string;
+  /** `none`: ohne Rahmen und Marke (Vorspann-Bilder wie das NEO-ARTS-Logo). */
+  readonly chrome?: "none";
   /** Über dem eingefrorenen Spielbild (Pause, Continue); sonst ersetzt der Bildschirm es. */
   readonly over?: "level";
   /** Antwort-ID für Esc bzw. Pad-B; ohne sie ist Zurück wirkungslos. */
@@ -242,6 +246,13 @@ export const SETTINGS_PAGES: Readonly<Record<SettingsPage, LocalLabel>> = {
   audio: { de: "Ton", en: "Sound", ru: "Звук" },
   display: { de: "Darstellung", en: "Display", ru: "Изображение" },
 };
+
+/** Gleiche Texte der Pause in beiden Spielen. */
+export const PAUSE_TEXTS = {
+  title: { de: "Pause", en: "Pause", ru: "Пауза" },
+  resume: { de: "Weiter", en: "Resume", ru: "Продолжить" },
+  quit: { de: "Spiel beenden", en: "Quit game", ru: "Выйти из игры" },
+} as const satisfies Readonly<Record<string, LocalLabel>>;
 
 export interface GameUi {
   /**

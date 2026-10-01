@@ -788,6 +788,28 @@
       .ui-lines[data-tone="dim"] {
         color: var(--text-dim);
       }
+      .ui-lines[data-effect="spread"] p {
+        animation: ui-spread 0.12s steps(8) 0.5s both;
+        letter-spacing: 0.45em;
+        font-size: 1.25rem;
+      }
+      @keyframes ui-spread {
+        from {
+          letter-spacing: 0.06em;
+          opacity: 0;
+        }
+        1% {
+          opacity: 1;
+        }
+      }
+      .ui-screen[data-chrome="none"] {
+        background: var(--screen);
+      }
+      .ui-screen[data-chrome="none"] .ui-panel {
+        border: none;
+        background: none;
+        box-shadow: none;
+      }
       .ui-lines.mono p {
         font-family: ui-monospace, monospace;
         font-size: 0.85rem;

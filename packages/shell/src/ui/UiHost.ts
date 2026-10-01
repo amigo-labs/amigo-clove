@@ -156,6 +156,7 @@ export class UiHost implements GameUi {
           "aria-modal": "true",
           "data-kind": screen.kind,
           ...(screen.theme ? { "data-game": screen.theme } : {}),
+          ...(screen.chrome ? { "data-chrome": screen.chrome } : {}),
           ...(screen.title ? { "aria-label": screen.title } : {}),
         },
         view.el,
@@ -278,7 +279,8 @@ export class UiHost implements GameUi {
   /** Kopf mit der Marke des Spiels: auf Seitenbildschirmen ohne eigenes großes Logo. */
   private brandHead(s: UiScreen): HTMLElement | false {
     const b = this.brandInfo;
-    if (!b || s.over === "level" || (s.kind === "menu" && s.logo)) return false;
+    if (!b || s.over === "level" || s.chrome === "none" || (s.kind === "menu" && s.logo))
+      return false;
     return h(
       "div",
       { class: "ui-brand" },
@@ -316,6 +318,7 @@ export class UiHost implements GameUi {
             class: `ui-lines${b.mono ? " mono" : ""}`,
             "data-tone": b.tone ?? "normal",
             "data-align": b.align ?? "left",
+            ...(b.effect ? { "data-effect": b.effect } : {}),
           },
           b.heading ? h("h2", {}, b.heading) : false,
           ...b.lines.map((l) => h("p", {}, l === "" ? " " : l)),

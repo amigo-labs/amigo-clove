@@ -179,7 +179,7 @@ const runPauseWith = (reply: string, store = memoryStore(), persist = true) =>
   });
 
 describe("Pause", () => {
-  test("Menü über dem Level: Titel, WEITER/EXIT, Funkprotokoll, Tastenübersicht; Esc setzt fort", async () => {
+  test("Menü über dem Level wie in DOVE: Pause, Level, Weiter/Spiel beenden, Funkprotokoll, Tastenübersicht; Esc setzt fort", async () => {
     const ui = new ScriptUi([{ id: "resume" }]);
     const store = memoryStore();
     const r = await runPause(ui, {
@@ -196,10 +196,11 @@ describe("Pause", () => {
     const s = ui.shown[0]!;
     if (s.kind !== "menu") throw new Error("Menü erwartet");
     expect(s.over).toBe("level");
-    expect(s.title).toBe("Level1-1 Skyfight (Bruce)");
+    expect(s.title).toBe("Pause");
+    expect(s.subtitle).toBe("Level1-1 Skyfight (Bruce)");
     expect(s.items.map((i) => [i.id, i.label])).toEqual([
-      ["resume", "WEITER"],
-      ["exit", "EXIT"],
+      ["resume", "Weiter"],
+      ["exit", "Spiel beenden"],
     ]);
     expect(s.back).toBe("resume");
     expect(s.blocks).toEqual([{ kind: "lines", lines: ["Achtung!"], tone: "dim" }]);
@@ -264,15 +265,32 @@ describe("Ladebild und Abspann", () => {
     expect(mosaic.image).toBeUndefined();
   });
 
-  test("Abspann: das Originalbild mit 40 px/s (1 px je 25 ms), Esc beendet", () => {
+  test("Abspann: Namen als Text wie bei DOVE, 40 px/s (1 px je 25 ms), Esc beendet", () => {
     const c = creditsScreen("de", sprite);
     expect(c).toMatchObject({
       kind: "text",
-      image: { sprite },
+      title: "Credits",
       scroll: { pxPerSecond: 1000 / 25 },
       done: "Weiter",
       back: "done",
     });
-    expect(creditsScreen("en", undefined).image).toBeUndefined();
+    expect(c.blocks[0]).toMatchObject({
+      kind: "lines",
+      heading: "Projektleitung",
+      lines: ["Markus Madeja", "Boris Nonte"],
+    });
+    const lines = c.blocks.flatMap((b) => (b.kind === "lines" ? b.lines : []));
+    expect(lines).toContain("James Hamer-Morton");
+    expect(lines).toContain("www.intergenies.com");
+    // Publisher-Logo und Teamfoto sind Ausschnitte des Originalbilds
+    const images = c.blocks.filter((b) => b.kind === "image");
+    expect(images).toHaveLength(2);
+    expect(images[0]).toMatchObject({ image: { sprite: { y: sprite.y + 2070, h: 112 } } });
+    // ohne Bild steht der Publisher als Text da
+    const plain = creditsScreen("en", undefined);
+    expect(plain.blocks.some((b) => b.kind === "image")).toBe(false);
+    expect(plain.blocks.flatMap((b) => (b.kind === "lines" ? b.lines : []))).toContain(
+      "Magnussoft",
+    );
   });
 });

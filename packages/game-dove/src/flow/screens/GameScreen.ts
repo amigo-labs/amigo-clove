@@ -69,7 +69,7 @@ export class GameScreen implements Screen<GameResult> {
       this.paused = true;
       this.pauseReply = undefined;
       audio?.pause(true);
-      void this.env.host.ui.show(pauseMenu(this.env.german)).then((r) => {
+      void this.env.host.ui.show(pauseMenu(this.env.german, this.world.level.number)).then((r) => {
         this.pauseReply = r.id;
       });
       return undefined;
