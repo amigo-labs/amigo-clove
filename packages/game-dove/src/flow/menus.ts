@@ -1,4 +1,5 @@
 import {
+  PAUSE_TEXTS,
   SETTINGS_PAGES,
   type HudSprite,
   type SettingsPage,
@@ -29,7 +30,7 @@ import {
   INFO_LINES,
   OPTIONS_TEXT,
   continueRankText,
-  creditLines,
+  creditSections,
   farewellLines,
 } from "./texts";
 
@@ -233,7 +234,7 @@ export function getReadyNotice(
   };
 }
 
-/** Continue (`0x4A0050`): GAMEOVER, Punkte, Rang-Hinweis, „Yes, ya!“/„No!“. */
+/** Continue (`0x4A0050`): GAMEOVER, Punkte, Rang-Hinweis, „Yes, ya!“/„No!“; über dem Level wie in DoveZ. */
 export function continueConfirm(
   sprite: SpriteOf,
   score: number,
@@ -243,6 +244,7 @@ export function continueConfirm(
   return {
     kind: "confirm",
     title: "Continue Game?",
+    over: "level",
     image: { sprite: sprite("image/titel", [220, 323, 420, 94]), alt: "GAMEOVER" },
     lines: [`Score:${score}`, ...(rank > 0 ? [continueRankText(german, rank)] : [])],
     items: [
@@ -263,33 +265,59 @@ export function highscoreInput(rank: number, german: boolean): UiInput {
   };
 }
 
-/** Pause im Spiel: Weiter / Ende über dem eingefrorenen Level, dazu die Tastenübersicht. */
-export function pauseMenu(german: boolean): UiMenu {
+/**
+ * Pause im Spiel, im Aufbau wie in DoveZ: Titel, darunter das Level, Weiter /
+ * Spiel beenden über dem eingefrorenen Level, dazu die Tastenübersicht.
+ */
+export function pauseMenu(german: boolean, level?: number): UiMenu {
+  const lang = german ? "de" : "en";
   return {
     kind: "menu",
-    title: "Pause",
+    title: PAUSE_TEXTS.title[lang],
+    ...(level !== undefined ? { subtitle: `Level ${level} - ${levelName(level)}` } : {}),
     over: "level",
     items: [
-      { id: "resume", label: german ? "Weiter" : "Resume" },
-      { id: "abort", label: german ? "Ende" : "Quit game" },
+      { id: "resume", label: PAUSE_TEXTS.resume[lang] },
+      { id: "abort", label: PAUSE_TEXTS.quit[lang] },
     ],
     back: "resume",
     aside: [{ kind: "controls", sheet: DOVE_CONTROLS }],
   };
 }
 
-/** Credits nach dem Abspann (`For i = 1 To 27`): alle Beteiligten, laufen von selbst durch. */
-export function creditsText(sprite: SpriteOf, german: boolean): UiText {
+/**
+ * Credits nach dem Abspann (`For i = 1 To 27`): alle Beteiligten, je Rolle ein
+ * Abschnitt wie in DoveZ; laufen von selbst durch.
+ */
+export function creditsText(german: boolean): UiText {
   return {
     kind: "text",
     title: "Credits",
-    blocks: [
-      { kind: "image", image: logo(sprite) },
-      { kind: "lines", lines: creditLines(german).slice(1), mono: true },
-    ],
+    blocks: creditSections(german).map((s) => ({
+      kind: "lines",
+      heading: s.role,
+      lines: s.names,
+      align: "center",
+    })),
     scroll: { pxPerSecond: 24 },
     done: "OK",
     back: "done",
+  };
+}
+
+/**
+ * NEO-ARTS-Logo (`ShowNEOARTS` `0x4A7880`): `titel.spr` (0, 0)–(224, 241), nach
+ * 500 ms läuft „presents“ mit wachsendem Zeichenabstand auf, dann 1000 ms
+ * Standbild (115 Ticks à 14 ms); Bestätigen oder Esc überspringt.
+ */
+export function neoArtsNotice(sprite: SpriteOf): UiNotice {
+  return {
+    kind: "notice",
+    chrome: "none",
+    image: { sprite: sprite("image/titel", [0, 0, 224, 241]), alt: "NEO-ARTS" },
+    blocks: [{ kind: "lines", lines: ["presents"], align: "center", effect: "spread" }],
+    until: { ms: 115 * 14 },
+    back: "skip",
   };
 }
 

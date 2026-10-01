@@ -40,6 +40,7 @@ import {
   infoText,
   levelSelectMenu,
   logo,
+  neoArtsNotice,
   optionsForm,
   optionsMenu,
   titleMenu,
@@ -47,7 +48,6 @@ import {
 import { type FlowEnv, type Screen, rndFloat } from "./screen";
 import { GameScreen, type TickRecorder } from "./screens/GameScreen";
 import { IntroScreen } from "./screens/IntroScreen";
-import { NeoArtsScreen } from "./screens/NeoArtsScreen";
 import { OutroScreen } from "./screens/OutroScreen";
 
 const CONFIG_KEY = "config";
@@ -201,7 +201,7 @@ export class Flow {
     } else if (this.opts.debug) {
       await this.playGame(this.opts.debug.level, this.opts.debug);
     } else if (!this.opts.nointro) {
-      await this.run(new NeoArtsScreen(env));
+      await env.host.ui.show(neoArtsNotice(this.sprite));
     }
     let item: MenuItem = MenuItem.Play;
     const ui = env.host.ui;
@@ -330,7 +330,7 @@ export class Flow {
   /** Credits mit allen Beteiligten, Musik `credits`. */
   private async credits(): Promise<void> {
     this.music("music/credits");
-    await this.env.host.ui.show(creditsText(this.sprite, this.env.german));
+    await this.env.host.ui.show(creditsText(this.env.german));
   }
 
   /** Continue-Abfrage; `true` = weiterspielen. Sounds wie `ContinueScreen` (`0x4A0050`). */
@@ -415,7 +415,12 @@ export class Flow {
           return;
         } else {
           this.music("music/gameover");
-          if (!(await this.continueGame(r.score))) {
+          // Continue wie in DoveZ über dem eingefrorenen Level
+          this.stage.addChild(game.root);
+          game.render();
+          const yes = await this.continueGame(r.score);
+          this.stage.removeChild(game.root);
+          if (!yes) {
             await this.enterHighscore(r.score);
             return;
           }

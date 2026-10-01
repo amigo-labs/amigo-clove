@@ -87,19 +87,30 @@ describe("HTML-Bildschirme von DOVE", () => {
       title: "You placed 2nd",
       fields: [{ id: "name", max: 20 }],
     });
-    const p = pauseMenu(true);
-    expect(p).toMatchObject({ over: "level", back: "resume" });
-    expect(p.items.map((i) => i.id)).toEqual(["resume", "abort"]);
+    expect(c).toMatchObject({ over: "level", title: "Continue Game?" });
+    const p = pauseMenu(true, 3);
+    expect(p).toMatchObject({
+      over: "level",
+      back: "resume",
+      title: "Pause",
+      subtitle: "Level 3 - Deep Blue See",
+    });
+    expect(p.items.map((i) => [i.id, i.label])).toEqual([
+      ["resume", "Weiter"],
+      ["abort", "Spiel beenden"],
+    ]);
     expect(p.aside?.[0]?.kind).toBe("controls");
   });
 
   test("Credits: alle Beteiligten aus dem Abspann, Abschied mit Homepage", () => {
     for (const german of [true, false]) {
-      const lines = creditsText(sprite, german).blocks.flatMap((b) =>
-        b.kind === "lines" ? b.lines : [],
-      );
-      expect(lines).toEqual(creditLines(german).slice(1));
+      const blocks = creditsText(german).blocks;
+      const lines = blocks.flatMap((b) => (b.kind === "lines" ? b.lines : []));
+      // jede Zeile des Originals steht genau einmal da, die Rollen als Überschriften
       expect(lines.length).toBe(27);
+      for (const l of creditLines(german).slice(1))
+        expect(lines.some((x) => l.trim().endsWith(x))).toBe(true);
+      expect(blocks[0]).toMatchObject({ heading: german ? "Idee" : "Idea", align: "center" });
     }
     expect(farewellNotice(true)).toMatchObject({ until: { ms: 5000 } });
     expect(farewellNotice(true).lines).toContain("www.Kauto.de");

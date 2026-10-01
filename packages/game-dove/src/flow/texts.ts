@@ -151,6 +151,21 @@ export function creditLines(german: boolean): string[] {
       ];
 }
 
+/**
+ * Die Credits als Abschnitte (Rolle, Namen) für die Shell, aus denselben Zeilen:
+ * eine Zeile „Rolle:   Name“ beginnt einen Abschnitt, eingerückte Zeilen gehören
+ * dazu. So stehen sie im selben Aufbau wie die Credits von DoveZ.
+ */
+export function creditSections(german: boolean): { role: string; names: string[] }[] {
+  const out: { role: string; names: string[] }[] = [];
+  for (const line of creditLines(german).slice(1)) {
+    const m = /^(\S[^:]*):\s+(.*)$/.exec(line);
+    if (m) out.push({ role: m[1]!, names: [m[2]!] });
+    else out.at(-1)?.names.push(line.trim());
+  }
+  return out;
+}
+
 /** Kopf des Menüpunkts „Info“ (`info` `0x490916`…`0x4909DC`). */
 export const INFO_LINES: readonly string[] = [
   "Homepage: http://come.to/kauto",
