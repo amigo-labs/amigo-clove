@@ -50,7 +50,7 @@ export type MenuResult =
   | { readonly kind: "exit" };
 
 /** Töne des Menüs (`LoadMenuSound`): `plingding` beim Bewegen, `dude` beim Bestätigen. */
-export type MenuSound = "dude" | "plingding" | "speech";
+export type MenuSound = "dude" | "plingding";
 
 export interface HtmlMenuOptions {
   readonly ui: GameUi;

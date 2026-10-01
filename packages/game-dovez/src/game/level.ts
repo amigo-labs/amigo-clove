@@ -12,7 +12,7 @@ import { dovezControls } from "../controls";
 import { applyContinue, runContinue } from "./continueScreen";
 import { PointerControl, keyLabel, readInput } from "./input";
 import type { Lang } from "./lang";
-import { type DovezConfig, audioGains } from "./config";
+import { type DovezConfig, ORIGINAL_GAINS } from "./config";
 import type { Mosaic } from "./mosaic";
 import { runPause } from "./pauseScreen";
 import type { Profile } from "./profile";
@@ -127,7 +127,7 @@ export class LevelScene implements Scene {
       ...(opts.rnd ? { rnd: opts.rnd } : {}),
     });
     const audio = host.audio
-      ? await DovezAudio.create(host.audio, host.assets, pack.slug, audioGains(ctx.config)).catch(
+      ? await DovezAudio.create(host.audio, host.assets, pack.slug, ORIGINAL_GAINS).catch(
           () => undefined,
         )
       : undefined;
