@@ -110,9 +110,6 @@ export const DIK: Readonly<Record<string, number>> = {
   Delete: 211,
 };
 
-/** DIK → `code` (Umkehrung von `DIK`). */
-const CODE_OF = new Map(Object.entries(DIK).map(([code, dik]) => [dik, code]));
-
 /** `KeyName` (`0x578820`): Tastennamen des Originals; alles andere zeigt die Nummer. */
 const DIK_NAMES: Readonly<Record<number, string>> = {
   1: "Escape",
@@ -198,21 +195,6 @@ export function isKeyCode(code: unknown): code is string {
   return code === "" || (typeof code === "string" && code in DIK);
 }
 
-/** Codes gehaltener Tasten als DIK-Codes aufsteigend (Tasten, die das Original nicht kennt, fallen weg). */
-export function heldDiks(host: GameHost): number[] {
-  const out: number[] = [];
-  for (const c of host.keys.held?.() ?? []) {
-    const d = DIK[c];
-    if (d !== undefined) out.push(d);
-  }
-  return out.toSorted((a, b) => a - b);
-}
-
-/** DIK → `code` (`""` für unbekannte Codes). */
-export function codeOfDik(dik: number): string {
-  return CODE_OF.get(dik) ?? "";
-}
-
 /** Zweite Tasten, wie sie das Menü zuletzt gültig gemacht hat (30 Einträge, `DEFAULT_KEYS`). */
 let secondKeys: readonly string[] = DEFAULT_KEYS;
 
@@ -266,25 +248,6 @@ export function keyText(
   const first = keyName(T1[s]![action] ?? "");
   const t2 = keyName(second[s * 10 + action] ?? "");
   return t2 === "" ? first : `${first} / ${t2}`;
-}
-
-/** Tasten von Spieler 1 für Continue und Pause (`TasteOK`, `TasteZurück`, hoch/runter). */
-export function screenKeys(host: GameHost, set: number, exitState: number, focus: boolean) {
-  const i = readInput(host, set);
-  const key = (code: string) => host.keys.isDown(code);
-  return {
-    ok: ((i.fire || i.beam) && exitState === 0) || key("Space") || key("Enter"),
-    back: i.switchWeapon || i.switchBeam || key("Escape"),
-    up: i.up,
-    down: i.down,
-    focus,
-  };
-}
-
-/** `TasteOK(0)` außerhalb des Spiels (Ladebild): Feuer, Beam, Leertaste, Enter. */
-export function okKey(host: GameHost): boolean {
-  const i = readInput(host);
-  return i.fire || i.beam || host.keys.isDown("Space") || host.keys.isDown("Enter");
 }
 
 /** `TastePause`: Esc (am Pad Start). */

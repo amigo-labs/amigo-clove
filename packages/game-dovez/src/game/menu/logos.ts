@@ -11,7 +11,7 @@ import {
   TilingSprite,
 } from "pixi.js";
 import { COS_DEG, SIN_DEG, cint, degIndex, f32, vbInt, type VbRnd } from "../../sim/vb";
-import { rollNoise } from "./menuLogic";
+import { rollNoise } from "./menuRules";
 import { pauseKey } from "../input";
 import type { Scene } from "../scene";
 import type { ScreenTargets } from "../screenTargets";

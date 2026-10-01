@@ -156,16 +156,17 @@ async function playDoveOriginalHud(page: Page, label: string): Promise<void> {
     failures.push(`${label}: Original-HUD nicht gerendert (${(hud * 100).toFixed(1)} %)`);
 }
 
-/** DoveZ-Hauptmenü ohne Logos: Knopfleiste links muss gezeichnet sein. */
-async function playDoveZMenu(page: Page, label: string): Promise<void> {
+/** DoveZ-Hauptmenü ohne Logos als HTML: mindestens „Neu“, „Laden“, „Optionen“, „Exit“. */
+async function playDoveZMenu(page: Page, label: string): Promise<number> {
   await page.setViewportSize({ width: 800, height: 600 });
   await page.goto(`${ORIGIN}/#/dovez?nointro=1`);
   await page.waitForSelector("body[data-game=dovez]", { timeout: 60_000 });
-  await page.waitForTimeout(4000);
-  const shot = await page.screenshot();
-  const buttons = await litShare(shot, 150, 160, 470, 420);
-  console.log(`${label}: Knopfleiste ${(buttons * 100).toFixed(1)} % hell`);
-  if (buttons < 0.3) failures.push(`${label}: Hauptmenü nicht gerendert`);
+  const item = ".ui-screen[data-kind=menu] .ui-item";
+  await page.waitForSelector(item, { timeout: 60_000 }).catch(() => undefined);
+  const items = await page.locator(item).count();
+  console.log(`${label}: Hauptmenü mit ${items} Einträgen`);
+  if (items < 4) failures.push(`${label}: Hauptmenü nicht gezeigt (${items} Einträge)`);
+  return items;
 }
 
 try {
@@ -228,27 +229,21 @@ try {
     await Bun.write(`${process.env["SMOKE_SHOTS"]}/dovez-game.png`, played);
   await game.close();
 
-  // 1b3. DoveZ-Hauptmenü ohne Logos: Knopfleiste links, dann „Neu“ → Spieleranzahl
+  // 1b3. DoveZ-Hauptmenü ohne Logos als HTML, dann „Neu“ → Spieleranzahl
   const menu = await browser.newPage({ viewport: { width: 800, height: 600 } });
   watch(menu, "dovez-menu");
-  await menu.goto(`${ORIGIN}/#/dovez?nointro=1`);
-  await menu.waitForSelector("body[data-game=dovez]", { timeout: 30_000 });
-  await menu.waitForTimeout(4000);
-  const main = await menu.screenshot();
-  await menu.waitForTimeout(500);
-  await menu.keyboard.down("Enter");
-  await menu.waitForTimeout(400);
-  await menu.keyboard.up("Enter");
-  await menu.waitForTimeout(2000);
-  const newPage = await menu.screenshot();
-  const buttons = await litShare(main, 150, 160, 470, 420);
-  console.log(`dovez-menu: Knopfleiste ${(buttons * 100).toFixed(1)} % hell`);
-  if (buttons < 0.3) failures.push("dovez-menu: Hauptmenü leer");
-  if (Buffer.compare(main, newPage) === 0) failures.push("dovez-menu: „Neu“ ohne Wirkung");
-  if (process.env["SMOKE_SHOTS"]) {
-    await Bun.write(`${process.env["SMOKE_SHOTS"]}/dovez-menu-1.png`, main);
-    await Bun.write(`${process.env["SMOKE_SHOTS"]}/dovez-menu-2.png`, newPage);
-  }
+  await playDoveZMenu(menu, "dovez-menu");
+  const mainTitle = await menu.locator(".ui-title").textContent();
+  await menu.keyboard.press("Enter");
+  await menu.waitForTimeout(1000);
+  const nextTitle = await menu
+    .locator(".ui-title")
+    .textContent()
+    .catch(() => null);
+  console.log(`dovez-menu: „${mainTitle}“ → „${nextTitle}“`);
+  if (!nextTitle || nextTitle === mainTitle) failures.push("dovez-menu: „Neu“ ohne Wirkung");
+  if (process.env["SMOKE_SHOTS"])
+    await Bun.write(`${process.env["SMOKE_SHOTS"]}/dovez-menu.png`, await menu.screenshot());
   await menu.close();
 
   // 1b4. DoveZ mit Logos und Intro: die Content-Security-Policy darf Video und Musik nicht sperren

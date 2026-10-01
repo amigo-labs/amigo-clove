@@ -46,39 +46,44 @@ export type UiBlock =
   | { readonly kind: "controls"; readonly sheet: ControlsSheet }
   | { readonly kind: "image"; readonly image: UiImage };
 
+/** Gemeinsames aller Felder: Gruppe (Abschnittsüberschrift), z. B. „Spieler 2“. */
+interface UiFieldBase {
+  readonly group?: string;
+}
+
 /** Feld eines Formulars (Optionen). Werte: Auswahl als Text, Bereich als Zahl, Taste als Code. */
-export type UiField =
-  | {
-      readonly kind: "choice";
-      readonly id: string;
-      readonly label: string;
-      readonly options: readonly { readonly value: string; readonly label: string }[];
-      readonly value: string;
-      readonly hint?: string;
-    }
-  | {
-      readonly kind: "range";
-      readonly id: string;
-      readonly label: string;
-      readonly min: number;
-      readonly max: number;
-      readonly step: number;
-      readonly value: number;
-      /** Anzeige des Werts (z. B. „90 %“). */
-      readonly text?: string;
-    }
-  | {
-      readonly kind: "key";
-      readonly id: string;
-      readonly label: string;
-      /** `KeyboardEvent.code` oder `""` (keine Taste). */
-      readonly value: string;
-      /** Anzeigename des Werts. */
-      readonly text: string;
-      /** Gruppe (Abschnittsüberschrift), z. B. „Spieler 2“. */
-      readonly group?: string;
-    }
-  | { readonly kind: "info"; readonly id: string; readonly text: string };
+export type UiField = UiFieldBase &
+  (
+    | {
+        readonly kind: "choice";
+        readonly id: string;
+        readonly label: string;
+        readonly options: readonly { readonly value: string; readonly label: string }[];
+        readonly value: string;
+        readonly hint?: string;
+      }
+    | {
+        readonly kind: "range";
+        readonly id: string;
+        readonly label: string;
+        readonly min: number;
+        readonly max: number;
+        readonly step: number;
+        readonly value: number;
+        /** Anzeige des Werts (z. B. „90 %“). */
+        readonly text?: string;
+      }
+    | {
+        readonly kind: "key";
+        readonly id: string;
+        readonly label: string;
+        /** `KeyboardEvent.code` oder `""` (keine Taste). */
+        readonly value: string;
+        /** Anzeigename des Werts. */
+        readonly text: string;
+      }
+    | { readonly kind: "info"; readonly id: string; readonly text: string }
+  );
 
 export type UiValues = Readonly<Record<string, string | number>>;
 
@@ -160,23 +165,29 @@ export interface UiConfirm extends UiBase {
   readonly lines?: readonly string[];
   readonly items: readonly UiItem[];
   readonly selected?: string;
-  readonly countdown?: { readonly from: number; readonly ms: number };
+  readonly countdown?: {
+    readonly from: number;
+    readonly ms: number;
+    /** Zurück (Esc) zählt so viel schneller weiter, statt den Bildschirm zu schließen. */
+    readonly faster?: number;
+  };
 }
 
 /**
- * Hinweis (Get Ready, Ladebildschirm, Abschied). Endet je nach `until` auf eine
- * Taste (`ok` bzw. `back`), sobald `progress()` 1 erreicht, oder nach einer Zeit.
+ * Hinweis (Get Ready, Ladebildschirm, Abschied). Endet je nach `until` auf
+ * Bestätigen/Zurück (`key`), auf jede Taste (`any`), sobald `progress()` 1
+ * erreicht, oder nach einer Zeit.
  */
 export interface UiNotice extends UiBase {
   readonly kind: "notice";
   readonly lines?: readonly string[];
   readonly blocks?: readonly UiBlock[];
   readonly image?: UiImage;
-  /** Ladefortschritt 0…1 (Balken); bei `until: "key"` gilt die Taste erst bei 1. */
+  /** Ladefortschritt 0…1 (Balken); bei `until: "key"`/`"any"` gilt die Taste erst bei 1. */
   readonly progress?: () => number;
   /** Aufforderung, sobald eine Taste weiterführt (z. B. „Press any key to start!“). */
   readonly prompt?: string;
-  readonly until: "key" | "progress" | { readonly ms: number };
+  readonly until: "key" | "any" | "progress" | { readonly ms: number };
 }
 
 /** Video der Original-Assets (DoveZ). Antwort `{ id: "done" }` (zu Ende, Esc, Fehler). */

@@ -3,13 +3,14 @@ import { join } from "node:path";
 import type { Manifest } from "@clove/core";
 import type { PlayStep } from "@clove/formats";
 import { Campaign, type CampaignAction, videoId } from "../src/game/campaign";
-import { CreditsLogic } from "../src/game/credits";
 import { FADE_TICKS, FadeLogic } from "../src/game/fadeOut";
-import { parseSave, saveLabel, serializeSave, type SaveFile } from "../src/game/saveGame";
-import { SaveLogic, type SaveKeys, savePlaces } from "../src/game/saveScreen";
+import { parseSave, saveKey, saveLabel, serializeSave, type SaveFile } from "../src/game/saveGame";
+import { emptyHighscores } from "../src/game/highscore";
+import { runSaveScreen, saveMenu, savePlaces } from "../src/game/saveScreen";
 import { VbRnd } from "../src/sim/vb";
 import { World } from "../src/sim/world";
 import { loadTestLevel } from "./assets";
+import { ScriptUi, memoryStore } from "./fakeUi";
 
 const ROOT = join(import.meta.dir, "../../../assets/dovez");
 const manifest = (await Bun.file(join(ROOT, "manifest.json")).json()) as Manifest;
@@ -110,72 +111,84 @@ describe("Übergang zwischen Leveln", () => {
   });
 });
 
+const texts = (lang: "de" | "ru" = "de") => ({
+  lang,
+  level: "Level1-2 Zeppelin Boss",
+  scores: [12_345],
+  places: [1],
+  highscores: [{ name: "Bruce", score: 12_345, id: 7 }, ...emptyHighscores().slice(1)],
+  ids: [7],
+  slots: Array.from({ length: 21 }, (_, i) => (i === 2 ? "P1S1A - Level1-1  01.01.2026" : "---")),
+});
+
 describe("Speicherbildschirm (SaveGame)", () => {
-  const none: SaveKeys = {
-    ok: false,
-    esc: false,
-    up: false,
-    down: false,
-    left: false,
-    right: false,
-  };
-  const press = (l: SaveLogic, k: Partial<SaveKeys>) => {
-    l.step({ ...none, ...k });
-    return l.step(none);
-  };
-
-  test("Wahl mit Flanke und Umlauf wie im Original", () => {
-    const l = new SaveLogic();
-    press(l, { up: true });
-    expect(l.sel).toBe(21);
-    press(l, { down: true });
-    expect(l.sel).toBe(0);
-    press(l, { right: true });
-    expect(l.sel).toBe(0);
-    press(l, { down: true });
-    press(l, { right: true });
-    expect(l.sel).toBe(8);
-    press(l, { right: true });
-    press(l, { right: true });
-    // 15 + 7 = 22: kein gültiger Platz, bleibt aber stehen (erst über 22 wird umgebrochen)
-    expect(l.sel).toBe(22);
-    press(l, { right: true });
-    expect(l.sel).toBe(8);
-    press(l, { left: true });
-    press(l, { left: true });
-    expect(l.sel).toBe(15);
-    // gehalten zählt nur einmal
-    for (let i = 0; i < 5; i++) l.step({ ...none, down: true });
-    expect(l.sel).toBe(16);
+  test("Menü: Titel, Punkte mit Platz, Highscore daneben, „Nicht speichern“ und 21 Plätze in 3 Spalten", () => {
+    const m = saveMenu(texts());
+    expect(m.title).toBe("Level1-2 Zeppelin Boss geschafft!");
+    expect(m.blocks).toEqual([
+      { kind: "lines", lines: ["Spieler 1: 12345 (HIGHSCORE: 1. Platz!)"] },
+      { kind: "lines", lines: ["Spiel speichern?"], tone: "accent" },
+    ]);
+    const table = m.aside?.[0];
+    expect(table?.kind === "table" && [table.rows[0], table.highlight]).toEqual([
+      ["1.", "Bruce", "12345"],
+      0,
+    ]);
+    expect(m.items).toHaveLength(22);
+    expect(m.items[0]).toEqual({ id: "none", label: "Nicht speichern" });
+    expect(m.items[3]).toEqual({ id: "slot3", label: "P1S1A - Level1-1  01.01.2026" });
+    expect([m.columns, m.selected, m.back]).toEqual([3, "none", "none"]);
+    expect(saveMenu(texts("ru")).title).toBe("Уровень расчищен!");
   });
 
-  test("OK speichert beim Loslassen, Esc verlässt ohne zu speichern", () => {
-    const a = new SaveLogic();
-    press(a, { down: true });
-    a.step({ ...none, ok: true });
-    expect(a.step(none)).toBe(false);
-    expect(a.result).toEqual({ slot: 1 });
-    const b = new SaveLogic();
-    b.step({ ...none, ok: true });
-    b.step(none);
-    expect(b.result).toEqual({ slot: undefined });
-    const c = new SaveLogic();
-    press(c, { down: true });
-    c.step({ ...none, esc: true });
-    c.step(none);
-    expect(c.result).toEqual({ slot: undefined });
-  });
-
-  test("Logo fährt ein, Einblende aus Schwarz in 50 Durchläufen", () => {
-    const l = new SaveLogic();
-    const xs: number[] = [];
-    for (let i = 0; i < 6; i++) {
-      l.step(none);
-      xs.push(l.xLogo);
+  test("ein Platz schreibt save/<n> und zeigt „Gespeichert“; „Nicht speichern“ schreibt nichts", async () => {
+    const a = await loadTestLevel("level1-1_skyfight");
+    const w = new World(a.level, a.sprites);
+    const file = (): SaveFile => ({
+      version: 1,
+      label: "P1S1A - Level1-2  28.09.2026",
+      step: 5,
+      pass: 1,
+      players: 1,
+      ship: 0,
+      names: ["Bruce"],
+      ids: [7],
+      carry: w.carry(),
+    });
+    const store = memoryStore();
+    let saved = 0;
+    const ui = new ScriptUi([{ id: "slot4" }, { id: "timeout" }]);
+    const slot = await runSaveScreen(ui, {
+      ...texts(),
+      storage: store,
+      persist: true,
+      file,
+      saved: () => saved++,
+    });
+    expect(slot).toBe(4);
+    expect(saved).toBe(1);
+    expect(parseSave(store.get(saveKey(4)))).toEqual(file());
+    expect(ui.shown[1]).toMatchObject({ kind: "notice", title: "Gespeichert" });
+    for (const id of ["none", "aborted"]) {
+      const quiet = memoryStore();
+      const r = await runSaveScreen(new ScriptUi([{ id }]), {
+        ...texts(),
+        storage: quiet,
+        persist: true,
+        file,
+      });
+      expect(r).toBeUndefined();
+      expect(quiet.data.size).toBe(0);
     }
-    expect(xs).toEqual([-100, -25, -6, -2, 0, 0]);
-    for (let i = 0; i < 44; i++) l.step(none);
-    expect(l.fade).toBe(0);
+    // Sichtprüfung (`screen=save`): nichts gespeichert
+    const view = memoryStore();
+    await runSaveScreen(new ScriptUi([{ id: "slot1" }]), {
+      ...texts(),
+      storage: view,
+      persist: false,
+      file,
+    });
+    expect(view.data.size).toBe(0);
   });
 
   test("Plätze im 2P-Spiel und Beschriftung", () => {
@@ -209,7 +222,7 @@ describe("Speicherbildschirm (SaveGame)", () => {
   });
 });
 
-describe("Abspann und Abblende", () => {
+describe("Abblende", () => {
   test("FadeOut: Richtung 0 staucht oben/unten, sonst zufällige Seite; 2 bzw. 1 Rnd", () => {
     const r = new VbRnd(99);
     const f0 = new FadeLogic(0, r);
@@ -230,24 +243,5 @@ describe("Abspann und Abblende", () => {
     for (let i = 0; i < FADE_TICKS; i++) f1.step();
     expect(f1.done).toBe(true);
     expect(f1.alpha).toBe(0);
-  });
-
-  test("Abspann: 3601 Durchläufe, 1 Rnd je Durchlauf, bei Funke 4; Glitzer an hellen Zeilen", () => {
-    const r = new VbRnd(5);
-    const probe = new VbRnd(5);
-    const logic = new CreditsLogic(r, (x, row) => row === 0 && x === 60);
-    let n = 0;
-    let glitter = 0;
-    while (logic.step(false)) {
-      n++;
-      if (probe.next() < 0.1) for (let i = 0; i < 3; i++) probe.next();
-      if (n === 1) glitter = logic.fx.big.items.filter((p) => p.active).length;
-    }
-    expect(n).toBe(3601);
-    expect(r.seed).toBe(probe.seed);
-    // t = 0: Bildzeile 0 steht bei y = 600 → ein Glitzer bei x = 150 + 60 − 30
-    expect(glitter).toBeGreaterThanOrEqual(1);
-    const esc = new CreditsLogic(new VbRnd(), () => false);
-    expect(esc.step(true)).toBe(false);
   });
 });
