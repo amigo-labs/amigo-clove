@@ -16,7 +16,7 @@ import {
 import { DOVE_CONTROLS, DOVE_GAMEPAD } from "@clove/game-dove/controls";
 import { KEY_ACTIONS as DOVE_KEYS } from "@clove/game-dove/keys";
 import { DOVEZ_GAMEPAD, DOVEZ_PADS, dovezAllControls } from "@clove/game-dovez/controls";
-import { ControlsView, controlsElement, controlsTables, type ControlsOptions } from "./controls";
+import { controlsElement, controlsTables, type ControlsOptions } from "./controls";
 import { h } from "./dom";
 import { NAV_BINDINGS, createPadState, padKeys, startPadNavigation } from "./gamepad";
 import { HudView } from "./hud";
@@ -325,17 +325,6 @@ async function startGame(
       const hud = instance.hud.bind(instance);
       const hudView = new HudView(s, t, hud, () => settings.hud === "modern");
       s.onDispose(() => hudView.dispose());
-    }
-    if (instance.controls) {
-      const controls = instance.controls.bind(instance);
-      const controlsView = new ControlsView(
-        s,
-        t,
-        controls,
-        () => controlsOptions(id, module.gamepad, module.pads),
-        module.controlsAt,
-      );
-      s.onDispose(() => controlsView.dispose());
     }
     document.body.dataset["game"] = id;
   } catch (err) {

@@ -3,7 +3,7 @@
  * in Chromium (WebGL über SwiftShader):
  * 1. DOVE startet aus kaltem Cache fehlerfrei und rendert, die DoveZ-Asset-
  *    Ansicht zeigt Sprites, die Level-Ansicht zeichnet Routen und Schüsse,
- *    in der Pause erscheint die Tastenübersicht,
+ *    Titelmenü, Optionen und Pause (mit Tastenübersicht) erscheinen als HTML,
  * 2. Launcher (aufklappbare Tastenübersicht) und Einstellungen (Sprachwechsel) funktionieren,
  * 3. nach „Spieldaten installieren“ startet DOVE bei beendetem Server
  *    vollständig aus dem Service-Worker-Cache.
@@ -71,13 +71,13 @@ function watch(page: Page, label: string): void {
 }
 
 /**
- * Pause: die Tastenübersicht der Shell erscheint mit Zeilen und verschwindet beim
- * Weiterspielen. Esc bleibt gehalten, bis die Pause da ist (die Spiele fragen den
+ * Pause als HTML: das Pausemenü der Shell erscheint mit Tastenübersicht und verschwindet
+ * beim Weiterspielen. Esc bleibt gehalten, bis die Pause da ist (die Spiele fragen den
  * Tastenzustand pro Tick ab, auf langsamen Rechnern ist ein Tick länger als ein
- * Tippen); weiter geht es mit Enter auf „Weiter“, das nicht erneut pausiert.
+ * Tippen); weiter geht es mit Enter auf dem vorgewählten „Weiter“.
  */
 async function checkPauseControls(page: Page, label: string): Promise<void> {
-  const overlay = ".controls-overlay:not([hidden])";
+  const pause = ".ui-screen[data-kind=menu]";
   const hold = async (key: string, until: () => Promise<unknown>) => {
     await page.keyboard.down(key);
     try {
@@ -88,13 +88,33 @@ async function checkPauseControls(page: Page, label: string): Promise<void> {
     await page.keyboard.up(key);
     await page.waitForTimeout(500);
   };
-  await hold("Escape", () => page.waitForSelector(overlay, { timeout: 10_000 }));
-  const rows = await page.locator(`${overlay} tbody tr`).count();
-  await hold("Enter", () => page.waitForSelector(overlay, { state: "detached", timeout: 10_000 }));
-  const after = await page.locator(overlay).count();
-  console.log(`${label}: Tastenübersicht in der Pause mit ${rows} Zeilen`);
+  await hold("Escape", () => page.waitForSelector(pause, { timeout: 10_000 }));
+  const rows = await page.locator(`${pause} .ui-controls tbody tr`).count();
+  await page.keyboard.press("Enter");
+  await page.waitForSelector(pause, { state: "detached", timeout: 10_000 }).catch(() => undefined);
+  const after = await page.locator(pause).count();
+  console.log(`${label}: Pausemenü mit Tastenübersicht (${rows} Zeilen)`);
   if (rows < 10) failures.push(`${label}: Tastenübersicht fehlt in der Pause (${rows} Zeilen)`);
-  if (after !== 0) failures.push(`${label}: Tastenübersicht bleibt nach der Pause stehen`);
+  if (after !== 0) failures.push(`${label}: Pausemenü bleibt nach „Weiter“ stehen`);
+}
+
+/** DOVE-Titelmenü als HTML: sechs Einträge, Optionen öffnen und mit Esc zurück. */
+async function checkDoveMenus(page: Page, label: string): Promise<void> {
+  await page.goto(`${ORIGIN}/#/dove?nointro=1&nosound`);
+  await page.waitForSelector("body[data-game=dove]", { timeout: 30_000 });
+  const title = ".ui-screen[data-kind=menu] .ui-item";
+  await page.waitForSelector(title, { timeout: 30_000 });
+  const items = await page.locator(title).count();
+  await page.click(`${title}[data-id="4"]`);
+  const form = await page
+    .waitForSelector(".ui-screen[data-kind=form]", { timeout: 10_000 })
+    .catch(() => null);
+  await page.keyboard.press("Escape");
+  const back = await page.waitForSelector(title, { timeout: 10_000 }).catch(() => null);
+  console.log(`${label}: Titelmenü mit ${items} Einträgen, Optionen ${form ? "ok" : "fehlen"}`);
+  if (items !== 6) failures.push(`${label}: Titelmenü hat ${items} statt 6 Einträge`);
+  if (!form) failures.push(`${label}: Optionen öffnen nicht`);
+  if (!back) failures.push(`${label}: Esc führt nicht zum Titel zurück`);
 }
 
 /** DOVE Level 1 ab Tick 2100 direkt starten und prüfen, dass HUD und Spielfeld rendern. */
@@ -158,6 +178,7 @@ try {
   const cold = await browser.newPage({ viewport: { width: 640, height: 480 } });
   watch(cold, "kalt");
   await playDove(cold, "kalt");
+  await checkDoveMenus(cold, "dove-menü");
   await cold.close();
 
   // 1a. Original-HUD per Einstellung

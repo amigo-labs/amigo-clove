@@ -75,19 +75,28 @@ Lautstärken, Darstellung (HUD, Skalierung, Rasterlinien), Bewegung, Steuerung
 „Spieldaten installieren“ (nur im Build, der Dev-Server registriert keinen
 Service Worker).
 DOVE starten: `http://localhost:5173/#/dove` (NEO-ARTS-Logo, Titelmenü).
-Steuerung wie im Original:
 
-- **Menüs:** Pfeiltasten, Bestätigen mit `Enter`/`S`/`A`/Leertaste, `Esc` zurück.
-- **Spiel:** Pfeiltasten, `S`/Leertaste Dauerfeuer (Bomben feuern mit),
-  `A` Beam laden (Loslassen feuert), `D` Options-Richtung umkehren,
-  `Q`/`W` Tempo, `Esc` Pause.
+**Menüs als HTML:** Alles außerhalb der Level zeigt die Shell als HTML über bzw.
+statt des Spielbilds — Titel- und Hauptmenü, Optionen, Levelauswahl, Info,
+Highscores, Namenseingabe, Laden/Speichern, Ladebildschirm, Get Ready, Pause,
+Continue und die Credits mit allen Beteiligten. Die Spiele beschreiben diese
+Bildschirme als Daten (`GameHost.ui.show()`, `packages/core/src/shell/ui.ts`)
+und behalten Ablauf, Regeln und Speicherstände; im Canvas laufen nur noch die
+Level und die Original-Animationen (Logos, Story-Intro und -Abspann, Osterei).
+DoveZ-Videos spielt die Shell als `<video>`. Bedienung überall: Pfeiltasten,
+`Enter`/Leertaste bestätigen, `Esc` zurück; dazu Maus/Touch und Gamepad
+(Steuerkreuz, A/Start bestätigen, B zurück).
+
+Steuerung im Spiel wie im Original (DOVE): Pfeiltasten, `S`/Leertaste
+Dauerfeuer (Bomben feuern mit), `A` Beam laden (Loslassen feuert), `D`
+Options-Richtung umkehren, `Q`/`W` Tempo, `Esc` Pause.
 
 Die vollständige Belegung (Tastatur, Gamepad, Maus) zeigt der Launcher je Spiel
-unter „Steuerung“ zum Aufklappen und die Shell während jeder Pause neben bzw.
-über dem Pausemenü (`GameInstance.controls()`); DoveZ zeigt dort die im Spiel
-umbelegten Tasten, DOVE die zweiten Tasten aus den Einstellungen.
+unter „Steuerung“ zum Aufklappen und das Pausemenü jedes Spiels; DoveZ zeigt
+dort die im Spiel umbelegten Tasten, DOVE die zweiten Tasten aus den
+Einstellungen.
 
-Modernisierungen (alle abschaltbar; ohne sie läuft die Simulation bit-gleich
+Weitere Modernisierungen (abschaltbar; ohne sie läuft die Simulation bit-gleich
 wie im Original, siehe Spec „Optionale Modernisierungen“). Vorgabe ist das
 Original bis auf HUD, Skalierung und Zeiger; der Zeiger wirkt erst, wenn Maus
 oder Finger ihn benutzen:
@@ -107,8 +116,8 @@ oder Finger ihn benutzen:
 URL-Optionen: `nosound` (ohne Ton), `nointro=1`, `seed`, `shots=0|1|2`, `walls=1`;
 direkt ins Level mit `level=<n>`, zum Testen `invincible=1`, `from=<Tick>`,
 `lives`, `score`, Ausrüstung `colour`/`stage`/`options`/`bomb=1`/`shield=1`
-und `screen=<Name>` (intro, getready, continue, highscore, outro, options,
-levelselect, info, farewell) für Sichtprüfungen einzelner Bildschirme.
+und `screen=<Name>` (intro, getready, continue, highscore, outro, credits,
+options, levelselect, info, farewell) für Sichtprüfungen einzelner Bildschirme.
 
 ### Site ausliefern
 
