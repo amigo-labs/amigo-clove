@@ -13,7 +13,7 @@ import { creditsScreen } from "./credits";
 import { FadeLogic, FadeScene } from "./fadeOut";
 import { atlasTexture } from "./gdi";
 import { parseHighscores, HIGHSCORE_KEY } from "./highscore";
-import { pauseKey, useKeys } from "./input";
+import { pauseKey } from "./input";
 import { atlasSprites, dovezHud } from "./hud";
 import { type Lang, loadingText, resolveLang } from "./lang";
 import { type GameContext, LevelScene, levelBundles } from "./level";
@@ -137,6 +137,8 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
   const dovezLogo: UiImage | undefined = logoSprite
     ? { sprite: logoSprite, alt: "DoveZ" }
     : undefined;
+  // die Marke im Kopf aller Seiten, wie in DOVE
+  host.ui.brand?.({ name: "DoveZ", ...(dovezLogo ? { logo: dovezLogo } : {}) });
   /** `Me.588070`: `lang=` der URL, sonst die Locale des Hosts (`de`, `ru`, sonst Englisch). */
   const lang = resolveLang(opts.lang, host.locale);
   const persist = opts.screen === undefined;
@@ -145,7 +147,6 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
   /** Die eine `Rnd`-Folge des Programms (Logos, Spiel-IDs, alle Level). */
   const rnd = new VbRnd();
   let config: DovezConfig = loadConfig(host.storage);
-  useKeys(config.keys);
   const menuAudio = await MenuAudio.create(host);
   /** Spieler aus dem letzten Spiel der Sitzung (`Me.1288.7B4`, `P[p].68`, `P[p].6C`). */
   let lastPlayers: 1 | 2 = opts.players;
@@ -303,7 +304,6 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
         highscores: ctx.profile.highscores,
         ids: ctx.profile.ids,
         slots: slotLabels(host.storage),
-        logo: dovezLogo,
         storage: host.storage,
         persist,
         file: () => ({
@@ -431,7 +431,6 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
       onConfig: (c) => {
         if (c.music !== config.music) menuAudio?.music.setVolume(c.music / 100);
         config = c;
-        useKeys(c.keys);
         if (persist) saveConfig(host.storage, c);
       },
       sound: (name) => menuAudio?.play(name, name === "speech" ? config.speech : config.sfx),

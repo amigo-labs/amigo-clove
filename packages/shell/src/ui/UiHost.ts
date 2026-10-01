@@ -3,6 +3,7 @@ import type {
   ControlsSheet,
   GameUi,
   UiBlock,
+  UiBrand,
   UiConfirm,
   UiField,
   UiForm,
@@ -18,7 +19,6 @@ import type {
   UiVideo,
 } from "@clove/core";
 import { h } from "../dom";
-import type { Stage } from "../overlay";
 import {
   NAV_CODES,
   NavEdges,
@@ -29,13 +29,18 @@ import {
 } from "./model";
 
 export interface UiHostOptions {
-  readonly stage: Stage;
-  /** Audio der Shell; Videos laufen über den Effekt-Kanal. */
+  /** Hierhin zeichnet der UiHost: die Overlay-Schicht der Bühne bzw. eine Seite. */
+  readonly mount: HTMLElement;
+  /** Bekommt `data-ui="over"|"page"`, solange ein Bildschirm offen ist (Bühne: Canvas abblenden). */
+  readonly frame: HTMLElement;
+  /** Audio der Shell; Videos laufen über den Musik-Kanal. */
   readonly audio?: AudioHost | undefined;
   /** Gehaltene Navigationscodes von Pad und Touch-Tasten (Pfeile, Enter, Escape). */
   readonly polled: () => ReadonlySet<string>;
-  /** Tastenübersicht als HTML (Pause). */
-  readonly controls: (sheet: ControlsSheet) => HTMLElement;
+  /** Tastenübersicht als HTML (Pause, Launcher); `game` wählt die Belegung. */
+  readonly controls: (sheet: ControlsSheet, game?: string) => HTMLElement;
+  /** Weitere Navigationstasten aus der Tastenbelegung des Spiels (z. B. WASD, Feuer). */
+  readonly navKeys?: () => ReadonlyMap<string, NavAction>;
 }
 
 /** Ein gezeichneter Bildschirm: Bedienelemente und eigene Reaktionen auf Aktionen. */
@@ -54,7 +59,16 @@ interface View {
 
 type Resolve = (reply: UiReply) => void;
 
-const FIRST_FOCUS = "button:not([disabled]), input, [tabindex='0']";
+const FIRST_FOCUS = "button:not([disabled]), input, [data-field], [tabindex='0']";
+
+type KeyField = Extract<UiField, { kind: "key" }>;
+
+/** Codes eines Tastenfelds aus seinem Wert in `UiValues`. */
+function keyCodes(v: string | number | undefined): string[] {
+  return String(v ?? "")
+    .split(" ")
+    .filter((c) => c !== "");
+}
 
 /** Hintergrund-Position in Prozent: bleibt beim Skalieren des Elements richtig. */
 function bgPos(off: number, size: number, sheet: number): string {
@@ -98,9 +112,10 @@ export class UiHost implements GameUi {
   private raf = 0;
   private disposed = false;
   private secret: SecretMatcher | undefined;
+  private brandInfo: UiBrand | undefined;
 
   constructor(private readonly o: UiHostOptions) {
-    o.stage.layer.append(this.root);
+    o.mount.append(this.root);
     window.addEventListener("keydown", this.onKey, true);
     const poll = () => {
       if (this.open) for (const a of this.edges.next(o.polled())) this.act(a);
@@ -108,6 +123,16 @@ export class UiHost implements GameUi {
       this.raf = requestAnimationFrame(poll);
     };
     this.raf = requestAnimationFrame(poll);
+  }
+
+  /** Marke für den Kopf der Seitenbildschirme (`GameUi.brand`). */
+  brand(b: UiBrand | undefined): void {
+    this.brandInfo = b;
+  }
+
+  /** Ist gerade ein Bildschirm offen? */
+  isOpen(): boolean {
+    return this.open !== undefined;
   }
 
   state(): UiGateState {
@@ -130,12 +155,13 @@ export class UiHost implements GameUi {
           role: "dialog",
           "aria-modal": "true",
           "data-kind": screen.kind,
+          ...(screen.theme ? { "data-game": screen.theme } : {}),
           ...(screen.title ? { "aria-label": screen.title } : {}),
         },
         view.el,
       );
       this.root.replaceChildren(frame);
-      this.o.stage.root.dataset["ui"] = screen.over === "level" ? "over" : "page";
+      this.o.frame.dataset["ui"] = screen.over === "level" ? "over" : "page";
       const first = view.initial ?? view.el.querySelector<HTMLElement>(FIRST_FOCUS) ?? undefined;
       first?.focus({ preventScroll: true });
       signal?.addEventListener("abort", () => {
@@ -154,7 +180,7 @@ export class UiHost implements GameUi {
     this.root.replaceChildren();
     // folgt sofort der nächste Bildschirm (Untermenü), blitzt der Canvas nicht auf
     requestAnimationFrame(() => {
-      if (!this.open) delete this.o.stage.root.dataset["ui"];
+      if (!this.open) delete this.o.frame.dataset["ui"];
     });
     cur.resolve(reply);
   }
@@ -173,7 +199,8 @@ export class UiHost implements GameUi {
     }
     const target = e.target as HTMLElement | null;
     const typing = target instanceof HTMLInputElement && target.type === "text";
-    const action = NAV_CODES[e.code];
+    // belegte Spieltasten (WASD, Feuer) bedienen mit, nur nicht beim Tippen
+    const action = NAV_CODES[e.code] ?? (typing ? undefined : this.o.navKeys?.().get(e.code));
     if (typing && (action === "left" || action === "right" || e.code === "Space")) return;
     if (action) {
       e.preventDefault();
@@ -224,7 +251,7 @@ export class UiHost implements GameUi {
     this.open = undefined;
     cur?.view.stop?.();
     this.root.remove();
-    delete this.o.stage.root.dataset["ui"];
+    delete this.o.frame.dataset["ui"];
   }
 
   // ---- Zeichnen -----------------------------------------------------------
@@ -248,11 +275,34 @@ export class UiHost implements GameUi {
     }
   }
 
+  /** Kopf mit der Marke des Spiels: auf Seitenbildschirmen ohne eigenes großes Logo. */
+  private brandHead(s: UiScreen): HTMLElement | false {
+    const b = this.brandInfo;
+    if (!b || s.over === "level" || (s.kind === "menu" && s.logo)) return false;
+    return h(
+      "div",
+      { class: "ui-brand" },
+      b.logo
+        ? imageNode(b.logo, "ui-image ui-brand-logo")
+        : h("span", { class: "ui-brand-name" }, b.name),
+    );
+  }
+
   private panel(s: UiScreen, ...children: (Node | false | undefined)[]): HTMLElement {
     return h(
       "div",
       { class: "ui-panel" },
-      s.title ? h("h1", { class: "ui-title" }, s.title) : false,
+      this.brandHead(s),
+      // großes Logo (Hauptmenü) über dem Titel, wie die Marke auf allen anderen Seiten
+      s.kind === "menu" && s.logo ? h("div", { class: "ui-logo" }, imageNode(s.logo)) : false,
+      s.title || s.subtitle
+        ? h(
+            "header",
+            { class: "ui-head" },
+            s.title ? h("h1", { class: "ui-title" }, s.title) : false,
+            s.subtitle ? h("p", { class: "ui-subtitle" }, s.subtitle) : false,
+          )
+        : false,
       ...children,
     );
   }
@@ -291,7 +341,7 @@ export class UiHost implements GameUi {
           ),
         );
       case "controls":
-        return h("div", { class: "ui-controls" }, this.o.controls(b.sheet));
+        return h("div", { class: "ui-controls" }, this.o.controls(b.sheet, b.game));
       case "image":
         return h("div", { class: "ui-figure" }, imageNode(b.image));
     }
@@ -310,9 +360,11 @@ export class UiHost implements GameUi {
         type: "button",
         class: "ui-item",
         "data-id": item.id,
+        ...(item.theme ? { "data-game": item.theme } : {}),
         disabled: item.disabled === true,
         onclick: onPick,
       },
+      item.icon ? h("span", { class: "ui-icon" }, imageNode(item.icon)) : false,
       h("span", { class: "ui-label" }, item.label),
       item.hint ? h("span", { class: "ui-hint" }, item.hint) : false,
     );
@@ -321,8 +373,12 @@ export class UiHost implements GameUi {
   private menu(s: UiMenu): View {
     const preview = h("div", { class: "ui-preview", hidden: true });
     const showPreview = (item: UiItem) => {
-      preview.hidden = !item.image;
-      preview.replaceChildren(...(item.image ? [imageNode(item.image)] : []));
+      const parts = [
+        ...(item.image ? [imageNode(item.image)] : []),
+        ...(item.preview ?? []).map((b) => this.block(b)),
+      ];
+      preview.hidden = parts.length === 0;
+      preview.replaceChildren(...parts);
     };
     const buttons = s.items.map((item) => {
       const b = this.itemButton(item, () => {
@@ -337,16 +393,18 @@ export class UiHost implements GameUi {
       list.dataset["grid"] = "";
       list.style.setProperty("--cols", String(s.columns));
     }
+    // ohne eigene zweite Spalte steht eine Vorschau mit Inhalt (Tastenübersicht) daneben
+    const sidePreview = !s.aside?.length && s.items.some((i) => i.preview?.length);
     const main = h(
       "div",
       { class: "ui-main" },
-      s.logo ? h("div", { class: "ui-logo" }, imageNode(s.logo)) : false,
       this.blocks(s.blocks),
       list,
-      preview,
+      !sidePreview && preview,
     );
-    const aside =
-      s.aside && s.aside.length > 0
+    const aside = sidePreview
+      ? h("aside", { class: "ui-aside" }, preview)
+      : s.aside && s.aside.length > 0
         ? h("aside", { class: "ui-aside" }, ...s.aside.map((b) => this.block(b)))
         : false;
     const el = this.panel(s, h("div", { class: aside ? "ui-body split" : "ui-body" }, main, aside));
@@ -363,10 +421,7 @@ export class UiHost implements GameUi {
     let fields = s.fields;
     const values: Record<string, string | number> = {};
     const box = h("div", { class: "ui-fields" });
-    let capture:
-      | { field: Extract<UiField, { kind: "key" }>; button: HTMLButtonElement }
-      | undefined;
-
+    let capture: { field: KeyField; row: HTMLElement } | undefined;
     const changed = (id: string) => {
       const next = s.onChange?.({ ...values }, id);
       if (next) {
@@ -394,8 +449,79 @@ export class UiHost implements GameUi {
       changed(f.id);
     };
 
+    const keyLabel = (code: string) => s.keyText?.(code) ?? code;
+    /** Tastenfeld ändern: Taste dazu (voll: ersetzt die letzte) bzw. eine entfernen. */
+    const setKeys = (f: KeyField, codes: readonly string[]) => {
+      values[f.id] = codes.join(" ");
+      s.sounds?.select?.();
+      changed(f.id);
+      draw();
+      box.querySelector<HTMLElement>(`[data-field="${f.id}"]`)?.focus({ preventScroll: true });
+    };
+    const addKey = (f: KeyField, code: string) => {
+      const cur = keyCodes(values[f.id]);
+      if (cur.includes(code)) return setKeys(f, cur);
+      setKeys(f, cur.length >= f.max ? [...cur.slice(0, f.max - 1), code] : [...cur, code]);
+    };
+    const removeKey = (f: KeyField, code?: string) => {
+      const cur = keyCodes(values[f.id]);
+      setKeys(f, code === undefined ? cur.slice(0, -1) : cur.filter((c) => c !== code));
+    };
+    const keyRow = (f: KeyField): HTMLElement => {
+      const codes = keyCodes(values[f.id]);
+      const chips = codes.map((code) =>
+        h(
+          "kbd",
+          {},
+          keyLabel(code),
+          h(
+            "button",
+            {
+              type: "button",
+              class: "ui-key-remove",
+              tabindex: "-1",
+              "aria-label": `${keyLabel(code)} ✕`,
+              onclick: (e) => {
+                e.stopPropagation();
+                removeKey(f, code);
+              },
+            },
+            "✕",
+          ),
+        ),
+      );
+      const el = h(
+        "div",
+        {
+          class: "ui-field ui-key",
+          role: "button",
+          tabindex: "0",
+          "data-field": f.id,
+          ...(f.warn ? { "data-warn": "" } : {}),
+          onclick: () => {
+            capture = { field: f, row: el };
+            el.dataset["capture"] = "";
+          },
+        },
+        h("span", { class: "ui-label" }, f.label),
+        h(
+          "span",
+          { class: "ui-value ui-keys" },
+          ...(chips.length > 0 ? chips : [h("span", { class: "ui-key-empty" }, "—")]),
+          h("span", { class: "ui-key-add", "aria-hidden": "true" }, "＋"),
+        ),
+      );
+      return el;
+    };
+
     const row = (f: UiField): Node => {
-      if (f.kind === "info") return h("p", { class: "ui-info", "data-info": f.id }, f.text);
+      if (f.kind === "info")
+        return h(
+          "p",
+          { class: "ui-info", "data-info": f.id, "data-tone": f.tone ?? "normal" },
+          f.text,
+        );
+      if (f.kind === "key") return keyRow(f);
       values[f.id] ??= f.value;
       const label = h("span", { class: "ui-label" }, f.label);
       if (f.kind === "choice") {
@@ -409,43 +535,33 @@ export class UiHost implements GameUi {
             onclick: () => cycle(f, 1),
           },
           label,
-          h("span", { class: "ui-value" }, `◀ ${current?.label ?? ""} ▶`),
-        );
-        return f.hint ? h("div", {}, b, h("p", { class: "ui-hint" }, f.hint)) : b;
-      }
-      if (f.kind === "range") {
-        const b = h(
-          "button",
-          {
-            type: "button",
-            class: "ui-field ui-range",
-            "data-field": f.id,
-            onclick: () => step(f, 1),
-          },
-          label,
           h(
             "span",
             { class: "ui-value" },
-            h("meter", { min: String(f.min), max: String(f.max), value: String(values[f.id]) }),
-            f.text ?? String(values[f.id]),
+            h("span", { class: "ui-arrow", "aria-hidden": "true" }, "◀"),
+            h("span", {}, current?.label ?? ""),
+            h("span", { class: "ui-arrow", "aria-hidden": "true" }, "▶"),
           ),
         );
-        return b;
+        return f.hint
+          ? h("div", { class: "ui-hinted" }, b, h("p", { class: "ui-hint" }, f.hint))
+          : b;
       }
       const b = h(
         "button",
         {
           type: "button",
-          class: "ui-field ui-key",
+          class: "ui-field ui-range",
           "data-field": f.id,
-          onclick: () => {
-            capture = { field: f, button: b };
-            b.dataset["capture"] = "";
-            b.querySelector(".ui-value")!.textContent = "…";
-          },
+          onclick: () => step(f, 1),
         },
         label,
-        h("span", { class: "ui-value" }, h("kbd", {}, f.text || "—")),
+        h(
+          "span",
+          { class: "ui-value" },
+          h("meter", { min: String(f.min), max: String(f.max), value: String(values[f.id]) }),
+          h("span", { class: "ui-range-text" }, f.text ?? String(values[f.id])),
+        ),
       );
       return b;
     };
@@ -463,7 +579,10 @@ export class UiHost implements GameUi {
     };
     // Werte der Felder übernehmen; abgeleitete Felder (`onChange`) setzen sie neu
     const sync = () => {
-      for (const f of fields) if (f.kind !== "info") values[f.id] = f.value;
+      for (const f of fields) {
+        if (f.kind === "key") values[f.id] = f.value.join(" ");
+        else if (f.kind !== "info") values[f.id] = f.value;
+      }
     };
     sync();
     draw();
@@ -496,19 +615,20 @@ export class UiHost implements GameUi {
         return true;
       },
       key: (e) => {
-        if (!capture) return false;
-        const { field, button } = capture;
+        if (!capture) {
+          // Rücktaste auf einem Tastenfeld entfernt dessen letzte Taste
+          const f = fieldOf(document.activeElement as HTMLElement | undefined);
+          if (f?.kind !== "key" || (e.code !== "Backspace" && e.code !== "Delete")) return false;
+          removeKey(f);
+          return true;
+        }
+        if (e.repeat) return true;
+        const { field, row: captured } = capture;
         capture = undefined;
-        delete button.dataset["capture"];
-        let code = values[field.id] as string;
-        if (e.code === "Backspace" || e.code === "Delete") code = "";
-        else if (e.code !== "Escape" && (s.acceptKey?.(e.code) ?? true)) code = e.code;
-        values[field.id] = code;
-        button
-          .querySelector(".ui-value")!
-          .replaceChildren(h("kbd", {}, (code && s.keyText?.(code)) || code || "—"));
-        s.sounds?.select?.();
-        changed(field.id);
+        delete captured.dataset["capture"];
+        if (e.code === "Backspace" || e.code === "Delete") removeKey(field);
+        else if (e.code !== "Escape" && (s.acceptKey?.(e.code) ?? true)) addKey(field, e.code);
+        else draw();
         return true;
       },
     };
@@ -715,7 +835,7 @@ export class UiHost implements GameUi {
     if (audio) {
       try {
         source = audio.context.createMediaElementSource(video);
-        source.connect(audio.sfx);
+        source.connect(audio.music);
       } catch {
         // ohne Weiterleitung spielt das Element den Ton selbst
       }

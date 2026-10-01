@@ -74,8 +74,18 @@ type Key =
   | "hudLifeLost"
   | "keysTitle"
   | "keysHelp"
-  | "keyPress"
-  | "keysReset"
+  | "keysPreset"
+  | "keysApply"
+  | "keysMissing"
+  | "keysDuplicate"
+  | "keysGroupMove"
+  | "keysGroupWeapon"
+  | "keysGroupSystem"
+  | "keysPlayer"
+  | "volumeVoice"
+  | "on"
+  | "off"
+  | "gamepadState"
   | "loadingBar"
   | "gameCanvas"
   | "saves"
@@ -124,7 +134,7 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
     gamepadNone: "Kein Gamepad erkannt — eine Taste am Pad drücken.",
     gamepadConnected: "Erkannt: {name}",
     gamepadHelp:
-      "DOVE: Steuerkreuz/Stick bewegen, A Feuer, B Beam, X Extrawaffe drehen, Y Enter, LB/RB Tempo, Start Pause.",
+      "Steuerkreuz/Stick bewegen, A bestätigt, B zurück, Start pausiert. Die Belegung je Spiel zeigen der Launcher und die Pause unter „Steuerung“.",
     motion: "Bewegung",
     motionAuto: "wie das System",
     motionReduce: "reduzieren",
@@ -176,9 +186,19 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
     hudLifeLost: "Ein Leben verloren.",
     keysTitle: "Tastenbelegung {title}",
     keysHelp:
-      "Je Aktion eine zweite Taste zusätzlich zu den Originaltasten. Knopf anklicken, dann die Taste drücken; Entf löscht, Esc bricht ab.",
-    keyPress: "Taste drücken …",
-    keysReset: "Zweite Tasten löschen",
+      "Vorlage wählen oder je Aktion bis zu drei Tasten belegen: Enter (oder Klick) und dann die Taste drücken; Rücktaste entfernt die letzte, Esc bricht ab. Gilt mit „Übernehmen“.",
+    keysPreset: "Vorlage",
+    keysApply: "Übernehmen",
+    keysMissing: "Ohne Taste: {actions}",
+    keysDuplicate: "Doppelt belegt: {keys}",
+    keysGroupMove: "Bewegen",
+    keysGroupWeapon: "Waffen",
+    keysGroupSystem: "Sonstiges",
+    keysPlayer: "Spieler {n} · {group}",
+    volumeVoice: "Sprache",
+    on: "an",
+    off: "aus",
+    gamepadState: "Status",
     loadingBar: "Ladefortschritt",
     gameCanvas: "{title}: Spielfläche. Bedienung mit Tastatur oder Gamepad, Esc pausiert.",
     saves: "Spielstände",
@@ -226,7 +246,7 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
     gamepadNone: "No gamepad detected — press a button on the pad.",
     gamepadConnected: "Detected: {name}",
     gamepadHelp:
-      "DOVE: d-pad/stick move, A fire, B beam, X turn special weapon, Y Enter, LB/RB speed, Start pause.",
+      "D-pad/stick move, A confirms, B goes back, Start pauses. The launcher and the pause menu show each game's layout under “Controls”.",
     motion: "Motion",
     motionAuto: "as system",
     motionReduce: "reduce",
@@ -275,11 +295,21 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
     hudBossAppears: "A boss attacks.",
     hudBossDefeated: "Boss defeated.",
     hudLifeLost: "Life lost.",
-    keysTitle: "{title} keys",
+    keysTitle: "{title} key bindings",
     keysHelp:
-      "One extra key per action in addition to the original keys. Click a button, then press the key; Delete clears it, Esc cancels.",
-    keyPress: "Press a key …",
-    keysReset: "Clear extra keys",
+      "Pick a preset or bind up to three keys per action: Enter (or click), then press the key; Backspace removes the last one, Esc cancels. Takes effect with “Apply”.",
+    keysPreset: "Preset",
+    keysApply: "Apply",
+    keysMissing: "No key: {actions}",
+    keysDuplicate: "Bound twice: {keys}",
+    keysGroupMove: "Movement",
+    keysGroupWeapon: "Weapons",
+    keysGroupSystem: "Other",
+    keysPlayer: "Player {n} · {group}",
+    volumeVoice: "Voices",
+    on: "on",
+    off: "off",
+    gamepadState: "Status",
     loadingBar: "Loading progress",
     gameCanvas: "{title}: play area. Controls: keyboard or gamepad, Esc pauses.",
     saves: "Saved games",
@@ -326,7 +356,7 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
     gamepadNone: "Геймпад не обнаружен — нажмите кнопку на геймпаде.",
     gamepadConnected: "Обнаружен: {name}",
     gamepadHelp:
-      "DOVE: крестовина/стик — движение, A огонь, B луч, X смена доп. оружия, Y Enter, LB/RB скорость, Start пауза.",
+      "Крестовина/стик — движение, A — подтвердить, B — назад, Start — пауза. Раскладку каждой игры показывают лаунчер и пауза в разделе «Управление».",
     motion: "Движение",
     motionAuto: "как в системе",
     motionReduce: "уменьшить",
@@ -378,9 +408,19 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
     hudLifeLost: "Жизнь потеряна.",
     keysTitle: "Клавиши {title}",
     keysHelp:
-      "Дополнительная клавиша для каждого действия к оригинальным. Нажмите кнопку, затем клавишу; Delete удаляет, Esc отменяет.",
-    keyPress: "Нажмите клавишу …",
-    keysReset: "Сбросить доп. клавиши",
+      "Выберите шаблон или назначьте до трёх клавиш на действие: Enter (или щелчок), затем клавиша; Backspace удаляет последнюю, Esc отменяет. Действует после «Применить».",
+    keysPreset: "Шаблон",
+    keysApply: "Применить",
+    keysMissing: "Без клавиши: {actions}",
+    keysDuplicate: "Назначено дважды: {keys}",
+    keysGroupMove: "Движение",
+    keysGroupWeapon: "Оружие",
+    keysGroupSystem: "Прочее",
+    keysPlayer: "Игрок {n} · {group}",
+    volumeVoice: "Речь",
+    on: "вкл.",
+    off: "выкл.",
+    gamepadState: "Состояние",
     loadingBar: "Ход загрузки",
     gameCanvas: "{title}: игровое поле. Управление: клавиатура или геймпад, Esc — пауза.",
     saves: "Сохранения",
