@@ -42,13 +42,15 @@ export interface PointerState {
 }
 
 /**
- * Audio der Shell: ein AudioContext mit getrennten Pegeln für Musik und Effekte.
+ * Audio der Shell: ein AudioContext mit getrennten Pegeln für Musik, Effekte und Sprache.
  * Fehlt, wenn ohne Ton gestartet wird (Original: „Dove - NOSOUND.bat“).
  */
 export interface AudioHost {
   readonly context: AudioContext;
   readonly music: AudioNode;
   readonly sfx: AudioNode;
+  /** Sprachausgabe (DoveZ-Funk); fehlt sie, spielt Sprache über `sfx`. */
+  readonly voice?: AudioNode;
   /** URL des libopenmpt-AudioWorklets (`chiptune3.worklet.js`). */
   readonly moduleWorkletUrl: string;
 }
@@ -95,6 +97,11 @@ export interface GameHost {
   readonly scaleMode?: () => ScaleMode;
   /** Anzahl der Pads mit Vibrationsmotor (für die Optionen des Spiels). */
   readonly rumblePads?: () => number;
+  /**
+   * Namen der Tasten, die gerade auf einer Aktion der Tastenbelegung liegen
+   * (`KeyAction.id`), für Hinweistexte („Drücke: J“). Leer ohne Belegung.
+   */
+  readonly keyNames?: (action: string) => readonly string[];
   /** Monotone Zeit in ms (`performance.now` im Browser). */
   now(): number;
   /** HTML-Bildschirme der Shell für alles außerhalb der Level (Menüs, Pause, Continue …). */
@@ -197,14 +204,21 @@ export type ControlsSheet = readonly ControlGroup[];
 export type GamepadBindings = Readonly<Record<number, readonly string[]>>;
 
 /**
- * Eine Aktion für die Tastenbelegung der Shell: Name je Sprache und die
- * Originaltasten. Die Shell legt auf Wunsch eine zweite Taste dazu (wie T2 in
- * DoveZ); das Spiel sieht dann bei jedem seiner Codes auch diese Taste.
+ * Eine Aktion für die Tastenbelegung der Shell: Name je Sprache und die Codes,
+ * nach denen das Spiel fragt (die Originaltasten). Die Shell belegt sie um
+ * (`bindKeys`): das Spiel sieht einen dieser Codes genau dann gehalten, wenn eine
+ * der dafür belegten Tasten gehalten ist.
  */
 export interface KeyAction {
   readonly id: string;
   readonly label: LocalLabel;
   readonly codes: readonly string[];
+  /** Abschnitt im Editor: Bewegen, Waffen, Sonstiges. */
+  readonly group?: "move" | "weapon" | "system";
+  /** Spieler (0, 1) bei zwei Spielern an einer Tastatur; fehlt = alle bzw. Einzelspieler. */
+  readonly player?: number;
+  /** Die belegten Tasten bedienen auch die HTML-Bildschirme (Richtung bzw. Bestätigen). */
+  readonly nav?: "up" | "down" | "left" | "right" | "ok";
 }
 
 /**

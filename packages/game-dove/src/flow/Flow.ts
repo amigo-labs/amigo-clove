@@ -39,7 +39,9 @@ import {
   highscoreInput,
   infoText,
   levelSelectMenu,
+  logo,
   optionsForm,
+  optionsMenu,
   titleMenu,
 } from "./menus";
 import { type FlowEnv, type Screen, rndFloat } from "./screen";
@@ -103,6 +105,8 @@ export class Flow {
     this.config = parseConfig(storage.get(CONFIG_KEY));
     this.highscores = parseHighscores(storage.get(HIGHSCORE_KEY)) ?? defaultHighscores(env.rnd);
     this.sprite = (id, r) => spriteSheet(env.host.assets, id)(r);
+    // die Marke im Kopf aller Seiten, wie in DoveZ
+    env.host.ui.brand?.({ name: "DOVE", logo: logo(this.sprite) });
   }
 
   /** Einmal pro Anzeigebild: fällige Ticks des aktiven Bildschirms, dann zeichnen. */
@@ -229,10 +233,10 @@ export class Flow {
           await this.playGame(TUTORIAL_LEVEL);
           break;
         case MenuItem.Info:
-          await ui.show(infoText(this.sprite, await this.readme(), env.german));
+          await ui.show(infoText(await this.readme(), env.german));
           break;
         case MenuItem.Options:
-          await this.options(true);
+          await this.optionsMenu(true);
           break;
         default:
           break;
@@ -240,8 +244,25 @@ export class Flow {
     }
   }
 
+  /** Optionen: Spielregeln oder eine gemeinsame Seite der Shell, bis Zurück. */
+  private async optionsMenu(persist: boolean): Promise<void> {
+    const ui = this.env.host.ui;
+    let selected = "rules";
+    for (;;) {
+      const r = await ui.show({
+        ...optionsMenu(this.env.german, ui.settings !== undefined),
+        selected,
+      });
+      if (this.disposed) return;
+      selected = r.id;
+      if (r.id === "rules") await this.options(persist);
+      else if (r.id === "keys" || r.id === "audio" || r.id === "display") await ui.settings?.(r.id);
+      else return;
+    }
+  }
+
   /**
-   * Optionen: „Speichern“ schreibt die Konfiguration und zeigt „gespeichert“,
+   * Spielregeln: „Speichern“ schreibt die Konfiguration und zeigt „gespeichert“,
    * „Zurück“ übernimmt die Werte nur für diese Sitzung (wie das Original).
    */
   private async options(persist: boolean): Promise<void> {
@@ -282,7 +303,7 @@ export class Flow {
         await this.credits();
         break;
       case "options":
-        await this.options(false);
+        await this.optionsMenu(false);
         break;
       case "levelselect":
         await ui.show(
@@ -290,7 +311,7 @@ export class Flow {
         );
         break;
       case "info":
-        await ui.show(infoText(this.sprite, await this.readme(), env.german));
+        await ui.show(infoText(await this.readme(), env.german));
         break;
       case "farewell":
         await ui.show(farewellNotice(env.german));

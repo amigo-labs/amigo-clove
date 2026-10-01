@@ -27,6 +27,23 @@ export {
   type LocalePreference,
   type Translate,
 } from "./i18n/i18n";
+export {
+  CUSTOM_PRESET,
+  MAX_KEYS,
+  PRESET_LABELS,
+  bindKeys,
+  keyIssues,
+  navigationKeys,
+  originalKeys,
+  presetOf,
+  resolveBindings,
+  withExtraKeys,
+  type KeyBindings,
+  type KeyIssues,
+  type KeyLayout,
+  type KeyPreset,
+  type StoredBindings,
+} from "./input/keyBindings";
 export { PointerSteer, type PointerSample } from "./input/PointerSteer";
 export { FixedStepLoop } from "./loop/FixedStepLoop";
 export {
@@ -81,8 +98,11 @@ export type {
   PointerState,
   ScaleMode,
 } from "./shell/GameModule";
+export { SETTINGS_PAGES } from "./shell/ui";
 export type {
   GameUi,
+  SettingsPage,
+  UiBrand,
   UiBlock,
   UiConfirm,
   UiField,

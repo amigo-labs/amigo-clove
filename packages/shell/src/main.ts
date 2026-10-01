@@ -1,38 +1,47 @@
 import { AudioBus } from "@clove/audio";
 import {
   AssetStore,
+  bindKeys,
+  navigationKeys,
+  resolveBindings,
   resolveLocale,
   translator,
+  withExtraKeys,
   type AudioHost,
   type ControlsSheet,
   type GameInstance,
   type GameModule,
-  type KeyAction,
+  type GameUi,
   type GamepadBindings,
+  type KeyBindings,
+  type KeyLayout,
   type KeyState,
   type Locale,
   type PadLayout,
+  type StoredBindings,
 } from "@clove/core";
 import { DOVE_CONTROLS, DOVE_GAMEPAD } from "@clove/game-dove/controls";
-import { KEY_ACTIONS as DOVE_KEYS } from "@clove/game-dove/keys";
+import { KEY_LAYOUT as DOVE_KEYS } from "@clove/game-dove/keys";
 import { DOVEZ_GAMEPAD, DOVEZ_PADS, dovezAllControls } from "@clove/game-dovez/controls";
-import { controlsElement, controlsTables, type ControlsOptions } from "./controls";
+import { KEY_LAYOUT as DOVEZ_KEYS, legacyExtraKeys } from "@clove/game-dovez/keys";
+import { controlsElement, controlsTables } from "./controls";
 import { h } from "./dom";
-import { NAV_BINDINGS, createPadState, padKeys, startPadNavigation } from "./gamepad";
+import { NAV_BINDINGS, createPadState, padKeys } from "./gamepad";
 import { HudView } from "./hud";
 import { createKeyState } from "./keys";
-import { withSecondKeys } from "./keymap";
 import { DISPLAY_EVENT, createStage, toggleFullscreen, type Stage } from "./overlay";
 import { registerServiceWorker } from "./offline";
+import { runPage, type PageContext } from "./pages/context";
+import { keyLabel } from "./pages/keys";
+import { settingsMenu, settingsPage } from "./pages/settingsMenu";
 import { createPointerState } from "./pointer";
 import { createTouchKeys } from "./touchKeys";
 import { parseRoute } from "./router";
 import { loadSettings, reducedMotion, saveSettings, type Settings } from "./settings";
 import { storageFor, webStorage } from "./storage";
 import { TEXTS, mb, type ShellText, type TextKey } from "./texts";
-import { launcherView } from "./views/launcher";
-import { settingsView } from "./views/settings";
-import { NAV_CODES, gateKeys } from "./ui/model";
+import { launcherMenu } from "./views/launcher";
+import { NAV_CODES, gateKeys, type NavAction } from "./ui/model";
 import { UiHost } from "./ui/UiHost";
 
 /**
@@ -52,8 +61,8 @@ interface GameInfo {
   readonly playable: boolean;
   /** Debug-Ansichten (Unterpfad und Beschriftung), im Launcher verlinkt. */
   readonly debug?: readonly DebugLink[];
-  /** Aktionen für die Tastenbelegung der Shell (DoveZ hat seine eigene im Spiel). */
-  readonly keys?: readonly KeyAction[];
+  /** Aktionen und Vorlagen der Tastenbelegung (Einstellungen und Optionen des Spiels). */
+  readonly keys?: KeyLayout;
   /** Tastenübersicht im Launcher, mit der Pad-Belegung des Spiels (ohne es zu laden). */
   readonly controls?: {
     readonly sheet: ControlsSheet;
@@ -80,6 +89,7 @@ const GAMES: Readonly<Record<string, GameInfo>> = {
       { path: "debug/assets", label: "debugAssets" },
       { path: "debug/level", label: "debugLevel" },
     ],
+    keys: DOVEZ_KEYS,
     controls: { sheet: dovezAllControls(), gamepad: DOVEZ_GAMEPAD, pads: DOVEZ_PADS },
     load: async () => (await import("@clove/game-dovez")).default,
   },
@@ -91,7 +101,10 @@ const keyboard = createKeyState(window);
 /** Systemwunsch nach weniger Bewegung (`prefers-reduced-motion`). */
 const motionQuery = window.matchMedia?.("(prefers-reduced-motion: reduce)");
 const storage = webStorage();
-let settings: Settings = loadSettings(storage);
+const LAYOUTS: Readonly<Record<string, KeyLayout>> = Object.fromEntries(
+  Object.entries(GAMES).flatMap(([id, g]) => (g.keys ? [[id, g.keys]] : [])),
+);
+let settings: Settings = migrateDovezKeys(loadSettings(storage, LAYOUTS));
 let locale: Locale = "en";
 let t: ShellText = translator(TEXTS, locale);
 let running: GameInstance | undefined;
@@ -101,6 +114,54 @@ let view: AbortController | undefined;
 /** Zählt Routenwechsel; ein langsamer Spielstart nach einem Wechsel wird verworfen. */
 let generation = 0;
 
+/**
+ * Die alte Tastenkonfiguration von DoveZ (zweite Tasten im Spiel) wird einmalig
+ * zur Belegung der Shell: Original plus diese Tasten.
+ */
+function migrateDovezKeys(s: Settings): Settings {
+  if (s.keybindings["dovez"]) return s;
+  let keys: unknown;
+  try {
+    keys = (
+      JSON.parse(storage?.getItem("clove:dovez:config") ?? "null") as { keys?: unknown } | null
+    )?.keys;
+  } catch {
+    return s;
+  }
+  if (!Array.isArray(keys) || !keys.every((k) => typeof k === "string")) return s;
+  const stored = withExtraKeys(DOVEZ_KEYS, legacyExtraKeys(keys));
+  if (!stored) return s;
+  const next = { ...s, keybindings: { ...s.keybindings, dovez: stored } };
+  saveSettings(storage, next);
+  return next;
+}
+
+/** Belegung je Spiel; dieselbe Instanz, solange sich die Einstellung nicht ändert. */
+const resolved = new Map<string, { from: StoredBindings | undefined; keys: KeyBindings }>();
+function bindingsFor(id: string): KeyBindings | undefined {
+  const layout = GAMES[id]?.keys;
+  if (!layout) return undefined;
+  const from = settings.keybindings[id];
+  const hit = resolved.get(id);
+  if (hit && hit.from === from) return hit.keys;
+  const keys = resolveBindings(layout, from);
+  resolved.set(id, { from, keys });
+  return keys;
+}
+
+/** Navigationstasten der HTML-Bildschirme aus der Belegung (WASD, Feuer bestätigt). */
+const navCache = new Map<string, { from: KeyBindings; nav: ReadonlyMap<string, NavAction> }>();
+function navKeysFor(id: string): ReadonlyMap<string, NavAction> {
+  const keys = bindingsFor(id);
+  const layout = GAMES[id]?.keys;
+  if (!keys || !layout) return new Map();
+  const hit = navCache.get(id);
+  if (hit?.from === keys) return hit.nav;
+  const nav = navigationKeys(layout.actions, keys);
+  navCache.set(id, { from: keys, nav });
+  return nav;
+}
+
 function applyLocale(): void {
   locale = resolveLocale(settings.language, navigator.languages ?? [navigator.language]);
   t = translator(TEXTS, locale);
@@ -108,7 +169,8 @@ function applyLocale(): void {
 }
 
 function applyVolume(): void {
-  for (const ch of ["master", "music", "sfx"] as const) bus?.setVolume(ch, settings.volume[ch]);
+  for (const ch of ["master", "music", "sfx", "voice"] as const)
+    bus?.setVolume(ch, settings.volume[ch]);
 }
 
 function updateSettings(patch: Partial<Settings>): void {
@@ -119,7 +181,7 @@ function updateSettings(patch: Partial<Settings>): void {
   window.dispatchEvent(new Event(DISPLAY_EVENT));
   if (languageChanged) {
     applyLocale();
-    void route().then(() => document.getElementById("language")?.focus());
+    void route();
   }
 }
 
@@ -144,6 +206,7 @@ function audioHost(params: Readonly<Record<string, string>>): AudioHost | undefi
     context: bus.context,
     music: bus.music,
     sfx: bus.sfx,
+    voice: bus.voice,
     moduleWorkletUrl: `${import.meta.env.BASE_URL}vendor/chiptune3/chiptune3.worklet.js`,
   };
 }
@@ -175,33 +238,38 @@ function rumble(pad: number, magnitude: number): void {
     .catch(() => undefined);
 }
 
-/** Optionen der Tastenübersicht nach den aktuellen Einstellungen. */
-function controlsOptions(
+/** Tastenübersicht eines Spiels als HTML nach den aktuellen Einstellungen. */
+function controlsFor(
+  sheet: ControlsSheet,
   id: string,
   gamepad: GamepadBindings | undefined,
   pads: readonly (PadLayout | undefined)[] | undefined,
-): ControlsOptions {
-  return {
+): HTMLElement {
+  return controlsElement(
+    controlsTables(sheet, {
+      t,
+      locale,
+      gamepad,
+      pads,
+      bindings: bindingsFor(id),
+      showPad: settings.gamepad,
+      showPointer: settings.pointer,
+    }),
     t,
-    locale,
-    gamepad,
-    pads,
-    second: GAMES[id]?.keys ? settings.keymap[id] : undefined,
-    showPad: settings.gamepad,
-    showPointer: settings.pointer,
-  };
+  );
 }
 
 /** Gehaltene Tastaturtasten für die Tastenaufnahme (ohne Pad und Touch). */
 const held = () => keyboard.held?.() ?? [];
 
 /**
- * Tastatur (mit den zweiten Tasten der Einstellungen) plus Pad (abschaltbar)
- * plus Touch-Tasten.
+ * Tastatur (mit der Tastenbelegung der Einstellungen) plus Pad (abschaltbar)
+ * plus Touch-Tasten. Pad und Touch speisen die Codes des Spiels direkt ein,
+ * an der Belegung vorbei.
  */
 function keysFor(id: string, module: GameModule, touch: KeyState): KeyState {
-  const actions = GAMES[id]?.keys;
-  const kb = actions ? withSecondKeys(keyboard, actions, () => settings.keymap[id]) : keyboard;
+  const layout = GAMES[id]?.keys;
+  const kb = layout ? bindKeys(keyboard, layout.actions, () => bindingsFor(id) ?? {}) : keyboard;
   if (!module.gamepad || !navigator.getGamepads)
     return { isDown: (code) => kb.isDown(code) || touch.isDown(code), held };
   const pad = createPadState(
@@ -219,15 +287,72 @@ function keysFor(id: string, module: GameModule, touch: KeyState): KeyState {
   };
 }
 
-function showPage(page: HTMLElement, signal: AbortSignal): void {
-  screen.replaceChildren(page);
-  startPadNavigation(
-    page,
-    () => settings.gamepad,
-    () => (location.hash = "#/"),
+/** Pad (Navigationsbelegung) und Touch-Tasten für die HTML-Bildschirme. */
+function polledNav(touch?: KeyState): () => ReadonlySet<string> {
+  const navCodes = Object.keys(NAV_CODES);
+  return () => {
+    const down = settings.gamepad
+      ? padKeys(navigator.getGamepads?.() ?? [], NAV_BINDINGS)
+      : new Set<string>();
+    if (touch) for (const c of navCodes) if (touch.isDown(c)) down.add(c);
+    return down;
+  };
+}
+
+/**
+ * Eine Seite der Shell (Launcher, Einstellungen, Laden, Fehler) aus denselben
+ * HTML-Bausteinen wie die Spielbildschirme; `game` setzt dessen Akzent.
+ */
+function showPage(signal: AbortSignal, game?: string): UiHost {
+  const root = h("div", { class: "page", ...(game ? { "data-game": game } : {}) });
+  screen.replaceChildren(root);
+  const ui = new UiHost({
+    mount: root,
+    frame: root,
+    polled: polledNav(),
+    controls: (sheet, id) => {
+      const g = id ? GAMES[id] : undefined;
+      return controlsFor(sheet, id ?? "", g?.controls?.gamepad, g?.controls?.pads);
+    },
+    ...(game ? { navKeys: () => navKeysFor(game) } : {}),
+  });
+  signal.addEventListener("abort", () => ui.dispose());
+  return ui;
+}
+
+/** Kontext der Einstellungsseiten (unter `#/settings` und aus den Spielen). */
+function pageContext(signal: AbortSignal | undefined): PageContext {
+  return {
+    t: () => t,
+    locale: () => locale,
+    settings: () => settings,
+    update: updateSettings,
+    games: Object.entries(GAMES)
+      .filter(([, g]) => g.playable)
+      .map(([id, g]) => ({ id, title: g.title, ...(g.keys ? { keys: g.keys } : {}) })),
+    signal,
+  };
+}
+
+/** Meldung mit Zurück zum Launcher. */
+async function messagePage(text: string, signal: AbortSignal, game?: string): Promise<void> {
+  const ui = showPage(signal, game);
+  const r = await ui.show(
+    {
+      kind: "menu",
+      title: "amigo-clove",
+      blocks: [{ kind: "lines", lines: [text], tone: "accent" }],
+      items: [{ id: "back", label: t("back") }],
+      back: "back",
+    },
     signal,
   );
+  if (r.id === "back") location.hash = "#/";
 }
+
+/** Zuletzt gewählter Eintrag im Launcher bzw. in den Einstellungen (Vorwahl beim Zurückkehren). */
+let launcherChoice: string | undefined;
+let settingsChoice: string | undefined;
 
 async function startGame(
   id: string,
@@ -236,27 +361,32 @@ async function startGame(
 ): Promise<void> {
   const game = GAMES[id];
   if (!game) return;
-  const label = h(
-    "p",
-    { role: "status" },
-    t("loading", { title: game.title, loaded: "0", total: "…" }),
-  );
-  const bar = h("progress", { max: "1", value: "0", "aria-label": t("loadingBar") });
-  screen.replaceChildren(h("div", { id: "loading", "aria-busy": "true" }, label, bar));
   document.title = `${game.title} — amigo-clove`;
+  document.body.dataset["loading"] = id;
+  const loading = new AbortController();
+  const loadingUi = showPage(loading.signal, id);
+  let fraction = 0;
+  void loadingUi.show(
+    {
+      kind: "notice",
+      title: game.title,
+      lines: [t("loadingBar")],
+      progress: () => fraction,
+      until: "progress",
+    },
+    loading.signal,
+  );
   try {
     const assets = await AssetStore.load(`${import.meta.env.BASE_URL}${id}/manifest.json`, (u) =>
       fetch(u),
     );
     const module = await game.load();
     await assets.preload(module.preload ?? [], (loaded, total) => {
-      label.textContent = t("loading", {
-        title: game.title,
-        loaded: mb(loaded, locale),
-        total: mb(total, locale),
-      });
-      bar.value = total ? loaded / total : 1;
+      // ganz voll erst mit dem Spiel: „progress“ schlösse den Hinweis sonst vorher
+      fraction = total ? Math.min(0.999, loaded / total) : 0;
+      document.body.dataset["loaded"] = `${mb(loaded, locale)} / ${mb(total, locale)}`;
     });
+    loading.abort();
     if (gen !== generation) return;
     const canvas = document.createElement("canvas");
     // Das Spiel zeichnet nur auf den Canvas: Name und Bedienung für Screenreader
@@ -264,6 +394,7 @@ async function startGame(
     canvas.setAttribute("aria-label", t("gameCanvas", { title: game.title }));
     const s = createStage(canvas, { t, scanlines: () => settings.scanlines });
     stage = s;
+    s.root.dataset["game"] = id;
     screen.replaceChildren(s.root);
     const pointer = createPointerState(canvas, s.root);
     const touch = createTouchKeys(s.root, s.layer, t);
@@ -272,27 +403,39 @@ async function startGame(
       touch.dispose();
     });
     const audio = audioHost(params);
-    const navCodes = Object.keys(NAV_CODES);
     const ui = new UiHost({
-      stage: s,
+      mount: s.layer,
+      frame: s.root,
       audio,
       // Pad (Navigationsbelegung) und Touch-Tasten; die Tastatur liest der UiHost selbst
-      polled: () => {
-        const down = settings.gamepad
-          ? padKeys(navigator.getGamepads?.() ?? [], NAV_BINDINGS)
-          : new Set<string>();
-        for (const c of navCodes) if (touch.isDown(c)) down.add(c);
-        return down;
-      },
-      controls: (sheet) =>
-        controlsElement(controlsTables(sheet, controlsOptions(id, module.gamepad, module.pads)), t),
+      polled: polledNav(touch),
+      controls: (sheet, other) =>
+        other && other !== id
+          ? controlsFor(sheet, other, GAMES[other]?.controls?.gamepad, GAMES[other]?.controls?.pads)
+          : controlsFor(sheet, id, module.gamepad, module.pads),
+      navKeys: () => navKeysFor(id),
     });
     s.onDispose(() => ui.dispose());
+    const pages = pageContext(undefined);
+    const gameUi: GameUi = {
+      show: (screen2, signal) => ui.show(screen2, signal),
+      brand: (b) => ui.brand(b),
+      settings: (page, signal) =>
+        runPage(() =>
+          settingsPage(
+            ui,
+            { ...pages, signal },
+            page,
+            pages.games.find((g) => g.id === id),
+          ),
+        ),
+    };
     const instance = await module.boot(
       {
         canvas,
         assets,
-        ui,
+        ui: gameUi,
+        keyNames: (action) => (bindingsFor(id)?.[action] ?? []).map((c) => keyLabel(t, c)),
         keys: gateKeys(keysFor(id, module, touch), () => ui.state()),
         locale,
         rumble,
@@ -328,18 +471,14 @@ async function startGame(
     }
     document.body.dataset["game"] = id;
   } catch (err) {
+    loading.abort();
     if (gen !== generation) return;
     document.body.dataset["game"] = "error";
     console.error(err);
-    screen.replaceChildren(
-      h(
-        "div",
-        { id: "launcher" },
-        h("p", {}, t("loadFailed", { title: game.title })),
-        h("a", { class: "button secondary", href: "#/" }, t("back")),
-      ),
-    );
     errorBox.textContent = String(err instanceof Error ? (err.stack ?? err.message) : err);
+    if (view) void messagePage(t("loadFailed", { title: game.title }), view.signal, id);
+  } finally {
+    delete document.body.dataset["loading"];
   }
 }
 
@@ -356,61 +495,46 @@ async function route(): Promise<void> {
   const r = parseRoute(location.hash, new Set(Object.keys(GAMES)));
   document.body.dataset["view"] = r.view;
   document.title = "amigo-clove";
+  const signal = view.signal;
   switch (r.view) {
-    case "launcher":
-      showPage(
-        launcherView(
-          t,
-          Object.entries(GAMES).map(([id, g]) => ({
-            id,
-            title: g.title,
-            subtitle: t(g.subtitle),
-            available: g.playable,
-            ...(g.controls
-              ? {
-                  controls: controlsElement(
-                    controlsTables(
-                      g.controls.sheet,
-                      controlsOptions(id, g.controls.gamepad, g.controls.pads),
-                    ),
-                    t,
-                  ),
-                }
-              : {}),
-            ...(g.debug
-              ? { debug: g.debug.map((d) => ({ path: d.path, label: t(d.label) })) }
-              : {}),
-          })),
-        ),
-        view.signal,
+    case "launcher": {
+      const ui = showPage(signal);
+      const target = await launcherMenu(
+        ui,
+        t,
+        Object.entries(GAMES).map(([id, g]) => ({
+          id,
+          title: g.title,
+          subtitle: t(g.subtitle),
+          available: g.playable,
+          ...(g.controls ? { controls: g.controls.sheet } : {}),
+          ...(g.debug ? { debug: g.debug.map((d) => ({ path: d.path, label: t(d.label) })) } : {}),
+        })),
+        signal,
+        launcherChoice,
       );
+      if (target && !signal.aborted) {
+        launcherChoice = target;
+        location.hash = target;
+      }
       return;
-    case "settings":
+    }
+    case "settings": {
       document.title = `${t("settings")} — amigo-clove`;
-      showPage(
-        settingsView({
-          t,
-          locale,
-          settings: () => settings,
-          update: updateSettings,
-          signal: view.signal,
-          games: Object.entries(GAMES)
-            .filter(([, g]) => g.playable)
-            .map(([id, g]) => ({ id, title: g.title, ...(g.keys ? { keys: g.keys } : {}) })),
-        }),
-        view.signal,
-      );
-      return;
-    case "unknown":
-      showPage(
-        h(
-          "div",
-          { id: "launcher" },
-          h("p", {}, t("notFound", { path: r.path })),
-          h("a", { class: "button secondary", href: "#/" }, t("back")),
+      const ui = showPage(signal);
+      await runPage(() =>
+        settingsMenu(
+          ui,
+          pageContext(signal),
+          settingsChoice,
+          (choice) => (settingsChoice = choice),
         ),
-        view.signal,
       );
+      if (!signal.aborted) location.hash = "#/";
+      return;
+    }
+    case "unknown":
+      await messagePage(t("notFound", { path: r.path }), signal);
       return;
     case "game":
       await startGame(r.id, r.sub ? { ...r.params, view: r.sub } : r.params, gen);
