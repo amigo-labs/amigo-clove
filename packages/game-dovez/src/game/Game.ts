@@ -8,7 +8,7 @@ import { Renderer } from "../render/Renderer";
 import { VbRnd } from "../sim/vb";
 import type { Carry } from "../sim/world";
 import { Campaign, type CampaignAction, languageVideo } from "./campaign";
-import { type DovezConfig, loadConfig, saveConfig } from "./config";
+import { DEFAULT_CONFIG, type DovezConfig, loadConfig, saveConfig } from "./config";
 import { creditsScreen } from "./credits";
 import { FadeLogic, FadeScene } from "./fadeOut";
 import { atlasTexture } from "./gdi";
@@ -376,7 +376,7 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
     const logoAtlas = await host.assets.json<AtlasJson>("atlas/logo");
     if (host.audio) {
       music ??= new StreamPlayer(host.audio.context, host.audio.music);
-      music.setVolume(config.music / 100);
+      music.setVolume(DEFAULT_CONFIG.music / 100);
       if (host.assets.has("music/enhaced_credits"))
         music.play(host.assets.url("music/enhaced_credits"), false);
     }
@@ -395,7 +395,7 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
     const esc = () => pauseKey(host);
     const intergenies = logo("logo_intergenies");
     if (intergenies) {
-      menuAudio?.play("logo", config.sfx);
+      menuAudio?.play("logo", DEFAULT_CONFIG.sfx);
       await play(new LogoGlitch(host, app, targets, intergenies, noise, rnd));
       await play(new LogoShow(host, app, intergenies, 42, 30, 0, rnd));
       await play(new FadeScene(app, targets, new FadeLogic(0, rnd), esc));
@@ -416,7 +416,7 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
   const menu = async (): Promise<MenuResult> => {
     const menuAtlas = await host.assets.json<AtlasJson>("atlas/menu");
     const menuSprite = atlasSprites(host.assets, menuAtlas);
-    menuAudio?.startMusic(config.music);
+    menuAudio?.startMusic(DEFAULT_CONFIG.music);
     const result = await htmlMenu({
       ui: host.ui,
       lang,
@@ -429,11 +429,10 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
       names: lastNames,
       ids: lastIds,
       onConfig: (c) => {
-        if (c.music !== config.music) menuAudio?.music.setVolume(c.music / 100);
         config = c;
         if (persist) saveConfig(host.storage, c);
       },
-      sound: (name) => menuAudio?.play(name, name === "speech" ? config.speech : config.sfx),
+      sound: (name) => menuAudio?.play(name, DEFAULT_CONFIG.sfx),
       pads: () => host.rumblePads?.() ?? 0,
       rumble: host.rumble,
       logo: dovezLogo,

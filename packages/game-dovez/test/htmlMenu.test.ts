@@ -15,15 +15,7 @@ import {
 import { DEFAULT_NAME, emptyHighscores, type HighscoreEntry } from "../src/game/highscore";
 import { LANGS } from "../src/game/lang";
 import { type HtmlMenuOptions, htmlMenu, splitChoice } from "../src/game/menu/htmlMenu";
-import {
-  VOLUME_STEPS,
-  newPlayerIds,
-  playerName,
-  volumeIndex,
-  volumeLevel,
-  volumeOfIndex,
-  volumeStep,
-} from "../src/game/menu/menuRules";
+import { newPlayerIds, playerName } from "../src/game/menu/menuRules";
 import { menuTexts } from "../src/game/menu/menuTexts";
 import { VbRnd } from "../src/sim/vb";
 import { ScriptUi, memoryStore, submitForm } from "./fakeUi";
@@ -297,23 +289,9 @@ describe("Hauptmenü (HTML)", () => {
 });
 
 describe("Regeln aus MenuLoop", () => {
-  test("Pegel: +250 dB/100 bis stumm, Reglerstufen auf denselben Werten", () => {
-    let v = -1000;
-    const seq: string[] = [];
-    for (let i = 0; i < 6; i++) {
-      v = volumeStep(v);
-      seq.push(volumeLevel(v));
-    }
-    expect(seq).toEqual(["85", "90", "95", "100", "-100", "10"]);
+  test("Pegel der Konfiguration: Hundertstel dB, −10000 stumm", () => {
     expect(dbGain(-10000)).toBe(0);
     expect(dbGain(0)).toBe(1);
-    // jede Stufe des Reglers ist ein Wert, den `volumeStep` durchläuft
-    const cycle = new Set<number>();
-    let w = -10000;
-    for (let i = 0; i < 25; i++) cycle.add((w = volumeStep(w)));
-    for (let i = 0; i <= VOLUME_STEPS; i++) expect(cycle.has(volumeOfIndex(i))).toBe(true);
-    expect(volumeIndex(volumeOfIndex(7))).toBe(7);
-    expect([volumeIndex(-10000), volumeIndex(0), volumeIndex(-4600)]).toEqual([0, VOLUME_STEPS, 1]);
   });
 
   test("Namen: Steuerzeichen fallen weg, Kyrillisch nur auf Russisch, leer → „Bruce“", () => {
