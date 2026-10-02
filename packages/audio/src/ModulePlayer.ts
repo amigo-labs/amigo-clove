@@ -10,16 +10,12 @@
 export interface ModulePlayerOptions {
   /** URL von `chiptune3.worklet.js`. */
   readonly workletUrl: string;
-  /** libopenmpt-Interpolationsfilter: 1 = keine (am nächsten an BASS 0.8, Spec R4). */
-  readonly interpolationFilter?: number;
-  readonly stereoSeparation?: number;
 }
 
 export class ModulePlayer {
   private node: AudioWorkletNode | undefined;
   private readonly ready: Promise<void>;
   readonly output: GainNode;
-  private endedHandler: (() => void) | undefined;
 
   private constructor(
     private readonly context: AudioContext,
@@ -35,7 +31,6 @@ export class ModulePlayer {
         outputChannelCount: [2],
       });
       node.port.addEventListener("message", (e: MessageEvent<{ cmd: string }>) => {
-        if (e.data.cmd === "end") this.endedHandler?.();
         if (e.data.cmd === "err") console.warn("ModulePlayer:", e.data);
       });
       node.port.start();
@@ -44,8 +39,9 @@ export class ModulePlayer {
         cmd: "config",
         val: {
           repeatCount: -1,
-          stereoSeparation: options.stereoSeparation ?? 100,
-          interpolationFilter: options.interpolationFilter ?? 1,
+          stereoSeparation: 100,
+          // Interpolationsfilter 1 = keine (am nächsten an BASS 0.8, Spec R4).
+          interpolationFilter: 1,
         },
       });
       node.connect(this.output);
@@ -69,19 +65,15 @@ export class ModulePlayer {
     this.node?.port.postMessage(message);
   }
 
-  /** Spielt ein Modul; `loop = false` spielt es einmal (z. B. Game-Over-Jingle). */
-  play(module: Uint8Array, loop = true): void {
-    this.send({ cmd: "repeatCount", val: loop ? -1 : 0 });
+  /** Spielt ein Modul in Endlosschleife. */
+  play(module: Uint8Array): void {
+    this.send({ cmd: "repeatCount", val: -1 });
     this.send({ cmd: "play", val: module.slice().buffer });
     this.setVolume(1);
   }
 
   stop(): void {
     this.send({ cmd: "stop" });
-  }
-
-  pause(paused: boolean): void {
-    this.send({ cmd: paused ? "pause" : "unpause" });
   }
 
   setVolume(value: number): void {
@@ -96,10 +88,6 @@ export class ModulePlayer {
     g.cancelScheduledValues(now);
     g.setValueAtTime(g.value, now);
     g.linearRampToValueAtTime(0, now + seconds);
-  }
-
-  onEnded(handler: () => void): void {
-    this.endedHandler = handler;
   }
 
   dispose(): void {

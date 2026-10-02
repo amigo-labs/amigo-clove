@@ -37,14 +37,14 @@ export class DoveAudio {
   }
 
   /** Musik per Asset-ID (`music/s1`); dieselbe ID läuft ungestört weiter. */
-  async playMusic(id: string | undefined, loop = true): Promise<void> {
+  async playMusic(id: string | undefined): Promise<void> {
     if (id === this.currentMusic) return;
     this.currentMusic = id;
     if (!id || !this.assets.has(id)) {
       this.music.stop();
       return;
     }
-    this.music.play(await this.assets.bytes(id), loop);
+    this.music.play(await this.assets.bytes(id));
   }
 
   /**
@@ -57,11 +57,6 @@ export class DoveAudio {
     await new Promise((resolve) => setTimeout(resolve, seconds * 1000));
     this.music.stop();
     this.currentMusic = undefined;
-  }
-
-  /** Musikpegel 0…1 (setzt ein laufendes Ausblenden zurück). */
-  setMusicVolume(value: number): void {
-    this.music.setVolume(value);
   }
 
   /** Musik zum Level: `S<L>`; Level 11 hat keine eigene und nimmt S0–S9 (`PlayMusik`). */
@@ -101,10 +96,10 @@ export class DoveAudio {
 
   /**
    * Soundeffekt außerhalb der Simulation (Menüs, Get Ready, Continue):
-   * `name` wie in `SOUND_FILES` (z. B. "getready"), Lautstärke 0–100, Panorama −100…100.
+   * `name` wie in `SOUND_FILES` (z. B. "getready"), Lautstärke 0–100, Mitte.
    */
-  effect(name: string, volume = 100, pan = 0): void {
-    this.sfx.play(`sound/${name}`, pan / 100, volume / 100);
+  effect(name: string, volume = 100): void {
+    this.sfx.play(`sound/${name}`, 0, volume / 100);
   }
 
   /** Einmal pro Frame nach den Simulationsticks. */

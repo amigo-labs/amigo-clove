@@ -161,27 +161,22 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
   /** Die Level-Szene, solange sie lebt (auch im Speicherbildschirm). */
   let current: LevelScene | undefined;
 
-  /** Einen Abschnitt laufen lassen, bis er fertig ist (danach aufgeräumt). */
-  const play = (s: Scene): Promise<void> =>
+  /**
+   * Einen Abschnitt laufen lassen, bis er fertig ist, ohne aufzuräumen (das Level
+   * spielt im Speicherbildschirm noch die Musik).
+   */
+  const run = (s: Scene, cleanup?: () => void): Promise<void> =>
     new Promise((resolve) => {
       scene = s;
       finish = () => {
         scene = undefined;
         finish = undefined;
-        s.destroy();
+        cleanup?.();
         resolve();
       };
     });
-  /** Wie `play`, aber ohne aufzuräumen (das Level spielt im Speicherbildschirm noch die Musik). */
-  const run = (s: Scene): Promise<void> =>
-    new Promise((resolve) => {
-      scene = s;
-      finish = () => {
-        scene = undefined;
-        finish = undefined;
-        resolve();
-      };
-    });
+  /** Wie `run`, danach aufgeräumt. */
+  const play = (s: Scene): Promise<void> => run(s, () => s.destroy());
 
   const frame = () => {
     if (disposed) return;

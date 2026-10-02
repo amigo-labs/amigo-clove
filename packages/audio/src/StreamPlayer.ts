@@ -52,10 +52,6 @@ export class StreamPlayer {
     }
   }
 
-  get playing(): string | undefined {
-    return this.element.paused ? undefined : this.current;
-  }
-
   dispose(): void {
     this.stop();
     this.source.disconnect();

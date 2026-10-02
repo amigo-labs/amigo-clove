@@ -1,7 +1,7 @@
 import { PointerSteer, type GameHost } from "@clove/core";
 import { HIT_BOTTOM, HIT_LEFT, HIT_RIGHT, HIT_TOP, type PlayerInput } from "../sim/player";
 import { actionId } from "../keys";
-import { ACTIONS, DEFAULT_KEYS, actionCodes, type Action } from "./keyTable";
+import { ACTIONS, actionCodes, type Action } from "./keyTable";
 
 export { ACTIONS, DEFAULT_KEYS } from "./keyTable";
 
@@ -196,21 +196,9 @@ export function isKeyCode(code: unknown): code is string {
   return code === "" || (typeof code === "string" && code in DIK);
 }
 
-/**
- * Ohne zweite Tasten: das Spiel fragt nur die festen Tasten `T1` (und die
- * Zusatztasten) ab; welche Taste der Spieler dafür drückt, legt die
- * Tastenbelegung der Shell fest (`keys.ts`).
- */
-const NO_SECOND: readonly string[] = DEFAULT_KEYS.map(() => "");
-
-/** Tasten einer Aktion im Satz 0…2. */
-function codesOf(set: number, name: Action | "horn"): string[] {
-  return actionCodes(set, name, NO_SECOND);
-}
-
 /** Eingabe eines Spielers; `set` wie `T1` (0 allein, 1/2 im Zwei-Spieler-Spiel). */
 export function readInput(host: GameHost, set = 0): PlayerInput {
-  const down = (name: Action | "horn") => codesOf(set, name).some((c) => host.keys.isDown(c));
+  const down = (name: Action | "horn") => actionCodes(set, name).some((c) => host.keys.isDown(c));
   return {
     left: down("left"),
     up: down("up"),
@@ -235,7 +223,7 @@ export function keyLabel(host: GameHost, action: number, set = 0): string {
   if (!name) return "?";
   const bound = host.boundKeys?.(actionId(set === 2 ? 1 : 0, name))[0];
   if (bound) return bound.name;
-  const code = codesOf(set, name)[0];
+  const code = actionCodes(set, name)[0];
   return code ? keyName(code) : "?";
 }
 
