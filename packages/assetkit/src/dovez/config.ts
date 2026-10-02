@@ -21,9 +21,10 @@ import {
   type ContainerEntry,
   type MaskOffset,
 } from "@clove/formats";
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { constants, inflateSync } from "node:zlib";
+import { jsonBytes, listFiles } from "../files";
 import type { Job, JobOutput, OutputSpec } from "../job";
 import {
   ATLAS_CONVERTER_VERSION,
@@ -126,7 +127,6 @@ function listContainer(bytes: Uint8Array): Listing[] {
 }
 
 const ext = (name: string) => name.slice(name.lastIndexOf(".") + 1).toLowerCase();
-const json = (value: unknown) => new TextEncoder().encode(`${JSON.stringify(value)}\n`);
 
 /**
  * Atlas-Job eines Pakets mit Grafik: Atlas-JSON, Seiten, Konturen und — bei
@@ -283,7 +283,7 @@ function radioJob(
           id,
           kind: "data" as const,
           ext: "json",
-          bytes: json({
+          bytes: jsonBytes({
             de: parseRadioText(decodeCp1252(data(textDe))),
             en: parseRadioText(decodeCp1252(data(textEn))),
             ru: parseRadioTextRu(data(textRu)),
@@ -371,13 +371,6 @@ function videoJob(path: string, outputs: readonly { name: string; id: string }[]
   };
 }
 
-function listFiles(root: string, dir: string, pattern: RegExp): string[] {
-  return readdirSync(join(root, dir))
-    .filter((f) => pattern.test(f))
-    .toSorted()
-    .map((f) => `${dir}/${f}`);
-}
-
 /** Plant alle DoveZ-Jobs. Liest dafür jedes Paket (Namen und BMP-Köpfe). */
 export function planDoveZ(root: string): Job[] {
   const heavy: Job[] = [];
@@ -419,7 +412,9 @@ export function planDoveZ(root: string): Job[] {
             id: "data/play",
             kind: "data",
             ext: "json",
-            bytes: json(parsePlayScript(decodeCp1252(readContainer(bytes!, inflate)[0]!.data))),
+            bytes: jsonBytes(
+              parsePlayScript(decodeCp1252(readContainer(bytes!, inflate)[0]!.data)),
+            ),
             meta: {},
           },
         ],
