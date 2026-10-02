@@ -1,3 +1,4 @@
+import { WindowFocus } from "@clove/pixi-kit";
 import { Container } from "pixi.js";
 import { DoveInput } from "../../input";
 import { Renderer } from "../../render/Renderer";
@@ -34,10 +35,7 @@ export class GameScreen implements Screen<GameResult> {
   private readonly input: DoveInput;
   private paused = false;
   /** Fenster ohne Fokus oder Tab verdeckt (Erweiterung wie in DoveZ): öffnet die Pause. */
-  private windowFocus = true;
-  private readonly win: Window | null | undefined;
-  private readonly onBlur = () => (this.windowFocus = false);
-  private readonly onFocus = () => (this.windowFocus = true);
+  private readonly focus: WindowFocus;
   /** Antwort des Pausemenüs, sobald gewählt. */
   private pauseReply: string | undefined;
 
@@ -48,9 +46,7 @@ export class GameScreen implements Screen<GameResult> {
   ) {
     this.images = Renderer.imageIds(world);
     this.input = new DoveInput(env.host.keys, () => env.host.pointer);
-    this.win = env.host.canvas?.ownerDocument?.defaultView;
-    this.win?.addEventListener("blur", this.onBlur);
-    this.win?.addEventListener("focus", this.onFocus);
+    this.focus = new WindowFocus(env.host.canvas);
     this.renderer = new Renderer(
       env.textures,
       world,
@@ -76,7 +72,7 @@ export class GameScreen implements Screen<GameResult> {
     const w = this.world;
     if (this.paused) return this.updatePause();
     // Pause nur, wenn der Todeszähler nicht läuft
-    if ((keys.hit("escape") || !this.focused()) && !w.dead) {
+    if ((keys.hit("escape") || !this.focus.focused) && !w.dead) {
       this.paused = true;
       this.pauseReply = undefined;
       audio?.pause(true);
@@ -94,10 +90,6 @@ export class GameScreen implements Screen<GameResult> {
     if (gameOver) return { kind: "gameover", score };
     if (w.exit === 3) return { kind: "complete" };
     return undefined;
-  }
-
-  private focused(): boolean {
-    return this.windowFocus && this.win?.document.hidden !== true;
   }
 
   private updatePause(): GameResult | undefined {
@@ -125,8 +117,7 @@ export class GameScreen implements Screen<GameResult> {
   }
 
   dispose(): void {
-    this.win?.removeEventListener("blur", this.onBlur);
-    this.win?.removeEventListener("focus", this.onFocus);
+    this.focus.dispose();
     this.renderer.destroy();
     this.root.destroy({ children: true });
   }

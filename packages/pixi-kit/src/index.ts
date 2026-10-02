@@ -8,3 +8,4 @@ export {
 } from "./ScreenRoot";
 export { scaleFor } from "./scale";
 export { TextureRegistry } from "./TextureRegistry";
+export { WindowFocus } from "./WindowFocus";
