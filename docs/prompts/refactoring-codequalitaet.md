@@ -9,7 +9,9 @@ verwenden; den Fokus bei Bedarf auf ein Paket oder einen Hotspot eingrenzen.
 ```text
 Du arbeitest im Monorepo amigo-clove (Bun-Workspaces, TypeScript strict, Browser-Port
 von DOVE und DoveZ). Aufgabe: die Codequalität verbessern – reines Refactoring, keine
-Verhaltensänderung, keine neuen Features.
+Verhaltensänderung, keine neuen Features. Leitlinie: vereinfachen, wo immer es geht,
+und nichts selbst bauen, was eine bereits vorhandene Bibliothek oder Plattform-API
+schon kann.
 
 ## Unverrückbare Invarianten
 
@@ -43,6 +45,8 @@ Verhaltensänderung, keine neuen Features.
      shell/src/main.ts.
    - Duplikate zwischen game-dove und game-dovez (Menüs, HUD, Eingabe, Flow), die
      mechanikfrei sind und nach @clove/core gehören könnten.
+   - Inventar der vorhandenen Bausteine (siehe „Vorhandene Bibliotheken nutzen“) und
+     Liste der Stellen, die etwas davon von Hand nachbauen.
 2. Plan: priorisierte Liste konkreter, kleiner Refactorings mit Nutzen und Risiko je
    Punkt. Niedriges Risiko und hoher Nutzen zuerst; alles, was Sim-Reihenfolge
    berühren könnte, als Risiko markieren.
@@ -52,6 +56,57 @@ Verhaltensänderung, keine neuen Features.
    `bun run smoke`, bei Build-relevanten Änderungen `bun run build && bun run budget`.
 4. Ein Commit pro abgeschlossenem Schritt, Commit-Nachricht auf Deutsch im Stil der
    bisherigen Historie (kurzer Satz, was und warum).
+
+## Vereinfachen, wo möglich
+
+Bei jeder Datei fragen: Geht das mit weniger Code, weniger Zustand, weniger
+Indirektion – bei exakt gleichem Verhalten? Wenn ja, vereinfachen. Typische Fälle:
+- verschachtelte if/else durch frühe Rückgaben, Guard-Clauses oder eine Lookup-Tabelle
+  ersetzen; doppelte Bedingungen zusammenfassen,
+- abgeleiteten Zustand nicht speichern, sondern berechnen (außer er ist Teil des
+  Sim-Zustands, der in Hash/Snapshot/Replay eingeht),
+- unnötige Zwischenvariablen, Wrapper-Funktionen, Ein-Aufrufer-Hilfsfunktionen,
+  Klassen ohne Zustand und Optionen, die nie anders gesetzt werden, auflösen,
+- lange Parameterlisten durch ein vorhandenes Objekt bzw. einen vorhandenen Typ
+  ersetzen, Flag-Parameter durch zwei klar benannte Funktionen,
+- eigene Schleifen durch Standardmethoden ersetzen (map/filter/some/find/findLast,
+  Array.from, Object.entries …) – in sim/ nur, wenn Reihenfolge und Anzahl der
+  Aufrufe identisch bleiben und `bun run perf` nicht schlechter wird; heiße Schleifen
+  in sim/ bleiben im Zweifel, wie sie sind.
+Das Ergebnis muss kürzer oder klarer sein, idealerweise beides. Eine Vereinfachung,
+die nur Code verschiebt, ist keine.
+
+## Vorhandene Bibliotheken nutzen
+
+Vorhanden sind (keine neuen hinzufügen):
+- eigene Pakete: @clove/core (Takt/Loop, Q16.16-Mathe, Rng, Hash, Replay, Assets,
+  i18n, Input, Spielstanddatei, GameModule, Shell-UI-Bausteine), @clove/formats
+  (Parser/Serializer), @clove/pixi-kit (Scaling, Texturen), @clove/audio,
+- externe: pixi.js 8 (Container, Sprite, Ticker, Assets, Rectangle, Matrix …),
+  chiptune3 (Musik), sharp (Bildkonvertierung in assetkit), vite (Build),
+  playwright-core (Smoke),
+- Laufzeit: Bun-APIs (nur in assetkit, scripts/, Tests: Bun.file, Glob, Bun.hash,
+  CryptoHasher, bun:test-Matcher), Web-Plattform (DataView, TextDecoder/TextEncoder,
+  URLSearchParams, structuredClone, Web Audio, Gamepad-API, AbortController,
+  Element.animate …), ES2023-Standardbibliothek.
+
+Vorgehen:
+1. Für jedes Paket prüfen, welche Hilfsfunktionen etwas nachbauen, das einer dieser
+   Bausteine schon kann (z. B. eigene clamp/hash/clone/Byte-Leser/Query-Parser/Timer,
+   eigene Fixed-Point- oder Rng-Varianten neben @clove/core, eigene Textur- oder
+   Skalierungslogik neben @clove/pixi-kit, eigene Parser neben @clove/formats,
+   eigene Event-/Ticker-Logik neben Pixi).
+2. Ersetzen nur, wenn die Semantik nachweislich identisch ist – Randfälle wie
+   Rundung, Überlauf, Endianness, Reihenfolge, Prototypen bei Klonen (structuredClone
+   verliert Klassen), geteilte Referenzen und Fehlerverhalten prüfen. Im Zweifel
+   einen kleinen Vergleichstest schreiben, der alte und neue Variante gegeneinander
+   prüft, bevor die alte gelöscht wird.
+3. In sim/ zählt allein Bit-Gleichheit: Plattform-Funktionen, deren Ergebnis von
+   Engine oder Gleitkomma abhängt (Math.sin/cos/pow, Intl, Sortierung mit instabilem
+   Vergleich), nicht gegen bewusst ganzzahlige Eigenbauten tauschen.
+4. Umgekehrt melden: Stellen, an denen eine vorhandene Bibliothek zwar passt, aber
+   nicht genutzt wird, weil sie Pixi/DOM in sim/ ziehen oder I/O in core/formats
+   bringen würde – das bleibt so.
 
 ## Was verbessert werden soll
 
@@ -84,7 +139,10 @@ Verhaltensänderung, keine neuen Features.
 ## Abschlussbericht
 
 Am Ende kurz berichten:
-- umgesetzte Schritte (je ein Satz, mit Dateien),
+- umgesetzte Schritte (je ein Satz, mit Dateien) und die Netto-Zeilenbilanz
+  (`git diff --stat` gegen den Ausgangsstand),
+- ersetzte Eigenbauten mit der Bibliothek/API, die sie jetzt übernimmt, sowie
+  geprüfte, aber bewusst behaltene Eigenbauten mit Begründung,
 - bewusst nicht umgesetzte Kandidaten und warum (Risiko für Determinismus, zu groß),
 - gefundene mutmaßliche Bugs oder Abweichungen vom Original (nicht behoben),
 - Ergebnis von `bun run check` sowie ggf. perf/smoke/budget vorher/nachher.
