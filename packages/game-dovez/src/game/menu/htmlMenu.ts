@@ -1,7 +1,7 @@
 import {
-  SETTINGS_PAGES,
+  highscoreTable,
+  settingsItems,
   type GameUi,
-  type UiBlock,
   type UiField,
   type UiForm,
   type UiImage,
@@ -265,7 +265,7 @@ class HtmlMenu {
       sounds: this.sounds,
       ...(this.o.logo ? { logo: this.o.logo } : {}),
       // wie das Titelmenü von DOVE: die Highscores daneben
-      aside: [this.highscoreTable("Highscore")],
+      aside: [highscoreTable(this.o.highscores, { caption: "Highscore" })],
     });
     switch (r.id) {
       case "new":
@@ -367,13 +367,7 @@ class HtmlMenu {
   private async optionsPage(): Promise<Page> {
     const m = this.t.options(this.bonusOn);
     const n = m.entries.length;
-    const lang = this.o.lang;
-    const shared = this.o.ui.settings
-      ? (["keys", "audio", "display"] as const).map((id) => ({
-          id,
-          label: SETTINGS_PAGES[id][lang],
-        }))
-      : [];
+    const shared = this.o.ui.settings ? settingsItems(this.o.lang) : [];
     const items: UiItem[] = [
       // ausgeschrieben wie der Titel der Seite (das Original kürzt „Grundeins.“)
       { id: "game", label: this.t.game.title },
@@ -544,21 +538,13 @@ class HtmlMenu {
     return "players";
   }
 
-  private highscoreTable(caption?: string): UiBlock {
-    return {
-      kind: "table",
-      ...(caption ? { caption } : {}),
-      rows: this.o.highscores.map((e, i) => [`${i + 1}.`, e.name, String(e.score)]),
-    };
-  }
-
   /** Seite 50: die zehn Plätze der Highscoreliste. */
   private async scorePage(): Promise<Page> {
     const title = this.o.lang === "ru" ? "Highscore" : (this.t.main(false).entries[3] ?? "");
     await this.ask("score", {
       kind: "menu",
       title,
-      blocks: [this.highscoreTable()],
+      blocks: [highscoreTable(this.o.highscores)],
       items: [{ id: "back", label: this.t.scoreBack }],
       back: "back",
       sounds: this.sounds,

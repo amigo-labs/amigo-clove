@@ -100,7 +100,13 @@ export type {
   PointerState,
   ScaleMode,
 } from "./shell/GameModule";
-export { PAUSE_TEXTS, SETTINGS_PAGES } from "./shell/ui";
+export {
+  PAUSE_TEXTS,
+  SETTINGS_PAGES,
+  highscoreTable,
+  isSettingsPage,
+  settingsItems,
+} from "./shell/ui";
 export type {
   GameUi,
   SettingsPage,
