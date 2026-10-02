@@ -97,6 +97,9 @@ type Page =
 /** Der Bildschirm wurde von außen geschlossen (Spiel beendet). */
 const ABORTED = Symbol("aborted");
 
+/** Die ersten drei Einträge des Hauptmenüs; danach Bonus bzw. Highscore und zuletzt Ende. */
+const MAIN_IDS = ["new", "load", "options"] as const;
+
 /** Ein Durchlauf des Hauptmenüs bis Spielstart, Laden, Osterei oder Exit. */
 export function htmlMenu(o: HtmlMenuOptions): Promise<MenuResult> {
   return new HtmlMenu(o).run();
@@ -240,18 +243,8 @@ class HtmlMenu {
   private async main(): Promise<Page | MenuResult> {
     const m = this.t.main(this.bonusOn);
     const n = m.entries.length;
-    const ids = m.entries.map((_, i) =>
-      i === 0
-        ? "new"
-        : i === 1
-          ? "load"
-          : i === 2
-            ? "options"
-            : i === n - 1
-              ? "exit"
-              : this.o.lang === "ru"
-                ? "bonus"
-                : "score",
+    const ids = m.entries.map(
+      (_, i) => MAIN_IDS[i] ?? (i === n - 1 ? "exit" : this.o.lang === "ru" ? "bonus" : "score"),
     );
     const items = m.entries.map((label, i) => ({ id: ids[i]!, label }));
     const r = await this.ask("main", {
