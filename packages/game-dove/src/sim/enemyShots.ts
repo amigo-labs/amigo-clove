@@ -8,7 +8,7 @@ import {
   SCREEN_W,
   SHIP_SHOT_BOX,
 } from "./constants";
-import { boxHit, divRoundHalfEven } from "./math";
+import { boxHit, divRoundHalfEven, idiv } from "./math";
 import type { World } from "./world";
 
 /**
@@ -129,7 +129,7 @@ export function updateEnemyShots(w: World): void {
       w.eshots.free(i);
       // Art 4 zerfällt an der Wand in zwei Kugeln (`0x481A05`).
       if (kind === ShotKind.Splitter) {
-        const h = Math.trunc(-vx / 2);
+        const h = idiv(-vx, 2);
         addBossShot(w, ShotKind.Fireball, x - vx, y + 1, h, h, RECT_BULLET);
         addBossShot(w, ShotKind.Fireball, x - vx, y + 1, h, -h, RECT_BULLET);
       }

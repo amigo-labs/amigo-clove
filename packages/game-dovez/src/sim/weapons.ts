@@ -2,7 +2,7 @@ import { fireDrones, type Drones } from "./drones";
 import type { DrawList, Effects } from "./effects";
 import { MUZZLE, type Player, type PlayerInput } from "./player";
 import { SHOT_SPEED, type ShotLayer } from "./playerShots";
-import { COS_DEG, SIN_DEG, cint, degIndex, f32, vbInt, type VbRnd } from "./vb";
+import { COS_DEG, SIN_DEG, cint, degIndex, f32, idiv, vbInt, type VbRnd } from "./vb";
 
 /**
  * `SpielSchieß` (`0x4E2C20`): das Abfeuern aller Spielerwaffen, je Spieler
@@ -451,7 +451,7 @@ function lightningGun(
   let segs: number;
   if (a === 1) {
     const edge = w.whereRight(cint(jitter(rnd.next())), y, 800, y);
-    segs = cint(Math.trunc(cint(edge - p.x + 32) / 75) + 2 * rnd.next());
+    segs = cint(idiv(edge - p.x + 32, 75) + 2 * rnd.next());
     st.seed = cint(rnd.next() * 10000);
     if (edge < 800) {
       bolt(x0, edge + 1);
@@ -462,7 +462,7 @@ function lightningGun(
   }
   const x = cint(jitter(rnd.next()));
   const edge = w.whereLeft(0, y, x, y);
-  segs = cint(Math.trunc(cint(p.x + 32 - edge) / 75) + 2 * rnd.next());
+  segs = cint(idiv(p.x + 32 - edge, 75) + 2 * rnd.next());
   st.seed = cint(rnd.next() * 10000);
   const from = edge > -1 ? edge - 1 : 0;
   // rückwärts endet jeder der beiden Blitze mit eigenem Zittern

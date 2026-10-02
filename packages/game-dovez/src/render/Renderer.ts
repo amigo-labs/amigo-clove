@@ -16,7 +16,7 @@ import type { EnvSlot } from "../sim/envDraw";
 import { DeathState, type Enemy } from "../sim/enemies";
 import { LAYER_COUNT } from "../sim/layers";
 import type { Surface } from "../sim/surfaces";
-import { cint, idiv } from "../sim/vb";
+import { idiv } from "../sim/vb";
 import type { World } from "../sim/world";
 import { Compositor, type PlanItem } from "./Compositor";
 import { paintList } from "./paintList";
@@ -619,7 +619,7 @@ export class Renderer {
       if (b) {
         if (w.qToggles) this.hudPut(`${i}_beama${b.selected}`, L.beam[0], L.beam[1]);
         const bar = this.sprite(`${i}_beam${b.type}`)?.s;
-        const bw = bar ? Math.trunc(cint(bar.w * b.charge) / 165) : 0;
+        const bw = bar ? idiv(bar.w * b.charge, 165) : 0;
         if (bar && bw > 0) this.hudPut(`${i}_beam${b.type}`, L.beam[0], L.beam[1], 0, 0, bw, bar.h);
       }
       if (!two) {

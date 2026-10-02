@@ -1,5 +1,6 @@
+import { FX_ONE } from "@clove/core";
 import { Effect, effect, spawnExplosion } from "../actions";
-import { roundHalfEven } from "../math";
+import { idiv, roundHalfEven } from "../math";
 import { spawnEnemyAt } from "../spawn";
 import { cosDeg } from "../trig";
 import type { BossScript, World } from "../world";
@@ -17,8 +18,6 @@ import { damagePart, partContourHit, setPart, typeByName } from "./common";
 
 /** x der Hülle, wenn sie nicht da ist (`Me.3A8 = −1000`). */
 const ABSENT = -1000;
-
-const FX_ONE = 1 << 16;
 
 /** `FpI4(cos(a)·k + d)` mit der Gradtabelle `Me.684`, in Q16.16. */
 function cosLine(a: number, k: number, d: number): number {
@@ -49,7 +48,7 @@ function vacuum(w: World): void {
   if (t > 30 && t < 950) {
     if (t < 100) {
       // (c − 30) \ 10 — hier immer positiv.
-      w.px += Math.trunc((t - 30) / 10);
+      w.px += idiv(t - 30, 10);
       vacuumParticles(w);
     } else {
       w.px += 7;
