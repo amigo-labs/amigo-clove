@@ -3,13 +3,10 @@
  * Befund und Adressen: `docs/measurements/dovez-runtime.md`, Abschnitt „Level 4-3“.
  */
 import { describe, expect, test } from "bun:test";
-import { join } from "node:path";
-import type { Manifest } from "@clove/core";
-import type { PlayStep } from "@clove/formats";
 import { Campaign, type CampaignAction } from "../src/game/campaign";
 import { DeathState, ENEMY_CAPACITY } from "../src/sim/enemies";
 import { World } from "../src/sim/world";
-import { loadTestLevel } from "./assets";
+import { loadPlaySteps, loadTestLevel } from "./assets";
 import { reachablePoint, runHunt } from "./hunter";
 
 const SLUG = "level4-3_cityboss";
@@ -165,11 +162,7 @@ describe("Level 4-3: Cityboss", () => {
   });
 
   test("Kampagne: nach 4-3 kommt 5-1", async () => {
-    const root = join(import.meta.dir, "../../../assets/dovez");
-    const manifest = (await Bun.file(join(root, "manifest.json")).json()) as Manifest;
-    const play = manifest.entries.find((e) => e.id === "data/play")!.file;
-    const steps = (await Bun.file(join(root, play)).json()) as PlayStep[];
-    const c = new Campaign(steps);
+    const c = new Campaign(await loadPlaySteps());
     const levels: string[] = [];
     for (let a: CampaignAction = c.next("de"); a.kind !== "end"; a = c.next("de")) {
       if (a.kind === "level") levels.push(a.slug);

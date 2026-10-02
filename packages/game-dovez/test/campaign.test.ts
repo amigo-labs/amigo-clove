@@ -1,7 +1,4 @@
 import { describe, expect, test } from "bun:test";
-import { join } from "node:path";
-import type { Manifest } from "@clove/core";
-import type { PlayStep } from "@clove/formats";
 import { Campaign, type CampaignAction, videoId } from "../src/game/campaign";
 import { FADE_TICKS, FadeLogic } from "../src/game/fadeOut";
 import { parseSave, saveKey, saveLabel, serializeSave, type SaveFile } from "../src/game/saveGame";
@@ -9,13 +6,10 @@ import { emptyHighscores } from "../src/game/highscore";
 import { runSaveScreen, saveMenu, savePlaces } from "../src/game/saveScreen";
 import { VbRnd } from "../src/sim/vb";
 import { World } from "../src/sim/world";
-import { loadTestLevel } from "./assets";
+import { hasAsset, loadPlaySteps, loadTestLevel } from "./assets";
 import { ScriptUi, memoryStore } from "./fakeUi";
 
-const ROOT = join(import.meta.dir, "../../../assets/dovez");
-const manifest = (await Bun.file(join(ROOT, "manifest.json")).json()) as Manifest;
-const playFile = manifest.entries.find((e) => e.id === "data/play")!.file;
-const steps = (await Bun.file(join(ROOT, playFile)).json()) as PlayStep[];
+const steps = await loadPlaySteps();
 
 /** Alle Aktionen bis zum Skriptende, `credits` mit Epilog wie der Ablauf in `Game.ts`. */
 function drain(c: Campaign): CampaignAction[] {
@@ -44,10 +38,9 @@ describe("Kampagne (LevelSkript)", () => {
     expect(all.at(-2)).toEqual({ kind: "credits", outro: "video/outrod", epilog: false });
     expect(c.passesDone).toBe(1);
     // alle Videos und Level gibt es als Asset
-    const ids = new Set(manifest.entries.map((e) => e.id));
     for (const a of all) {
-      if (a.kind === "video") expect(ids.has(a.id)).toBe(true);
-      if (a.kind === "level") expect(ids.has(`leveldat/${a.slug}`)).toBe(true);
+      if (a.kind === "video") expect(hasAsset(a.id)).toBe(true);
+      if (a.kind === "level") expect(hasAsset(`leveldat/${a.slug}`)).toBe(true);
     }
   });
 
