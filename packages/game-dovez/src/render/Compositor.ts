@@ -63,7 +63,9 @@ export class Compositor {
   ): void {
     let run: Container | undefined;
     let mesh: StripMesh | undefined;
-    let key = "";
+    // Mesh-Wechsel bei anderer Textur oder anderem Mischmodus (ohne Schlüssel-String je Streifen)
+    let keyId = "";
+    let keyAdditive = false;
     for (const c of list.cmds) {
       if (c.op !== "strip") {
         mesh?.finish();
@@ -75,20 +77,20 @@ export class Compositor {
       }
       const tex = resolve(c.key);
       if (!tex) continue;
-      const k = `${tex.id}|${c.additive ? 1 : 0}`;
       if (!run) {
         run = this.runs[this.runsUsed] ?? new Container();
         this.runs[this.runsUsed++] = run;
         run.alpha = alpha;
         out.push(run);
       }
-      if (!mesh || k !== key) {
+      if (!mesh || tex.id !== keyId || c.additive !== keyAdditive) {
         mesh?.finish();
         mesh = this.meshes[this.meshesUsed] ?? new StripMesh();
         this.meshes[this.meshesUsed++] = mesh;
         mesh.reset(tex, c.additive);
         run.addChild(mesh.mesh);
-        key = k;
+        keyId = tex.id;
+        keyAdditive = c.additive;
       }
       mesh.add(c);
     }

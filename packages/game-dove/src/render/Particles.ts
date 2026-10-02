@@ -25,6 +25,8 @@ export class Particles {
   private readonly life = new Int16Array(MAX);
   /** Im letzten Tick lebendig: auch ein gerade erloschener Funke ist noch ein Bild lang sichtbar. */
   private readonly shown = new Uint8Array(MAX);
+  /** Zuletzt gesetzte Farbe je Sprite: Pixis `tint` rechnet bei jeder Zuweisung um. */
+  private readonly tints = new Int32Array(MAX);
   private seed = 12345;
 
   constructor(private readonly layer: Container) {}
@@ -35,19 +37,20 @@ export class Particles {
   }
 
   consume(effects: readonly number[]): void {
+    // erster freier Platz wie `life.indexOf(0)`: davor wird beim Verteilen nichts frei
+    let free = 0;
     for (let e = 0; e + 4 < effects.length; e += 5) {
-      const [kind, ex, ey, ew, eh] = effects.slice(e, e + 5) as [
-        number,
-        number,
-        number,
-        number,
-        number,
-      ];
+      const kind = effects[e]!;
+      const ex = effects[e + 1]!;
+      const ey = effects[e + 2]!;
+      const ew = effects[e + 3]!;
+      const eh = effects[e + 4]!;
       const n = COUNT[kind] ?? 0;
       const spread = kind === Effect.PlayerDeath ? 20 : 0;
       for (let k = 0; k < n; k++) {
-        const i = this.life.indexOf(0);
+        const i = this.life.indexOf(0, free);
         if (i < 0) return;
+        free = i + 1;
         this.x[i] = ex - spread + this.rand() * (ew + 2 * spread);
         this.y[i] = ey - spread + this.rand() * (eh + 2 * spread);
         const a = this.rand() * Math.PI * 2;
@@ -83,11 +86,16 @@ export class Particles {
         s = new Sprite(Texture.WHITE);
         s.setSize(1, 1);
         this.sprites[i] = s;
+        this.tints[i] = 0xffffff;
         this.layer.addChild(s);
       }
       s.visible = true;
       s.position.set(Math.round(this.x[i]!), Math.round(this.y[i]!));
-      s.tint = COLORS[Math.min(COLORS.length - 1, Math.floor((40 - this.life[i]!) / 8))]!;
+      const tint = COLORS[Math.min(COLORS.length - 1, Math.floor((40 - this.life[i]!) / 8))]!;
+      if (this.tints[i] !== tint) {
+        s.tint = tint;
+        this.tints[i] = tint;
+      }
     }
   }
 
