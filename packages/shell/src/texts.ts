@@ -1,217 +1,120 @@
 import type { Dictionary, Locale, Translate } from "@clove/core";
 
 /** Texte der Shell. Die Spiele bringen ihre eigenen (aus den Originalen). */
-type Key =
-  | "settings"
-  | "back"
-  | "comingSoon"
-  | "debugAssets"
-  | "debugLevel"
-  | "doveSub"
-  | "dovezSub"
-  | "offlineReady"
-  | "offlinePartial"
-  | "offlineNone"
-  | "loadFailed"
-  | "notFound"
-  | "language"
-  | "languageAuto"
-  | "volume"
-  | "volumeMaster"
-  | "volumeMusic"
-  | "volumeSfx"
-  | "gamepad"
-  | "gamepadUse"
-  | "gamepadNone"
-  | "gamepadConnected"
-  | "gamepadHelp"
-  | "motion"
-  | "motionAuto"
-  | "motionReduce"
-  | "motionFull"
-  | "motionHelp"
-  | "display"
-  | "scale"
-  | "scaleInteger"
-  | "scaleFit"
-  | "scaleSmooth"
-  | "scaleHelp"
-  | "scanlines"
-  | "fullscreen"
-  | "fullscreenExit"
-  | "controls"
-  | "colAction"
-  | "colKeyboard"
-  | "colMouse"
-  | "keySpace"
-  | "mouseLeft"
-  | "mouseRight"
-  | "mouseMiddle"
-  | "mouseWheel"
-  | "mouseWheelUp"
-  | "mouseWheelDown"
-  | "pointerUse"
-  | "pointerHelp"
-  | "touchBack"
-  | "hud"
-  | "hudModern"
-  | "hudOriginal"
-  | "hudHelp"
-  | "hudScore"
-  | "hudPlayer"
-  | "hudLives"
-  | "hudEnergy"
-  | "hudBeam"
-  | "hudShield"
-  | "hudSpeed"
-  | "hudPower"
-  | "hudBoss"
-  | "hudCombo"
-  | "hudBossAppears"
-  | "hudBossDefeated"
-  | "hudLifeLost"
-  | "keysTitle"
-  | "keysHelp"
-  | "keysPreset"
-  | "keysApply"
-  | "keysMissing"
-  | "keysDuplicate"
-  | "keysGroupMove"
-  | "keysGroupWeapon"
-  | "keysGroupSystem"
-  | "keysPlayer"
-  | "volumeVoice"
-  | "on"
-  | "off"
-  | "loadingBar"
-  | "gameCanvas"
-  | "saves"
-  | "savesHelp"
-  | "export"
-  | "import"
-  | "imported"
-  | "importFailed"
-  | "offline"
-  | "offlineHelp"
-  | "install"
-  | "remove"
-  | "persisted"
-  | "notPersisted"
-  | "storageUsage"
-  | "noServiceWorker";
+const DE = {
+  settings: "Einstellungen",
+  back: "Zurück",
+  comingSoon: "folgt",
+  debugAssets: "Assets ansehen (Debug)",
+  debugLevel: "Level-Skripte ansehen (Debug)",
+  doveSub: "1999–2003 · Horizontal-Shooter, 12 Level",
+  dovezSub: "2004–2019 · The Second Wave, 27 Level",
+  offlineReady: "offline spielbar",
+  offlinePartial: "{percent} % offline gespeichert",
+  offlineNone: "nicht offline gespeichert",
+  loadFailed: "{title} konnte nicht gestartet werden.",
+  notFound: "Unbekannte Seite „{path}“.",
+  language: "Sprache",
+  languageAuto: "Automatisch (Browser)",
+  volume: "Lautstärke",
+  volumeMaster: "Gesamt",
+  volumeMusic: "Musik",
+  volumeSfx: "Effekte",
+  gamepad: "Gamepad",
+  gamepadUse: "Gamepad verwenden",
+  gamepadNone: "Kein Gamepad erkannt — eine Taste am Pad drücken.",
+  gamepadConnected: "Erkannt: {name}",
+  gamepadHelp:
+    "Steuerkreuz/Stick bewegen, A bestätigt, B zurück, Start pausiert. Die Belegung je Spiel zeigen der Launcher und die Pause unter „Steuerung“.",
+  motion: "Bewegung",
+  motionAuto: "wie das System",
+  motionReduce: "reduzieren",
+  motionFull: "volle Effekte",
+  motionHelp:
+    "Reduziert Bildschirmwackeln und schwächt Vollbildblitze ab; das Spielgeschehen bleibt gleich.",
+  display: "Darstellung",
+  scale: "Skalierung",
+  scaleInteger: "ganzzahlig (scharf, wie das Original)",
+  scaleFit: "Fenster füllen (scharf)",
+  scaleSmooth: "Fenster füllen (weich)",
+  scaleHelp:
+    "„Fenster füllen“ (Vorgabe) nutzt den ganzen Platz, „ganzzahlig“ lässt jedes Originalpixel gleich groß. Vollbild: Alt+Enter oder ⛶ oben rechts.",
+  scanlines: "Rasterlinien (Röhrenmonitor)",
+  fullscreen: "Vollbild",
+  fullscreenExit: "Vollbild beenden",
+  controls: "Steuerung",
+  colAction: "Aktion",
+  colKeyboard: "Tastatur",
+  colMouse: "Maus",
+  keySpace: "Leertaste",
+  mouseLeft: "linke Taste",
+  mouseRight: "rechte Taste",
+  mouseMiddle: "mittlere Taste",
+  mouseWheel: "Mausrad",
+  mouseWheelUp: "Rad hoch",
+  mouseWheelDown: "Rad runter",
+  pointerUse: "Maus und Touch steuern das Schiff",
+  pointerHelp:
+    "Maus: das Schiff folgt dem Zeiger, links Feuer, rechts Beam, Rad Tempo (DOVE) bzw. Waffenwechsel (DoveZ). Touch: Finger ziehen lenkt und feuert, zweiter Finger lädt den Beam. Pfeiltasten übernehmen jederzeit.",
+  touchBack: "Zurück / Pause",
+  hud: "Anzeige (HUD)",
+  hudModern: "modern (neben dem Spielfeld, mit Boss-Balken)",
+  hudOriginal: "Original (im Spielbild)",
+  hudHelp:
+    "Das moderne HUD zeigt Punkte, Leben, Energie, Beam und Waffen gut lesbar neben dem Spielfeld und die Lebenspunkte der Bosse; das Spielfeld wird dafür größer.",
+  hudScore: "Punkte",
+  hudPlayer: "Spieler",
+  hudLives: "Leben",
+  hudEnergy: "Energie",
+  hudBeam: "Beam",
+  hudShield: "Schild",
+  hudSpeed: "Tempo",
+  hudPower: "Stärke",
+  hudBoss: "Boss",
+  hudCombo: "Kombo {hits} · +{bonus}",
+  hudBossAppears: "Ein Boss greift an.",
+  hudBossDefeated: "Boss besiegt.",
+  hudLifeLost: "Ein Leben verloren.",
+  keysTitle: "Tastenbelegung {title}",
+  keysHelp:
+    "Vorlage wählen oder je Aktion bis zu drei Tasten belegen: Enter (oder Klick) und dann die Taste drücken; Rücktaste entfernt die letzte, Esc bricht ab. Gilt mit „Übernehmen“.",
+  keysPreset: "Vorlage",
+  keysApply: "Übernehmen",
+  keysMissing: "Ohne Taste: {actions}",
+  keysDuplicate: "Doppelt belegt: {keys}",
+  keysGroupMove: "Bewegen",
+  keysGroupWeapon: "Waffen",
+  keysGroupSystem: "Sonstiges",
+  keysPlayer: "Spieler {n} · {group}",
+  volumeVoice: "Sprache",
+  on: "an",
+  off: "aus",
+  loadingBar: "Ladefortschritt",
+  gameCanvas: "{title}: Spielfläche. Bedienung mit Tastatur oder Gamepad, Esc pausiert.",
+  saves: "Spielstände",
+  savesHelp:
+    "Optionen, Freischaltungen und Highscores liegen im Browser und können dort jederzeit gelöscht werden. Als Datei sichern:",
+  export: "Exportieren",
+  import: "Importieren …",
+  imported: "Importiert: {games}.",
+  importFailed: "Import fehlgeschlagen: {error}",
+  offline: "Offline-Daten",
+  offlineHelp:
+    "Lädt alle Spieldaten einmal vollständig in den Browser-Cache; danach startet das Spiel ohne Netz.",
+  install: "Spieldaten installieren ({size} MB)",
+  remove: "Entfernen",
+  persisted: "Der Browser behält die Daten dauerhaft.",
+  notPersisted: "Der Browser darf die Daten bei Platzmangel löschen.",
+  storageUsage: "Belegt: {used} MB von {quota} MB",
+  noServiceWorker:
+    "Offline-Betrieb nicht verfügbar (Entwicklungsserver oder Browser ohne Service Worker).",
+};
 
-export type TextKey = Key;
-export type ShellText = Translate<Key>;
+export type TextKey = keyof typeof DE;
+export type ShellText = Translate<TextKey>;
 
-export const TEXTS: Readonly<Record<Locale, Dictionary<Key>>> = {
-  de: {
-    settings: "Einstellungen",
-    back: "Zurück",
-    comingSoon: "folgt",
-    debugAssets: "Assets ansehen (Debug)",
-    debugLevel: "Level-Skripte ansehen (Debug)",
-    doveSub: "1999–2003 · Horizontal-Shooter, 12 Level",
-    dovezSub: "2004–2019 · The Second Wave, 27 Level",
-    offlineReady: "offline spielbar",
-    offlinePartial: "{percent} % offline gespeichert",
-    offlineNone: "nicht offline gespeichert",
-    loadFailed: "{title} konnte nicht gestartet werden.",
-    notFound: "Unbekannte Seite „{path}“.",
-    language: "Sprache",
-    languageAuto: "Automatisch (Browser)",
-    volume: "Lautstärke",
-    volumeMaster: "Gesamt",
-    volumeMusic: "Musik",
-    volumeSfx: "Effekte",
-    gamepad: "Gamepad",
-    gamepadUse: "Gamepad verwenden",
-    gamepadNone: "Kein Gamepad erkannt — eine Taste am Pad drücken.",
-    gamepadConnected: "Erkannt: {name}",
-    gamepadHelp:
-      "Steuerkreuz/Stick bewegen, A bestätigt, B zurück, Start pausiert. Die Belegung je Spiel zeigen der Launcher und die Pause unter „Steuerung“.",
-    motion: "Bewegung",
-    motionAuto: "wie das System",
-    motionReduce: "reduzieren",
-    motionFull: "volle Effekte",
-    motionHelp:
-      "Reduziert Bildschirmwackeln und schwächt Vollbildblitze ab; das Spielgeschehen bleibt gleich.",
-    display: "Darstellung",
-    scale: "Skalierung",
-    scaleInteger: "ganzzahlig (scharf, wie das Original)",
-    scaleFit: "Fenster füllen (scharf)",
-    scaleSmooth: "Fenster füllen (weich)",
-    scaleHelp:
-      "„Fenster füllen“ (Vorgabe) nutzt den ganzen Platz, „ganzzahlig“ lässt jedes Originalpixel gleich groß. Vollbild: Alt+Enter oder ⛶ oben rechts.",
-    scanlines: "Rasterlinien (Röhrenmonitor)",
-    fullscreen: "Vollbild",
-    fullscreenExit: "Vollbild beenden",
-    controls: "Steuerung",
-    colAction: "Aktion",
-    colKeyboard: "Tastatur",
-    colMouse: "Maus",
-    keySpace: "Leertaste",
-    mouseLeft: "linke Taste",
-    mouseRight: "rechte Taste",
-    mouseMiddle: "mittlere Taste",
-    mouseWheel: "Mausrad",
-    mouseWheelUp: "Rad hoch",
-    mouseWheelDown: "Rad runter",
-    pointerUse: "Maus und Touch steuern das Schiff",
-    pointerHelp:
-      "Maus: das Schiff folgt dem Zeiger, links Feuer, rechts Beam, Rad Tempo (DOVE) bzw. Waffenwechsel (DoveZ). Touch: Finger ziehen lenkt und feuert, zweiter Finger lädt den Beam. Pfeiltasten übernehmen jederzeit.",
-    touchBack: "Zurück / Pause",
-    hud: "Anzeige (HUD)",
-    hudModern: "modern (neben dem Spielfeld, mit Boss-Balken)",
-    hudOriginal: "Original (im Spielbild)",
-    hudHelp:
-      "Das moderne HUD zeigt Punkte, Leben, Energie, Beam und Waffen gut lesbar neben dem Spielfeld und die Lebenspunkte der Bosse; das Spielfeld wird dafür größer.",
-    hudScore: "Punkte",
-    hudPlayer: "Spieler",
-    hudLives: "Leben",
-    hudEnergy: "Energie",
-    hudBeam: "Beam",
-    hudShield: "Schild",
-    hudSpeed: "Tempo",
-    hudPower: "Stärke",
-    hudBoss: "Boss",
-    hudCombo: "Kombo {hits} · +{bonus}",
-    hudBossAppears: "Ein Boss greift an.",
-    hudBossDefeated: "Boss besiegt.",
-    hudLifeLost: "Ein Leben verloren.",
-    keysTitle: "Tastenbelegung {title}",
-    keysHelp:
-      "Vorlage wählen oder je Aktion bis zu drei Tasten belegen: Enter (oder Klick) und dann die Taste drücken; Rücktaste entfernt die letzte, Esc bricht ab. Gilt mit „Übernehmen“.",
-    keysPreset: "Vorlage",
-    keysApply: "Übernehmen",
-    keysMissing: "Ohne Taste: {actions}",
-    keysDuplicate: "Doppelt belegt: {keys}",
-    keysGroupMove: "Bewegen",
-    keysGroupWeapon: "Waffen",
-    keysGroupSystem: "Sonstiges",
-    keysPlayer: "Spieler {n} · {group}",
-    volumeVoice: "Sprache",
-    on: "an",
-    off: "aus",
-    loadingBar: "Ladefortschritt",
-    gameCanvas: "{title}: Spielfläche. Bedienung mit Tastatur oder Gamepad, Esc pausiert.",
-    saves: "Spielstände",
-    savesHelp:
-      "Optionen, Freischaltungen und Highscores liegen im Browser und können dort jederzeit gelöscht werden. Als Datei sichern:",
-    export: "Exportieren",
-    import: "Importieren …",
-    imported: "Importiert: {games}.",
-    importFailed: "Import fehlgeschlagen: {error}",
-    offline: "Offline-Daten",
-    offlineHelp:
-      "Lädt alle Spieldaten einmal vollständig in den Browser-Cache; danach startet das Spiel ohne Netz.",
-    install: "Spieldaten installieren ({size} MB)",
-    remove: "Entfernen",
-    persisted: "Der Browser behält die Daten dauerhaft.",
-    notPersisted: "Der Browser darf die Daten bei Platzmangel löschen.",
-    storageUsage: "Belegt: {used} MB von {quota} MB",
-    noServiceWorker:
-      "Offline-Betrieb nicht verfügbar (Entwicklungsserver oder Browser ohne Service Worker).",
-  },
+export const TEXTS: Readonly<Record<Locale, Dictionary<TextKey>>> = {
+  de: DE,
   en: {
     settings: "Settings",
     back: "Back",
