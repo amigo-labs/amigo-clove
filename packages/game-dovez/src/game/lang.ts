@@ -1,3 +1,5 @@
+import { LOCALES, type Locale } from "@clove/core";
+
 /**
  * Sprache des Spiels. Das Original kennt drei: `Me.588070` (`0x588070`) ist ein
  * String — „E“ beim Start (`0x4A60E0`), dann „D“, „E“ oder „R“ aus `config.cfg`
@@ -7,8 +9,8 @@
  * Der Port wählt sie aus der Locale des Hosts (`de`/`ru`, sonst Englisch) oder
  * mit der URL-Option `lang=de|en|ru`.
  */
-export const LANGS = ["de", "en", "ru"] as const;
-export type Lang = (typeof LANGS)[number];
+export const LANGS = LOCALES;
+export type Lang = Locale;
 
 /**
  * Text je Sprache. Wo das Original eine Sprache nicht eigens behandelt (die
@@ -84,7 +86,7 @@ export function parseLang(value: string | undefined): Lang | undefined {
 /** Sprache einer Host-Locale (`de-AT` → Deutsch, `ru-RU` → Russisch, sonst Englisch). */
 export function langOfLocale(locale: string): Lang {
   const base = locale.toLowerCase().split(/[-_]/)[0];
-  return base === "de" ? "de" : base === "ru" ? "ru" : "en";
+  return LANGS.find((l) => l === base) ?? "en";
 }
 
 /** URL-Option vor Host-Locale. */
