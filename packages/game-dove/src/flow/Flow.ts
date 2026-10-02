@@ -1,4 +1,4 @@
-import { FixedStepLoop } from "@clove/core";
+import { FixedStepLoop, isSettingsPage } from "@clove/core";
 import { setView } from "@clove/pixi-kit";
 import type { DoveIntro } from "@clove/formats";
 import type { Container } from "pixi.js";
@@ -256,7 +256,7 @@ export class Flow {
       if (this.disposed) return;
       selected = r.id;
       if (r.id === "rules") await this.options(persist);
-      else if (r.id === "keys" || r.id === "audio" || r.id === "display") await ui.settings?.(r.id);
+      else if (isSettingsPage(r.id)) await ui.settings?.(r.id);
       else return;
     }
   }

@@ -1,4 +1,4 @@
-import type { GameUi, KeyValueStore, UiMenu } from "@clove/core";
+import { highscoreTable, type GameUi, type KeyValueStore, type UiMenu } from "@clove/core";
 import type { HighscoreEntry } from "./highscore";
 import type { Lang } from "./lang";
 import { SAVE_SLOTS, type SaveFile, saveKey, serializeSave } from "./saveGame";
@@ -108,13 +108,7 @@ export function saveMenu(d: SaveTexts): UiMenu {
       },
       { kind: "lines", lines: [str.ask.trim()], tone: "accent" },
     ],
-    aside: [
-      {
-        kind: "table",
-        rows: d.highscores.map((e, i) => [`${i + 1}.`, e.name, String(e.score)]),
-        ...(own >= 0 ? { highlight: own } : {}),
-      },
-    ],
+    aside: [highscoreTable(d.highscores, { highlight: own })],
     items: [
       { id: "none", label: str.dontSave },
       ...Array.from({ length: SAVE_SLOTS }, (_, i) => ({
