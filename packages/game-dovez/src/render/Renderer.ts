@@ -9,7 +9,7 @@ import {
   Texture,
   type Renderer as PixiRenderer,
 } from "pixi.js";
-import type { DrawList, DrawSlot, Quad } from "../sim/effects";
+import { DRAW_SLOTS, type DrawList, type Quad } from "../sim/effects";
 import { RADIO_LIFT, TICKER_Y } from "../game/hud";
 import { type Lang, hintPrefix } from "../game/lang";
 import type { EnvSlot } from "../sim/envDraw";
@@ -20,7 +20,7 @@ import { idiv } from "../sim/vb";
 import type { World } from "../sim/world";
 import { Compositor, type PlanItem } from "./Compositor";
 import { paintList } from "./paintList";
-import { SpriteBatch } from "./SpriteBatch";
+import { PLAIN, SpriteBatch, scratchOptions } from "./SpriteBatch";
 import type { StripTexture } from "./StripMesh";
 
 /**
@@ -130,6 +130,26 @@ const ORDER = [
   "env:overlay",
 ] as const;
 
+/** Effekt-Zeichenlisten mit ihrer Ebene (das Funkbild zeichnet das HUD). */
+const FX_BATCHES = DRAW_SLOTS.filter((s) => s !== "radio").map((s) => [s, `fx:${s}`] as const);
+
+const fits = (v: number) => Number.isInteger(v) && v >= 0 && v < 4096;
+
+/**
+ * Ausschnitt (x, y, w, h; -1 = bis zum Rand) als eine Zahl, damit die Suche je
+ * Sprite keinen Schlüssel-String baut; `NaN` für Werte außerhalb von 12 Bit.
+ */
+function packRect(x: number, y: number, w: number, h: number): number {
+  if (!fits(x) || !fits(y) || !fits(w + 1) || !fits(h + 1)) return Number.NaN;
+  return ((x * 4096 + y) * 4096 + w + 1) * 4096 + h + 1;
+}
+
+/** Optionen der Gegnerschüsse, je Schuss neu gesetzt. */
+const SHOT = scratchOptions();
+
+/** Aufblitzen getroffener Gegner ohne Panzer: rötlich. */
+const HIT_FLASH = { red: 1, green: 0.5, blue: 0.5 } as const;
+
 /** Deckkraft von Vollbildblitzen bei bewegungsarmer Darstellung. */
 const CALM_FLASH = 0.3;
 
@@ -150,8 +170,13 @@ export interface RendererOptions {
 export class Renderer {
   readonly root = new Container();
   private readonly batches = new Map<string, SpriteBatch>();
+  private readonly batchList: SpriteBatch[] = [];
   private readonly layers = new Map<string, Container>();
-  private readonly frames = new Map<string, Texture>();
+  /** Texturen je Sprite und Ausschnitt (`packRect`), seltene Ausschnitte unter einem String. */
+  private readonly frames = new Map<string, Map<number, Texture>>();
+  private readonly oddFrames = new Map<string, Texture>();
+  /** Streifen-Texturen je Schlüssel (sie ändern sich nicht, solange der Renderer lebt). */
+  private readonly strips = new Map<string, StripTexture>();
   private readonly compositor: Compositor;
   /** Backbuffer auf dem Bildschirm; das Wackeln verschiebt ihn. */
   private readonly screen: Sprite;
@@ -186,7 +211,9 @@ export class Renderer {
       if (name.startsWith("env:") || name === "hint" || name === "nova:blits") continue;
       const c = new Container();
       this.layers.set(name, c);
-      this.batches.set(name, new SpriteBatch(c));
+      const b = new SpriteBatch(c);
+      this.batches.set(name, b);
+      this.batchList.push(b);
     }
     this.root.addChild(this.fade);
     this.root.addChild(this.hudLayer);
@@ -211,8 +238,9 @@ export class Renderer {
 
   /** Textur eines Atlas-Sprites, optional mit Ausschnitt (x, y, w, h im BMP). */
   private texture(key: string, rx = 0, ry = 0, rw = -1, rh = -1): Texture | undefined {
-    const id = `${key}|${rx},${ry},${rw},${rh}`;
-    let t = this.frames.get(id);
+    const packed = packRect(rx, ry, rw, rh);
+    const odd = Number.isNaN(packed) ? `${key}|${rx},${ry},${rw},${rh}` : undefined;
+    let t = odd === undefined ? this.frames.get(key)?.get(packed) : this.oddFrames.get(odd);
     if (t) return t;
     const found = this.sprite(key);
     if (!found) return undefined;
@@ -225,7 +253,12 @@ export class Renderer {
       source: this.textures.get(page).source,
       frame: new Rectangle(s.x + rx, s.y + ry, w, h),
     });
-    this.frames.set(id, t);
+    if (odd !== undefined) this.oddFrames.set(odd, t);
+    else {
+      let byRect = this.frames.get(key);
+      if (!byRect) this.frames.set(key, (byRect = new Map()));
+      byRect.set(packed, t);
+    }
     return t;
   }
 
@@ -248,16 +281,14 @@ export class Renderer {
     // ohne neuen Tick bleibt das Bild (der Backbuffer darf nicht erneut verschleiert werden)
     if (w.env.frame === this.lastFrame) return false;
     this.lastFrame = w.env.frame;
-    for (const b of this.batches.values()) b.begin();
+    for (const b of this.batchList) b.begin();
     this.hud.begin();
     for (let l = 0; l < LAYER_COUNT; l++) this.drawTiles(l);
     for (let l = 0; l < LAYER_COUNT; l++) this.drawAnims(l);
     this.drawSpecials();
     this.drawEnemies();
     this.drawEnemyShots();
-    for (const [slot, list] of Object.entries(w.fx.lists)) {
-      if (slot !== "radio") this.drawList(this.batch(`fx:${slot as DrawSlot}`), list);
-    }
+    for (const [slot, batch] of FX_BATCHES) this.drawList(this.batch(batch), w.fx.lists[slot]);
     this.drawHint();
     const calm = this.calm();
     this.screen.position.set(calm ? 0 : -w.fx.shakeX, calm ? 0 : -w.fx.shakeY);
@@ -276,7 +307,7 @@ export class Renderer {
     // mit dem HTML-HUD zeigen Laufband und Tastenhinweis die Shell (`dovezMessages`)
     this.ticker.visible = !modern;
     this.ticker.text = modern ? "" : w.radio.ticker;
-    for (const b of this.batches.values()) b.end();
+    for (const b of this.batchList) b.end();
     this.hud.end();
     this.compose();
     return true;
@@ -330,6 +361,14 @@ export class Renderer {
 
   /** Streifen-Textur zu einem Schlüssel: Render-Ziel oder Atlas-Sprite (`@noise` mit Wiederholung). */
   private stripTexture(key: string): StripTexture | undefined {
+    const known = this.strips.get(key);
+    if (known) return known;
+    const strip = this.newStripTexture(key);
+    if (strip) this.strips.set(key, strip);
+    return strip;
+  }
+
+  private newStripTexture(key: string): StripTexture | undefined {
     if (key === "@blur" || key === "@still" || key === "@lens")
       return this.compositor.targetTexture(
         key === "@blur" ? "blur" : key === "@lens" ? "lens" : "still",
@@ -470,7 +509,7 @@ export class Renderer {
         if (p.flash > 0 && !dying) b.put(tex, x, y, { ...o, additive: true });
       } else {
         const flash = p.flash > 0 && !dying && p.def.armored === 0;
-        b.put(tex, Math.floor(x), Math.floor(y), flash ? { red: 1, green: 0.5, blue: 0.5 } : {});
+        b.put(tex, Math.floor(x), Math.floor(y), flash ? HIT_FLASH : PLAIN);
       }
     }
   }
@@ -497,7 +536,10 @@ export class Renderer {
   private drawEnemyShots(): void {
     const w = this.world;
     const b = this.batch("eshots");
-    for (const s of w.fire.shots) {
+    // Indexschleife: das Feld ist groß und meist leer, ein Iterator kostete je Bild Allokationen
+    const shots = w.fire.shots;
+    for (let i = 0; i < shots.length; i++) {
+      const s = shots[i]!;
       if (!s.active || s.shockwave) continue;
       const type = w.level.shots[s.shotType];
       const a = s.actor;
@@ -511,15 +553,13 @@ export class Renderer {
         w.surfaces[type.group]?.[w.groupFrames[type.group]?.frame ?? 0],
       );
       if (!tex) continue;
-      const rotation =
+      SHOT.red = type.red;
+      SHOT.green = type.green;
+      SHOT.blue = type.blue;
+      SHOT.rotation =
         type.rotate !== 0 ? (Math.atan2(a.vy || s.vy, a.vx || s.vx) * 180) / Math.PI : 0;
-      b.put(tex, a.x, a.y, {
-        red: type.red,
-        green: type.green,
-        blue: type.blue,
-        rotation,
-        additive: type.additive !== 0,
-      });
+      SHOT.additive = type.additive !== 0;
+      b.put(tex, a.x, a.y, SHOT);
     }
   }
 
@@ -716,8 +756,11 @@ export class Renderer {
   }
 
   destroy(): void {
-    for (const t of this.frames.values()) t.destroy(false);
+    for (const byRect of this.frames.values()) for (const t of byRect.values()) t.destroy(false);
+    for (const t of this.oddFrames.values()) t.destroy(false);
     this.frames.clear();
+    this.oddFrames.clear();
+    this.strips.clear();
     for (const c of this.layers.values()) c.destroy({ children: true });
     this.hint.destroy({ children: true });
     this.compositor.destroy();

@@ -37,6 +37,7 @@ export class Renderer {
   private readonly field = new Container();
   private readonly frames: FrameCache;
   private readonly pools: Record<string, SpritePool> = {};
+  private readonly poolList: SpritePool[];
   private readonly particles: Particles;
   private readonly feinde: string;
   private readonly landschaft: string;
@@ -95,6 +96,7 @@ export class Renderer {
     const hud = new Container();
     this.root.addChild(hud);
     this.pools["hud"] = new SpritePool(hud);
+    this.poolList = Object.values(this.pools);
   }
 
   /** Alle Bild-IDs, die dieser Renderer braucht. */
@@ -152,7 +154,7 @@ export class Renderer {
   render(): void {
     const w = this.world;
     const lvl = w.level;
-    for (const p of Object.values(this.pools)) p.begin();
+    for (const p of this.poolList) p.begin();
 
     // Hintergrund: Bild mit Umbruch oder Sternenfeld
     if (!lvl.starfield) {
@@ -341,7 +343,7 @@ export class Renderer {
       }
     }
 
-    for (const p of Object.values(this.pools)) p.end();
+    for (const p of this.poolList) p.end();
   }
 
   /** Konsole mit Tempo, Pod, Options, Bombe, Waffe, Beam-Ladung, Punkten und Schiffen. */
