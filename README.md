@@ -64,10 +64,20 @@ bun run smoke          # Browser-Smoke-Test: Kaltstart, Shell, Offline-Start
 bun run build          # statische Site nach packages/shell/dist/
 bun run budget         # Größenbudget der gebauten Site (nach build)
 bun run perf           # Simulationszeit je Tick, alle DoveZ-Level
+bun run perf:render    # Zeichnen im Browser je Szene: Bild-Callbacks, Draw-Calls, Uploads, Allokationen
+bun run frames         # Referenzbilder fester Szenen gegen packages/shell/scripts/frames.json
 bun run levels:report  # docs/measurements/dovez-levels.md neu erzeugen
 
 bun run --cwd packages/shell dev   # Launcher unter http://localhost:5173
 ```
+
+`perf:render` und `frames` laufen in Chromium mit SwiftShader (WebGL auf der CPU):
+Zeiten dort nur relativ vergleichen; die Zählwerte je Bild (Draw-Calls,
+Render-Ziel-Wechsel, Uploads, Allokationen) gelten geräteunabhängig. `frames`
+hält jedes Anzeigebild auf genau einen Tick (Playwrights Uhr) und prüft, dass
+Optimierungen das Bild nicht ändern; `--write` nur bei gewollter Bildänderung.
+Die Hashes hängen an der Chromium-Version von playwright-core, deshalb läuft
+`frames` lokal und nicht in der CI.
 
 Der Launcher (`#/`) listet die Spiele (daneben die Tastenübersicht der gewählten
 Karte), `#/settings` enthält Sprache, Ton (Gesamt, Musik, Effekte, Sprache),

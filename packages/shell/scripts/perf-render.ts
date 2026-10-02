@@ -286,7 +286,8 @@ function print(results: readonly Result[], base: readonly Result[] | undefined):
     if (b)
       console.log(
         "  vorher".padEnd(16),
-        ...COLUMNS.map(([k, , d]) => (b[k] as number).toFixed(d).padStart(9)),
+        // ältere Messungen kennen nicht jede Spalte
+        ...COLUMNS.map(([k, , d]) => ((b[k] as number | undefined)?.toFixed(d) ?? "–").padStart(9)),
       );
   }
 }
@@ -325,11 +326,11 @@ try {
     await page.close();
   }
   await browser.close();
+  const out = arg("out");
+  if (out) await Bun.write(out, JSON.stringify(results, null, 2));
   const baseFile = arg("base");
   const base = baseFile ? ((await Bun.file(baseFile).json()) as Result[]) : undefined;
   print(results, base);
-  const out = arg("out");
-  if (out) await Bun.write(out, JSON.stringify(results, null, 2));
 } finally {
   server.kill();
 }
