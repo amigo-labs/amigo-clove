@@ -19,6 +19,8 @@
     "build": "bun run --cwd packages/shell build",
     "smoke": "bun run --cwd packages/shell smoke",
     "perf": "bun scripts/perf.ts",
+    "perf:render": "bun run --cwd packages/shell perf:render",
+    "frames": "bun run --cwd packages/shell frames",
     "budget": "bun scripts/budget.ts",
     "levels:report": "bun scripts/dovez-levels.ts"
   },

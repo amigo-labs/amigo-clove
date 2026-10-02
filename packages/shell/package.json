@@ -8,6 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "smoke": "vite build && bun scripts/smoke.ts",
+    "perf:render": "vite build && bun scripts/perf-render.ts",
+    "frames": "vite build && bun scripts/frames.ts",
     "browsers": "playwright-core install --with-deps chromium"
   },
   "dependencies": {
