@@ -45,10 +45,6 @@ export class SfxPool {
     this.buffers.set(id, await this.context.decodeAudioData(copy));
   }
 
-  has(id: string): boolean {
-    return this.buffers.has(id);
-  }
-
   /** Länge des Sounds in Sekunden (0, wenn nicht geladen). */
   duration(id: string): number {
     return this.buffers.get(id)?.duration ?? 0;
@@ -130,9 +126,5 @@ export class SfxPool {
   stopAll(): void {
     for (const v of this.voices) v.source.stop();
     this.voices = [];
-  }
-
-  get activeVoices(): number {
-    return this.voices.length;
   }
 }
