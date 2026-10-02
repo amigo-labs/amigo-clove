@@ -3,9 +3,10 @@
 Vorlage für eine Agenten-Sitzung (z. B. Claude Code), die die Darstellung beider
 Spiele auf HD-Niveau bringt und die Performance bis ans Limit treibt, **ohne die
 Simulation und ohne den Original-Look in der Vorgabe zu ändern**. Den Block unten
-als Prompt verwenden; bei Bedarf auf Teil A (HD) oder Teil B (Performance) bzw.
-auf ein Spiel eingrenzen. Teil B zuerst ist die sichere Reihenfolge: er schafft
-die Messwerkzeuge und das Budget, das HD danach verbraucht.
+als Prompt verwenden; bei Bedarf auf Teil A (HD), Teil B (Performance) oder Teil C
+(mehr Arbeit auf die GPU) bzw. auf ein Spiel eingrenzen. Teil B zuerst ist die
+sichere Reihenfolge: er schafft die Messwerkzeuge und das Budget, das HD danach
+verbraucht.
 
 ---
 
@@ -30,6 +31,10 @@ neuen Optionen bleiben Simulation und Bild exakt wie heute.
   64×64-Ziele `blur`/`lens`). Weitere Ziele: game/screenTargets.ts, Mosaik, loveView.ts.
 - Assets: BMP → WebP lossless (packages/assetkit/src/stages/image.ts, atlas.ts;
   Atlasseiten 2048², Padding 1, Alpha nur 0/255). Größe: DOVE ≈ 11 MB, DoveZ ≈ 142 MB.
+- Gezeichnet wird bereits auf der GPU (Pixi mit WebGL, `preference: "webgl"`, eigener
+  Shader in render/StripMesh.ts). Auf der CPU liegen Zeichenlisten, Sprite-Pools,
+  Vertex-Uploads je Frame, Text-Rasterung und die Mosaik-Momentaufnahmen
+  (game/mosaic.ts: synchrones Zurücklesen von der GPU, Canvas 2D, `toDataURL`).
 - Gemessen wird bisher nur die Simulation (`bun run perf`, im Mittel ≈ 0,2 ms je Tick
   bei 16 ms Takt, p99 bis ≈ 2,2 ms; game-dovez/test/perf.test.ts). Die Zeichenzeit ist
   nicht gemessen (Spec, M9 offen).
@@ -98,7 +103,7 @@ neuen Optionen bleiben Simulation und Bild exakt wie heute.
      großen PNGs.
 1. Plan: eine priorisierte Liste konkreter Schritte, je mit gemessenem oder
    begründetem Gewinn, Risiko und betroffenen Dateien. Schnelle Gewinne ohne Look-
-   Änderung kommen zuerst (Teil B, dann A1), danach A2 und A3.
+   Änderung kommen zuerst (Teil B, dann C und A1), danach A2 und A3.
 2. Umsetzung in kleinen, einzeln prüfbaren Schritten mit je einem Commit auf Deutsch
    im Stil der Historie. Jeder Performance-Commit nennt seine Zahl vorher und
    nachher. Eine Optimierung ohne messbaren Effekt, die den Code komplexer macht,
@@ -188,7 +193,7 @@ Verdachtsstellen (jede erst mit dem Messwerkzeug belegen, dann ändern):
    belegt mit Heap-Sampling.
 4. Render-Target-Wechsel im Compositor: `play()` leert die Ebenen vor jedem Erfassen
    und Kopieren, `copy()` geht über `tmp`. Wechsel zählen und zusammenlegen, wo die
-   Reihenfolge es erlaubt. Eine direkte GPU-Kopie verwenden, wenn Pixi 8 eine bietet.
+   Reihenfolge es erlaubt (die GPU-Kopie selbst steht in C4).
 5. Batching: Draw-Calls je Level messen. Batches brechen durch Wechsel der Atlasseite,
    Wechsel zwischen additiv und normal, Masken (Laufband), Graphics zwischen Sprites
    und unsichtbare Pool-Sprites, die trotzdem durchlaufen werden. Die Zeichen-
@@ -203,13 +208,78 @@ Verdachtsstellen (jede erst mit dem Messwerkzeug belegen, dann ändern):
    Layout-Lesung nach einem Schreibzugriff im selben Frame, `transform` statt
    left/top für bewegte Einblendungen, `contain` auf Overlays. Style und Layout je
    Frame im Trace prüfen.
-9. Pixi-Init: `powerPreference: "high-performance"`. WebGPU gegen WebGL messen und die
-   Vorgabe nur bei klarem Gewinn und identischen Bildern ändern. Eingabelatenz prüfen
-   (Eingabe so spät wie möglich vor dem Tick lesen, `desynchronized`).
+9. Eingabelatenz prüfen: Eingabe so spät wie möglich vor dem Tick lesen,
+   `desynchronized` testen.
 10. Simulation: Die Spitzen bei p99 und max untersuchen (GC? einzelne Ereignisse?).
     Änderungen in sim/ nur bit-gleich und mit `bun run perf` vorher/nachher.
 11. Laden: Zeit bis spielbar messen (kalt, warm, offline). Preload und Codesplitting
     innerhalb der Budgets verbessern.
+
+## Teil C — Mehr Arbeit auf die GPU
+
+Grundsatz: Die GPU macht nur aus fertigen Zeichenlisten Pixel. Alles, was die
+Simulation berechnet, bleibt auf der CPU: Positionen, Partikel aus sim/effects.ts
+(sie ziehen Zufallszahlen aus `VbRnd`) und die Umgebungslisten aus sim/envDraw.ts.
+GPU-Gleitkomma ist zwischen Geräten nicht bit-gleich, und Replays wären dann
+nicht mehr reproduzierbar. Jeder Schritt wird mit `perf:render` gemessen (CPU-Zeit je
+Frame, Draw-Calls, RT-Wechsel, Uploads), und „Original“ bleibt pixelgleich.
+
+C1 Hardwarebeschleunigung sicherstellen:
+- `powerPreference: "high-performance"` setzen, damit Laptops die dedizierte GPU
+  nehmen.
+- Software-Rendering beim Start erkennen: eine Probe mit
+  `failIfMajorPerformanceCaveat` bzw. den Renderer-String (WEBGL_debug_renderer_info:
+  SwiftShader, llvmpipe, „Microsoft Basic Render Driver“). Ist es Software, zeigen die
+  Einstellungen einen Hinweis, wie man die Hardwarebeschleunigung im Browser
+  einschaltet, und „Auto“ wählt SD. Smoke und CI laufen absichtlich mit SwiftShader;
+  dort darf der Hinweis nichts blockieren.
+
+C2 WebGPU: Pixi 8 bringt einen WebGPU-Renderer mit (`preference: "webgpu"`, Fallback
+WebGL). Eigene Shader (StripMesh `GlProgram`, neue Shader aus A1/A3) brauchen dann eine
+WGSL-Fassung (`GpuProgram`). Gemessen wird die CPU-Zeit je Frame (WebGPU hat weniger
+Treiber-Overhead) und die Bildgleichheit mit WebGL im Modus „Original“. Vorgabe wird
+WebGPU nur bei klarem Gewinn und identischen Bildern.
+
+C3 Transformationen und Batches auf der GPU halten:
+- Pixi-8-Render-Groups (`isRenderGroup`) für Ebenen, die als Ganzes verschoben
+  werden (Scrollen, Wackeln über `screen.position`). Die GPU rechnet dann die
+  Ebenentransformation, und unveränderte Ebenen bauen ihre Batches nicht neu.
+  Messen, wie oft Pixi die Struktur neu aufbaut, und die Pools so führen, dass sich
+  die Struktur selten ändert.
+- `ParticleContainer` für viele gleichartige Sprites (Funken, Sterne, Regen), wenn
+  eine Atlasseite und ein Blend-Modus genügen und die Zeichenreihenfolge gleich bleibt.
+
+C4 Kopien und Effekte als GPU-Pässe:
+- `Compositor.copy()`: `renderer.renderTarget.copyToTexture` (in Pixi 8.21 vorhanden)
+  statt Umweg über `tmp` mit Sprite-Render. Wo sich Quelle und Ziel überlappen
+  (BltFast in sich selbst), weiter über `tmp`, aber nur die betroffenen Rechtecke
+  statt des Vollbilds.
+- Wasser, Flucht und Verzerrungsgitter (StripMesh): Vertexdaten in wiederverwendeten
+  dynamischen Buffern, ein Upload je Frame statt je Mesh.
+- Endskalierung, Rasterlinien und Pixel-Glättung (A1, A3) als Shader, nicht als CSS
+  oder CPU-Schritt.
+
+C5 Keine synchronen GPU-Rücklesungen im Spiel: game/mosaic.ts liest bei jedem Tod und
+beim Öffnen der Pause das ganze 800×600-Bild mit `renderer.extract.canvas` zurück.
+Das blockiert, bis die GPU fertig ist. Danach verkleinert Canvas 2D das Bild, und
+`toDataURL("image/webp")` kodiert synchron auf dem Hauptthread. Ein Ruckler genau im
+Todesmoment ist zu erwarten, erst messen. Besser: auf der GPU in ein 200×150-Ziel
+verkleinern, nur das zurücklesen und asynchron kodieren (`toBlob` bzw.
+`OffscreenCanvas.convertToBlob`, ggf. im Worker). Die Kachel muss vor dem nächsten
+Ladebild fertig sein und sichtbar gleich aussehen.
+
+C6 GPU-Texturformate: KTX2/Basis und DDS (Loader in Pixi 8 vorhanden) sparen VRAM und
+Upload-Zeit, sind aber verlustbehaftet. Für den Modus „Original“ deshalb nie, höchstens
+für das HD-Bundle (A3), wenn VRAM und Upload-Zeit beim Levelstart das rechtfertigen und
+der Bildvergleich passt. Pixi lädt die Transcoder (JS + WASM) standardmäßig von
+jsDelivr. Das verbieten CSP und Offline-Betrieb, sie müssten also selbst ausgeliefert
+werden; nur nach Rückfrage. Mipmaps nur dort, wo verkleinert gezeichnet wird.
+
+C7 Hauptthread entlasten (nur prüfen und mit Aufwand berichten, Prototyp nach
+Rückfrage): Pixi 8 kann über `DOMAdapter.set(WebWorkerAdapter)` auf einem
+OffscreenCanvas im Worker rendern. Canvas, Eingabe, Audio und HTML-HUD gehören laut
+GameModule-Vertrag aber der Shell. Das wäre ein großer Umbau; zuerst messen, wie viel
+Hauptthread-Zeit je Frame das Zeichnen überhaupt kostet.
 
 ## Verifikation (nach jedem Schritt)
 
@@ -221,7 +291,9 @@ Verdachtsstellen (jede erst mit dem Messwerkzeug belegen, dann ändern):
   legen und im Bericht nennen.
 - Mehrfach zwischen den Spielen wechseln (Ressourcenzähler). Einstellungen zur
   Laufzeit umschalten. Fenstergröße, Vollbild und DPR ändern. MAX_TEXTURE_SIZE 2048
-  simulieren. Ohne WebGL bleibt es bei der bisherigen Fehlermeldung.
+  simulieren. Ohne WebGL bleibt es bei der bisherigen Fehlermeldung. Mit
+  Software-Rendering erscheint der Hinweis aus C1, und WebGPU fällt sauber auf WebGL
+  zurück.
 - Spec („Rendering“, „Optionale Modernisierungen“) und README (Darstellung, Skripte)
   nachziehen. Einstellungstexte in allen Sprachen der Shell (shell/src/texts.ts)
   ergänzen.
@@ -232,6 +304,8 @@ Verdachtsstellen (jede erst mit dem Messwerkzeug belegen, dann ändern):
   nicht hat (Bloom, Glow, zusätzliche Partikel).
 - Kein KI-Upscaling mit externen Modellen oder Diensten: nicht reproduzierbar und
   nicht Teil des Builds.
+- Keine Simulationsrechnung auf der GPU (Compute-Shader, Partikel, Kollisionen),
+  auch nicht „nur für Effekte“, solange sie Zufallszahlen oder Sim-Zustand berührt.
 - Die Original-Vorgabe ändert sich nicht ohne Rückfrage (Ausnahme laut Invariante 4).
 - Keine Mikro-Optimierung ohne Messwert. Tests, Budgets und Grenzen in perf.test.ts
   werden nicht abgeschwächt.
@@ -240,12 +314,12 @@ Verdachtsstellen (jede erst mit dem Messwerkzeug belegen, dann ändern):
 
 - Messtabelle vorher/nachher je Szene: Frame-Zeit p50/p99, Render-Aufrufe, Draw-Calls
   und RT-Wechsel je Frame, Allokationen je Frame, Levelstart- und Ladezeit,
-  Asset-Größen SD/HD.
+  Asset-Größen SD/HD, jeweils mit Renderer (WebGL/WebGPU) und GPU-String der Messung.
 - Umgesetzte Schritte (je ein Satz mit Dateien), neue Einstellungen und ihre Vorgaben
   mit Begründung.
 - Pfade der Vergleichsbilder SD/HD.
 - Verworfene Ansätze mit Messwert oder Grund (z. B. 4096er-Seiten, Echtzeit-Shader,
-  WebGPU, Interpolation).
+  WebGPU, komprimierte Texturen, Worker-Rendering, Interpolation).
 - Offene Punkte (Messung auf echten Geräten) und gefundene mutmaßliche Bugs, außerhalb
   des Auftrags nicht behoben.
 - Ergebnis von check, smoke, budget, perf und perf:render.
