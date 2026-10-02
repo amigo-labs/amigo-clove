@@ -1,8 +1,8 @@
 import {
   PAUSE_TEXTS,
-  SETTINGS_PAGES,
+  highscoreTable,
+  settingsItems,
   type HudSprite,
-  type SettingsPage,
   type UiConfirm,
   type UiField,
   type UiForm,
@@ -81,15 +81,6 @@ function back(german: boolean): string {
   return german ? "Zurück" : "Back";
 }
 
-/** Highscoreliste als Tabelle: Platz, Name, Punkte. */
-function highscoreTable(list: readonly HighscoreEntry[]) {
-  return {
-    kind: "table" as const,
-    caption: HIGHSCORE_TEXT.title,
-    rows: list.map((e, i) => [`${i + 1}.`, e.name, String(e.score)]),
-  };
-}
-
 /** Titel (`0x4AA9E1`): Logo, sechs Menüpunkte, Highscores und Credits daneben. ESC → `escape`. */
 export function titleMenu(
   sprite: SpriteOf,
@@ -102,7 +93,10 @@ export function titleMenu(
     items: MENU_LABELS.map((label, i) => ({ id: String(i), label })),
     selected: String(selected),
     back: "escape",
-    aside: [highscoreTable(highscores), { kind: "lines", lines: TITLE_CREDITS, tone: "dim" }],
+    aside: [
+      highscoreTable(highscores, { caption: HIGHSCORE_TEXT.title }),
+      { kind: "lines", lines: TITLE_CREDITS, tone: "dim" },
+    ],
   };
 }
 
@@ -159,13 +153,12 @@ export function rulesTitle(german: boolean): string {
  */
 export function optionsMenu(german: boolean, shared: boolean): UiMenu {
   const lang = german ? "de" : "en";
-  const pages: readonly SettingsPage[] = shared ? ["keys", "audio", "display"] : [];
   return {
     kind: "menu",
     title: german ? "Optionen" : "Options",
     items: [
       { id: "rules", label: rulesTitle(german) },
-      ...pages.map((id) => ({ id, label: SETTINGS_PAGES[id][lang] })),
+      ...(shared ? settingsItems(lang) : []),
       { id: "back", label: back(german) },
     ],
     back: "back",

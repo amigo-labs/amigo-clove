@@ -4,8 +4,9 @@
  * zugeordnet sein — eine neue, unbekannte Datei ist ein Buildfehler.
  */
 import { parseLevelDat } from "@clove/formats";
-import { readdirSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { basename, extname, join } from "node:path";
+import { listFiles } from "../files";
 import type { Job } from "../job";
 import { SOUND_CONVERTER_VERSION, convertSound } from "../stages/audio";
 import { IMAGE_CONVERTER_VERSION, LIBWEBP_VERSION, convertImage } from "../stages/image";
@@ -58,13 +59,6 @@ export function isColorKeyed(name: string): boolean {
 }
 
 const idName = (file: string) => basename(file, extname(file)).toLowerCase();
-
-function listFiles(root: string, dir: string, ext: RegExp): string[] {
-  return readdirSync(join(root, dir))
-    .filter((f) => ext.test(f))
-    .toSorted()
-    .map((f) => `${dir}/${f}`);
-}
 
 function readSource(root: string, path: string): Uint8Array {
   return new Uint8Array(readFileSync(join(root, path)));

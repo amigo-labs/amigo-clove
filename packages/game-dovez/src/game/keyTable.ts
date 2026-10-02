@@ -74,20 +74,16 @@ export const EXTRA: readonly Readonly<Partial<Record<keyof PlayerInput, readonly
   { horn: ["F11"] },
 ];
 
-/** Tasten einer Aktion im Satz 0…2: fest, umbelegbar (`second`, 30 Einträge), Zusatz — leere entfallen. */
-export function actionCodes(
-  set: number,
-  name: Action | "horn",
-  second: readonly string[] = DEFAULT_KEYS,
-): string[] {
+/**
+ * Tasten einer Aktion im Satz 0…2: die feste Taste aus `T1` und die Zusatztasten.
+ * Zweite Tasten fragt das Spiel nicht ab; welche Taste der Spieler drückt, legt die
+ * Tastenbelegung der Shell fest (`keys.ts`).
+ */
+export function actionCodes(set: number, name: Action | "horn"): string[] {
   const s = T1[set] ? set : 0;
   const a = ACTIONS.indexOf(name as Action);
   const out: string[] = [];
-  if (a >= 0) {
-    out.push(T1[s]![a]!);
-    const t2 = second[s * 10 + a];
-    if (t2) out.push(t2);
-  }
+  if (a >= 0) out.push(T1[s]![a]!);
   out.push(...(EXTRA[s]?.[name] ?? []));
   return out;
 }

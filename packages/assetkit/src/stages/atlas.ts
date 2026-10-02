@@ -11,6 +11,7 @@ import {
 } from "@clove/formats";
 import sharp from "sharp";
 import { packRects, type PackResult } from "../atlas/maxrects";
+import { jsonBytes } from "../files";
 
 /** Bei jeder Änderung an Packen, Überblendung oder Sidecar erhöhen. */
 export const ATLAS_CONVERTER_VERSION = 1;
@@ -166,5 +167,5 @@ export function atlasJson(
     sprites: sortKeys(sprites),
     contours: sortKeys(contours),
   };
-  return new TextEncoder().encode(`${JSON.stringify(json)}\n`);
+  return jsonBytes(json);
 }

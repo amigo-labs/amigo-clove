@@ -1,4 +1,4 @@
-import { fxFromInt, fxMul } from "@clove/core";
+import { fxFloor, fxFromInt, fxMul } from "@clove/core";
 import { Effect, Sound, effect, sound, spawnExplosion } from "./actions";
 import {
   BG_SPEED_DEFAULT,
@@ -9,6 +9,7 @@ import {
   METEOR_VX,
   SCREEN_W,
 } from "./constants";
+import { idiv } from "./math";
 import { spawnTile } from "./spawn";
 import { sinDeg } from "./trig";
 import type { World } from "./world";
@@ -222,7 +223,7 @@ function level6(w: World): void {
     effect(w, Effect.EnemyKill, w.tileX[slot] ?? 0, w.tileY[slot] ?? 0, 60, 40);
     w.shake = Math.max(w.shake, 5);
   }
-  if (t >= 7981 && t <= 7999) w.bgSpeed = fxFromInt(Math.trunc((8000 - t) / 2));
+  if (t >= 7981 && t <= 7999) w.bgSpeed = fxFromInt(idiv(8000 - t, 2));
 }
 
 const BAND_TICKS = new Set([0, 1600, 2000, 2300, 2600, 2800, 3000, 4000, 5300, 6000, 7000, 7500]);
@@ -301,8 +302,8 @@ export function scriptAfterEvents(w: World): void {
     if (!w.enemies.active[slot]) {
       c[2] = 0;
       if (t < 2835) {
-        const x = w.enX[slot]! >> 16;
-        const y = w.enY[slot]! >> 16;
+        const x = fxFloor(w.enX[slot]!);
+        const y = fxFloor(w.enY[slot]!);
         effect(w, Effect.PlayerDeath, x, y, 217, 136);
         w.shake = Math.max(w.shake, 20);
         for (let k = 0; k < 10; k++) spawnExplosion(w, x + w.rnd.below(217), y + w.rnd.below(136));
@@ -352,7 +353,7 @@ export function scriptTick(w: World): void {
     w.decoY[i] = (w.decoY[i] as number) - 1;
     // x-Schwingung 10·sin(t/10) (Bogenmaß) — in Grad: t/10 rad ≈ 5,73·t°
     w.decoX[i] =
-      (w.decoX0[i] as number) + (fxMul(fxFromInt(10), sinDeg(Math.trunc((t * 573) / 100))) >> 16);
+      (w.decoX0[i] as number) + fxFloor(fxMul(fxFromInt(10), sinDeg(idiv(t * 573, 100))));
     if ((w.decoY[i] as number) < -DECO_RECT.h) w.deco.free(i);
   }
   for (let i = 0; i < w.bands.capacity; i++) {

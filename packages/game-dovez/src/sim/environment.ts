@@ -1,4 +1,4 @@
-import type { DovezLevel } from "@clove/formats";
+import { dovezSpriteKey, type DovezLevel } from "@clove/formats";
 import { ENV_SLOTS, EnvList, type EnvSlot, type Vtx } from "./envDraw";
 import { newSpecial, type EnvWorld, type Hint, type SpecialState } from "./envHost";
 import { stepSpecial } from "./special";
@@ -123,7 +123,7 @@ export class Environment {
     readonly w: EnvWorld,
   ) {
     this.drops = Array.from({ length: Math.max(0, level.weatherParticles) + 1 }, mover);
-    this.bgKey = level.background.toLowerCase().replace(/\.bmp$/, "");
+    this.bgKey = dovezSpriteKey(level.background);
   }
 
   /** Kopf von `SpielLoop`: Listen leeren, `Me.50A`, `Me.50C`, `Me.6D0` zurücksetzen. */

@@ -5,15 +5,12 @@
  * Todes-Kinder). Befund: `docs/measurements/dovez-runtime.md`, „Level 5-3“.
  */
 import { describe, expect, test } from "bun:test";
-import { join } from "node:path";
-import type { Manifest } from "@clove/core";
-import type { PlayStep } from "@clove/formats";
 import { Campaign } from "../src/game/campaign";
 import { DeathState, type Enemy } from "../src/sim/enemies";
 import { NO_INPUT, type PlayerInput } from "../src/sim/player";
 import { cint } from "../src/sim/vb";
 import { World } from "../src/sim/world";
-import { loadTestLevel } from "./assets";
+import { loadPlaySteps, loadTestLevel } from "./assets";
 import { runLevel } from "./bot";
 import { botInputVulnerable } from "./botVulnerable";
 
@@ -241,11 +238,7 @@ describe("Level 5-3 Rumbler: Bot", () => {
   }, 60000);
 
   test("danach führt Play.txt weiter zu Level 6-1", async () => {
-    const ROOT = join(import.meta.dir, "../../../assets/dovez");
-    const manifest = (await Bun.file(join(ROOT, "manifest.json")).json()) as Manifest;
-    const file = manifest.entries.find((e) => e.id === "data/play")!.file;
-    const steps = (await Bun.file(join(ROOT, file)).json()) as PlayStep[];
-    const c = new Campaign(steps);
+    const c = new Campaign(await loadPlaySteps());
     const slugs: string[] = [];
     for (
       let a = c.next("de");

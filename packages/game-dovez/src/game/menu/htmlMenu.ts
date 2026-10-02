@@ -1,7 +1,7 @@
 import {
-  SETTINGS_PAGES,
+  highscoreTable,
+  settingsItems,
   type GameUi,
-  type UiBlock,
   type UiField,
   type UiForm,
   type UiImage,
@@ -96,6 +96,9 @@ type Page =
 
 /** Der Bildschirm wurde von außen geschlossen (Spiel beendet). */
 const ABORTED = Symbol("aborted");
+
+/** Die ersten drei Einträge des Hauptmenüs; danach Bonus bzw. Highscore und zuletzt Ende. */
+const MAIN_IDS = ["new", "load", "options"] as const;
 
 /** Ein Durchlauf des Hauptmenüs bis Spielstart, Laden, Osterei oder Exit. */
 export function htmlMenu(o: HtmlMenuOptions): Promise<MenuResult> {
@@ -240,18 +243,8 @@ class HtmlMenu {
   private async main(): Promise<Page | MenuResult> {
     const m = this.t.main(this.bonusOn);
     const n = m.entries.length;
-    const ids = m.entries.map((_, i) =>
-      i === 0
-        ? "new"
-        : i === 1
-          ? "load"
-          : i === 2
-            ? "options"
-            : i === n - 1
-              ? "exit"
-              : this.o.lang === "ru"
-                ? "bonus"
-                : "score",
+    const ids = m.entries.map(
+      (_, i) => MAIN_IDS[i] ?? (i === n - 1 ? "exit" : this.o.lang === "ru" ? "bonus" : "score"),
     );
     const items = m.entries.map((label, i) => ({ id: ids[i]!, label }));
     const r = await this.ask("main", {
@@ -265,7 +258,7 @@ class HtmlMenu {
       sounds: this.sounds,
       ...(this.o.logo ? { logo: this.o.logo } : {}),
       // wie das Titelmenü von DOVE: die Highscores daneben
-      aside: [this.highscoreTable("Highscore")],
+      aside: [highscoreTable(this.o.highscores, { caption: "Highscore" })],
     });
     switch (r.id) {
       case "new":
@@ -367,13 +360,7 @@ class HtmlMenu {
   private async optionsPage(): Promise<Page> {
     const m = this.t.options(this.bonusOn);
     const n = m.entries.length;
-    const lang = this.o.lang;
-    const shared = this.o.ui.settings
-      ? (["keys", "audio", "display"] as const).map((id) => ({
-          id,
-          label: SETTINGS_PAGES[id][lang],
-        }))
-      : [];
+    const shared = this.o.ui.settings ? settingsItems(this.o.lang) : [];
     const items: UiItem[] = [
       // ausgeschrieben wie der Titel der Seite (das Original kürzt „Grundeins.“)
       { id: "game", label: this.t.game.title },
@@ -544,21 +531,13 @@ class HtmlMenu {
     return "players";
   }
 
-  private highscoreTable(caption?: string): UiBlock {
-    return {
-      kind: "table",
-      ...(caption ? { caption } : {}),
-      rows: this.o.highscores.map((e, i) => [`${i + 1}.`, e.name, String(e.score)]),
-    };
-  }
-
   /** Seite 50: die zehn Plätze der Highscoreliste. */
   private async scorePage(): Promise<Page> {
     const title = this.o.lang === "ru" ? "Highscore" : (this.t.main(false).entries[3] ?? "");
     await this.ask("score", {
       kind: "menu",
       title,
-      blocks: [this.highscoreTable()],
+      blocks: [highscoreTable(this.o.highscores)],
       items: [{ id: "back", label: this.t.scoreBack }],
       back: "back",
       sounds: this.sounds,

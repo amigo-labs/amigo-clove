@@ -1,4 +1,4 @@
-import type { DovezLevel } from "@clove/formats";
+import { dovezSpriteKey, type DovezLevel } from "@clove/formats";
 import { frameRect, type FrameRect } from "./frames";
 
 /**
@@ -65,7 +65,7 @@ export function buildSurfaces(level: DovezLevel, source: SpriteSource): Surface[
   return level.groups.map((g) =>
     g.frames.map((f) => {
       if (f.bmp.length <= 1) return EMPTY;
-      const key = f.bmp.toLowerCase().replace(/\.bmp$/, "");
+      const key = dovezSpriteKey(f.bmp);
       const size = source.size(key);
       if (!size) return { ...EMPTY, key };
       const rect = frameRect(f, size.w, size.h);
