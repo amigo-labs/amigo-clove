@@ -150,13 +150,34 @@ export class Compositor {
     }
   }
 
-  /** `BltFast` Backbuffer → Backbuffer über eine Kopie (WebGL liest und schreibt nicht dieselbe Textur). */
+  /**
+   * `BltFast` Backbuffer → Backbuffer über eine Kopie (WebGL liest und schreibt
+   * nicht dieselbe Textur). Kopiert wird nur der Bereich der Quellrechtecke, per
+   * GPU-Kopie statt eines Vollbilds über einen Sprite.
+   */
   private copy(c: Copy): void {
-    const all = new Sprite(this.bb);
-    this.one.addChild(all);
-    this.pixi.render({ container: this.one, target: this.tmp, clear: true });
-    this.one.removeChildren();
-    all.destroy();
+    let x0 = W;
+    let y0 = H;
+    let x1 = 0;
+    let y1 = 0;
+    for (const [sx, sy, w, h] of c.rects) {
+      x0 = Math.min(x0, Math.floor(sx));
+      y0 = Math.min(y0, Math.floor(sy));
+      x1 = Math.max(x1, Math.ceil(sx + Math.max(1, w)));
+      y1 = Math.max(y1, Math.ceil(sy + Math.max(1, h)));
+    }
+    x0 = Math.max(0, x0);
+    y0 = Math.max(0, y0);
+    x1 = Math.min(W, x1);
+    y1 = Math.min(H, y1);
+    if (x1 > x0 && y1 > y0)
+      this.pixi.renderTarget.copyToTexture(
+        this.bb,
+        this.tmp,
+        { x: x0, y: y0 },
+        { width: x1 - x0, height: y1 - y0 },
+        { x: x0, y: y0 },
+      );
     c.rects.forEach(([sx, sy, w, h, dx, dy], i) => {
       let s = this.copies[i];
       if (!s) {

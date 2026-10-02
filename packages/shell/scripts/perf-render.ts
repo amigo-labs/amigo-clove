@@ -5,7 +5,7 @@
  * max), davon Simulation und Szenenaufbau (`probeStart`/`probeEnd` in
  * `@clove/pixi-kit`), und je Frame geräteunabhängig: Draw-Calls, Wechsel des
  * Render-Ziels, Bildschirm-Renders (Clear auf dem Standard-Framebuffer),
- * Textur- und Buffer-Uploads, Rücklesungen und JS-Allokationen.
+ * GPU-Kopien, Textur- und Buffer-Uploads, Rücklesungen und JS-Allokationen.
  * SwiftShader rechnet auf der CPU: Zeiten nur relativ vergleichen, optimiert
  * wird auf die Zählwerte.
  * Aufruf: `bun run perf:render` (baut vorher), Optionen `--seconds=6`,
@@ -44,6 +44,7 @@ interface Frame {
   draws: number;
   targets: number;
   screens: number;
+  copies: number;
   uploads: number;
   uploadKb: number;
   bufferKb: number;
@@ -63,6 +64,7 @@ interface Result {
   draws: number;
   targets: number;
   screens: number;
+  copies: number;
   uploads: number;
   uploadKb: number;
   bufferKb: number;
@@ -81,6 +83,7 @@ function instrument(): void {
     draws: 0,
     targets: 0,
     screens: 0,
+    copies: 0,
     uploads: 0,
     uploadKb: 0,
     bufferKb: 0,
@@ -135,10 +138,21 @@ function instrument(): void {
   wrap("bufferData", (a) => (c.bufferKb += u.bytes(a[1]) / 1024));
   wrap("bufferSubData", (a) => (c.bufferKb += u.bytes(a[2]) / 1024));
   wrap("readPixels", () => c.reads++);
+  wrap("copyTexSubImage2D", () => c.copies++);
+  wrap("blitFramebuffer", () => c.copies++);
 
   /** Werte des vorigen Bilds abschließen: Zählwerte seit seinem Beginn, Probe auslesen. */
   const close = (f: Record<string, number>) => {
-    for (const k of ["draws", "targets", "screens", "uploads", "uploadKb", "bufferKb", "reads"])
+    for (const k of [
+      "draws",
+      "targets",
+      "screens",
+      "copies",
+      "uploads",
+      "uploadKb",
+      "bufferKb",
+      "reads",
+    ])
       f[k] = (c as unknown as Record<string, number>)[k]! - f[k]!;
     f["heapKb"] = u.heap() - f["heapKb"]!;
     f["sim"] = probe.sim;
@@ -153,7 +167,16 @@ function instrument(): void {
         if (f) close(f);
         probe.sim = probe.draw = probe.ticks = 0;
         f = { t, cb: 0, heapKb: u.heap() };
-        for (const k of ["draws", "targets", "screens", "uploads", "uploadKb", "bufferKb", "reads"])
+        for (const k of [
+          "draws",
+          "targets",
+          "screens",
+          "copies",
+          "uploads",
+          "uploadKb",
+          "bufferKb",
+          "reads",
+        ])
           f[k] = (c as unknown as Record<string, number>)[k]!;
         m.cur = f;
         if (m.recording) m.frames.push(f);
@@ -214,6 +237,7 @@ async function measure(page: Page, scene: { name: string; url: string }): Promis
     draws: field("draws"),
     targets: field("targets"),
     screens: field("screens"),
+    copies: field("copies"),
     uploads: field("uploads"),
     uploadKb: field("uploadKb"),
     bufferKb: field("bufferKb"),
@@ -236,6 +260,7 @@ const COLUMNS: readonly [keyof Result, string, number][] = [
   ["draws", "Draws", 1],
   ["targets", "Ziele", 1],
   ["screens", "Screen", 2],
+  ["copies", "Kopien", 2],
   ["uploads", "Uploads", 2],
   ["uploadKb", "Upl KB", 1],
   ["bufferKb", "Buf KB", 1],
