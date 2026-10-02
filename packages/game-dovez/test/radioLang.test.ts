@@ -6,23 +6,17 @@
  * gibt es.
  */
 import { describe, expect, test } from "bun:test";
-import { join } from "node:path";
-import type { Manifest } from "@clove/core";
 import { dovezSlug } from "@clove/formats";
 import { NO_INPUT, type PlayerInput } from "../src/sim/player";
 import { World } from "../src/sim/world";
-import { LEVEL_SLUGS, loadTestLevel, loadTestRadio } from "./assets";
+import { LEVEL_SLUGS, hasAsset, loadTestLevel, loadTestRadio } from "./assets";
 
 const fire: PlayerInput = { ...NO_INPUT, fire: true };
-const manifest = (await Bun.file(
-  join(import.meta.dir, "../../../assets/dovez/manifest.json"),
-).json()) as Manifest;
 
 /** Funk-IDs (klein) eines Textsatzes. */
 const ids = (r: Record<string, unknown>) => new Set(Object.keys(r).map((k) => k.toLowerCase()));
 /** Gibt es diese Stimme im Manifest des Levels? */
-const hasVoice = (slug: string, wav: string) =>
-  manifest.entries.some((e) => e.id === `voice/${slug}/${dovezSlug(wav)}`);
+const hasVoice = (slug: string, wav: string) => hasAsset(`voice/${slug}/${dovezSlug(wav)}`);
 
 describe("Funk auf Russisch", () => {
   test("jedes Level mit Funk hat de, en und ru; die Funk-IDs des Skripts finden ihre Texte", async () => {

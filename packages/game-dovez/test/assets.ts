@@ -1,11 +1,21 @@
 /** Level aus den gebauten Assets (`assets/dovez`) für Simulationstests, ohne Browser. */
 import { join } from "node:path";
 import type { AtlasJson, Manifest } from "@clove/core";
-import { parseDovezLevelDat, type DovezLevel, type RadioTexts } from "@clove/formats";
+import {
+  parseDovezLevelDat,
+  type DovezLevel,
+  type PlayStep,
+  type RadioTexts,
+} from "@clove/formats";
 import type { SpriteSource } from "../src/sim/surfaces";
 
 const ROOT = join(import.meta.dir, "../../../assets/dovez");
 const manifest = (await Bun.file(join(ROOT, "manifest.json")).json()) as Manifest;
+
+/** Gibt es dieses Asset im Manifest? */
+export function hasAsset(id: string): boolean {
+  return manifest.entries.some((e) => e.id === id);
+}
 
 async function file(id: string): Promise<Uint8Array> {
   const e = manifest.entries.find((x) => x.id === id);
@@ -23,9 +33,7 @@ export async function loadTestLevel(
 ): Promise<{ level: DovezLevel; sprites: SpriteSource }> {
   const level = parseDovezLevelDat(await file(`leveldat/${slug}`));
   const atlas = JSON.parse(new TextDecoder().decode(await file(`atlas/${slug}`))) as AtlasJson;
-  const cb = manifest.entries.some((e) => e.id === `contours/${slug}`)
-    ? await file(`contours/${slug}`)
-    : new Uint8Array(0);
+  const cb = hasAsset(`contours/${slug}`) ? await file(`contours/${slug}`) : new Uint8Array(0);
   const contours = new Int16Array(cb.buffer.slice(cb.byteOffset, cb.byteOffset + cb.byteLength));
   return {
     level,
@@ -45,10 +53,15 @@ export async function loadTestLevel(
 export async function loadTestRadio(
   slug: string,
 ): Promise<{ de: RadioTexts; en: RadioTexts; ru: RadioTexts } | undefined> {
-  if (!manifest.entries.some((e) => e.id === `radio/${slug}`)) return undefined;
+  if (!hasAsset(`radio/${slug}`)) return undefined;
   return JSON.parse(new TextDecoder().decode(await file(`radio/${slug}`))) as {
     de: RadioTexts;
     en: RadioTexts;
     ru: RadioTexts;
   };
+}
+
+/** Das Kampagnenskript (`data/play`, aus `Play.txt`). */
+export async function loadPlaySteps(): Promise<PlayStep[]> {
+  return JSON.parse(new TextDecoder().decode(await file("data/play"))) as PlayStep[];
 }
