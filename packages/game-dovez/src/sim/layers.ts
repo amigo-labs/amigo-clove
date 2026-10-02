@@ -13,8 +13,8 @@ export const TILE_CAPACITY = [11, 51, 21, 101, 0, 21, 16] as const;
 export const LAYER_COUNT = 7;
 export const TERRAIN_LAYER = 3;
 export const EVENT_LAYER = 4;
-/** Zeichenreihenfolge der Ebenen (Spieler und Gegner liegen zwischen 5 und 4). */
-export const LAYER_DRAW_ORDER = [0, 1, 2, 5, 4, 3, 6] as const;
+// Zeichenreihenfolge der Ebenen im Original: 0, 1, 2, 5, 4, 3, 6 (Spieler und Gegner
+// liegen zwischen 5 und 4).
 export const SCREEN_W = 800;
 
 export interface Tile {

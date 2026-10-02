@@ -1,4 +1,4 @@
-import { dovezSlug, type PlayStep } from "@clove/formats";
+import { dovezSlug, dovezSpriteKey, type PlayStep } from "@clove/formats";
 import { type Lang, langLetter } from "./lang";
 
 /**
@@ -76,7 +76,7 @@ export class Campaign {
           kind: "level",
           slug: dovezSlug(s.level),
           name: s.level,
-          loading: s.loading.toLowerCase().replace(/\.bmp$/, ""),
+          loading: dovezSpriteKey(s.loading),
         };
       case "credits": {
         if (this.pass > this.passesDone) this.passesDone = this.pass;

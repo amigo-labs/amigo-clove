@@ -48,8 +48,6 @@ export const SCREEN_HEIGHT = 600;
 /** Spielfeld ohne HUD-Leiste. */
 const FIELD_H = 550;
 
-export { keyLabel, readInput } from "./input";
-
 export interface GameOptions {
   /** Einzellevel (Slug) ohne Menü. */
   readonly level?: string | undefined;
