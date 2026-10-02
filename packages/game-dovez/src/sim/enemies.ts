@@ -821,8 +821,8 @@ export class Enemies {
       const r = w.rnd.next();
       const q = cint(bh + bw);
       w.fx.addBig(
-        Math.trunc(cint(bw) / 2) + x1 - Math.trunc(q / 4),
-        Math.trunc(cint(bh) / 2) + y1 - Math.trunc(q / 4),
+        idiv(bw, 2) + x1 - Math.trunc(q / 4),
+        idiv(bh, 2) + y1 - Math.trunc(q / 4),
         0,
         0,
         1,

@@ -1073,7 +1073,7 @@ export class World {
           true,
         );
       }
-      if (Math.trunc(cint(p.maxEnergy) / 2) > p.energy) {
+      if (idiv(p.maxEnergy, 2) > p.energy) {
         if ((p.energy / p.maxEnergy) * 10 < this.smoke) {
           this.smoke = 0;
           const [x1, y1, x2, y2] = p.hitbox();

@@ -1,5 +1,6 @@
 import { Effect, effect, spawnExplosion } from "../actions";
 import { ShotKind, addEnemyShotForced } from "../enemyShots";
+import { idiv } from "../math";
 import { spawnEnemyAt, spawnTile } from "../spawn";
 import type { BossScript, World } from "../world";
 import { genericHit, partHeight, setPart, typeByName } from "./common";
@@ -36,7 +37,7 @@ function volley(w: World): void {
   const x = w.bossX[0] as number;
   const y = w.bossY[0] as number;
   const h = partHeight(w, 0);
-  const half = Math.trunc(h / 2);
+  const half = idiv(h, 2);
   // `Me.634 = 1` um die Aufrufe, danach der beim Init gemerkte Wert (c3) —
   // gleichwertig mit `addEnemyShotForced`, das den laufenden Wert zurückschreibt.
   addEnemyShotForced(w, ShotKind.Fireball, x + half, y + 17);

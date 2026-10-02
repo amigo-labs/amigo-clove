@@ -1,3 +1,4 @@
+import { fxFloor } from "@clove/core";
 import type { TextureRegistry } from "@clove/pixi-kit";
 import { Container, Texture } from "pixi.js";
 import {
@@ -142,7 +143,7 @@ export class Renderer {
 
     // Hintergrund: Bild mit Umbruch oder Sternenfeld
     if (!lvl.starfield) {
-      const off = w.bgOffset >> 16;
+      const off = fxFloor(w.bgOffset);
       const bg = this.tex(`image/${lvl.background}`, 0, 0, SCREEN_W, FIELD_H);
       this.pool("background").put(bg, -off, 0);
       this.pool("background").put(bg, SCREEN_W - off, 0);
@@ -151,7 +152,7 @@ export class Renderer {
         const pool = this.pool(from === 0 ? "starsFront" : "starsBack");
         const tint = (grey << 16) | (grey << 8) | grey;
         for (let i = from; i <= to; i++)
-          pool.put(Texture.WHITE, w.starX[i]! >> 16, w.starY[i]!, tint).setSize(1, 1);
+          pool.put(Texture.WHITE, fxFloor(w.starX[i]!), w.starY[i]!, tint).setSize(1, 1);
       }
     }
 

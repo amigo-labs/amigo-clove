@@ -1,6 +1,6 @@
 import type { DovezRadio, RadioLine, RadioTexts } from "@clove/formats";
 import type { DrawList } from "./effects";
-import { cint, vbInt, type VbRnd } from "./vb";
+import { cint, idiv, vbInt, type VbRnd } from "./vb";
 
 /**
  * Funk (`AddFunktion` `0x4AC700`, `SpielFunkmeldung` `0x5101E0`) und das
@@ -112,7 +112,7 @@ export class Radio {
       this.addMessage(line?.text.trim() ?? "");
       // abgeschnittene Gruppe oder vertauschte Felder: Dauer 0, der Spruch endet
       const ms = !line || line.swapped || line.ms === null ? 0 : line.ms;
-      const d = Math.trunc(cint(ms) / 16);
+      const d = idiv(ms, 16);
       this.duration = this.left = d;
       if (d === 0) {
         this.active = false;
