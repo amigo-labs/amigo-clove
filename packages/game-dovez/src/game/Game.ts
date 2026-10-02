@@ -124,7 +124,7 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
     height: SCREEN_HEIGHT,
     scale: () => host.scaleMode?.() ?? "integer",
   });
-  const textures = new TextureRegistry(host.assets);
+  const textures = new TextureRegistry(host.assets, app.renderer);
   const globals = (await Promise.all(
     ["atlas/spiel", "atlas/standart"].map((id) => host.assets.json<AtlasJson>(id)),
   )) as [AtlasJson, AtlasJson];

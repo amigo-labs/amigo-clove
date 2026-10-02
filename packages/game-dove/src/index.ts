@@ -81,7 +81,7 @@ const dove: GameModule = {
       height: SCREEN_HEIGHT,
       scale: () => host.scaleMode?.() ?? "integer",
     });
-    const textures = new TextureRegistry(host.assets);
+    const textures = new TextureRegistry(host.assets, app.renderer);
     const audio = host.audio
       ? await DoveAudio.create(host.audio, host.assets).catch((e: unknown) => {
           console.warn("Audio nicht verfügbar:", e);
