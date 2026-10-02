@@ -3,34 +3,9 @@ import { describe, expect, test } from "bun:test";
 import { NO_INPUT, Player, updatePlayer, type PlayerInput } from "../src/sim/player";
 import { World } from "../src/sim/world";
 import { LEVEL_SLUGS, loadTestLevel, loadTestRadio } from "./assets";
+import { stateHash } from "./stateHash";
 
 const fire: PlayerInput = { ...NO_INPUT, fire: true };
-
-/** Prüfsumme über Positionen von Kacheln, Gegnern, Schüssen, Spielern. */
-function hash(w: World): number {
-  let h = 0x811c9dc5;
-  const mix = (v: number) => {
-    h = Math.imul((h ^ (Math.fround(v) * 1000)) | 0, 0x01000193) >>> 0;
-  };
-  const mix2 = (x: number, y: number) => {
-    mix(x);
-    mix(y);
-  };
-  for (const l of w.layers) for (const t of l.tiles) if (t.active) mix2(t.x, t.y);
-  for (const e of w.enemies.items) {
-    if (e?.alive) {
-      mix2(e.actor.x, e.actor.y);
-      mix(e.actor.hp);
-    }
-  }
-  for (const s of w.fire.shots) if (s.active) mix2(s.actor.x, s.actor.y);
-  for (const p of w.players) {
-    mix2(p.x, p.y);
-    mix(p.energy);
-  }
-  mix(w.score[0] ?? 0);
-  return h;
-}
 
 describe("Welt", () => {
   test("Vorlauf platziert Kacheln mit negativem Tick (Tutorial: Tick −762 → x 38)", async () => {
@@ -78,7 +53,7 @@ describe("Welt", () => {
         for (const p of w.players) p.invulnerable = 2;
         w.step([{ ...fire, up: t % 200 < 60, down: t % 200 > 140 }]);
       }
-      return hash(w);
+      return stateHash(w);
     };
     expect(run()).toBe(run());
   });
@@ -146,7 +121,7 @@ describe("Checkpoint", () => {
           respawns++;
         }
       }
-      return [respawns, w.lives, w.state, hash(w)];
+      return [respawns, w.lives, w.state, stateHash(w)];
     };
     const a = run();
     expect(a.slice(0, 3)).toEqual([3, 0, 1]);

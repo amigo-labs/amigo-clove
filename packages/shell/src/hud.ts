@@ -67,10 +67,7 @@ class Meter {
   private readonly fill: HTMLElement;
   private last = "";
 
-  constructor(
-    readonly id: HudMeter["id"],
-    label: string,
-  ) {
+  constructor(id: HudMeter["id"], label: string) {
     this.fill = h("i");
     this.el = h(
       "div",
@@ -161,8 +158,6 @@ class Messages {
       if (!cur) {
         const el = h("p", { class: "hud-message", "data-style": m.style ?? "text" });
         if (m.at) {
-          el.style.left = `calc(var(--game-x) + ${m.at.x} * var(--px) * 1px)`;
-          el.style.top = `calc(var(--game-y) + ${m.at.y} * var(--px) * 1px)`;
           if (m.width !== undefined) el.style.width = `calc(${m.width} * var(--px) * 1px)`;
           this.placed.append(el);
         } else this.top.append(el);

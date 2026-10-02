@@ -88,45 +88,42 @@ function player2(): Record<string, readonly string[]> {
   );
 }
 
-function player1(keys: readonly (readonly string[])[]): Record<string, readonly string[]> {
-  return Object.fromEntries(ACTIONS.map((a, i) => [actionId(0, a), keys[i]!]));
+/** Vorlage: Spieler 1 mit `keys` (je Aktion in der Reihenfolge von `ACTIONS`), Spieler 2 und Hupe fest. */
+function preset(keys: readonly (readonly string[])[]): KeyBindings {
+  return {
+    ...Object.fromEntries(ACTIONS.map((a, i) => [actionId(0, a), keys[i]!])),
+    ...player2(),
+    horn: ["F11"],
+  };
 }
 
 /** Original: Pfeile, Waffen S A D Q W E (Leertaste feuert mit); Spieler 2 Ziffernblock. */
-const ARROWS: KeyBindings = {
-  ...player1([
-    ["ArrowLeft"],
-    ["ArrowUp"],
-    ["ArrowRight"],
-    ["ArrowDown"],
-    ["KeyS", "Space"],
-    ["KeyA"],
-    ["KeyD"],
-    ["KeyQ"],
-    ["KeyW"],
-    ["KeyE"],
-  ]),
-  ...player2(),
-  horn: ["F11"],
-};
+const ARROWS = preset([
+  ["ArrowLeft"],
+  ["ArrowUp"],
+  ["ArrowRight"],
+  ["ArrowDown"],
+  ["KeyS", "Space"],
+  ["KeyA"],
+  ["KeyD"],
+  ["KeyQ"],
+  ["KeyW"],
+  ["KeyE"],
+]);
 
 /** WASD links, Waffen rechts auf J K L / U I O. */
-const WASD: KeyBindings = {
-  ...player1([
-    ["KeyA"],
-    ["KeyW"],
-    ["KeyD"],
-    ["KeyS"],
-    ["KeyJ", "Space"],
-    ["KeyK"],
-    ["KeyL"],
-    ["KeyU"],
-    ["KeyI"],
-    ["KeyO"],
-  ]),
-  ...player2(),
-  horn: ["F11"],
-};
+const WASD = preset([
+  ["KeyA"],
+  ["KeyW"],
+  ["KeyD"],
+  ["KeyS"],
+  ["KeyJ", "Space"],
+  ["KeyK"],
+  ["KeyL"],
+  ["KeyU"],
+  ["KeyI"],
+  ["KeyO"],
+]);
 
 export const KEY_LAYOUT: KeyLayout = {
   actions: KEY_ACTIONS,

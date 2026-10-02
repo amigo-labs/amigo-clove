@@ -1,7 +1,7 @@
 import type { DrawList, Effects } from "./effects";
 import type { EnemyShot } from "./enemyFire";
 import type { Player, PlayerInput } from "./player";
-import { COS_DEG, SIN_DEG, cint, degIndex, f32, type VbRnd } from "./vb";
+import { COS_DEG, SIN_DEG, cint, degIndex, f32, idiv, type VbRnd } from "./vb";
 import type { Force, Particle } from "./weapons";
 
 /**
@@ -173,7 +173,7 @@ export function moveParticles(w: CompanionWorld, keys: CompanionKeys): void {
       if (a < 0) a += 360;
     }
     let [tx, ty] = slotTarget(ship, r, i, a);
-    const d = Math.trunc(cint(Math.sqrt((r.x - tx) ** 2 + (r.y - ty) ** 2)) / 6) + 1;
+    const d = idiv(Math.sqrt((r.x - tx) ** 2 + (r.y - ty) ** 2), 6) + 1;
     if ((d <= 5 && r.kind !== 0) || d > 20) {
       r.x = cint(tx);
       r.y = cint(ty);

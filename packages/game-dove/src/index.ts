@@ -9,7 +9,7 @@ import {
 import { TextureRegistry, createScreen } from "@clove/pixi-kit";
 import { DoveAudio } from "./audio/DoveAudio";
 import { Flow, type DebugStart, type FlowOptions } from "./flow/Flow";
-import { FrameCache } from "./flow/gfx";
+import { FrameCache } from "./render/FrameCache";
 import { KeyEdges } from "./flow/input";
 import type { FlowEnv } from "./flow/screen";
 import { DOVE_GAMEPAD } from "./controls";

@@ -247,6 +247,32 @@ export const SETTINGS_PAGES: Readonly<Record<SettingsPage, LocalLabel>> = {
   display: { de: "Darstellung", en: "Display", ru: "Изображение" },
 };
 
+/** Ist `id` eine der gemeinsamen Seiten (Antwort eines Menüs mit `settingsItems`)? */
+export function isSettingsPage(id: string): id is SettingsPage {
+  return Object.hasOwn(SETTINGS_PAGES, id);
+}
+
+/** Menüpunkte der gemeinsamen Seiten, beschriftet in `lang`. */
+export function settingsItems(lang: keyof LocalLabel): UiItem[] {
+  return (Object.keys(SETTINGS_PAGES) as SettingsPage[]).map((id) => ({
+    id,
+    label: SETTINGS_PAGES[id][lang],
+  }));
+}
+
+/** Highscoreliste als Tabelle: Platz, Name, Punkte; `highlight` markiert den eigenen Platz. */
+export function highscoreTable(
+  list: readonly { readonly name: string; readonly score: number }[],
+  o: { readonly caption?: string | undefined; readonly highlight?: number | undefined } = {},
+): UiBlock {
+  return {
+    kind: "table",
+    ...(o.caption ? { caption: o.caption } : {}),
+    rows: list.map((e, i) => [`${i + 1}.`, e.name, String(e.score)]),
+    ...(o.highlight !== undefined && o.highlight >= 0 ? { highlight: o.highlight } : {}),
+  };
+}
+
 /** Gleiche Texte der Pause in beiden Spielen. */
 export const PAUSE_TEXTS = {
   title: { de: "Pause", en: "Pause", ru: "Пауза" },

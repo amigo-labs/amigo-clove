@@ -48,10 +48,6 @@ export class TextureRegistry {
     }
   }
 
-  get size(): number {
-    return this.sources.size + this.frames.length;
-  }
-
   destroy(): void {
     for (const t of this.frames) t.destroy(false);
     this.frames.length = 0;

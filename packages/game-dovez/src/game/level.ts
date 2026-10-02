@@ -1,5 +1,5 @@
 import { FixedStepLoop, type AtlasJson, type GameHost } from "@clove/core";
-import type { TextureRegistry } from "@clove/pixi-kit";
+import { WindowFocus, type TextureRegistry } from "@clove/pixi-kit";
 import type { Application } from "pixi.js";
 import { DovezAudio } from "../audio/DovezAudio";
 import { loadLevelPack } from "../data/LevelPack";
@@ -67,10 +67,8 @@ export class LevelScene implements Scene {
   private readonly loop = new FixedStepLoop(TICK_MS);
   private mode: Mode = "play";
   private showcase: "continue" | "pause" | undefined;
-  private windowFocus = true;
-  private readonly win: Window | null;
-  private readonly onBlur = () => (this.windowFocus = false);
-  private readonly onFocus = () => (this.windowFocus = true);
+  /** Fokus (`GetFocus() = hWnd`): Fokusverlust öffnet die Pause, ohne Fokus zählen keine Tasten. */
+  private readonly focus: WindowFocus;
   /** Schließt einen offenen HTML-Bildschirm, wenn das Level vorher endet. */
   private readonly screens = new AbortController();
   private readonly pages: string[];
@@ -87,10 +85,7 @@ export class LevelScene implements Scene {
   ) {
     this.pages = [...pages];
     this.showcase = opts.screen;
-    // Fokus (`GetFocus() = hWnd`): Fokusverlust öffnet die Pause, ohne Fokus zählen keine Tasten
-    this.win = ctx.host.canvas.ownerDocument.defaultView;
-    this.win?.addEventListener("blur", this.onBlur);
-    this.win?.addEventListener("focus", this.onFocus);
+    this.focus = new WindowFocus(ctx.host.canvas);
   }
 
   /** Erst mit dem ersten eigenen Bild auf die Bühne (vorher steht noch das Ladebild). */
@@ -150,10 +145,6 @@ export class LevelScene implements Scene {
     const shared = new Set(Renderer.pageIds(globals.map((json) => ({ json }))));
     const pages = own.filter((id) => !shared.has(id));
     return new LevelScene(ctx, opts, world, renderer, audio, pack.level.music, pages);
-  }
-
-  private focused(): boolean {
-    return this.windowFocus && !this.ctx.host.canvas.ownerDocument.hidden;
   }
 
   /** `NewPictureToLoadingscreen`: das letzte Spielbild ins Mosaik. */
@@ -289,7 +280,7 @@ export class LevelScene implements Scene {
       // Level geschafft (`Me.580 = 2`): der Tick läuft zu Ende, die Schleife bricht ab
       if (world.state === 2) done = true;
       // `TastePause` oder Fokusverlust am Ende des Ticks
-      else if (host.keys.isDown("Escape") || !this.focused()) next = "pause";
+      else if (host.keys.isDown("Escape") || !this.focus.focused) next = "pause";
     }
     // Sichtprüfung: nach dem ersten Tick (das Schiff entsteht erst im Tick)
     if (n > 0 && this.showcase) {
@@ -314,8 +305,7 @@ export class LevelScene implements Scene {
   destroy(): void {
     this.screens.abort();
     this.rumble(true);
-    this.win?.removeEventListener("blur", this.onBlur);
-    this.win?.removeEventListener("focus", this.onFocus);
+    this.focus.dispose();
     this.audio?.dispose();
     this.renderer.destroy();
     this.ctx.textures.unload(this.pages);

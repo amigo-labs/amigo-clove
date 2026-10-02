@@ -3,7 +3,7 @@ import type { TextureRegistry } from "@clove/pixi-kit";
 import type { Container } from "pixi.js";
 import type { DoveAudio } from "../audio/DoveAudio";
 import type { VbRnd } from "../sim/VbRnd";
-import type { FrameCache } from "./gfx";
+import type { FrameCache } from "../render/FrameCache";
 import type { KeyEdges } from "./input";
 
 /** Gemeinsame Umgebung aller Bildschirme. */

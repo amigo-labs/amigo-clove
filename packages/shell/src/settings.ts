@@ -131,11 +131,8 @@ export function sanitizeSettings(
   raw: unknown,
   layouts: Readonly<Record<string, KeyLayout>> = {},
 ): Settings {
-  const r = typeof raw === "object" && raw !== null ? (raw as Record<string, unknown>) : {};
-  const v =
-    typeof r["volume"] === "object" && r["volume"] !== null
-      ? (r["volume"] as Record<string, unknown>)
-      : {};
+  const r = record(raw);
+  const v = record(r["volume"]);
   const lang = r["language"];
   const d = DEFAULT_SETTINGS;
   return {

@@ -1,7 +1,7 @@
 import { SfxPool, StreamPlayer } from "@clove/audio";
 import type { AssetStore, AudioHost } from "@clove/core";
 import { dovezSlug } from "@clove/formats";
-import type { AudioGains } from "../game/config";
+import { dbGain, type AudioGains } from "../game/config";
 import type { World } from "../sim/world";
 
 /**
@@ -13,7 +13,7 @@ import type { World } from "../sim/world";
  * `10^(v/2000)`): Engine-Effekte −1000 (0,316), Level-Töne und Funkstimmen 0
  * (1,0), Musik 90 %. Die Funkstimmen laufen auf dem Sprachkanal der Shell.
  */
-const DEFAULT_GAINS: AudioGains = { sfx: 10 ** (-1000 / 2000), speech: 1, music: 0.9 };
+const DEFAULT_GAINS: AudioGains = { sfx: dbGain(-1000), speech: 1, music: 0.9 };
 
 export class DovezAudio {
   /** Laufende Schleifen der Level-Töne je Index (`SpielSoundOFF` hält sie an). */

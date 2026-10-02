@@ -2,7 +2,7 @@ import type { DrawList, Effects, LineSink } from "./effects";
 import type { EnvList } from "./envDraw";
 import type { Player, PlayerInput } from "./player";
 import { drawTrail, type ShotLayer } from "./playerShots";
-import { COS_DEG, SIN_DEG, cint, degIndex, f32, vbInt, winkel, type VbRnd } from "./vb";
+import { COS_DEG, SIN_DEG, cint, degIndex, f32, idiv, vbInt, winkel, type VbRnd } from "./vb";
 
 /**
  * `SpielBeam` (`0x513940`): Laden (A gehalten), Abfeuern beim Loslassen,
@@ -257,7 +257,7 @@ const beamGreen = (p: Player) => f32(p.shotPower * 0.2 + 0.4);
 
 /** Strahlkörper `balken` + `balkene` vom Ursprung bis zur Spitze. */
 function body(w: BeamWorld, p: Player, c: Beam, alpha: number): void {
-  const h = Math.trunc(cint(c.width) / 2);
+  const h = idiv(c.width, 2);
   const y1 = f32(c.originY - h - 2);
   const y2 = f32(h + c.originY + 2);
   const g = beamGreen(p);
@@ -361,7 +361,7 @@ function budget(
     w.combo.hits[i] = (w.combo.hits[i] ?? 0) + 1;
     c.damage = cint(rest);
     if (shrink) {
-      c.width = Math.trunc(cint(Math.pow(c.damage, f32(1 / f32(1.6)))) / 3);
+      c.width = idiv(Math.pow(c.damage, f32(1 / f32(1.6))), 3);
       if (c.width > 55) c.width = 55;
     }
   }
@@ -370,8 +370,8 @@ function budget(
 /** Querschläger bzw. Glut beim Verbrauch. */
 function spentBurst(w: BeamWorld, p: Player, c: Beam, armored: boolean, ship1: boolean): void {
   const rnd = w.rnd;
-  const n = Math.trunc(cint(c.fired) / 5);
-  const x0 = Math.trunc(cint(c.width) / 2) + c.tipX + (ship1 ? 20 : 0);
+  const n = idiv(c.fired, 5);
+  const x0 = idiv(c.width, 2) + c.tipX + (ship1 ? 20 : 0);
   const g = beamGreen(p);
   for (let k = 0; k <= n; k++) {
     if (armored) {
@@ -397,20 +397,20 @@ function flight0(w: BeamWorld, p: Player, c: Beam): void {
   }
   c.tipX = f32(c.tipX + 24);
   const wd = c.width;
-  const h = Math.trunc(cint(wd) / 2);
+  const h = idiv(wd, 2);
   const g = beamGreen(p);
   if (c.fired === 165) w.fx.addBig(c.tipX + 12, c.tipY - h, -2, 0, 1, g, 1, cint(wd), 0, 15, 3, h);
   body(w, p, c, 1);
   if (p.shotPower >= 2) {
-    for (let k = 1; k <= Math.trunc(cint(c.fired) / 30); k++) {
+    for (let k = 1; k <= idiv(c.fired, 30); k++) {
       w.fx.lightning(
         w.out,
         c.originX,
         c.originY,
         c.tipX + h,
         c.originY,
-        Math.trunc(cint(wd) / 4),
-        Math.trunc(cint(c.tipX - c.originX) / 18),
+        idiv(wd, 4),
+        idiv(c.tipX - c.originX, 18),
         10,
         0.7,
         0.4,
@@ -457,7 +457,7 @@ function flight1(w: BeamWorld, p: Player, c: Beam): void {
     return;
   }
   const wd = c.width;
-  const h = Math.trunc(cint(wd) / 2);
+  const h = idiv(wd, 2);
   const g = beamGreen(p);
   const rnd = w.rnd;
   const box: [number, number, number, number] = [
@@ -509,7 +509,7 @@ function flight1(w: BeamWorld, p: Player, c: Beam): void {
         0,
         15,
         2,
-        Math.trunc(cint(wd) / 3),
+        idiv(wd, 3),
       );
     if (p.shotPower >= 2) spirals(w, c);
   }
@@ -909,7 +909,7 @@ function beam2(w: BeamWorld, p: Player, c: Beam): void {
       }
     }
   } else if (c.charge > 0) {
-    for (let k = 0; k <= Math.trunc(cint(c.charge) / 30); k++) {
+    for (let k = 0; k <= idiv(c.charge, 30); k++) {
       const r1 = rnd.next();
       const r2 = rnd.next();
       const r3 = rnd.next();
@@ -983,7 +983,7 @@ function suckIn(w: BeamWorld, p: Player, c: Beam): void {
     tx = p.x + 32;
     ty = p.y + 32;
   } else {
-    tx = f32(Math.trunc(cint(c.charge) / 6) + HIT_RIGHT + p.x - 2);
+    tx = f32(idiv(c.charge, 6) + HIT_RIGHT + p.x - 2);
     ty = f32(p.y + HIT_TOP + (HIT_BOTTOM - HIT_TOP) / 2 - 1);
   }
   for (let k = 5 * p.index; k <= 5 * p.index + 5; k++) {

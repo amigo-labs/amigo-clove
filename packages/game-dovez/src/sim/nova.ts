@@ -446,7 +446,7 @@ function ring(w: NovaWorld, st: NovaState): void {
     const a = degIndex(cint(k + W[1]!));
     const x = st.gx + (COS_DEG[a] ?? 0) * r;
     const y = st.gy + (SIN_DEG[a] ?? 0) * r;
-    const h = Math.trunc(cint(r) / 2);
+    const h = idiv(r, 2);
     w.out.quad("a_kreis2", x - h, y - h, x + h, y + h, r1, r2, r3, 0.7, true);
   }
   const hi = en.high;

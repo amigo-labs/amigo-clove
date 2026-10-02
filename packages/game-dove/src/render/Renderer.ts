@@ -1,3 +1,4 @@
+import { fxFloor } from "@clove/core";
 import type { TextureRegistry } from "@clove/pixi-kit";
 import { Container, Texture } from "pixi.js";
 import {
@@ -20,6 +21,7 @@ import { BAND_SIZE, DECO_RECT, SCRIPT_TEXTS } from "../sim/scripts";
 import { levelMessages } from "../levelMessages";
 import type { World } from "../sim/world";
 import { GLYPH_W, glyph } from "./font";
+import { FrameCache } from "./FrameCache";
 import { Particles } from "./Particles";
 import { SpritePool } from "./SpritePool";
 
@@ -33,7 +35,7 @@ const HUD_Y = FIELD_H;
 export class Renderer {
   readonly root = new Container();
   private readonly field = new Container();
-  private readonly frames = new Map<string, Texture>();
+  private readonly frames: FrameCache;
   private readonly pools: Record<string, SpritePool> = {};
   private readonly particles: Particles;
   private readonly feinde: string;
@@ -42,7 +44,7 @@ export class Renderer {
   private frameNo = 0;
 
   constructor(
-    private readonly textures: TextureRegistry,
+    textures: TextureRegistry,
     private readonly world: World,
     /** Sprache der Skripttexte: Deutsch (`Me.350` gesetzt) oder Englisch. */
     private readonly german = true,
@@ -57,6 +59,7 @@ export class Renderer {
     private readonly scriptLine: (index: number) => string | undefined = (i) =>
       SCRIPT_TEXTS[i]?.[german ? 0 : 1],
   ) {
+    this.frames = new FrameCache(textures);
     const n = world.level.number;
     this.feinde = `image/feinde${n}`;
     this.landschaft = `image/landschaft${n}`;
@@ -110,13 +113,7 @@ export class Renderer {
   }
 
   private tex(id: string, x: number, y: number, w: number, h: number): Texture {
-    const key = `${id}:${x},${y},${w},${h}`;
-    let t = this.frames.get(key);
-    if (!t) {
-      t = w > 0 && h > 0 ? this.textures.frame(id, x, y, w, h) : Texture.EMPTY;
-      this.frames.set(key, t);
-    }
-    return t;
+    return this.frames.get(id, x, y, w, h);
   }
 
   private pool(name: string): SpritePool {
@@ -142,7 +139,7 @@ export class Renderer {
 
     // Hintergrund: Bild mit Umbruch oder Sternenfeld
     if (!lvl.starfield) {
-      const off = w.bgOffset >> 16;
+      const off = fxFloor(w.bgOffset);
       const bg = this.tex(`image/${lvl.background}`, 0, 0, SCREEN_W, FIELD_H);
       this.pool("background").put(bg, -off, 0);
       this.pool("background").put(bg, SCREEN_W - off, 0);
@@ -151,7 +148,7 @@ export class Renderer {
         const pool = this.pool(from === 0 ? "starsFront" : "starsBack");
         const tint = (grey << 16) | (grey << 8) | grey;
         for (let i = from; i <= to; i++)
-          pool.put(Texture.WHITE, w.starX[i]! >> 16, w.starY[i]!, tint).setSize(1, 1);
+          pool.put(Texture.WHITE, fxFloor(w.starX[i]!), w.starY[i]!, tint).setSize(1, 1);
       }
     }
 

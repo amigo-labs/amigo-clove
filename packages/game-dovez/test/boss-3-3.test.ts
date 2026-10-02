@@ -4,14 +4,11 @@
  * einfache Bot scheiterte, weil er auf gepanzerte Sägen zielte und aus x = 100 schoss.
  */
 import { describe, expect, test } from "bun:test";
-import { join } from "node:path";
-import type { Manifest } from "@clove/core";
-import type { PlayStep } from "@clove/formats";
 import { Campaign } from "../src/game/campaign";
 import { DeathState, type Enemy } from "../src/sim/enemies";
 import { cint } from "../src/sim/vb";
 import { World } from "../src/sim/world";
-import { loadTestLevel } from "./assets";
+import { loadPlaySteps, loadTestLevel } from "./assets";
 import { runLane } from "./lanebot";
 
 const SLUG = "level3-3_saw_machine";
@@ -191,14 +188,7 @@ describe("Level 3-3: Ablauf der Mauern", () => {
     expect(w.state).toBe(2);
 
     // Kampagne: nach 3-3 folgt 4-1
-    const manifest = (await Bun.file(
-      join(import.meta.dir, "../../../assets/dovez/manifest.json"),
-    ).json()) as Manifest;
-    const play = manifest.entries.find((e) => e.id === "data/play")!.file;
-    const steps = (await Bun.file(
-      join(import.meta.dir, "../../../assets/dovez", play),
-    ).json()) as PlayStep[];
-    const c = new Campaign(steps);
+    const c = new Campaign(await loadPlaySteps());
     const levels: string[] = [];
     for (
       let a = c.next("de");

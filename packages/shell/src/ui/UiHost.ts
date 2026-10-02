@@ -145,11 +145,6 @@ export class UiHost implements GameUi {
     if (this.captionEl.textContent !== text) this.captionEl.textContent = text;
   }
 
-  /** Ist gerade ein Bildschirm offen? */
-  isOpen(): boolean {
-    return this.open !== undefined;
-  }
-
   state(): UiGateState {
     return { open: this.open !== undefined, generation: this.generation };
   }
