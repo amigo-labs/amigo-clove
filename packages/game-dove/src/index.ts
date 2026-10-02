@@ -122,7 +122,9 @@ const dove: GameModule = {
       },
     };
     const flow = new Flow(env, app.stage, flowOptions);
-    const frame = () => flow.frame();
+    const frame = () => {
+      if (flow.frame()) app.render();
+    };
     app.ticker.add(frame);
     app.ticker.start();
     flow.main().catch((e: unknown) => console.error("DOVE-Ablauf abgebrochen:", e));

@@ -12,6 +12,11 @@ import { scaleFor } from "./scale";
  * Auf Wunsch (`scale`) füllt der Canvas den Container bruchteilig, scharf
  * (`fit`) oder gefiltert (`smooth`). Passt nicht einmal 1× hinein, wird
  * immer bruchteilig verkleinert.
+ *
+ * Gezeichnet wird nur, wenn das Spiel `app.render()` aufruft: Pixi hängt sein
+ * eigenes `render` sonst zusätzlich an den Ticker, und ein Spiel, das selbst
+ * rendert, zeichnete jedes Bild zweimal. Bilder ohne neuen Tick braucht es nicht
+ * neu zu zeichnen; der Canvas behält das letzte.
  */
 export interface ScreenOptions {
   readonly canvas: HTMLCanvasElement;
@@ -64,6 +69,7 @@ export async function createScreen(options: ScreenOptions): Promise<Application>
     autoStart: false,
     preference: "webgl",
   });
+  app.ticker.remove(app.render, app);
   const canvas = options.canvas;
   const view: View = {
     height: null,

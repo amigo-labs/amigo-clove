@@ -22,7 +22,7 @@ export interface FlowEnv {
 /**
  * Ein Bildschirm des Programmablaufs. `update()` läuft im 14-ms-Takt des
  * Originals und liefert ein Ergebnis, sobald der Bildschirm fertig ist;
- * `render()` zeichnet einmal pro Anzeigebild den aktuellen Zustand.
+ * `render()` baut die Szene nach neuen Ticks oder einem Bildschirmwechsel auf.
  */
 export interface Screen<R> {
   readonly root: Container;
@@ -30,6 +30,8 @@ export interface Screen<R> {
   readonly images: readonly string[];
   update(): R | undefined;
   render(): void;
+  /** Das Bild steht (Pause): Ticks ändern es nicht, `render` entfällt. */
+  readonly frozen?: boolean;
   dispose(): void;
   /** Sichtbare Höhe (von oben); fehlt oder `null`: der ganze Bildschirm. */
   viewHeight?(): number | null;
