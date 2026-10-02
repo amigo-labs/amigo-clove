@@ -23,6 +23,8 @@ export class Particles {
   private readonly vx = new Float32Array(MAX);
   private readonly vy = new Float32Array(MAX);
   private readonly life = new Int16Array(MAX);
+  /** Im letzten Tick lebendig: auch ein gerade erloschener Funke ist noch ein Bild lang sichtbar. */
+  private readonly shown = new Uint8Array(MAX);
   private seed = 12345;
 
   constructor(private readonly layer: Container) {}
@@ -57,10 +59,23 @@ export class Particles {
     }
   }
 
-  update(): void {
+  /** Ein Tick: bewegen und altern, im Takt der Simulation wie die Hauptschleife des Originals. */
+  step(): void {
+    for (let i = 0; i < MAX; i++) {
+      const alive = this.life[i]! > 0;
+      this.shown[i] = alive ? 1 : 0;
+      if (!alive) continue;
+      this.x[i]! += this.vx[i]!;
+      this.y[i]! += this.vy[i]!;
+      this.life[i]!--;
+    }
+  }
+
+  /** Die Sprites auf den Stand des letzten Ticks bringen. */
+  draw(): void {
     for (let i = 0; i < MAX; i++) {
       let s = this.sprites[i];
-      if (this.life[i]! <= 0) {
+      if (!this.shown[i]) {
         if (s) s.visible = false;
         continue;
       }
@@ -70,9 +85,6 @@ export class Particles {
         this.sprites[i] = s;
         this.layer.addChild(s);
       }
-      this.x[i]! += this.vx[i]!;
-      this.y[i]! += this.vy[i]!;
-      this.life[i]!--;
       s.visible = true;
       s.position.set(Math.round(this.x[i]!), Math.round(this.y[i]!));
       s.tint = COLORS[Math.min(COLORS.length - 1, Math.floor((40 - this.life[i]!) / 8))]!;

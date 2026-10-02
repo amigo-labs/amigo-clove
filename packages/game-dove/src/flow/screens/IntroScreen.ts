@@ -73,7 +73,7 @@ export class IntroScreen implements Screen<true> {
     }
     if (this.scene === 2 && this.t === 0) audio?.effect("antrieb");
     this.flame = rnd.below(3) + 1;
-    this.particles.update();
+    this.particles.step();
     if (++this.t >= s.duration) {
       this.t = 0;
       this.scene++;
@@ -101,6 +101,7 @@ export class IntroScreen implements Screen<true> {
       if (this.scene === 2) drawShip(g, L_SHIP, 340 + 4 * this.t, 250, 0, this.flame);
     }
     g.end();
+    this.particles.draw();
   }
 
   dispose(): void {

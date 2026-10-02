@@ -170,7 +170,6 @@ export class Renderer {
   });
   /** Abblende-Schwarz über dem Spielfeld (Alpha je Frame). */
   private readonly fade = new Graphics().rect(0, 0, 800, 550).fill(0x000000);
-  private frameNo = 0;
 
   constructor(
     private readonly textures: TextureRegistry,
@@ -243,12 +242,12 @@ export class Renderer {
     return this.batches.get(name)!;
   }
 
-  draw(): void {
+  /** Die Szene zum letzten Tick aufbauen; `false`, wenn es keinen neuen gab (das Bild bleibt). */
+  draw(): boolean {
     const w = this.world;
     // ohne neuen Tick bleibt das Bild (der Backbuffer darf nicht erneut verschleiert werden)
-    if (w.env.frame === this.lastFrame) return;
+    if (w.env.frame === this.lastFrame) return false;
     this.lastFrame = w.env.frame;
-    this.frameNo++;
     for (const b of this.batches.values()) b.begin();
     this.hud.begin();
     for (let l = 0; l < LAYER_COUNT; l++) this.drawTiles(l);
@@ -280,6 +279,7 @@ export class Renderer {
     for (const b of this.batches.values()) b.end();
     this.hud.end();
     this.compose();
+    return true;
   }
 
   private modernHud(): boolean {

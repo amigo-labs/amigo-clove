@@ -95,6 +95,8 @@ export class Flow {
   private config: Config;
   private highscores: HighscoreEntry[];
   private readonly sprite: SpriteOf;
+  /** Bildschirm hinzugekommen oder entfernt: das nächste Bild zeichnen, auch ohne Tick. */
+  private stale = true;
 
   constructor(
     private readonly env: FlowEnv,
@@ -105,17 +107,22 @@ export class Flow {
     this.config = parseConfig(storage.get(CONFIG_KEY));
     this.highscores = parseHighscores(storage.get(HIGHSCORE_KEY)) ?? defaultHighscores(env.rnd);
     this.sprite = (id, r) => spriteSheet(env.host.assets, id)(r);
+    const mark = () => (this.stale = true);
+    stage.on("childAdded", mark).on("childRemoved", mark);
     // die Marke im Kopf aller Seiten, wie in DoveZ
     env.host.ui.brand?.({ name: "DOVE", logo: logo(this.sprite) });
   }
 
-  /** Einmal pro Anzeigebild: fällige Ticks des aktiven Bildschirms, dann zeichnen. */
-  frame(): void {
+  /**
+   * Einmal pro Anzeigebild: fällige Ticks des aktiven Bildschirms, dann die Szene
+   * aufbauen. `true`, wenn sich das Bild geändert hat (die Stage neu zeichnen).
+   */
+  frame(): boolean {
     const now = this.env.host.now();
     const screen = this.current;
     if (!screen) {
       this.loop.reset(now);
-      return;
+      return this.takeStale();
     }
     const ticks = this.loop.frame(now);
     const sim = probeStart();
@@ -124,14 +131,24 @@ export class Flow {
       const r = screen.update();
       if (r !== undefined) {
         this.finish(r);
-        return;
+        return this.takeStale();
       }
     }
     probeEnd("sim", sim, ticks);
+    setView(this.env.host.canvas, screen.viewHeight?.() ?? null);
+    const stale = this.takeStale();
+    // ohne neuen Tick bleibt das Bild (alles Bewegte läuft im Takt der Simulation)
+    if ((ticks === 0 || screen.frozen === true) && !stale) return false;
     const draw = probeStart();
     screen.render();
     probeEnd("draw", draw);
-    setView(this.env.host.canvas, screen.viewHeight?.() ?? null);
+    return true;
+  }
+
+  private takeStale(): boolean {
+    const stale = this.stale;
+    this.stale = false;
+    return stale;
   }
 
   /** Die Welt des laufenden Levels (auch in der Pause), sonst `undefined`. */

@@ -73,6 +73,8 @@ export class LevelScene implements Scene {
   private readonly screens = new AbortController();
   private readonly pages: string[];
   private readonly pointer = new PointerControl();
+  /** Kein neuer Tick gezeichnet (auch in Pause und Continue): das Bild steht. */
+  idle = false;
 
   private constructor(
     private readonly ctx: GameContext,
@@ -254,6 +256,7 @@ export class LevelScene implements Scene {
     if (!this.attached) this.attach();
     const { ctx, world } = this;
     const { host } = ctx;
+    this.idle = true;
     // Pause und Continue: die Welt steht, bis die Shell antwortet
     if (this.mode !== "play") return this.result !== undefined;
     let next: "pause" | "continue" | undefined;
@@ -292,7 +295,7 @@ export class LevelScene implements Scene {
     this.audio?.update(world);
     world.events.length = 0;
     const draw = probeStart();
-    this.renderer.draw();
+    this.idle = !this.renderer.draw();
     probeEnd("draw", draw);
     if (done) {
       // SpielSoundOFF, `StopOgg`
