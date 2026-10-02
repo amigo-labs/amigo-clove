@@ -1,5 +1,5 @@
 import { FixedStepLoop, isSettingsPage } from "@clove/core";
-import { setView } from "@clove/pixi-kit";
+import { probeEnd, probeStart, setView } from "@clove/pixi-kit";
 import type { DoveIntro } from "@clove/formats";
 import type { Container } from "pixi.js";
 import { DoveAudio } from "../audio/DoveAudio";
@@ -118,6 +118,7 @@ export class Flow {
       return;
     }
     const ticks = this.loop.frame(now);
+    const sim = probeStart();
     for (let i = 0; i < ticks; i++) {
       this.env.keys.sample();
       const r = screen.update();
@@ -126,7 +127,10 @@ export class Flow {
         return;
       }
     }
+    probeEnd("sim", sim, ticks);
+    const draw = probeStart();
     screen.render();
+    probeEnd("draw", draw);
     setView(this.env.host.canvas, screen.viewHeight?.() ?? null);
   }
 
