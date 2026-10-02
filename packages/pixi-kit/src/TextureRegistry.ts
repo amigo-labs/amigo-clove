@@ -1,17 +1,27 @@
 import type { AssetStore } from "@clove/core";
-import { Assets, Rectangle, Texture } from "pixi.js";
+import { Assets, Rectangle, Texture, type TextureSource } from "pixi.js";
+
+/** Der Teil des Pixi-Renderers, der eine Textur auf die GPU bringt. */
+export interface TextureUploader {
+  readonly texture: { initSource(source: TextureSource): void };
+}
 
 /**
  * Lädt Bild-Assets per ID und schneidet Teilrechtecke daraus.
  *
  * Besitzt alle erzeugten Texturen und gibt sie in `destroy()` frei — die Shell
  * wechselt zwischen Spielen, und jede vergessene Textur bleibt im VRAM.
+ * Mit `gpu` lädt `load` die Bilder gleich hoch: Pixi täte es erst beim ersten
+ * Zeichnen, und eine Atlasseite mitten im Level kostet ein Bild.
  */
 export class TextureRegistry {
   private readonly sources = new Map<string, Texture>();
   private readonly frames: Texture[] = [];
 
-  constructor(private readonly assets: AssetStore) {}
+  constructor(
+    private readonly assets: AssetStore,
+    private readonly gpu?: TextureUploader,
+  ) {}
 
   async load(ids: readonly string[]): Promise<void> {
     await Promise.all(
@@ -21,6 +31,7 @@ export class TextureRegistry {
           const url = this.assets.url(id);
           const texture = await Assets.load<Texture>({ src: url, parser: "texture" });
           texture.source.scaleMode = "nearest";
+          this.gpu?.texture.initSource(texture.source);
           this.sources.set(id, texture);
         }),
     );
