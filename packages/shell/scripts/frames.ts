@@ -25,13 +25,31 @@ interface Shot {
   readonly url: string;
   /** Ticks ab Levelstart bis zur Aufnahme (Dauerfeuer). */
   readonly ticks: number;
-  /** Original-HUD statt HTML-HUD (der Canvas zeichnet die Konsole). */
-  readonly originalHud?: boolean;
+  /** Einstellungen der Shell (z. B. `hud`, `scale`, `resolution`). */
+  readonly settings?: Readonly<Record<string, string>>;
+  /** Fenstergröße, Vorgabe 1280 × 720 (`fit` mit gebrochenem Faktor). */
+  readonly viewport?: { readonly width: number; readonly height: number };
 }
+
+/** Ganzzahlig doppelt: DOVE-Feld 640 × 410 bzw. DoveZ-Feld 800 × 550 (HTML-HUD). */
+const TWICE_DOVE = { width: 1400, height: 900 };
+const TWICE_DOVEZ = { width: 1700, height: 1200 };
 
 const SHOTS: readonly Shot[] = [
   { name: "dove-1", url: "#/dove?level=1&seed=1&invincible=1&from=2100", ticks: 150 },
-  { name: "dove-1-hud", url: "#/dove?level=1&seed=1&from=2100", ticks: 150, originalHud: true },
+  {
+    name: "dove-1-hud",
+    url: "#/dove?level=1&seed=1&from=2100",
+    ticks: 150,
+    settings: { hud: "original" },
+  },
+  {
+    name: "dove-1-int",
+    url: "#/dove?level=1&seed=1&invincible=1&from=2100",
+    ticks: 150,
+    settings: { scale: "integer" },
+    viewport: TWICE_DOVE,
+  },
   { name: "dove-6", url: "#/dove?level=6&seed=1&invincible=1&from=600", ticks: 200 },
   { name: "dove-11", url: "#/dove?level=11&seed=1&invincible=1&from=600", ticks: 200 },
   {
@@ -43,7 +61,21 @@ const SHOTS: readonly Shot[] = [
     name: "dovez-skyfight-hud",
     url: "#/dovez?level=level1-1_skyfight&from=300",
     ticks: 150,
-    originalHud: true,
+    settings: { hud: "original" },
+  },
+  {
+    name: "dovez-skyfight-int",
+    url: "#/dovez?level=level1-1_skyfight&invincible=1&from=300",
+    ticks: 150,
+    settings: { scale: "integer" },
+    viewport: TWICE_DOVEZ,
+  },
+  {
+    name: "dovez-atlantis-int",
+    url: "#/dovez?level=level5-1_atlantis&invincible=1&from=600",
+    ticks: 150,
+    settings: { scale: "integer" },
+    viewport: TWICE_DOVEZ,
   },
   {
     name: "dovez-station",
@@ -65,6 +97,37 @@ const SHOTS: readonly Shot[] = [
     name: "dovez-bonus",
     url: "#/dovez?level=spacestation_bonus&invincible=1&from=300",
     ticks: 150,
+  },
+  // HD: Bildschirmauflösung (bei 1280 × 720 doppelt)
+  {
+    name: "dove-1-hd",
+    url: "#/dove?level=1&seed=1&invincible=1&from=2100",
+    ticks: 150,
+    settings: { resolution: "hd" },
+  },
+  {
+    name: "dovez-skyfight-hd",
+    url: "#/dovez?level=level1-1_skyfight&invincible=1&from=300",
+    ticks: 150,
+    settings: { resolution: "hd" },
+  },
+  {
+    name: "dovez-skyfight-hud-hd",
+    url: "#/dovez?level=level1-1_skyfight&from=300",
+    ticks: 150,
+    settings: { hud: "original", resolution: "hd" },
+  },
+  {
+    name: "dovez-atlantis-hd",
+    url: "#/dovez?level=level5-1_atlantis&invincible=1&from=600",
+    ticks: 150,
+    settings: { resolution: "hd" },
+  },
+  {
+    name: "dovez-cityboss-hd",
+    url: "#/dovez?level=level4-3_cityboss&invincible=1&from=300",
+    ticks: 200,
+    settings: { resolution: "hd" },
   },
 ];
 
@@ -102,7 +165,11 @@ async function shoot(page: Page, shot: Shot): Promise<Buffer> {
   while ((await ticks(page)) < shot.ticks) await page.clock.runFor(ms);
   const done = await ticks(page);
   if (done !== shot.ticks) throw new Error(`${shot.name}: ${done} statt ${shot.ticks} Ticks`);
-  return page.locator("canvas").screenshot();
+  // Ausschnitt statt Element-Aufnahme: die wartet auf Animations-Bilder, und die Uhr steht
+  const box = await page.locator("canvas").boundingBox();
+  if (!box) throw new Error(`${shot.name}: kein Canvas`);
+  // SwiftShader arbeitet die Bilder erst bei der Aufnahme ab, in HD je Bild ~¼ s
+  return page.screenshot({ clip: box, timeout: 300_000 });
 }
 
 const server = Bun.spawn(["bunx", "vite", "preview", "--port", String(PORT), "--strictPort"], {
@@ -132,11 +199,12 @@ try {
   const failures: string[] = [];
   for (const shot of SHOTS) {
     if (ONLY && !shot.name.includes(ONLY)) continue;
-    const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+    const page = await browser.newPage({ viewport: shot.viewport ?? { width: 1280, height: 720 } });
     await page.addInitScript(probe);
-    if (shot.originalHud)
-      await page.addInitScript(() =>
-        localStorage.setItem("clove:settings", JSON.stringify({ hud: "original" })),
+    if (shot.settings)
+      await page.addInitScript(
+        (s) => localStorage.setItem("clove:settings", JSON.stringify(s)),
+        shot.settings,
       );
     page.on("pageerror", (e) => failures.push(`${shot.name}: ${e.message}`));
     const png = await shoot(page, shot);
