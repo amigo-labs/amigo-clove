@@ -139,7 +139,9 @@ oder Finger ihn benutzen:
   ebenso, vergrößert aber per xBR-Shader (rundet Treppen an schrägen Kanten ab),
   „HD“ zeichnet in der Auflösung des Bildschirms (Drehungen, Überblendungen,
   Linien und Schrift schärfer). DOVE sieht in HD gleich aus: es zeichnet nur
-  ungedrehte Sprites auf ganzen Pixeln.
+  ungedrehte Sprites auf ganzen Pixeln. Pixi wünscht sich die schnelle GPU
+  (`high-performance`); zeichnet der Browser ohne Grafikkarte, weist die Seite
+  „Darstellung“ darauf hin.
 - **Komfort:** DOVE pausiert bei Fokusverlust; freie Tastenbelegung (siehe
   oben); in DoveZ steuert das zweite Gamepad Spieler 2.
 
