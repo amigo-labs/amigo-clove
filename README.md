@@ -135,9 +135,11 @@ oder Finger ihn benutzen:
   scharf (Vorgabe) oder weich bzw. ganzzahlig (1:1-Pixel), Rasterlinien.
   Der Canvas hat Gerätepixel: das Bild wird ganzzahlig vergrößert, den Rest
   filtert der Browser — keine ungleich breiten Pixel mehr. Auflösung
-  „Original“ (Vorgabe) zeichnet in der Auflösung des Spiels, „HD“ in der des
-  Bildschirms (Drehungen, Überblendungen, Linien und Schrift schärfer). DOVE
-  sieht in HD gleich aus: es zeichnet nur ungedrehte Sprites auf ganzen Pixeln.
+  „Original“ (Vorgabe) zeichnet in der Auflösung des Spiels, „Kanten geglättet“
+  ebenso, vergrößert aber per xBR-Shader (rundet Treppen an schrägen Kanten ab),
+  „HD“ zeichnet in der Auflösung des Bildschirms (Drehungen, Überblendungen,
+  Linien und Schrift schärfer). DOVE sieht in HD gleich aus: es zeichnet nur
+  ungedrehte Sprites auf ganzen Pixeln.
 - **Komfort:** DOVE pausiert bei Fokusverlust; freie Tastenbelegung (siehe
   oben); in DoveZ steuert das zweite Gamepad Spieler 2.
 

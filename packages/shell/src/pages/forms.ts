@@ -97,6 +97,7 @@ export async function displayPage(ui: GameUi, c: PageContext): Promise<void> {
       label: t("resolution"),
       options: [
         { value: "original", label: t("resolutionOriginal") },
+        { value: "xbr", label: t("resolutionXbr") },
         { value: "hd", label: t("resolutionHd") },
       ],
       value: s.resolution,

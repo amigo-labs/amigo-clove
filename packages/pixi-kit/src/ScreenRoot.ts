@@ -1,6 +1,7 @@
 import type { RenderResolution, ScaleMode } from "@clove/core";
 import { Application, RenderTexture, Sprite, TextureSource } from "pixi.js";
 import { canvasFactor, scaleFor } from "./scale";
+import { XbrPresent } from "./xbr";
 
 /**
  * Pixi-Application in fester logischer Auflösung (DOVE 640×480, DoveZ 800×600),
@@ -13,9 +14,10 @@ import { canvasFactor, scaleFor } from "./scale";
  * Canvas das m-Fache der logischen Größe, m die Gerätepixel aufgerundet.
  * `original` zeichnet das Bild in Originalauflösung in eine Textur und
  * vergrößert es per Nearest auf m — jedes Spielpixel bleibt ein Quadrat, den
- * Rest bis zum Fenster filtert der Browser bilinear (scharf-bilinear). `hd`
- * zeichnet gleich mit Auflösung m. `smooth` lässt den Browser wie bisher aus
- * der Originalauflösung filtern.
+ * Rest bis zum Fenster filtert der Browser bilinear (scharf-bilinear). `xbr`
+ * vergrößert ebenso, aber mit Kantenglättung (`XbrPresent`), auch bei
+ * ganzzahligem Faktor. `hd` zeichnet gleich mit Auflösung m. `smooth` lässt den
+ * Browser wie bisher aus der Originalauflösung filtern.
  *
  * Gezeichnet wird nur, wenn das Spiel `app.render()` aufruft: Pixi hängt sein
  * eigenes `render` sonst zusätzlich an den Ticker, und ein Spiel, das selbst
@@ -92,11 +94,12 @@ export async function createScreen(options: ScreenOptions): Promise<Application>
   /** Das Bild in Originalauflösung, per Nearest auf den Canvas vergrößert. */
   const frame = RenderTexture.create({ width: options.width, height: options.height });
   const present = new Sprite(frame);
+  const xbr = new XbrPresent(frame, options.width, options.height);
   let factor = 1;
-  let hd = false;
+  let kind: RenderResolution = "original";
   const draw = app.render.bind(app);
   app.render = () => {
-    if (hd || factor === 1) {
+    if (kind === "hd" || factor === 1) {
       draw();
       return;
     }
@@ -106,7 +109,7 @@ export async function createScreen(options: ScreenOptions): Promise<Application>
       clear: true,
       clearColor: [0, 0, 0, 1],
     });
-    app.renderer.render({ container: present });
+    app.renderer.render({ container: kind === "xbr" ? xbr.mesh : present });
   };
 
   const view: View = {
@@ -114,7 +117,7 @@ export async function createScreen(options: ScreenOptions): Promise<Application>
     logicalHeight: options.height,
     fit() {
       const mode = options.scale?.() ?? "integer";
-      const wantHd = options.resolution?.() === "hd";
+      const want = options.resolution?.() ?? "original";
       const parent = canvas.parentElement;
       const availW = parent?.clientWidth ?? options.width;
       const availH = parent?.clientHeight ?? options.height;
@@ -122,15 +125,17 @@ export async function createScreen(options: ScreenOptions): Promise<Application>
       const scale = scaleFor(mode, availW, availH, options.width, visible);
       const device = scale * (globalThis.devicePixelRatio || 1);
       // ganzzahlig: der Browser vergrößert per `pixelated` exakt, Original braucht keinen größeren Canvas
-      const m = !wantHd && (mode === "smooth" || whole(device)) ? 1 : canvasFactor(device);
-      if (m !== factor || wantHd !== hd) {
+      const m =
+        want === "original" && (mode === "smooth" || whole(device)) ? 1 : canvasFactor(device);
+      if (m !== factor || want !== kind) {
         factor = m;
-        hd = wantHd;
+        kind = want;
         // `original`: der Canvas ist für Pixi eine große Fläche in Auflösung 1, auf
         // der nur das vergrößerte Bild liegt — Texte und Render-Ziele bleiben 1×.
-        if (hd || m === 1) app.renderer.resize(options.width, options.height, m);
+        if (kind === "hd" || m === 1) app.renderer.resize(options.width, options.height, m);
         else app.renderer.resize(options.width * m, options.height * m, 1);
         present.scale.set(m);
+        xbr.setScale(m);
         // Größenänderung löscht den Canvas: das letzte Bild gleich wieder zeigen
         app.render();
       }
@@ -172,6 +177,7 @@ export async function createScreen(options: ScreenOptions): Promise<Application>
     delete canvas.dataset["logicalWidth"];
     delete canvas.dataset["logicalHeight"];
     present.destroy();
+    xbr.destroy();
     frame.destroy(true);
     destroy(...args);
   }) as Application["destroy"];

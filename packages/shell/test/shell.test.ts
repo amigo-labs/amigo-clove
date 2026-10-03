@@ -65,6 +65,10 @@ describe("Einstellungen", () => {
       scale: "fit",
       scanlines: false,
     });
+    expect(sanitizeSettings({}).resolution).toBe("original");
+    expect(sanitizeSettings({ resolution: "xbr" }).resolution).toBe("xbr");
+    expect(sanitizeSettings({ resolution: "hd" }).resolution).toBe("hd");
+    expect(sanitizeSettings({ resolution: "8k" }).resolution).toBe("original");
   });
 
   test("bewegungsarm: fest an oder aus, sonst nach dem System", () => {
