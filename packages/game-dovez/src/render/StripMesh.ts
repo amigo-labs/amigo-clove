@@ -17,7 +17,11 @@ import type { Strip } from "../sim/envDraw";
  * Ganzes, Sternschweife, Wasseroberfläche und Verzerrungsgitter brauchen
  * aber Verläufe. Texturkoordinaten kommen relativ zum Bild (0…1) und
  * werden im Shader auf den Atlas-Ausschnitt abgebildet, mit `wrap` wie
- * `D3DTADDRESS_WRAP` (Rauschen).
+ * `D3DTADDRESS_WRAP` (Rauschen). Sonst bleibt die Abtastung einen halben Texel
+ * im Ausschnitt: im Original hat jedes Bild eine eigene Textur, im Atlas läge
+ * an der Kante der Nachbar oder der transparente Rand. Das traf die
+ * Wasserbänder (UV überall 0, die Ecke von `weiss`) und den linken Rand der
+ * 64×64-Ecke, aus der Himmel und Sternennebel gestreckt werden (grauer Balken).
  */
 
 const VERTEX = `
@@ -43,10 +47,13 @@ in vec4 vColor;
 out vec4 finalColor;
 uniform sampler2D uTexture;
 uniform vec4 uFrame;
+uniform vec4 uClamp;
 uniform float uWrap;
 void main() {
   vec2 uv = uWrap > 0.5 ? fract(vUV) : vUV;
-  vec4 t = texture(uTexture, uFrame.xy + uv * uFrame.zw);
+  vec2 p = uFrame.xy + uv * uFrame.zw;
+  if (uWrap < 0.5) p = clamp(p, uClamp.xy, uClamp.zw);
+  vec4 t = texture(uTexture, p);
   finalColor = t * vec4(vColor.rgb * vColor.a, vColor.a);
 }
 `;
@@ -71,6 +78,7 @@ export class StripMesh {
   private readonly index: Buffer;
   private readonly uniforms: UniformGroup<{
     uFrame: { value: Float32Array; type: "vec4<f32>" };
+    uClamp: { value: Float32Array; type: "vec4<f32>" };
     uWrap: { value: number; type: "f32" };
   }>;
   private posData = new Float32Array(64);
@@ -100,6 +108,7 @@ export class StripMesh {
     });
     this.uniforms = new UniformGroup({
       uFrame: { value: new Float32Array([0, 0, 1, 1]), type: "vec4<f32>" },
+      uClamp: { value: new Float32Array([0, 0, 1, 1]), type: "vec4<f32>" },
       uWrap: { value: 0, type: "f32" },
     });
     const shader = new Shader({
@@ -117,6 +126,10 @@ export class StripMesh {
     this.mesh.texture = t.texture;
     this.mesh.shader!.resources.uTexture = src;
     this.uniforms.uniforms.uFrame.set(t.frame);
+    const [fx, fy, fw, fh] = t.frame;
+    const hx = 0.5 / src.pixelWidth;
+    const hy = 0.5 / src.pixelHeight;
+    this.uniforms.uniforms.uClamp.set([fx + hx, fy + hy, fx + fw - hx, fy + fh - hy]);
     this.uniforms.uniforms.uWrap = t.wrap ? 1 : 0;
     this.uniforms.update();
     this.mesh.blendMode = additive ? "add" : "normal";
