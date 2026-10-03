@@ -16,3 +16,11 @@ export function scaleFor(
   if (!(raw > 0)) return 1;
   return mode === "integer" && raw >= 1 ? Math.floor(raw) : raw;
 }
+
+/** Höchstens so viele Canvas-Pixel je Spielpixel (DoveZ 3200 × 2400). */
+const MAX_FACTOR = 4;
+
+/** Canvas-Pixel je Spielpixel: ganzzahlig, die Gerätepixel aufgerundet (ohne Rundungsrauschen). */
+export function canvasFactor(devicePerPixel: number): number {
+  return Math.min(MAX_FACTOR, Math.max(1, Math.ceil(devicePerPixel - 1e-6)));
+}

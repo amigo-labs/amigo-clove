@@ -7,6 +7,7 @@ export {
   type ScreenOptions,
 } from "./ScreenRoot";
 export { type FrameProbe, probeEnd, probeStart } from "./probe";
-export { scaleFor } from "./scale";
+export { canvasFactor, scaleFor } from "./scale";
+export { followResolution } from "./targets";
 export { TextureRegistry, type TextureUploader } from "./TextureRegistry";
 export { WindowFocus } from "./WindowFocus";

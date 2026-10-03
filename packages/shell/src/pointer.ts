@@ -1,4 +1,5 @@
 import type { PointerState } from "@clove/core";
+import { logicalSize } from "./dom";
 
 /** So weit (CSS-Pixel) muss die Maus nach Tastensteuerung wandern, bis sie wieder lenkt. */
 const WAKE_PX = 12;
@@ -9,7 +10,8 @@ const noMenu = (e: Event) => e.preventDefault();
 
 /**
  * Maus und Touch über dem Canvas als `PointerState` (Gegenstück zu `keys.ts`).
- * Koordinaten sind logische Canvas-Pixel; das Pixi-Kit schneidet nur per
+ * Koordinaten sind logische Spielpixel (`logicalSize`, nicht `canvas.width`:
+ * der Canvas hat Gerätepixel); das Pixi-Kit schneidet nur per
  * `clip-path` ab, das Rechteck des Elements bleibt der ganze Canvas.
  */
 export function createPointerState(
@@ -33,14 +35,9 @@ export function createPointerState(
   const locate = (e: PointerEvent) => {
     const r = canvas.getBoundingClientRect();
     if (r.width <= 0 || r.height <= 0) return;
-    x = Math.max(
-      0,
-      Math.min(canvas.width - 1, Math.floor(((e.clientX - r.left) * canvas.width) / r.width)),
-    );
-    y = Math.max(
-      0,
-      Math.min(canvas.height - 1, Math.floor(((e.clientY - r.top) * canvas.height) / r.height)),
-    );
+    const { width, height } = logicalSize(canvas);
+    x = Math.max(0, Math.min(width - 1, Math.floor(((e.clientX - r.left) * width) / r.width)));
+    y = Math.max(0, Math.min(height - 1, Math.floor(((e.clientY - r.top) * height) / r.height)));
   };
   const wake = (e: PointerEvent, force: boolean) => {
     if (active) return;
@@ -144,9 +141,10 @@ export function createPointerState(
       active = false;
       // die Maus steht still: erst eine echte Bewegung übernimmt wieder
       const r = canvas.getBoundingClientRect();
+      const { width, height } = logicalSize(canvas);
       rest = {
-        x: r.left + ((x + 0.5) * r.width) / canvas.width,
-        y: r.top + ((y + 0.5) * r.height) / canvas.height,
+        x: r.left + ((x + 0.5) * r.width) / width,
+        y: r.top + ((y + 0.5) * r.height) / height,
       };
     },
     dispose() {

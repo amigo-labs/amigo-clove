@@ -38,7 +38,12 @@ const DE = {
   scaleFit: "Fenster füllen (scharf)",
   scaleSmooth: "Fenster füllen (weich)",
   scaleHelp:
-    "„Fenster füllen“ (Vorgabe) nutzt den ganzen Platz, „ganzzahlig“ lässt jedes Originalpixel gleich groß. Vollbild: Alt+Enter oder ⛶ oben rechts.",
+    "„Fenster füllen“ (Vorgabe) nutzt den ganzen Platz, „ganzzahlig“ zeigt jedes Originalpixel als exaktes Quadrat ohne Filter. Vollbild: Alt+Enter oder ⛶ oben rechts.",
+  resolution: "Auflösung",
+  resolutionOriginal: "Original",
+  resolutionHd: "HD (Bildschirmauflösung)",
+  resolutionHelp:
+    "„HD“ zeichnet in der Auflösung des Bildschirms: Drehungen, Überblendungen, Linien und Schrift werden schärfer, die Pixelgrafik bleibt. Braucht mehr Grafikleistung.",
   scanlines: "Rasterlinien (Röhrenmonitor)",
   fullscreen: "Vollbild",
   fullscreenExit: "Vollbild beenden",
@@ -151,7 +156,12 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<TextKey>>> = {
     scaleFit: "fill window (sharp)",
     scaleSmooth: "fill window (smooth)",
     scaleHelp:
-      "“Fill window” (default) uses all the space; integer keeps every original pixel the same size. Full screen: Alt+Enter or ⛶ at the top right.",
+      "“Fill window” (default) uses all the space; integer shows every original pixel as an exact square without filtering. Full screen: Alt+Enter or ⛶ at the top right.",
+    resolution: "Resolution",
+    resolutionOriginal: "original",
+    resolutionHd: "HD (screen resolution)",
+    resolutionHelp:
+      "“HD” renders at the screen's resolution: rotations, blending, lines and text get sharper; the pixel art stays. Needs more graphics power.",
     scanlines: "Scanlines (CRT look)",
     fullscreen: "Full screen",
     fullscreenExit: "Exit full screen",
@@ -258,7 +268,12 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<TextKey>>> = {
     scaleFit: "по размеру окна (чёткий)",
     scaleSmooth: "по размеру окна (сглаженный)",
     scaleHelp:
-      "«По размеру окна» (по умолчанию) использует всё место, целочисленный масштаб сохраняет все пиксели одинаковыми. Полный экран: Alt+Enter или ⛶ справа вверху.",
+      "«По размеру окна» (по умолчанию) использует всё место, целочисленный масштаб показывает каждый пиксель оригинала точным квадратом без фильтрации. Полный экран: Alt+Enter или ⛶ справа вверху.",
+    resolution: "Разрешение",
+    resolutionOriginal: "оригинальное",
+    resolutionHd: "HD (разрешение экрана)",
+    resolutionHelp:
+      "«HD» рисует в разрешении экрана: повороты, наложения, линии и текст становятся чётче, пиксельная графика остаётся. Требует больше ресурсов видеокарты.",
     scanlines: "Строки развёртки (как на ЭЛТ)",
     fullscreen: "Полный экран",
     fullscreenExit: "Выйти из полноэкранного режима",

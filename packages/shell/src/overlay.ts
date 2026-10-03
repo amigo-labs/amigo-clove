@@ -1,4 +1,4 @@
-import { h } from "./dom";
+import { h, logicalSize } from "./dom";
 import type { ShellText } from "./texts";
 
 /** Fensterereignis: eine Darstellungs-Einstellung hat sich geändert (siehe `@clove/pixi-kit`). */
@@ -69,13 +69,14 @@ export function createStage(canvas: HTMLCanvasElement, options: StageOptions): S
   };
   const layout = () => {
     const w = canvas.offsetWidth;
+    const logical = logicalSize(canvas).width;
     const cut = -(Number.parseFloat(canvas.style.marginBottom) || 0);
     const r: GameRect = {
       x: canvas.offsetLeft,
       y: canvas.offsetTop,
       w,
       h: Math.max(0, canvas.offsetHeight - cut),
-      px: canvas.width > 0 ? w / canvas.width : 1,
+      px: logical > 0 ? w / logical : 1,
     };
     current = r;
     for (const [k, v] of [
