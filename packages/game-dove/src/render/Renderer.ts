@@ -37,11 +37,13 @@ export class Renderer {
   private readonly field = new Container();
   private readonly frames: FrameCache;
   private readonly pools: Record<string, SpritePool> = {};
+  private readonly poolList: SpritePool[];
   private readonly particles: Particles;
   private readonly feinde: string;
   private readonly landschaft: string;
   private shakeSeed = 1;
-  private frameNo = 0;
+  /** Ticks seit Levelbeginn (Blinken der Beam-Anzeige). */
+  private ticks = 0;
 
   constructor(
     textures: TextureRegistry,
@@ -94,6 +96,7 @@ export class Renderer {
     const hud = new Container();
     this.root.addChild(hud);
     this.pools["hud"] = new SpritePool(hud);
+    this.poolList = Object.values(this.pools);
   }
 
   /** Alle Bild-IDs, die dieser Renderer braucht. */
@@ -132,10 +135,26 @@ export class Renderer {
     }
   }
 
+  /**
+   * Ein Tick der Darstellung: Funken, Wackeln und Blinken laufen im Takt der
+   * Simulation. Je Anzeigebild liefen sie auf 144 Hz mehr als doppelt so schnell
+   * wie auf 60 Hz, und das Bild hinge davon ab, wie sich die Ticks auf die Bilder
+   * verteilen.
+   */
+  tick(): void {
+    const w = this.world;
+    this.particles.consume(w.effects);
+    w.effects.length = 0;
+    this.particles.step();
+    if (w.shake > 0 && !this.calm())
+      this.shakeSeed = (Math.imul(this.shakeSeed, 1103515245) + 12345) | 0;
+    this.ticks++;
+  }
+
   render(): void {
     const w = this.world;
     const lvl = w.level;
-    for (const p of Object.values(this.pools)) p.begin();
+    for (const p of this.poolList) p.begin();
 
     // Hintergrund: Bild mit Umbruch oder Sternenfeld
     if (!lvl.starfield) {
@@ -299,13 +318,10 @@ export class Renderer {
       this.pool("explosions").put(t, w.expX[i]!, w.expY[i]!);
     }
 
-    this.particles.consume(w.effects);
-    w.effects.length = 0;
-    this.particles.update();
+    this.particles.draw();
 
     // Bildschirmwackeln bei großen Abschüssen (Amplitude geschätzt, reine Darstellung)
     if (w.shake > 0 && !this.calm()) {
-      this.shakeSeed = (Math.imul(this.shakeSeed, 1103515245) + 12345) | 0;
       this.field.position.set(((this.shakeSeed >> 8) % 3) - 1, ((this.shakeSeed >> 12) % 3) - 1);
     } else {
       this.field.position.set(0, 0);
@@ -314,7 +330,6 @@ export class Renderer {
     // HUD und Texte im Spielfeld; mit dem HTML-HUD zeigt beides die Shell
     const modern = this.modernHud();
     if (!modern) this.drawHud(w);
-    this.frameNo++;
     if (!modern) {
       for (const m of levelMessages(w)) {
         if (m.at) this.text(m.text, m.at.x, m.at.y);
@@ -328,7 +343,7 @@ export class Renderer {
       }
     }
 
-    for (const p of Object.values(this.pools)) p.end();
+    for (const p of this.poolList) p.end();
   }
 
   /** Konsole mit Tempo, Pod, Options, Bombe, Waffe, Beam-Ladung, Punkten und Schiffen. */
@@ -349,7 +364,7 @@ export class Renderer {
     // Beam-Anzeige: Füllung RGB(c+20, 0, 0), bei voller Ladung blinkend
     if (w.charge > 0) {
       const full = w.charge >= BEAM_MAX;
-      const blink = full && Math.floor(this.frameNo / 5) % 2 === 0;
+      const blink = full && Math.floor(this.ticks / 5) % 2 === 0;
       const tint = blink ? 0xff8080 : Math.min(255, w.charge + 20) << 16;
       hud.put(Texture.WHITE, 520, 413, tint).setSize(w.charge >> 1, 10);
     }

@@ -5,5 +5,7 @@
  */
 export interface Scene {
   frame(now: number): boolean;
+  /** Im letzten `frame` hat sich das Bild nicht geändert: die Stage nicht neu zeichnen. */
+  readonly idle?: boolean;
   destroy(): void;
 }

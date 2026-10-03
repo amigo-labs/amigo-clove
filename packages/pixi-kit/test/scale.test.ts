@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { scaleFor } from "../src/scale";
+import { canvasFactor, scaleFor } from "../src/scale";
 
 describe("Skalierung", () => {
   test("ganzzahlig rundet ab, darunter bruchteilig", () => {
@@ -16,5 +16,15 @@ describe("Skalierung", () => {
 
   test("ohne Platz bleibt 1", () => {
     expect(scaleFor("fit", 0, 0, 640, 480)).toBe(1);
+  });
+
+  test("Canvas-Faktor: ganzzahlig aufgerundet, höchstens 4", () => {
+    expect(canvasFactor(1)).toBe(1);
+    expect(canvasFactor(0.5)).toBe(1);
+    expect(canvasFactor(1.2)).toBe(2);
+    expect(canvasFactor(2)).toBe(2);
+    expect(canvasFactor(2.0000000001)).toBe(2);
+    expect(canvasFactor(2.25 * 1.5)).toBe(4);
+    expect(canvasFactor(6)).toBe(4);
   });
 });

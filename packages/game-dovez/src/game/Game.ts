@@ -123,8 +123,9 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
     width: SCREEN_WIDTH,
     height: SCREEN_HEIGHT,
     scale: () => host.scaleMode?.() ?? "integer",
+    resolution: () => host.resolution?.() ?? "original",
   });
-  const textures = new TextureRegistry(host.assets);
+  const textures = new TextureRegistry(host.assets, app.renderer);
   const globals = (await Promise.all(
     ["atlas/spiel", "atlas/standart"].map((id) => host.assets.json<AtlasJson>(id)),
   )) as [AtlasJson, AtlasJson];
@@ -184,6 +185,8 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
     if (s && s.frame(host.now())) finish?.();
     if (disposed) return;
     setView(host.canvas, s instanceof LevelScene && s.fieldOnly ? FIELD_H : null);
+    // ohne neues Bild der Szene behält der Canvas das letzte
+    if (s?.idle === true && scene === s) return;
     app.render();
   };
   app.ticker.add(frame);

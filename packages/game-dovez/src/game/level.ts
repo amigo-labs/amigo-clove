@@ -1,5 +1,5 @@
 import { FixedStepLoop, type AtlasJson, type GameHost } from "@clove/core";
-import { WindowFocus, type TextureRegistry } from "@clove/pixi-kit";
+import { WindowFocus, probeEnd, probeStart, type TextureRegistry } from "@clove/pixi-kit";
 import type { Application } from "pixi.js";
 import { DovezAudio } from "../audio/DovezAudio";
 import { loadLevelPack } from "../data/LevelPack";
@@ -73,6 +73,8 @@ export class LevelScene implements Scene {
   private readonly screens = new AbortController();
   private readonly pages: string[];
   private readonly pointer = new PointerControl();
+  /** Kein neuer Tick gezeichnet (auch in Pause und Continue): das Bild steht. */
+  idle = false;
 
   private constructor(
     private readonly ctx: GameContext,
@@ -254,6 +256,7 @@ export class LevelScene implements Scene {
     if (!this.attached) this.attach();
     const { ctx, world } = this;
     const { host } = ctx;
+    this.idle = true;
     // Pause und Continue: die Welt steht, bis die Shell antwortet
     if (this.mode !== "play") return this.result !== undefined;
     let next: "pause" | "continue" | undefined;
@@ -266,6 +269,7 @@ export class LevelScene implements Scene {
     }
     let done = false;
     const running = () => world.state === 0;
+    const sim = probeStart();
     for (let i = 0; i < n && !next && running(); i++) {
       const inputs =
         ctx.players === 2 ? [readInput(host, 1), readInput(host, 2)] : [readInput(host), NO_INPUT];
@@ -287,9 +291,12 @@ export class LevelScene implements Scene {
       next ??= this.showcase;
       this.showcase = undefined;
     }
+    probeEnd("sim", sim, n);
     this.audio?.update(world);
     world.events.length = 0;
-    this.renderer.draw();
+    const draw = probeStart();
+    this.idle = !this.renderer.draw();
+    probeEnd("draw", draw);
     if (done) {
       // SpielSoundOFF, `StopOgg`
       this.audio?.stopLevel();

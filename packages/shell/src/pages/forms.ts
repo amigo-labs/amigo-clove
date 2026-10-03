@@ -1,5 +1,12 @@
 import type { GameUi, UiField, UiValues } from "@clove/core";
-import { HUD_MODES, MOTION_PREFERENCES, SCALE_MODES, type Settings } from "../settings";
+import {
+  HUD_MODES,
+  MOTION_PREFERENCES,
+  RESOLUTIONS,
+  SCALE_MODES,
+  type Settings,
+} from "../settings";
+import { softwareRendering } from "../gpu";
 import type { TextKey } from "../texts";
 import { ask, onOff, type PageContext } from "./context";
 
@@ -87,6 +94,21 @@ export async function displayPage(ui: GameUi, c: PageContext): Promise<void> {
     },
     {
       kind: "choice",
+      id: "resolution",
+      label: t("resolution"),
+      options: [
+        { value: "original", label: t("resolutionOriginal") },
+        { value: "xbr", label: t("resolutionXbr") },
+        { value: "hd", label: t("resolutionHd") },
+      ],
+      value: s.resolution,
+      hint: t("resolutionHelp"),
+    },
+    ...(softwareRendering()
+      ? [{ kind: "info", id: "software", text: t("softwareRendering"), tone: "warn" } as const]
+      : []),
+    {
+      kind: "choice",
       id: "scanlines",
       label: t("scanlines"),
       options: onOff(t),
@@ -119,6 +141,9 @@ export async function displayPage(ui: GameUi, c: PageContext): Promise<void> {
       } else if (changed === "scale") {
         const scale = choice(v, "scale", SCALE_MODES);
         if (scale) Object.assign(patch, { scale });
+      } else if (changed === "resolution") {
+        const resolution = choice(v, "resolution", RESOLUTIONS);
+        if (resolution) Object.assign(patch, { resolution });
       } else if (changed === "motion") {
         const motion = choice(v, "motion", MOTION_PREFERENCES);
         if (motion) Object.assign(patch, { motion });
