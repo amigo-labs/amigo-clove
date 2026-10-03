@@ -129,6 +129,32 @@ const SHOTS: readonly Shot[] = [
     ticks: 200,
     settings: { resolution: "hd" },
   },
+  // Kantenglättung (xBR): fensterfüllend und ganzzahlig doppelt
+  {
+    name: "dove-1-xbr",
+    url: "#/dove?level=1&seed=1&invincible=1&from=2100",
+    ticks: 150,
+    settings: { resolution: "xbr" },
+  },
+  {
+    name: "dove-1-xbr-int",
+    url: "#/dove?level=1&seed=1&invincible=1&from=2100",
+    ticks: 150,
+    settings: { scale: "integer", resolution: "xbr" },
+    viewport: TWICE_DOVE,
+  },
+  {
+    name: "dove-6-xbr",
+    url: "#/dove?level=6&seed=1&invincible=1&from=600",
+    ticks: 200,
+    settings: { resolution: "xbr" },
+  },
+  {
+    name: "dovez-skyfight-xbr",
+    url: "#/dovez?level=level1-1_skyfight&invincible=1&from=300",
+    ticks: 150,
+    settings: { resolution: "xbr" },
+  },
 ];
 
 /** Tickzähler der Messstellen in `@clove/pixi-kit` (ohne Zurücksetzen je Bild). */

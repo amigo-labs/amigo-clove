@@ -10,7 +10,8 @@
  * wird auf die Zählwerte.
  * Aufruf: `bun run perf:render` (baut vorher), Optionen `--seconds=6`,
  * `--only=<Teil des Szenennamens>`, `--out=<datei.json>`, `--base=<datei.json>`
- * (Vergleich mit einer früheren Messung), `--hd` (Renderauflösung HD).
+ * (Vergleich mit einer früheren Messung), `--resolution=xbr|hd` (Einstellung
+ * „Auflösung“ statt Original).
  */
 import { chromium, type Page } from "playwright-core";
 
@@ -20,8 +21,8 @@ const arg = (name: string) =>
   process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
 const SECONDS = Number(arg("seconds") ?? 6);
 const ONLY = arg("only");
-/** Renderauflösung HD (Einstellung der Shell) statt Original. */
-const HD = process.argv.includes("--hd");
+/** Renderauflösung (Einstellung der Shell), Vorgabe Original. */
+const RESOLUTION = arg("resolution");
 
 /** Szenen mit Effekten, die viel zeichnen: Hintergründe, Wasser, Flucht, Bosse. */
 const SCENES: readonly { name: string; url: string }[] = [
@@ -323,9 +324,10 @@ try {
     if (ONLY && !scene.name.includes(ONLY)) continue;
     const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
     await page.addInitScript(instrument);
-    if (HD)
-      await page.addInitScript(() =>
-        localStorage.setItem("clove:settings", JSON.stringify({ resolution: "hd" })),
+    if (RESOLUTION)
+      await page.addInitScript(
+        (resolution) => localStorage.setItem("clove:settings", JSON.stringify({ resolution })),
+        RESOLUTION,
       );
     page.on("pageerror", (e) => console.error(`${scene.name}: ${e.message}`));
     results.push(await measure(page, scene));
