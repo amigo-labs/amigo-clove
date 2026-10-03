@@ -69,11 +69,12 @@ export type ScaleMode = "integer" | "fit" | "smooth";
 
 /**
  * Renderauflösung: `original` zeichnet in der Auflösung des Originals und
- * vergrößert das fertige Bild (Vorgabe, Bild wie das Original), `hd` zeichnet
- * gleich in der Auflösung des Bildschirms — Drehungen, Überblendungen und Text
- * werden schärfer, Pixelgrafik bleibt Pixelgrafik.
+ * vergrößert das fertige Bild (Vorgabe, Bild wie das Original), `xbr` ebenso,
+ * aber mit Kantenglättung für Pixelgrafik, `hd` zeichnet gleich in der
+ * Auflösung des Bildschirms — Drehungen, Überblendungen und Text werden
+ * schärfer, Pixelgrafik bleibt Pixelgrafik.
  */
-export type RenderResolution = "original" | "hd";
+export type RenderResolution = "original" | "xbr" | "hd";
 
 /** Eine belegte Taste: `KeyboardEvent.code` und ihr Anzeigename. */
 export interface BoundKey {

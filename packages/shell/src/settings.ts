@@ -26,7 +26,7 @@ export interface Settings {
   readonly motion: MotionPreference;
   /** Skalierung des Spielbilds (Vorgabe: fensterfüllend scharf; `integer` für 1:1-Pixel). */
   readonly scale: ScaleMode;
-  /** Renderauflösung: Original (Vorgabe) oder HD in Bildschirmauflösung. */
+  /** Renderauflösung: Original (Vorgabe), mit Kantenglättung oder HD in Bildschirmauflösung. */
   readonly resolution: RenderResolution;
   /** Rasterlinien über dem Spielbild (reine CSS-Schicht). */
   readonly scanlines: boolean;
@@ -45,7 +45,7 @@ export const HUD_MODES = ["modern", "original"] as const satisfies readonly HudM
 
 export const SCALE_MODES = ["integer", "fit", "smooth"] as const satisfies readonly ScaleMode[];
 
-export const RESOLUTIONS = ["original", "hd"] as const satisfies readonly RenderResolution[];
+export const RESOLUTIONS = ["original", "xbr", "hd"] as const satisfies readonly RenderResolution[];
 
 export const DEFAULT_SETTINGS: Settings = {
   language: "auto",
