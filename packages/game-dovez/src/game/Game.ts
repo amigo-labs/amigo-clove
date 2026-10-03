@@ -123,6 +123,7 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
     width: SCREEN_WIDTH,
     height: SCREEN_HEIGHT,
     scale: () => host.scaleMode?.() ?? "integer",
+    resolution: () => host.resolution?.() ?? "original",
   });
   const textures = new TextureRegistry(host.assets, app.renderer);
   const globals = (await Promise.all(

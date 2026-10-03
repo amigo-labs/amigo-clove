@@ -81,7 +81,7 @@ Die Hashes hängen an der Chromium-Version von playwright-core, deshalb läuft
 
 Der Launcher (`#/`) listet die Spiele (daneben die Tastenübersicht der gewählten
 Karte), `#/settings` enthält Sprache, Ton (Gesamt, Musik, Effekte, Sprache),
-Darstellung (HUD, Skalierung, Rasterlinien, Bewegung), Steuerung (Maus/Touch,
+Darstellung (HUD, Skalierung, Auflösung, Rasterlinien, Bewegung), Steuerung (Maus/Touch,
 Gamepad), die Tastenbelegung je Spiel, Spielstand-Export/-Import und
 „Spieldaten installieren“ (nur im Build, der Dev-Server registriert keinen
 Service Worker).
@@ -133,6 +133,11 @@ oder Finger ihn benutzen:
   mit Boss-Lebensbalken; das Original-HUD lässt sich zurückholen.
 - **Darstellung:** Vollbild (`Alt+Enter` oder ⛶), Skalierung fensterfüllend
   scharf (Vorgabe) oder weich bzw. ganzzahlig (1:1-Pixel), Rasterlinien.
+  Der Canvas hat Gerätepixel: das Bild wird ganzzahlig vergrößert, den Rest
+  filtert der Browser — keine ungleich breiten Pixel mehr. Auflösung
+  „Original“ (Vorgabe) zeichnet in der Auflösung des Spiels, „HD“ in der des
+  Bildschirms (Drehungen, Überblendungen, Linien und Schrift schärfer). DOVE
+  sieht in HD gleich aus: es zeichnet nur ungedrehte Sprites auf ganzen Pixeln.
 - **Komfort:** DOVE pausiert bei Fokusverlust; freie Tastenbelegung (siehe
   oben); in DoveZ steuert das zweite Gamepad Spieler 2.
 

@@ -1,7 +1,8 @@
 /**
  * Zeitmessung je Frame für `bun run perf:render` (und Tickzähler für
  * `bun run frames`): Das Messskript legt `globalThis.cloveProbe` an, bevor die
- * Seite lädt, und liest es nach jedem Anzeigebild aus. Ohne Messung ist jede Messstelle ein Vergleich mit `undefined`.
+ * Seite lädt, und liest es nach jedem Anzeigebild aus. Ohne Messung ist jede
+ * Messstelle ein Vergleich mit `undefined`.
  */
 export interface FrameProbe {
   /** Simulation (Eingabe lesen und Ticks), ms seit dem letzten Auslesen. */

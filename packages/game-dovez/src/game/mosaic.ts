@@ -94,7 +94,8 @@ function readPixels(renderer: Renderer, source: RenderTexture): Promise<Pixels> 
   const gl = renderer.gl;
   const targets = renderer.renderTarget;
   const gpu = targets.getGpuRenderTarget(targets.getRenderTarget(source));
-  const { width, height } = source.frame;
+  // in Pixeln: in HD hat das Ziel ein Vielfaches der logischen Größe
+  const { pixelWidth: width, pixelHeight: height } = source.source;
   targets.adaptor.bindFramebuffer(gpu.resolveTargetFramebuffer);
   const buffer = gl.createBuffer();
   gl.bindBuffer(gl.PIXEL_PACK_BUFFER, buffer);

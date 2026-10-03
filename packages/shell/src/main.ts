@@ -442,6 +442,7 @@ async function startGame(
         rumble,
         rumblePads: () => rumblePads().length,
         scaleMode: () => settings.scale,
+        resolution: () => settings.resolution,
         hudMode: () => settings.hud,
         // über HTML-Bildschirmen klickt der Zeiger Knöpfe, nicht ins Spiel
         get pointer() {
