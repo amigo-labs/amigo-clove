@@ -403,6 +403,14 @@ try {
   await page.click(item("language"));
   await page.click(item("en"));
   await page.waitForFunction(() => document.querySelector(".ui-title")?.textContent === "Settings");
+  // SwiftShader ist WebGL ohne GPU: die Darstellung muss darauf hinweisen
+  await page.click(item("display"));
+  const software = await page
+    .waitForSelector('.ui-info[data-info="software"][data-tone="warn"]', { timeout: 10_000 })
+    .catch(() => null);
+  if (!software) failures.push("einstellungen: Hinweis auf Software-Rendering fehlt");
+  await page.keyboard.press("Escape");
+  await page.waitForSelector(item("keys:dovez"));
   await page.click(item("keys:dovez"));
   const dovezKeys = await page
     .waitForSelector(".ui-screen[data-game=dovez] .ui-key", { timeout: 10_000 })

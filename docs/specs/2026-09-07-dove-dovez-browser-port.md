@@ -574,7 +574,10 @@ Simulation**, also unveränderte Referenz-Replays und Level-Hashes.
   Nearest auf m, den Rest filtert der Browser (scharf-bilinear); `xbr` zeichnet
   ebenso in 1× und vergrößert immer per xBR-Shader (Stufe 2, ein Durchgang,
   21 Texel je Zielpixel) auf m; `hd` zeichnet mit Auflösung m. Die Render-Ziele
-  von DoveZ folgen der Auflösung, `blur`/`lens` bleiben 64 × 64.
+  von DoveZ folgen der Auflösung, `blur`/`lens` bleiben 64 × 64. WebGL mit
+  `powerPreference: "high-performance"`; erkennt die Shell Software-Rendering
+  (Renderer-Name bzw. `failIfMajorPerformanceCaveat`), zeigt „Darstellung“ einen
+  Hinweis, das Bild bleibt gleich.
 - **Menüs als HTML** *(keine Option, ersetzt die Original-Menüs):* Alles
   außerhalb der Level — Titel/Hauptmenü, Optionen, Levelauswahl, Info,
   Highscores, Namenseingabe, Laden/Speichern, Ladebildschirm, Get Ready, Pause,

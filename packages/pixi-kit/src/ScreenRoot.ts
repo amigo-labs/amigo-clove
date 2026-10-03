@@ -84,6 +84,8 @@ export async function createScreen(options: ScreenOptions): Promise<Application>
     background: 0x000000,
     autoStart: false,
     preference: "webgl",
+    // Laptops mit zwei GPUs: die schnelle nehmen
+    powerPreference: "high-performance",
   });
   // gezeichnet wird nur auf `app.render()` des Spiels, nicht zusätzlich am Ticker
   app.ticker.remove(app.render, app);

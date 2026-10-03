@@ -6,6 +6,7 @@ import {
   SCALE_MODES,
   type Settings,
 } from "../settings";
+import { softwareRendering } from "../gpu";
 import type { TextKey } from "../texts";
 import { ask, onOff, type PageContext } from "./context";
 
@@ -103,6 +104,9 @@ export async function displayPage(ui: GameUi, c: PageContext): Promise<void> {
       value: s.resolution,
       hint: t("resolutionHelp"),
     },
+    ...(softwareRendering()
+      ? [{ kind: "info", id: "software", text: t("softwareRendering"), tone: "warn" } as const]
+      : []),
     {
       kind: "choice",
       id: "scanlines",

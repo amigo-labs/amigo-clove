@@ -182,6 +182,9 @@ export class XbrPresent {
   }
 
   destroy(): void {
+    const { geometry, shader } = this.mesh;
     this.mesh.destroy();
+    geometry.destroy();
+    shader?.destroy();
   }
 }
