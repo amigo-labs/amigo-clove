@@ -80,8 +80,9 @@ const dove: GameModule = {
       width: SCREEN_WIDTH,
       height: SCREEN_HEIGHT,
       scale: () => host.scaleMode?.() ?? "integer",
+      resolution: () => host.resolution?.() ?? "original",
     });
-    const textures = new TextureRegistry(host.assets);
+    const textures = new TextureRegistry(host.assets, app.renderer);
     const audio = host.audio
       ? await DoveAudio.create(host.audio, host.assets).catch((e: unknown) => {
           console.warn("Audio nicht verfügbar:", e);
@@ -122,7 +123,9 @@ const dove: GameModule = {
       },
     };
     const flow = new Flow(env, app.stage, flowOptions);
-    const frame = () => flow.frame();
+    const frame = () => {
+      if (flow.frame()) app.render();
+    };
     app.ticker.add(frame);
     app.ticker.start();
     flow.main().catch((e: unknown) => console.error("DOVE-Ablauf abgebrochen:", e));

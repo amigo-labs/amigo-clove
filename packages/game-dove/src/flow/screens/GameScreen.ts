@@ -86,6 +86,7 @@ export class GameScreen implements Screen<GameResult> {
     const score = w.score;
     const input = this.input.read({ x: w.px, y: w.py });
     step(w, input);
+    this.renderer.tick();
     this.record(input, w);
     if (gameOver) return { kind: "gameover", score };
     if (w.exit === 3) return { kind: "complete" };
@@ -107,6 +108,10 @@ export class GameScreen implements Screen<GameResult> {
 
   viewHeight(): number | null {
     return this.modernHud() ? FIELD_H : null;
+  }
+
+  get frozen(): boolean {
+    return this.paused;
   }
 
   render(): void {

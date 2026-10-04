@@ -64,14 +64,24 @@ bun run smoke          # Browser-Smoke-Test: Kaltstart, Shell, Offline-Start
 bun run build          # statische Site nach packages/shell/dist/
 bun run budget         # Größenbudget der gebauten Site (nach build)
 bun run perf           # Simulationszeit je Tick, alle DoveZ-Level
+bun run perf:render    # Zeichnen im Browser je Szene: Bild-Callbacks, Draw-Calls, Uploads, Allokationen
+bun run frames         # Referenzbilder fester Szenen gegen packages/shell/scripts/frames.json
 bun run levels:report  # docs/measurements/dovez-levels.md neu erzeugen
 
 bun run --cwd packages/shell dev   # Launcher unter http://localhost:5173
 ```
 
+`perf:render` und `frames` laufen in Chromium mit SwiftShader (WebGL auf der CPU):
+Zeiten dort nur relativ vergleichen; die Zählwerte je Bild (Draw-Calls,
+Render-Ziel-Wechsel, Uploads, Allokationen) gelten geräteunabhängig. `frames`
+hält jedes Anzeigebild auf genau einen Tick (Playwrights Uhr) und prüft, dass
+Optimierungen das Bild nicht ändern; `--write` nur bei gewollter Bildänderung.
+Die Hashes hängen an der Chromium-Version von playwright-core, deshalb läuft
+`frames` lokal und nicht in der CI.
+
 Der Launcher (`#/`) listet die Spiele (daneben die Tastenübersicht der gewählten
 Karte), `#/settings` enthält Sprache, Ton (Gesamt, Musik, Effekte, Sprache),
-Darstellung (HUD, Skalierung, Rasterlinien, Bewegung), Steuerung (Maus/Touch,
+Darstellung (HUD, Skalierung, Auflösung, Rasterlinien, Bewegung), Steuerung (Maus/Touch,
 Gamepad), die Tastenbelegung je Spiel, Spielstand-Export/-Import und
 „Spieldaten installieren“ (nur im Build, der Dev-Server registriert keinen
 Service Worker).
@@ -123,6 +133,15 @@ oder Finger ihn benutzen:
   mit Boss-Lebensbalken; das Original-HUD lässt sich zurückholen.
 - **Darstellung:** Vollbild (`Alt+Enter` oder ⛶), Skalierung fensterfüllend
   scharf (Vorgabe) oder weich bzw. ganzzahlig (1:1-Pixel), Rasterlinien.
+  Der Canvas hat Gerätepixel: das Bild wird ganzzahlig vergrößert, den Rest
+  filtert der Browser — keine ungleich breiten Pixel mehr. Auflösung
+  „Original“ (Vorgabe) zeichnet in der Auflösung des Spiels, „Kanten geglättet“
+  ebenso, vergrößert aber per xBR-Shader (rundet Treppen an schrägen Kanten ab),
+  „HD“ zeichnet in der Auflösung des Bildschirms (Drehungen, Überblendungen,
+  Linien und Schrift schärfer). DOVE sieht in HD gleich aus: es zeichnet nur
+  ungedrehte Sprites auf ganzen Pixeln. Pixi wünscht sich die schnelle GPU
+  (`high-performance`); zeichnet der Browser ohne Grafikkarte, weist die Seite
+  „Darstellung“ darauf hin.
 - **Komfort:** DOVE pausiert bei Fokusverlust; freie Tastenbelegung (siehe
   oben); in DoveZ steuert das zweite Gamepad Spieler 2.
 

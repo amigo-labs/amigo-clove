@@ -15,6 +15,26 @@ export interface DrawOptions {
 
 const clamp01 = (v: number) => (v <= 0 ? 0 : v >= 1 ? 1 : v);
 
+/** Vorgabe ohne Farbe, Skalierung und Drehung (ein Objekt für alle Aufrufe). */
+export const PLAIN: DrawOptions = {};
+
+/**
+ * Wiederverwendbare Optionen für Schleifen, die je Sprite alle Felder neu setzen:
+ * `put` liest sie sofort und behält keinen Verweis.
+ */
+export function scratchOptions(): { -readonly [K in keyof DrawOptions]-?: DrawOptions[K] } {
+  return {
+    red: 1,
+    green: 1,
+    blue: 1,
+    alpha: 1,
+    scaleX: 1,
+    scaleY: 1,
+    rotation: 0,
+    additive: false,
+  };
+}
+
 /**
  * Wiederverwendete Sprites einer Zeichenebene: je Frame `begin()`, `put()`…,
  * `end()`. Position ist die linke obere Ecke des unskalierten Bilds; skaliert
@@ -22,6 +42,8 @@ const clamp01 = (v: number) => (v <= 0 ? 0 : v >= 1 ? 1 : v);
  */
 export class SpriteBatch {
   private readonly sprites: Sprite[] = [];
+  /** Zuletzt gesetzte Farbe je Sprite: Pixis `tint` rechnet bei jeder Zuweisung um. */
+  private readonly tints: number[] = [];
   private used = 0;
 
   constructor(readonly layer: Container) {}
@@ -30,12 +52,14 @@ export class SpriteBatch {
     this.used = 0;
   }
 
-  put(texture: Texture, x: number, y: number, o: DrawOptions = {}): Sprite {
-    let s = this.sprites[this.used];
+  put(texture: Texture, x: number, y: number, o: DrawOptions = PLAIN): Sprite {
+    const i = this.used;
+    let s = this.sprites[i];
     if (!s) {
       s = new Sprite(texture);
       s.anchor.set(0.5, 0.5);
       this.sprites.push(s);
+      this.tints.push(0xffffff);
       this.layer.addChild(s);
     }
     s.texture = texture;
@@ -47,7 +71,11 @@ export class SpriteBatch {
     const r = Math.round(clamp01(o.red ?? 1) * 255);
     const g = Math.round(clamp01(o.green ?? 1) * 255);
     const b = Math.round(clamp01(o.blue ?? 1) * 255);
-    s.tint = (r << 16) | (g << 8) | b;
+    const tint = (r << 16) | (g << 8) | b;
+    if (this.tints[i] !== tint) {
+      s.tint = tint;
+      this.tints[i] = tint;
+    }
     s.alpha = clamp01(o.alpha ?? 1);
     s.blendMode = o.additive ? "add" : "normal";
     s.visible = true;

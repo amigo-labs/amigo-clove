@@ -566,6 +566,18 @@ Simulation**, also unveränderte Referenz-Replays und Level-Hashes.
   für alles im Canvas weiter.
 - **Darstellung:** `GameHost.scaleMode` (Vorgabe `fit` fensterfüllend scharf, `integer` 1:1-Pixel wie bisher,
   `smooth`), Rasterlinien als CSS-Schicht, Vollbild über die ganze Seite.
+  Bei ganzzahligem Faktor Gerätepixel je Spielpixel vergrößert der Browser den
+  1×-Canvas per `pixelated` exakt; sonst hat der Canvas das m-Fache der
+  logischen Größe (m ganzzahlig, aufgerundet auf die Gerätepixel, höchstens 4;
+  `@clove/pixi-kit` trägt die logische Größe als `data-logical-width/-height`
+  ein). `GameHost.resolution` `original` zeichnet dann in 1× und vergrößert per
+  Nearest auf m, den Rest filtert der Browser (scharf-bilinear); `xbr` zeichnet
+  ebenso in 1× und vergrößert immer per xBR-Shader (Stufe 2, ein Durchgang,
+  21 Texel je Zielpixel) auf m; `hd` zeichnet mit Auflösung m. Die Render-Ziele
+  von DoveZ folgen der Auflösung, `blur`/`lens` bleiben 64 × 64. WebGL mit
+  `powerPreference: "high-performance"`; erkennt die Shell Software-Rendering
+  (Renderer-Name bzw. `failIfMajorPerformanceCaveat`), zeigt „Darstellung“ einen
+  Hinweis, das Bild bleibt gleich.
 - **Menüs als HTML** *(keine Option, ersetzt die Original-Menüs):* Alles
   außerhalb der Level — Titel/Hauptmenü, Optionen, Levelauswahl, Info,
   Highscores, Namenseingabe, Laden/Speichern, Ladebildschirm, Get Ready, Pause,

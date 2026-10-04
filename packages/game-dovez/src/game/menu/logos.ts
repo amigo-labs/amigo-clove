@@ -116,6 +116,7 @@ class Warp {
 
 /** Glitch-Vorspann (nur Intergenies): 91 Durchläufe à `Wait 31`. */
 export class LogoGlitch implements Scene {
+  idle = false;
   private readonly loop = new FixedStepLoop(31);
   private readonly pass = new Container();
   private readonly shown = new Container();
@@ -154,6 +155,7 @@ export class LogoGlitch implements Scene {
 
   frame(now: number): boolean {
     const n = this.loop.frame(now);
+    this.idle = n === 0;
     for (let i = 0; i < n; i++) {
       if (pauseKey(this.host) || this.t > 90) return true;
       this.step();
@@ -202,6 +204,7 @@ export class LogoGlitch implements Scene {
 
 /** Anzeige: a + b Durchläufe à `Wait 25`, Schwarzschleier α 1 → 0 in b Schritten (Intergenies ab 0). */
 export class LogoShow implements Scene {
+  idle = false;
   private readonly loop = new FixedStepLoop(25);
   private readonly root = new Container();
   private readonly veil = new Graphics().rect(0, 0, 800, 600).fill(0x000000);
@@ -229,6 +232,7 @@ export class LogoShow implements Scene {
 
   frame(now: number): boolean {
     const n = this.loop.frame(now);
+    this.idle = n === 0;
     for (let i = 0; i < n; i++) {
       if (pauseKey(this.host) || this.k >= this.hold + this.fadeIn) return true;
       this.veil.alpha = Math.max(0, Math.min(1, this.alpha));
@@ -246,6 +250,7 @@ export class LogoShow implements Scene {
 
 /** Zoom-Tunnel (Toxeen, Clockwork): 50 Durchläufe à `Wait 16`. */
 export class LogoTunnel implements Scene {
+  idle = false;
   private readonly loop = new FixedStepLoop(16);
   private readonly pass = new Container();
   private readonly shown: Sprite;
@@ -275,6 +280,7 @@ export class LogoTunnel implements Scene {
 
   frame(now: number): boolean {
     const n = this.loop.frame(now);
+    this.idle = n === 0;
     for (let i = 0; i < n; i++) {
       if (pauseKey(this.host) || this.k >= 50) return true;
       this.alpha = Math.max(0, f32(this.alpha - 0.05));
