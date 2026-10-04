@@ -5,7 +5,11 @@
  */
 export interface Scene {
   frame(now: number): boolean;
-  /** Im letzten `frame` hat sich das Bild nicht geändert: die Stage nicht neu zeichnen. */
-  readonly idle?: boolean;
+  /**
+   * Im letzten `frame` hat sich das Bild nicht geändert (kein Schritt fällig):
+   * die Stage nicht neu zeichnen. Auf- und Abbau der Szene bemerkt der Ablauf
+   * selbst (Kinder der Stage).
+   */
+  readonly idle: boolean;
   destroy(): void;
 }
