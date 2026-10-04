@@ -179,14 +179,22 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
   /** Wie `run`, danach aufgeräumt. */
   const play = (s: Scene): Promise<void> => run(s, () => s.destroy());
 
+  /** Szene auf- oder abgebaut (Kinder der Stage): das nächste Bild zeichnen, auch ohne Schritt. */
+  let stale = true;
+  const mark = () => (stale = true);
+  app.stage.on("childAdded", mark).on("childRemoved", mark);
+
   const frame = () => {
     if (disposed) return;
     const s = scene;
     if (s && s.frame(host.now())) finish?.();
     if (disposed) return;
     setView(host.canvas, s instanceof LevelScene && s.fieldOnly ? FIELD_H : null);
-    // ohne neues Bild der Szene behält der Canvas das letzte
-    if (s?.idle === true && scene === s) return;
+    // ohne neues Bild der Szene (auch ganz ohne Szene, unter HTML-Bildschirmen)
+    // behält der Canvas das letzte
+    const drew = s !== undefined && !s.idle;
+    if (!drew && !stale && scene === s) return;
+    stale = false;
     app.render();
   };
   app.ticker.add(frame);

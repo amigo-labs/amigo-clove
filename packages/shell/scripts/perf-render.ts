@@ -247,6 +247,8 @@ async function measure(page: Page, scene: { name: string; url: string }): Promis
     reads: field("reads"),
     allocKb: mean(fs.map((f) => Math.max(0, f.heapKb))),
     gcs: fs.filter((f) => f.heapKb < 0).length,
+    // Die Zeitstempel sind auf 0,1 ms gerundet: pünktliche Bilder liegen bei 16,6–16,8 ms,
+    // ein verpasstes 60-Hz-Bild bei ≥ 33,3 ms. 20 ms trennt beides (1000 / 60 zählte Rundung mit).
     jank: intervals.filter((d) => d > 20).length / Math.max(1, intervals.length),
     longTasks,
   };
