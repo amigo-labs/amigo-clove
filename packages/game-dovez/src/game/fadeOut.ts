@@ -62,6 +62,7 @@ export class FadeLogic {
 
 /** Die Abblende auf dem Bildschirm: das aktuelle Bild wird erfasst und abgeblendet. */
 export class FadeScene implements Scene {
+  idle = false;
   private readonly loop = new FixedStepLoop(FADE_MS);
   private readonly shown: Sprite;
   private readonly copy: Sprite;
@@ -97,6 +98,7 @@ export class FadeScene implements Scene {
 
   frame(now: number): boolean {
     const n = this.loop.frame(now);
+    this.idle = n === 0;
     for (let i = 0; i < n && !this.logic.done; i++) {
       // jeder Durchlauf zeichnet (die Rückkopplung summiert sich)
       this.logic.step();

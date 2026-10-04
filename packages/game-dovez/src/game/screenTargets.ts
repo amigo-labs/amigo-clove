@@ -1,3 +1,4 @@
+import { followResolution } from "@clove/pixi-kit";
 import { type Container, RenderTexture, type Renderer, Sprite } from "pixi.js";
 
 /**
@@ -14,8 +15,10 @@ export class ScreenTargets {
 
   constructor(readonly renderer: Renderer) {}
 
-  /** Zeichnet `container` nach `target`; `clear` löscht vorher schwarz. */
+  /** Zeichnet `container` nach `target`; `clear` löscht vorher schwarz. In HD folgen die Ziele der Auflösung. */
   draw(container: Container, target: RenderTexture, clear = false): void {
+    for (const t of [this.shot, this.back, this.tmp])
+      followResolution(this.renderer, t, t !== this.tmp);
     this.renderer.render({ container, target, clear, clearColor: [0, 0, 0, 1] });
   }
 

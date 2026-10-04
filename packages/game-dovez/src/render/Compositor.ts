@@ -1,3 +1,4 @@
+import { followResolution } from "@clove/pixi-kit";
 import { Container, Rectangle, RenderTexture, Sprite, Texture, type Renderer } from "pixi.js";
 import type { Capture, Copy, EnvList, RenderTarget } from "../sim/envDraw";
 import { StripMesh, type StripTexture } from "./StripMesh";
@@ -46,8 +47,15 @@ export class Compositor {
     return { id: `@${t}`, texture: this.targets[t], frame: [0, 0, 1, 1], wrap: false };
   }
 
-  /** Zu Framebeginn: Streifen- und Ebenen-Pools zurücksetzen. */
+  /**
+   * Zu Framebeginn: Streifen- und Ebenen-Pools zurücksetzen. In HD folgen
+   * Backbuffer, Standbild und Kopie der Auflösung des Renderers; `blur` und
+   * `lens` bleiben 64 × 64 wie im Original (der Weichzeichner lebt davon).
+   */
   begin(): void {
+    followResolution(this.pixi, this.bb, true);
+    followResolution(this.pixi, this.targets.still, true);
+    followResolution(this.pixi, this.tmp, false);
     this.meshesUsed = 0;
     for (let i = 0; i < this.runsUsed; i++) this.runs[i]!.removeChildren();
     this.runsUsed = 0;
@@ -63,7 +71,9 @@ export class Compositor {
   ): void {
     let run: Container | undefined;
     let mesh: StripMesh | undefined;
-    let key = "";
+    // Mesh-Wechsel bei anderer Textur oder anderem Mischmodus (ohne Schlüssel-String je Streifen)
+    let keyId = "";
+    let keyAdditive = false;
     for (const c of list.cmds) {
       if (c.op !== "strip") {
         mesh?.finish();
@@ -75,20 +85,20 @@ export class Compositor {
       }
       const tex = resolve(c.key);
       if (!tex) continue;
-      const k = `${tex.id}|${c.additive ? 1 : 0}`;
       if (!run) {
         run = this.runs[this.runsUsed] ?? new Container();
         this.runs[this.runsUsed++] = run;
         run.alpha = alpha;
         out.push(run);
       }
-      if (!mesh || k !== key) {
+      if (!mesh || tex.id !== keyId || c.additive !== keyAdditive) {
         mesh?.finish();
         mesh = this.meshes[this.meshesUsed] ?? new StripMesh();
         this.meshes[this.meshesUsed++] = mesh;
         mesh.reset(tex, c.additive);
         run.addChild(mesh.mesh);
-        key = k;
+        keyId = tex.id;
+        keyAdditive = c.additive;
       }
       mesh.add(c);
     }
@@ -148,13 +158,36 @@ export class Compositor {
     }
   }
 
-  /** `BltFast` Backbuffer → Backbuffer über eine Kopie (WebGL liest und schreibt nicht dieselbe Textur). */
+  /**
+   * `BltFast` Backbuffer → Backbuffer über eine Kopie (WebGL liest und schreibt
+   * nicht dieselbe Textur). Kopiert wird nur der Bereich der Quellrechtecke, per
+   * GPU-Kopie statt eines Vollbilds über einen Sprite.
+   */
   private copy(c: Copy): void {
-    const all = new Sprite(this.bb);
-    this.one.addChild(all);
-    this.pixi.render({ container: this.one, target: this.tmp, clear: true });
-    this.one.removeChildren();
-    all.destroy();
+    let x0 = W;
+    let y0 = H;
+    let x1 = 0;
+    let y1 = 0;
+    for (const [sx, sy, w, h] of c.rects) {
+      x0 = Math.min(x0, Math.floor(sx));
+      y0 = Math.min(y0, Math.floor(sy));
+      x1 = Math.max(x1, Math.ceil(sx + Math.max(1, w)));
+      y1 = Math.max(y1, Math.ceil(sy + Math.max(1, h)));
+    }
+    // die GPU-Kopie zählt in Pixeln des Ziels (in HD ein Vielfaches)
+    const r = this.bb.source.resolution;
+    x0 = Math.max(0, x0) * r;
+    y0 = Math.max(0, y0) * r;
+    x1 = Math.min(W, x1) * r;
+    y1 = Math.min(H, y1) * r;
+    if (x1 > x0 && y1 > y0)
+      this.pixi.renderTarget.copyToTexture(
+        this.bb,
+        this.tmp,
+        { x: x0, y: y0 },
+        { width: x1 - x0, height: y1 - y0 },
+        { x: x0, y: y0 },
+      );
     c.rects.forEach(([sx, sy, w, h, dx, dy], i) => {
       let s = this.copies[i];
       if (!s) {

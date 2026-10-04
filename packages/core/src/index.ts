@@ -98,6 +98,7 @@ export type {
   LocalLabel,
   PadLayout,
   PointerState,
+  RenderResolution,
   ScaleMode,
 } from "./shell/GameModule";
 export {

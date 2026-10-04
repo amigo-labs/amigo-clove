@@ -38,7 +38,15 @@ const DE = {
   scaleFit: "Fenster füllen (scharf)",
   scaleSmooth: "Fenster füllen (weich)",
   scaleHelp:
-    "„Fenster füllen“ (Vorgabe) nutzt den ganzen Platz, „ganzzahlig“ lässt jedes Originalpixel gleich groß. Vollbild: Alt+Enter oder ⛶ oben rechts.",
+    "„Fenster füllen“ (Vorgabe) nutzt den ganzen Platz, „ganzzahlig“ zeigt jedes Originalpixel als exaktes Quadrat ohne Filter. Vollbild: Alt+Enter oder ⛶ oben rechts.",
+  resolution: "Auflösung",
+  resolutionOriginal: "Original",
+  resolutionXbr: "Kanten geglättet (xBR)",
+  resolutionHd: "HD (Bildschirmauflösung)",
+  resolutionHelp:
+    "„Kanten geglättet“ rundet die Treppen an schrägen Kanten der Pixelgrafik ab. „HD“ zeichnet in der Auflösung des Bildschirms: Drehungen, Überblendungen, Linien und Schrift werden schärfer, die Pixelgrafik bleibt. Beides braucht mehr Grafikleistung.",
+  softwareRendering:
+    "Der Browser zeichnet ohne Grafikkarte (Hardwarebeschleunigung aus oder gesperrt). Am flüssigsten läuft dann „Original“ mit „ganzzahlig“ oder „weich“. Einschalten lässt sie sich in den Einstellungen des Browsers unter „Hardwarebeschleunigung“.",
   scanlines: "Rasterlinien (Röhrenmonitor)",
   fullscreen: "Vollbild",
   fullscreenExit: "Vollbild beenden",
@@ -151,7 +159,15 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<TextKey>>> = {
     scaleFit: "fill window (sharp)",
     scaleSmooth: "fill window (smooth)",
     scaleHelp:
-      "“Fill window” (default) uses all the space; integer keeps every original pixel the same size. Full screen: Alt+Enter or ⛶ at the top right.",
+      "“Fill window” (default) uses all the space; integer shows every original pixel as an exact square without filtering. Full screen: Alt+Enter or ⛶ at the top right.",
+    resolution: "Resolution",
+    resolutionOriginal: "original",
+    resolutionXbr: "smoothed edges (xBR)",
+    resolutionHd: "HD (screen resolution)",
+    resolutionHelp:
+      "“Smoothed edges” rounds off the stair steps on diagonal edges of the pixel art. “HD” renders at the screen's resolution: rotations, blending, lines and text get sharper; the pixel art stays. Both need more graphics power.",
+    softwareRendering:
+      "The browser is drawing without the graphics card (hardware acceleration off or blocked). “original” with “integer” or “smooth” runs best then. You can turn it on in the browser settings under “hardware acceleration”.",
     scanlines: "Scanlines (CRT look)",
     fullscreen: "Full screen",
     fullscreenExit: "Exit full screen",
@@ -258,7 +274,15 @@ export const TEXTS: Readonly<Record<Locale, Dictionary<TextKey>>> = {
     scaleFit: "по размеру окна (чёткий)",
     scaleSmooth: "по размеру окна (сглаженный)",
     scaleHelp:
-      "«По размеру окна» (по умолчанию) использует всё место, целочисленный масштаб сохраняет все пиксели одинаковыми. Полный экран: Alt+Enter или ⛶ справа вверху.",
+      "«По размеру окна» (по умолчанию) использует всё место, целочисленный масштаб показывает каждый пиксель оригинала точным квадратом без фильтрации. Полный экран: Alt+Enter или ⛶ справа вверху.",
+    resolution: "Разрешение",
+    resolutionOriginal: "оригинальное",
+    resolutionXbr: "сглаженные края (xBR)",
+    resolutionHd: "HD (разрешение экрана)",
+    resolutionHelp:
+      "«Сглаженные края» скругляют ступеньки на наклонных краях пиксельной графики. «HD» рисует в разрешении экрана: повороты, наложения, линии и текст становятся чётче, пиксельная графика остаётся. Оба режима требуют больше ресурсов видеокарты.",
+    softwareRendering:
+      "Браузер рисует без видеокарты (аппаратное ускорение выключено или заблокировано). Плавнее всего тогда «оригинальное» с целочисленным или сглаженным масштабом. Включить ускорение можно в настройках браузера («аппаратное ускорение»).",
     scanlines: "Строки развёртки (как на ЭЛТ)",
     fullscreen: "Полный экран",
     fullscreenExit: "Выйти из полноэкранного режима",

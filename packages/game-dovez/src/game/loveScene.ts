@@ -19,6 +19,7 @@ import type { Scene } from "./scene";
  * und wie „Exit“ zurück zur Shell (`MenuLoop` setzt danach den Modus 0xA).
  */
 export class LoveScene implements Scene {
+  idle = false;
   private readonly loop = new FixedStepLoop(LOVE_MS);
   private readonly view: LoveView;
   private start: number | undefined;
@@ -36,15 +37,15 @@ export class LoveScene implements Scene {
 
   frame(now: number): boolean {
     this.start ??= now;
+    this.idle = true;
     // `Wait 1000` vor der Schleife: Tasten zählen dabei noch nicht
     if (now - this.start < LOVE_START_MS) return false;
     const n = this.loop.frame(now);
-    let drawn = false;
     for (let i = 0; i < n; i++) {
       if (!this.logic.step(pauseKey(this.host))) return true;
-      drawn = true;
+      this.idle = false;
     }
-    if (drawn) this.view.draw(this.logic);
+    if (!this.idle) this.view.draw(this.logic);
     return false;
   }
 

@@ -22,24 +22,41 @@ export function collectShared(roots: readonly unknown[]): WeakSet<object> {
   return seen;
 }
 
-/** Kopiert `v` rekursiv mit Prototyp; `shared` und Funktionen bleiben Referenzen. */
+/**
+ * Kopiert `v` rekursiv mit Prototyp; `shared` und Funktionen bleiben Referenzen.
+ * Primitive Werte werden ohne Aufruf übernommen und Schlüssel ohne
+ * `Object.entries` gelesen: der Schnappschuss eines Checkpoints berührt über
+ * zehntausend Objekte und lag sonst über einem Anzeigebild.
+ */
 export function deepClone<T>(v: T, shared: WeakSet<object>, memo = new Map<object, unknown>()): T {
-  if (typeof v !== "object" || v === null || shared.has(v)) return v;
+  if (typeof v !== "object" || v === null) return v;
+  return cloneObject(v, shared, memo) as T;
+}
+
+function cloneObject(v: object, shared: WeakSet<object>, memo: Map<object, unknown>): unknown {
+  if (shared.has(v)) return v;
   const known = memo.get(v);
-  if (known !== undefined) return known as T;
+  if (known !== undefined) return known;
   if (ArrayBuffer.isView(v)) {
     const copy = (v as unknown as Float32Array).slice();
     memo.set(v, copy);
-    return copy as T;
+    return copy;
   }
   if (Array.isArray(v)) {
     const copy: unknown[] = [];
     memo.set(v, copy);
-    for (const x of v) copy.push(deepClone(x, shared, memo));
-    return copy as T;
+    for (let i = 0; i < v.length; i++) {
+      const x: unknown = v[i];
+      copy.push(typeof x === "object" && x !== null ? cloneObject(x, shared, memo) : x);
+    }
+    return copy;
   }
   const copy = Object.create(Object.getPrototypeOf(v) as object) as Record<string, unknown>;
   memo.set(v, copy);
-  for (const [k, x] of Object.entries(v)) copy[k] = deepClone(x, shared, memo);
-  return copy as T;
+  const src = v as Record<string, unknown>;
+  for (const k of Object.keys(src)) {
+    const x = src[k];
+    copy[k] = typeof x === "object" && x !== null ? cloneObject(x, shared, memo) : x;
+  }
+  return copy;
 }

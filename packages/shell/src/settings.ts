@@ -6,6 +6,7 @@ import {
   type HudMode,
   type KeyLayout,
   type LocalePreference,
+  type RenderResolution,
   type ScaleMode,
   type StoredBindings,
 } from "@clove/core";
@@ -25,6 +26,8 @@ export interface Settings {
   readonly motion: MotionPreference;
   /** Skalierung des Spielbilds (Vorgabe: fensterfüllend scharf; `integer` für 1:1-Pixel). */
   readonly scale: ScaleMode;
+  /** Renderauflösung: Original (Vorgabe), mit Kantenglättung oder HD in Bildschirmauflösung. */
+  readonly resolution: RenderResolution;
   /** Rasterlinien über dem Spielbild (reine CSS-Schicht). */
   readonly scanlines: boolean;
   /** Maus und Touch steuern das Schiff (Erweiterung; ohne Zeigerbewegung wie das Original). */
@@ -42,12 +45,15 @@ export const HUD_MODES = ["modern", "original"] as const satisfies readonly HudM
 
 export const SCALE_MODES = ["integer", "fit", "smooth"] as const satisfies readonly ScaleMode[];
 
+export const RESOLUTIONS = ["original", "xbr", "hd"] as const satisfies readonly RenderResolution[];
+
 export const DEFAULT_SETTINGS: Settings = {
   language: "auto",
   volume: { master: 1, music: 1, sfx: 1, voice: 1 },
   gamepad: true,
   motion: "auto",
   scale: "fit",
+  resolution: "original",
   scanlines: false,
   pointer: true,
   hud: "modern",
@@ -147,6 +153,7 @@ export function sanitizeSettings(
     gamepad: typeof r["gamepad"] === "boolean" ? r["gamepad"] : d.gamepad,
     motion: MOTION_PREFERENCES.find((m) => m === r["motion"]) ?? d.motion,
     scale: SCALE_MODES.find((m) => m === r["scale"]) ?? d.scale,
+    resolution: RESOLUTIONS.find((m) => m === r["resolution"]) ?? d.resolution,
     scanlines: typeof r["scanlines"] === "boolean" ? r["scanlines"] : d.scanlines,
     pointer: typeof r["pointer"] === "boolean" ? r["pointer"] : d.pointer,
     hud: HUD_MODES.find((m) => m === r["hud"]) ?? d.hud,

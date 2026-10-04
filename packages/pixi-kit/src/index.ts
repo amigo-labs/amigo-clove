@@ -6,6 +6,8 @@ export {
   viewHeight,
   type ScreenOptions,
 } from "./ScreenRoot";
-export { scaleFor } from "./scale";
-export { TextureRegistry } from "./TextureRegistry";
+export { type FrameProbe, probeEnd, probeStart } from "./probe";
+export { canvasFactor, scaleFor } from "./scale";
+export { followResolution } from "./targets";
+export { TextureRegistry, type TextureUploader } from "./TextureRegistry";
 export { WindowFocus } from "./WindowFocus";

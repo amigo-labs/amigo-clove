@@ -66,12 +66,66 @@ const TARGET_SIZE: Record<string, readonly [number, number]> = {
   "@still": [800, 600],
   "@noise": [256, 256],
 };
+const NO_SIZE = [1, 1] as const;
+
+type MutableVtx = { -readonly [K in keyof Vtx]: Vtx[K] };
+interface PooledStrip {
+  readonly op: "strip";
+  key: TexKey;
+  readonly v: MutableVtx[];
+  additive: boolean;
+}
+
+const vtx = (): MutableVtx => ({ x: 0, y: 0, u: 0, v: 0, r: 0, g: 0, b: 0, a: 0 });
+
+function setVtx(
+  t: MutableVtx,
+  x: number,
+  y: number,
+  u: number,
+  v: number,
+  r: number,
+  g: number,
+  b: number,
+  a: number,
+): void {
+  t.x = x;
+  t.y = y;
+  t.u = u;
+  t.v = v;
+  t.r = r;
+  t.g = g;
+  t.b = b;
+  t.a = a;
+}
 
 export class EnvList {
   readonly cmds: EnvCmd[] = [];
+  /**
+   * Vierecke aus `rect`, `cross` und `segment`, über `clear()` hinweg
+   * wiederverwendet: je Tick entstünden sonst Hunderte Vertex-Objekte. Ein
+   * Befehl gilt bis zum nächsten `clear()`; der Renderer liest ihn davor.
+   */
+  private readonly quads: PooledStrip[] = [];
+  private quadsUsed = 0;
 
   clear(): void {
     this.cmds.length = 0;
+    this.quadsUsed = 0;
+  }
+
+  /** Nächstes Viereck aus dem Vorrat, als Befehl angehängt; die Vertizes setzt der Aufrufer. */
+  private quad(key: TexKey, additive: boolean): MutableVtx[] {
+    let s = this.quads[this.quadsUsed];
+    if (!s) {
+      s = { op: "strip", key, v: [vtx(), vtx(), vtx(), vtx()], additive };
+      this.quads.push(s);
+    }
+    this.quadsUsed++;
+    s.key = key;
+    s.additive = additive;
+    this.cmds.push(s);
+    return s.v;
   }
 
   strip(key: TexKey, v: readonly Vtx[], additive = false): void {
@@ -96,22 +150,22 @@ export class EnvList {
     additive = false,
     src?: readonly [number, number, number, number],
   ): void {
-    let [u0, v0, u1, v1] = [0, 0, 1, 1];
+    let u0 = 0;
+    let v0 = 0;
+    let u1 = 1;
+    let v1 = 1;
     if (src) {
-      const [w, h] = TARGET_SIZE[key] ?? [1, 1];
-      [u0, v0, u1, v1] = [src[0] / w, src[1] / h, src[2] / w, src[3] / h];
+      const size = TARGET_SIZE[key] ?? NO_SIZE;
+      u0 = src[0] / size[0];
+      v0 = src[1] / size[1];
+      u1 = src[2] / size[0];
+      v1 = src[3] / size[1];
     }
-    const c = { r, g, b, a };
-    this.strip(
-      key,
-      [
-        { x: x1, y: y2, u: u0, v: v1, ...c },
-        { x: x1, y: y1, u: u0, v: v0, ...c },
-        { x: x2, y: y2, u: u1, v: v1, ...c },
-        { x: x2, y: y1, u: u1, v: v0, ...c },
-      ],
-      additive,
-    );
+    const q = this.quad(key, additive);
+    setVtx(q[0]!, x1, y2, u0, v1, r, g, b, a);
+    setVtx(q[1]!, x1, y1, u0, v0, r, g, b, a);
+    setVtx(q[2]!, x2, y2, u1, v1, r, g, b, a);
+    setVtx(q[3]!, x2, y1, u1, v0, r, g, b, a);
   }
 
   /**
@@ -131,17 +185,11 @@ export class EnvList {
     a: number,
     additive = false,
   ): void {
-    const c = { r, g, b, a };
-    this.strip(
-      key,
-      [
-        { x: l, y: t, u: 0, v: 1, ...c },
-        { x: r_, y: t, u: 0, v: 0, ...c },
-        { x: l, y: b_, u: 1, v: 1, ...c },
-        { x: r_, y: b_, u: 1, v: 0, ...c },
-      ],
-      additive,
-    );
+    const q = this.quad(key, additive);
+    setVtx(q[0]!, l, t, 0, 1, r, g, b, a);
+    setVtx(q[1]!, r_, t, 0, 0, r, g, b, a);
+    setVtx(q[2]!, l, b_, 1, 1, r, g, b, a);
+    setVtx(q[3]!, r_, b_, 1, 0, r, g, b, a);
   }
 
   /** `Linie` (Balken quer zur Richtung, Farbverlauf entlang), aus einer Effekt-Zeichenliste. */
@@ -152,18 +200,13 @@ export class EnvList {
     if (len === 0) return;
     const nx = (-dy / len) * s.w;
     const ny = (dx / len) * s.w;
-    const [r1, g1, b1, a1] = s.c1;
-    const [r2, g2, b2, a2] = s.c2;
-    this.strip(
-      "balken",
-      [
-        { x: s.x1 + nx, y: s.y1 + ny, u: 0, v: 1, r: r1, g: g1, b: b1, a: a1 },
-        { x: s.x1 - nx, y: s.y1 - ny, u: 0, v: 0, r: r1, g: g1, b: b1, a: a1 },
-        { x: s.x2 + nx, y: s.y2 + ny, u: 1, v: 1, r: r2, g: g2, b: b2, a: a2 },
-        { x: s.x2 - nx, y: s.y2 - ny, u: 1, v: 0, r: r2, g: g2, b: b2, a: a2 },
-      ],
-      s.additive,
-    );
+    const c1 = s.c1;
+    const c2 = s.c2;
+    const q = this.quad("balken", s.additive);
+    setVtx(q[0]!, s.x1 + nx, s.y1 + ny, 0, 1, c1[0], c1[1], c1[2], c1[3]);
+    setVtx(q[1]!, s.x1 - nx, s.y1 - ny, 0, 0, c1[0], c1[1], c1[2], c1[3]);
+    setVtx(q[2]!, s.x2 + nx, s.y2 + ny, 1, 1, c2[0], c2[1], c2[2], c2[3]);
+    setVtx(q[3]!, s.x2 - nx, s.y2 - ny, 1, 0, c2[0], c2[1], c2[2], c2[3]);
   }
 
   capture(

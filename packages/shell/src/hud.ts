@@ -148,7 +148,10 @@ class PlayerBlock {
 class Messages {
   readonly top = h("div", { class: "hud-messages", "aria-live": "polite" });
   readonly placed = h("div", { class: "hud-placed", "aria-hidden": "true" });
-  private readonly shown = new Map<string, { el: HTMLElement; text: string; opacity: string }>();
+  private readonly shown = new Map<
+    string,
+    { el: HTMLElement; text: string; opacity: string; x: number; y: number }
+  >();
 
   set(list: readonly HudMessage[]): void {
     const seen = new Set<string>();
@@ -161,10 +164,12 @@ class Messages {
           if (m.width !== undefined) el.style.width = `calc(${m.width} * var(--px) * 1px)`;
           this.placed.append(el);
         } else this.top.append(el);
-        cur = { el, text: "", opacity: "" };
+        cur = { el, text: "", opacity: "", x: Number.NaN, y: Number.NaN };
         this.shown.set(m.id, cur);
       }
-      if (m.at) {
+      if (m.at && (cur.x !== m.at.x || cur.y !== m.at.y)) {
+        cur.x = m.at.x;
+        cur.y = m.at.y;
         cur.el.style.left = `calc(var(--game-x) + ${m.at.x} * var(--px) * 1px)`;
         cur.el.style.top = `calc(var(--game-y) + ${m.at.y} * var(--px) * 1px)`;
       }
@@ -205,6 +210,8 @@ export class HudView {
   private raf = 0;
   private lastLives: number | undefined;
   private bossShown = false;
+  private bossWidth = "";
+  private comboText = "";
 
   constructor(
     private readonly stage: Stage,
@@ -266,7 +273,11 @@ export class HudView {
       if (!this.bossShown) this.announce(this.t("hudBossAppears"));
       this.bossShown = true;
       this.boss.hidden = false;
-      this.bossFill.style.width = `${((100 * Math.min(boss.hp, boss.max)) / boss.max).toFixed(1)}%`;
+      const width = `${((100 * Math.min(boss.hp, boss.max)) / boss.max).toFixed(1)}%`;
+      if (width !== this.bossWidth) {
+        this.bossWidth = width;
+        this.bossFill.style.width = width;
+      }
     } else {
       if (this.bossShown) this.announce(this.t("hudBossDefeated"));
       this.bossShown = false;
@@ -275,7 +286,11 @@ export class HudView {
     const combo = snap.combo;
     this.combo.hidden = !combo || combo.hits < 2;
     if (combo && combo.hits >= 2) {
-      this.combo.textContent = this.t("hudCombo", { hits: combo.hits, bonus: combo.bonus });
+      const text = this.t("hudCombo", { hits: combo.hits, bonus: combo.bonus });
+      if (text !== this.comboText) {
+        this.comboText = text;
+        this.combo.textContent = text;
+      }
     }
   }
 
