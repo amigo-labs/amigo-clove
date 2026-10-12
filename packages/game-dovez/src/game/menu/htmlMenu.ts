@@ -243,10 +243,10 @@ class HtmlMenu {
   private async main(): Promise<Page | MenuResult> {
     const m = this.t.main(this.bonusOn);
     const n = m.entries.length;
-    const ids = m.entries.map(
-      (_, i) => MAIN_IDS[i] ?? (i === n - 1 ? "exit" : this.o.lang === "ru" ? "bonus" : "score"),
-    );
-    const items = m.entries.map((label, i) => ({ id: ids[i]!, label }));
+    const items = m.entries.map((label, i) => ({
+      id: MAIN_IDS[i] ?? (i === n - 1 ? "exit" : this.o.lang === "ru" ? "bonus" : "score"),
+      label,
+    }));
     const r = await this.ask("main", {
       kind: "menu",
       title: m.title,
@@ -490,10 +490,10 @@ class HtmlMenu {
         s[1] !== c.vibrationStrength[1]
       )
         this.setConfig({ ...c, vibration: on, vibrationStrength: s });
-      const pad = /^(?:vibration|strength)(\d)$/.exec(changed ?? "")?.[1];
+      const [, kind, pad] = /^(vibration|strength)(\d)$/.exec(changed ?? "") ?? [];
       if (pad !== undefined) {
         const p = Number(pad);
-        this.pulse(p, changed!.startsWith("strength") ? s[p]! / 10000 : 1);
+        this.pulse(p, kind === "strength" ? s[p]! / 10000 : 1);
       }
     };
     const r = await this.form("vibration", {

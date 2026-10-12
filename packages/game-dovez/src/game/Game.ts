@@ -126,9 +126,10 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
     resolution: () => host.resolution?.() ?? "original",
   });
   const textures = new TextureRegistry(host.assets, app.renderer);
-  const globals = (await Promise.all(
-    ["atlas/spiel", "atlas/standart"].map((id) => host.assets.json<AtlasJson>(id)),
-  )) as [AtlasJson, AtlasJson];
+  const globals = await Promise.all([
+    host.assets.json<AtlasJson>("atlas/spiel"),
+    host.assets.json<AtlasJson>("atlas/standart"),
+  ]);
   await textures.load(Renderer.pageIds(globals.map((json) => ({ json }))));
   const standart = globals[1];
   /** Das DoveZ-Logo (`Standart.d2p`, wie auf dem Mosaik-Ladebild) für Menü und Speicherbildschirm. */
@@ -246,15 +247,14 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
         if (take) sprite = { sprite: take };
       }
       // ohne Ladebild (Einzellevel, Epilog): das Mosaik, ohne Tastendruck
-      const isMosaic = a.loading === undefined || sprite === undefined;
-      const image = isMosaic ? await mosaic.image() : sprite;
+      const image = sprite ?? (await mosaic.image());
       let loaded = 0;
       let ready = false;
       const shown = show(
         loadingNotice({
           lang,
           image,
-          mosaic: isMosaic,
+          mosaic: sprite === undefined,
           progress: () => (ready ? 1 : Math.min(loaded, 0.99)),
         }),
       );
