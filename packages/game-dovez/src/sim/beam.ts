@@ -79,7 +79,7 @@ interface Suck {
 }
 
 /** Modul-Globale von `SpielBeam` (`Me.1288+0x5BC…0x620`), für beide Spieler gemeinsam. */
-export interface BeamShared {
+interface BeamShared {
   qHeld: boolean[];
   auraOn: boolean;
   auraR: number;

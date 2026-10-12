@@ -50,7 +50,7 @@ export type MenuResult =
   | { readonly kind: "exit" };
 
 /** Töne des Menüs (`LoadMenuSound`): `plingding` beim Bewegen, `dude` beim Bestätigen. */
-export type MenuSound = "dude" | "plingding";
+type MenuSound = "dude" | "plingding";
 
 export interface HtmlMenuOptions {
   readonly ui: GameUi;
@@ -80,7 +80,7 @@ export interface HtmlMenuOptions {
 }
 
 /** Probeimpuls der Vibrationszeilen: 20 Durchläufe à 18 ms. */
-export const PULSE_MS = 360;
+const PULSE_MS = 360;
 
 type Page =
   | "main"

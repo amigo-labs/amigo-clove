@@ -10,11 +10,11 @@ import { COS_DEG, SIN_DEG, cint, degIndex, f32, winkel } from "./vb";
  * `0x4AAFE0`). Befund: `docs/measurements/dovez-runtime.md`.
  */
 
-export const EMITTER_CAPACITY = 51;
-export const ENEMY_SHOT_CAPACITY = 501;
+const EMITTER_CAPACITY = 51;
+const ENEMY_SHOT_CAPACITY = 501;
 /** Zielpunkt eines gezielten Schusses relativ zur linken oberen Ecke des Spielers. */
-export const AIM_OFFSET_X = 28;
-export const AIM_OFFSET_Y = 31;
+const AIM_OFFSET_X = 28;
+const AIM_OFFSET_Y = 31;
 
 export interface Emitter {
   active: boolean;
@@ -51,7 +51,7 @@ export interface EnemyShot {
 }
 
 /** Wo ein Emitter an einem Gegnerteil sitzt: Bildmitte und Drehung. */
-export interface MuzzleSource {
+interface MuzzleSource {
   muzzle(
     enemy: number,
     part: number,

@@ -20,7 +20,7 @@ import type { Segment } from "./effects";
 export type RenderTarget = "blur" | "still" | "lens";
 
 /** Schlüssel einer Textur: Atlas-Sprite oder `@blur`/`@still`/`@lens`/`@noise` (Rauschen mit Kachelwiederholung). */
-export type TexKey = string;
+type TexKey = string;
 
 /** TL-Vertex: Position, Texturkoordinate (0…1 über das Bild), Farbe 0…1 (geklemmt wie `0x577E70`). */
 export interface Vtx {
@@ -57,7 +57,7 @@ export interface Copy {
   readonly rects: readonly (readonly [number, number, number, number, number, number])[];
 }
 
-export type EnvCmd = Strip | Capture | Copy;
+type EnvCmd = Strip | Capture | Copy;
 
 /** Texturgrößen der Render-Ziele (für Quellrechtecke in Pixeln). */
 const TARGET_SIZE: Record<string, readonly [number, number]> = {

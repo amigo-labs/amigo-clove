@@ -2,7 +2,7 @@ import { decodeWav, encodeWavPcm16 } from "@clove/formats";
 
 export const SOUND_CONVERTER_VERSION = 1;
 
-export interface SoundResult {
+interface SoundResult {
   readonly bytes: Uint8Array;
   readonly sampleRate: number;
   readonly channels: number;

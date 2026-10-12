@@ -565,7 +565,7 @@ function termName(v: number): string {
 }
 
 /** Ein Argument lesbar: `X+10`, `-W`, `L0`, `3.5`. */
-export function formatRouteArg(p: { readonly a: number; readonly b: number }): string {
+function formatRouteArg(p: { readonly a: number; readonly b: number }): string {
   const a = termName(p.a);
   if (p.b === 0) return a;
   const b = termName(p.b);

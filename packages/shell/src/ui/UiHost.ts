@@ -28,7 +28,7 @@ import {
   type UiGateState,
 } from "./model";
 
-export interface UiHostOptions {
+interface UiHostOptions {
   /** Hierhin zeichnet der UiHost: die Overlay-Schicht der Bühne bzw. eine Seite. */
   readonly mount: HTMLElement;
   /** Bekommt `data-ui="over"|"page"`, solange ein Bildschirm offen ist (Bühne: Canvas abblenden). */

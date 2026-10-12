@@ -7,13 +7,13 @@
  * als eine Seite sind, landen allein auf einer Seite in eigener Größe.
  */
 
-export interface PackItem {
+interface PackItem {
   readonly name: string;
   readonly width: number;
   readonly height: number;
 }
 
-export interface Placement {
+interface Placement {
   readonly name: string;
   readonly page: number;
   readonly x: number;
@@ -22,7 +22,7 @@ export interface Placement {
   readonly height: number;
 }
 
-export interface PackedPage {
+interface PackedPage {
   /** Auf die belegte Fläche zugeschnitten. */
   readonly width: number;
   readonly height: number;

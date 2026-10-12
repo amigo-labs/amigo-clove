@@ -119,7 +119,7 @@ export function serializeConfig(config: Config): string {
 }
 
 /** Levelnamen aus `Get_Ready` (`0x45D934`); 11–19 heißen „ExtraLevel 1…9“. */
-export const LEVEL_NAMES: readonly string[] = [
+const LEVEL_NAMES: readonly string[] = [
   "Tutorial",
   "Lost In Space",
   "Factory",

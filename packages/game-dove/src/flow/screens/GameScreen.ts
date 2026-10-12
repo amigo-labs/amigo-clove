@@ -14,7 +14,7 @@ import type { FlowEnv, Screen } from "../screen";
  * Pause (1) oder alle Leben verloren (→ Continue; `score` ist der Stand vor
  * dem Rücksetzen durch die Simulation).
  */
-export type GameResult =
+type GameResult =
   | { readonly kind: "complete" }
   | { readonly kind: "abort" }
   | { readonly kind: "gameover"; readonly score: number };

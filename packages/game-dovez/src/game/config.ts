@@ -92,7 +92,7 @@ export interface AudioGains {
   readonly music: number;
 }
 
-export function audioGains(c: DovezConfig): AudioGains {
+function audioGains(c: DovezConfig): AudioGains {
   return { sfx: dbGain(c.sfx), speech: dbGain(c.speech), music: c.music / 100 };
 }
 

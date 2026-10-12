@@ -8,7 +8,7 @@ import type { ScreenTargets } from "./screenTargets";
 export type Rect = readonly [number, number, number, number];
 
 export const FADE_TICKS = 80;
-export const FADE_MS = 16;
+const FADE_MS = 16;
 
 /**
  * `FadeOut(richtung, abbrechbar)` (`0x545C70`): 80 Durchläufe à `Wait 16`.

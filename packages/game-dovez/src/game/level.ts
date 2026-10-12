@@ -37,7 +37,7 @@ export interface GameContext {
   readonly config: DovezConfig;
 }
 
-export interface LevelOptions {
+interface LevelOptions {
   readonly slug: string;
   /** Levelname wie im Original (`Level1-1 Skyfight`, Pause und Speicherbildschirm). */
   readonly name: string;

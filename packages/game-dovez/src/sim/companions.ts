@@ -53,7 +53,7 @@ export function tonator(w: CompanionWorld): Player | undefined {
 }
 
 /** Force-Besitzer (`G.350`): nur ein D-Phyton. */
-export function phyton(w: CompanionWorld): Player | undefined {
+function phyton(w: CompanionWorld): Player | undefined {
   const q = w.playersMinus1 === 1 && (w.players[0]?.shipType ?? 1) !== 1 ? 1 : 0;
   const p = w.players[q];
   return p?.shipType === 1 ? p : undefined;
@@ -97,7 +97,7 @@ export function nextParticle(w: CompanionWorld, p: Player): void {
 }
 
 /** Tastenriegel der Begleiter (`G.35C`, `G.35E`, `G.348`, `G.344`). */
-export interface CompanionKeys {
+interface CompanionKeys {
   switchHeld: boolean;
   rotateHeld: boolean;
   /** Force: D war losgelassen (`G.348`) und Druckzähler im Rückruf (`G.344`). */

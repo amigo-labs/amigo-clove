@@ -23,16 +23,16 @@ import { COS_DEG, SIN_DEG, cint, degIndex, f32, winkelInGrad, type VbRnd } from 
  */
 
 /** Zwei Drohnen (`ReDim Me.B04(0 To Me.B10)`, `Me.B10 = 1`). */
-export const DRONE_COUNT = 2;
+const DRONE_COUNT = 2;
 /** Verlauf je Drohne: 11 Werte, der letzte (Index 10) ist die Drohnenposition der Folgedrohne. */
-export const TRAIL = 11;
+const TRAIL = 11;
 /** Anfangsvorrat der Sonderwaffen (`DoveReset` `0x4A6E97`: `Me.B14 = 30`, `Me.B18 = 4`, `Me.B1C = 0`). */
-export const AMMO_START = [30, 4, 0] as const;
+const AMMO_START = [30, 4, 0] as const;
 /** Radius der Zielsuche (`Me.724`, Start 170) und Ziel-Abstand der Bahnen. */
 const AIM_RANGE = 170;
 
 /** Eine Drohne (`Me.B04[i]`, 0x70). */
-export interface Drone {
+interface Drone {
   /** Position (+0x00/+0x04): der jeweils älteste Wert des Verlaufs. */
   x: number;
   y: number;

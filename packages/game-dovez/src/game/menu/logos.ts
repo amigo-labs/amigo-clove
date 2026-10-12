@@ -24,7 +24,7 @@ import type { ScreenTargets } from "../screenTargets";
  */
 
 /** `MakeSomeNoise(α)`: 4 × 3 Kacheln `noise` mit zufälligem, gespiegeltem Ausschnitt (48 `Rnd`). */
-export class NoiseLayer {
+class NoiseLayer {
   readonly root = new Container();
   private readonly tiles: TilingSprite[] = [];
 

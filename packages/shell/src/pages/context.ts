@@ -24,7 +24,7 @@ export interface PageGame {
 }
 
 /** Die Seite wurde von außen geschlossen (Route gewechselt, Spiel beendet). */
-export const CLOSED = Symbol("closed");
+const CLOSED = Symbol("closed");
 
 /** Zeigt einen Bildschirm; wirft `CLOSED`, wenn er von außen geschlossen wurde. */
 export async function ask(ui: GameUi, c: PageContext, screen: UiScreen): Promise<UiReply> {

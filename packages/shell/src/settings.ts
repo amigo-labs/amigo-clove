@@ -39,7 +39,7 @@ export interface Settings {
 }
 
 export const MOTION_PREFERENCES = ["auto", "reduce", "full"] as const;
-export type MotionPreference = (typeof MOTION_PREFERENCES)[number];
+type MotionPreference = (typeof MOTION_PREFERENCES)[number];
 
 export const HUD_MODES = ["modern", "original"] as const satisfies readonly HudMode[];
 
@@ -65,7 +65,7 @@ export function reducedMotion(pref: MotionPreference, systemReduces: boolean): b
   return pref === "reduce" || (pref === "auto" && systemReduces);
 }
 
-export const SETTINGS_KEY = "clove:settings";
+const SETTINGS_KEY = "clove:settings";
 
 function level(v: unknown, fallback: number): number {
   return typeof v === "number" && Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : fallback;

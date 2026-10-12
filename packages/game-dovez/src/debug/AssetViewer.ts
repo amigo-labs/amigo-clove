@@ -10,8 +10,8 @@ import { LABEL_HEIGHT, contourEdges, layoutGrid, type GridLayout } from "./layou
  * Esc zurück zum Launcher. Rot: Kontur, gelb gerahmt: Sprite ohne Kontur.
  */
 
-export const VIEW_WIDTH = 800;
-export const VIEW_HEIGHT = 600;
+const VIEW_WIDTH = 800;
+const VIEW_HEIGHT = 600;
 const HEADER = 44;
 const CELL = 128;
 const SCROLL_STEP = 48;

@@ -48,7 +48,7 @@ export const SCREEN_HEIGHT = 600;
 /** Spielfeld ohne HUD-Leiste. */
 const FIELD_H = 550;
 
-export interface GameOptions {
+interface GameOptions {
   /** Einzellevel (Slug) ohne Menü. */
   readonly level?: string | undefined;
   readonly from: number;

@@ -55,7 +55,7 @@ export function spawnExtra(w: World, art: number, y: number, x: number = SCREEN_
   w.extraAnim[i] = 0;
 }
 
-export function allocEnemy(w: World, type: number, pattern: number): number {
+function allocEnemy(w: World, type: number, pattern: number): number {
   const def = w.level.enemies[type];
   if (!def) return -1;
   const i = w.enemies.alloc();

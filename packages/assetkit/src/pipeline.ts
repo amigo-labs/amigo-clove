@@ -39,7 +39,7 @@ export interface BuildOptions {
   readonly log?: (message: string) => void;
 }
 
-export interface BuildStats {
+interface BuildStats {
   readonly converted: number;
   readonly reused: number;
   readonly filesWritten: number;
@@ -58,7 +58,7 @@ async function readManifest(out: string): Promise<Manifest | undefined> {
   return JSON.parse(await readFile(path, "utf8")) as Manifest;
 }
 
-export function serializeManifest(manifest: Manifest): Uint8Array {
+function serializeManifest(manifest: Manifest): Uint8Array {
   return new TextEncoder().encode(`${JSON.stringify(manifest, null, 2)}\n`);
 }
 
@@ -247,7 +247,7 @@ export async function build(jobs: readonly Job[], options: BuildOptions): Promis
   return { converted, reused, filesWritten, bytesWritten, removed, warnings: warnings.toSorted() };
 }
 
-export interface CheckResult {
+interface CheckResult {
   readonly missing: readonly string[];
   readonly extra: readonly string[];
   readonly changed: readonly string[];
@@ -357,7 +357,7 @@ export async function stale(
   return problems;
 }
 
-export interface ReportRow {
+interface ReportRow {
   readonly name: string;
   readonly files: number;
   readonly bytes: number;
