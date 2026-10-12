@@ -153,7 +153,7 @@ const HIT_FLASH = { red: 1, green: 0.5, blue: 0.5 } as const;
 /** Deckkraft von Vollbildblitzen bei bewegungsarmer Darstellung. */
 const CALM_FLASH = 0.3;
 
-export interface RendererOptions {
+interface RendererOptions {
   /** Bewegungsarme Darstellung (Einstellung der Shell): kein Wackeln, abgeschwächte Blitze. */
   readonly calm?: () => boolean;
   /**

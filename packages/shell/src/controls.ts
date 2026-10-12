@@ -26,7 +26,7 @@ const POINTER_TEXT: Readonly<Record<NonNullable<ControlRow["pointer"]>, TextKey>
   wheelDown: "mouseWheelDown",
 };
 
-export interface ControlsOptions {
+interface ControlsOptions {
   readonly t: ShellText;
   readonly locale: Locale;
   /** Pad-Belegung des Spiels; ohne sie entfällt die Gamepad-Spalte. */
@@ -39,14 +39,14 @@ export interface ControlsOptions {
   readonly showPointer: boolean;
 }
 
-export interface ControlsLine {
+interface ControlsLine {
   readonly action: string;
   readonly keys: readonly string[];
   readonly pad: readonly string[];
   readonly pointer: string;
 }
 
-export interface ControlsTable {
+interface ControlsTable {
   readonly label?: string;
   readonly pad: boolean;
   readonly pointer: boolean;

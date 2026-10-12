@@ -41,7 +41,7 @@ import { LIBWEBP_VERSION } from "../stages/image";
 export const DOVEZ_DATA = "original-dovez/Data";
 
 /** Eingefroren wie bei DOVE: eine Änderung schreibt jede Atlasseite neu. */
-export const DOVEZ_WEBP_EFFORT = 6;
+const DOVEZ_WEBP_EFFORT = 6;
 
 /**
  * Spec: Sprache 48 kbit/s mono, Effekte 64 kbit/s. Opus und VP9 sind nicht
@@ -59,12 +59,12 @@ const SFX_OPUS = { bitrate: 64, mono: false };
  */
 const VIDEO = { crf: 44, audioBitrate: 48 };
 
-export const SOUND_OPUS_CONVERTER_VERSION = 1;
-export const VIDEO_CONVERTER_VERSION = 1;
-export const MUSIC_OGG_CONVERTER_VERSION = 1;
-export const DATA_CONVERTER_VERSION = 1;
+const SOUND_OPUS_CONVERTER_VERSION = 1;
+const VIDEO_CONVERTER_VERSION = 1;
+const MUSIC_OGG_CONVERTER_VERSION = 1;
+const DATA_CONVERTER_VERSION = 1;
 /** Funktexte `{ de, en, ru }` (Version 1: nur `{ de, en }` im Atlas-Job, daher neu). */
-export const RADIO_CONVERTER_VERSION = 1;
+const RADIO_CONVERTER_VERSION = 1;
 
 /** Globale Grafikpakete → Bundle. */
 const D2P_ATLAS_BUNDLES: Readonly<Record<string, string>> = {

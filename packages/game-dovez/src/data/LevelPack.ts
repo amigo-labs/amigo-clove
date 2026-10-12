@@ -18,7 +18,7 @@ export interface LevelPack {
 }
 
 /** Funktexte eines Levels: Deutsch, Englisch, Russisch (`<Name>D/E/R.txt`). */
-export interface LevelRadio {
+interface LevelRadio {
   readonly de: RadioTexts;
   readonly en: RadioTexts;
   readonly ru: RadioTexts;

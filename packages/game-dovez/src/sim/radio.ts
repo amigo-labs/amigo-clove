@@ -13,14 +13,12 @@ import { cint, idiv, vbInt, type VbRnd } from "./vb";
  */
 
 /** Funkfenster (Rauschen) links unten im HUD. */
-export const RADIO_BOX = [5, 542, 84, 592] as const;
+const RADIO_BOX = [5, 542, 84, 592] as const;
 /** Porträt 50×50. */
-export const PORTRAIT = [20, 542] as const;
+const PORTRAIT = [20, 542] as const;
 
 /** Was die Engine abspielen soll. */
-export type RadioEvent =
-  | { readonly kind: "voice"; readonly wav: string }
-  | { readonly kind: "voiceStop" };
+type RadioEvent = { readonly kind: "voice"; readonly wav: string } | { readonly kind: "voiceStop" };
 
 export class Radio {
   active = false;

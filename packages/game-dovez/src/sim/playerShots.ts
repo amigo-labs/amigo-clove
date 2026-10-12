@@ -10,11 +10,11 @@ import { COS_DEG, SIN_DEG, cint, degIndex, f32, idiv, vbInt, winkelInGrad, type 
  * Befund: `docs/measurements/dovez-runtime.md` („Spielerwaffen“).
  */
 
-export const SHOT_SLOTS = 1001;
-export const SHOT_BOX = 16;
+const SHOT_SLOTS = 1001;
+const SHOT_BOX = 16;
 export const SHOT_SPEED = 11;
 
-export interface PlayerShot {
+interface PlayerShot {
   active: boolean;
   type: number;
   /** Typ-Parameter (Waffenstufe, Spurlänge, Teilungen, Startwinkel …). */
@@ -134,7 +134,7 @@ export interface ShotHost {
 }
 
 /** Gemeinsamer Kasten `L.304…L.310` (relativ zu x, y): einige Typen setzen ihn nicht. */
-export interface ShotBox {
+interface ShotBox {
   x1: number;
   y1: number;
   x2: number;

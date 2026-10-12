@@ -73,12 +73,12 @@ import {
 
 export const TICK_MS = 16;
 export const PLAYFIELD_H = 550;
-export const SPECIAL_CAPACITY = 16;
+const SPECIAL_CAPACITY = 16;
 /** Vorlauf: Kacheln der letzten 900 px vor dem Start (`SpielPastTicks`, `0x50D230`). */
 const PREROLL_PX = 900;
 
 /** Hintergrund (`Me.7CC`): 1 Bild, sonst eine prozedurale Variante (2 All, 3, 5 Himmel, 6 Flucht). */
-export type BackgroundMode = number;
+type BackgroundMode = number;
 
 export interface Special {
   active: boolean;
@@ -132,7 +132,7 @@ interface Saved {
 }
 
 /** Ereignisse für Ton, Funk und Engine-Teile, die noch fehlen; die Engine leert sie je Frame. */
-export type WorldEvent =
+type WorldEvent =
   /** Level-Ton `sounds[sound]`: `mode` 0 einmal, 1 Schleife (Zeitleiste ohne, Route mit Rücklauf). */
   | {
       readonly kind: "sound";

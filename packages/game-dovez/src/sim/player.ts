@@ -14,9 +14,9 @@ export const HIT_RIGHT = 64;
 export const HIT_BOTTOM = 54;
 /** Box, in der Gegnerschüsse treffen (streng überlappend). */
 export const SHOT_HIT = { left: 5, top: 20, right: 60, bottom: 45 } as const;
-export const START_X = 100;
-export const START_SPEED = 6;
-export const MAX_ENERGY = 100;
+const START_X = 100;
+const START_SPEED = 6;
+const MAX_ENERGY = 100;
 export const SPAWN_INVULNERABLE = 100;
 /** Ticks von KillDove bis zum Neustart. */
 export const DEATH_TICKS = 100;

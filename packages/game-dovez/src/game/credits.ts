@@ -10,7 +10,7 @@ import { type Lang, pick } from "./lang";
  * DoveZ-Logo oben im Bild zeigt die Shell als Marke im Kopf. Die Musik
  * (`Enhaced Credits.ogg`) spielt das Spiel.
  */
-export const CREDITS_PX_PER_S = 40;
+const CREDITS_PX_PER_S = 40;
 
 type Role = readonly [de: string, en: string, ru: string];
 
@@ -21,7 +21,7 @@ interface Section {
 }
 
 /** Abschnitte in der Reihenfolge des Bildes. */
-export const CREDITS: readonly Section[] = [
+const CREDITS: readonly Section[] = [
   {
     role: ["Projektleitung", "Project Leaders", "Руководители проекта"],
     names: ["Markus Madeja", "Boris Nonte"],

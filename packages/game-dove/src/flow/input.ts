@@ -11,7 +11,7 @@ export const KEYS = {
   escape: ["Escape"],
 } as const;
 
-export type KeyGroup = keyof typeof KEYS;
+type KeyGroup = keyof typeof KEYS;
 
 const ALL = [...new Set(Object.values(KEYS).flat())];
 

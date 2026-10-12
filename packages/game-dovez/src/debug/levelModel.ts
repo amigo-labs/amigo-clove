@@ -30,12 +30,12 @@ export function enemyBox(level: DovezLevel, e: DovezEnemy): { w: number; h: numb
   return { w, h };
 }
 
-export interface RouteUse {
+interface RouteUse {
   readonly kind: "enemy" | "part" | "shot";
   readonly label: string;
 }
 
-export interface TimedEffect extends RouteEffect {
+interface TimedEffect extends RouteEffect {
   readonly tick: number;
 }
 

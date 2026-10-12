@@ -11,12 +11,12 @@ import { f32, winkel } from "./vb";
  * addieren sie jeden Tick auf. Rein optisch, keine Kollision.
  */
 
-export const ANIM_CAPACITY = 301;
+const ANIM_CAPACITY = 301;
 
 /** Laufzeit-Key: Datei-Key plus vorberechnete Deltas des Segments zum nächsten Key. */
 type Mutable<T> = { -readonly [K in keyof T]: T[K] };
 
-export interface RuntimeKey extends Mutable<DovezAnimKey> {
+interface RuntimeKey extends Mutable<DovezAnimKey> {
   velX: number;
   accelX: number;
   velY: number;
@@ -30,13 +30,13 @@ export interface RuntimeKey extends Mutable<DovezAnimKey> {
   dScaleY: number;
 }
 
-export interface PreparedTrack {
+interface PreparedTrack {
   readonly group: number;
   /** n + 2 Keys: Wächter 0, die Datei-Keys 1…n, Wächter n + 1. */
   readonly keys: RuntimeKey[];
 }
 
-export interface PreparedAnim {
+interface PreparedAnim {
   readonly source: DovezAnim;
   readonly tracks: readonly PreparedTrack[];
   /** Rand fürs Entfernen links außerhalb (+0x1C). */
@@ -114,7 +114,7 @@ export function prepareAnim(a: DovezAnim, surfaces: readonly Surface[][]): Prepa
 }
 
 /** Zustand einer Spur (0x34 Byte). */
-export interface TrackState {
+interface TrackState {
   x: number;
   y: number;
   red: number;
@@ -130,7 +130,7 @@ export interface TrackState {
   key: number;
 }
 
-export interface AnimInstance {
+interface AnimInstance {
   active: boolean;
   layer: number;
   anim: number;

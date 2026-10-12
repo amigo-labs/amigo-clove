@@ -44,7 +44,7 @@ export const DeathState = {
   chain: 7,
 } as const;
 
-export interface PartState {
+interface PartState {
   readonly def: DovezPart;
   visible: boolean;
   frame: number;
@@ -1257,7 +1257,7 @@ export class Enemies {
 }
 
 /** Richtungsbild 0–7 aus der Gegnergeschwindigkeit (0 oben, 2 rechts, 4 unten, 6 links). */
-export function dir8(vx: number, vy: number): number {
+function dir8(vx: number, vy: number): number {
   if (vx === 0 && vy === 0) return -1;
   const right = vx >= 0;
   if (vy === 0) return right ? 2 : 6;

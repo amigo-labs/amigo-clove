@@ -27,7 +27,7 @@ export const NAME_ROWS: readonly string[] = [
   " ..   ..  ... . .   .",
 ];
 /** Herz (`0x412DC4`…`0x412E24`). */
-export const HEART_ROWS: readonly string[] = [" ..  ..", "........", " ......", "  ....", "   .."];
+const HEART_ROWS: readonly string[] = [" ..  ..", "........", " ......", "  ....", "   .."];
 
 /** Schrittweite und Ursprung der Ziele: Schriftzug `32 · Spalte + 10`, `32 · Zeile + 180` (Spalte ab 1). */
 const NAME_GRID = { step: 32, x: 10, y: 180 } as const;
@@ -51,10 +51,10 @@ export const TEXT_SIZE = 28;
 export const TEXT_POS = { x: 621, y: 566 } as const;
 
 /** Größe der Leuchtpunkte (Rechteck `x, y` bis `x + 64, y + 64`). */
-export const GLOW_SIZE = 64;
+const GLOW_SIZE = 64;
 
 /** Leuchtpunkt (Datensatz 0x18 Byte): Ort, Tempo und Ziel. */
-export interface LovePoint {
+interface LovePoint {
   x: number;
   y: number;
   vx: number;

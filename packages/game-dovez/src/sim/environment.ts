@@ -23,10 +23,10 @@ export type { EnvWorld, Hint } from "./envHost";
 
 export const STAR_COUNT = 101;
 /** Schleier-, Schnee- und Wolkendatensätze `Me.10E4` (Index `3·i + j`). */
-export const VEIL_COUNT = 60;
+const VEIL_COUNT = 60;
 
 /** Stern bzw. Fleck `Me.10C0[i]` (0x1C): Modi 2 und 6 x/y/Tempo/Farbe, Modi 4 und 5 Phase und Frequenzen. */
-export interface Star {
+interface Star {
   x: number;
   y: number;
   speed: number;
@@ -38,7 +38,7 @@ export interface Star {
 }
 
 /** Regentropfen `Me.10D0[i]` bzw. Schleierdatensatz `Me.10E4[i]`: x, y, vx, vy. */
-export interface Mover {
+interface Mover {
   x: number;
   y: number;
   vx: number;

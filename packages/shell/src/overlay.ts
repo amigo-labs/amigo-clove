@@ -27,12 +27,12 @@ export interface Stage {
   dispose(): void;
 }
 
-export interface StageOptions {
+interface StageOptions {
   readonly t: ShellText;
   readonly scanlines: () => boolean;
 }
 
-export function fullscreenSupported(): boolean {
+function fullscreenSupported(): boolean {
   return typeof document.documentElement.requestFullscreen === "function";
 }
 

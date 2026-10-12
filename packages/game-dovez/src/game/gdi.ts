@@ -16,7 +16,7 @@ import {
  * liegt bei y + 0,787 · h. „Orbit-B BT“ (Continue) fehlt auch dem Original —
  * GDI nimmt dann eine TrueType-Ersatzschrift, hier wie dort Arial.
  */
-export const GDI_FONT = "Arial, Helvetica, 'Liberation Sans', sans-serif";
+const GDI_FONT = "Arial, Helvetica, 'Liberation Sans', sans-serif";
 const EM = 2048 / 2355;
 const BASELINE = 0.787;
 
@@ -53,7 +53,7 @@ export class GdiText {
   }
 }
 
-export function gdiStyle(height: number, color: number): TextStyle {
+function gdiStyle(height: number, color: number): TextStyle {
   return new TextStyle({ fontFamily: GDI_FONT, fontSize: height * EM, fill: color });
 }
 
