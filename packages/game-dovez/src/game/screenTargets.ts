@@ -11,14 +11,14 @@ export class ScreenTargets {
   readonly shot = RenderTexture.create({ width: 800, height: 600 });
   readonly back = RenderTexture.create({ width: 800, height: 600 });
   readonly tmp = RenderTexture.create({ width: 800, height: 600 });
+  private readonly all = [this.shot, this.back, this.tmp];
   private readonly backCopy = new Sprite(this.back);
 
   constructor(readonly renderer: Renderer) {}
 
   /** Zeichnet `container` nach `target`; `clear` löscht vorher schwarz. In HD folgen die Ziele der Auflösung. */
   draw(container: Container, target: RenderTexture, clear = false): void {
-    for (const t of [this.shot, this.back, this.tmp])
-      followResolution(this.renderer, t, t !== this.tmp);
+    for (const t of this.all) followResolution(this.renderer, t, t !== this.tmp);
     this.renderer.render({ container, target, clear, clearColor: [0, 0, 0, 1] });
   }
 
@@ -29,6 +29,6 @@ export class ScreenTargets {
 
   destroy(): void {
     this.backCopy.destroy();
-    for (const t of [this.shot, this.back, this.tmp]) t.destroy(true);
+    for (const t of this.all) t.destroy(true);
   }
 }
