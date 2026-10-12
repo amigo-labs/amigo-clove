@@ -17,7 +17,7 @@ import {
   STAR_GROUPS,
 } from "../sim/constants";
 import { roundHalfEven } from "../sim/math";
-import { BAND_SIZE, DECO_RECT, SCRIPT_TEXTS } from "../sim/scripts";
+import { BAND_SIZE, DECO_RECT } from "../sim/scripts";
 import { levelMessages } from "../levelMessages";
 import type { World } from "../sim/world";
 import { GLYPH_W, glyph } from "./font";
@@ -26,6 +26,42 @@ import { Particles } from "./Particles";
 import { SpritePool } from "./SpritePool";
 
 const HUD_Y = FIELD_H;
+
+/** Zeichenebenen des Spielfelds in der Reihenfolge der Original-Hauptschleife. */
+const FIELD_LAYERS = [
+  "background",
+  "starsBack",
+  "objects",
+  "deco",
+  "starsFront",
+  "ship",
+  "extras",
+  "tiles",
+  "meteors",
+  "enemies",
+  "boss",
+  "bands",
+  "shots",
+  "laser",
+  "eshots",
+  "orbiters",
+  "beam",
+  "explosions",
+] as const;
+
+type PoolName = (typeof FIELD_LAYERS)[number] | "hud";
+
+interface RendererOptions {
+  /** Bewegungsarme Darstellung (Einstellung der Shell): kein Bildschirmwackeln. */
+  readonly calm: () => boolean;
+  /**
+   * HTML-HUD der Shell: Konsole und Anzeigen entfallen, die Texte im Spielfeld
+   * (Skripttexte, Scan-Meldungen in Level 7) zeigt die Shell (`levelMessages`).
+   */
+  readonly modernHud: () => boolean;
+  /** Skripttext mit den belegten Tasten (Namen in ASCII für die 8-px-Schrift). */
+  readonly scriptLine: (index: number) => string | undefined;
+}
 
 /**
  * Zeichnet den Weltzustand in der Reihenfolge der Original-Hauptschleife:
@@ -36,7 +72,7 @@ export class Renderer {
   readonly root = new Container();
   private readonly field = new Container();
   private readonly frames: FrameCache;
-  private readonly pools: Record<string, SpritePool> = {};
+  private readonly pools = new Map<PoolName, SpritePool>();
   private readonly poolList: SpritePool[];
   private readonly particles: Particles;
   private readonly feinde: string;
@@ -48,55 +84,25 @@ export class Renderer {
   constructor(
     textures: TextureRegistry,
     private readonly world: World,
-    /** Sprache der Skripttexte: Deutsch (`Me.350` gesetzt) oder Englisch. */
-    private readonly german = true,
-    /** Bewegungsarme Darstellung (Einstellung der Shell): kein Bildschirmwackeln. */
-    private readonly calm: () => boolean = () => false,
-    /**
-     * HTML-HUD der Shell: Konsole und Anzeigen entfallen, die Texte im Spielfeld
-     * (Skripttexte, Scan-Meldungen in Level 7) zeigt die Shell (`levelMessages`).
-     */
-    private readonly modernHud: () => boolean = () => false,
-    /** Skripttext mit den belegten Tasten (Namen in ASCII für die 8-px-Schrift). */
-    private readonly scriptLine: (index: number) => string | undefined = (i) =>
-      SCRIPT_TEXTS[i]?.[german ? 0 : 1],
+    private readonly opts: RendererOptions,
   ) {
     this.frames = new FrameCache(textures);
     const n = world.level.number;
     this.feinde = `image/feinde${n}`;
     this.landschaft = `image/landschaft${n}`;
     this.root.addChild(this.field);
-    for (const name of [
-      "background",
-      "starsBack",
-      "objects",
-      "deco",
-      "starsFront",
-      "ship",
-      "extras",
-      "tiles",
-      "meteors",
-      "enemies",
-      "boss",
-      "bands",
-      "shots",
-      "laser",
-      "eshots",
-      "orbiters",
-      "beam",
-      "explosions",
-    ]) {
+    for (const name of FIELD_LAYERS) {
       const layer = new Container();
       this.field.addChild(layer);
-      this.pools[name] = new SpritePool(layer);
+      this.pools.set(name, new SpritePool(layer));
     }
     const particleLayer = new Container();
     this.field.addChild(particleLayer);
     this.particles = new Particles(particleLayer);
     const hud = new Container();
     this.root.addChild(hud);
-    this.pools["hud"] = new SpritePool(hud);
-    this.poolList = Object.values(this.pools);
+    this.pools.set("hud", new SpritePool(hud));
+    this.poolList = [...this.pools.values()];
   }
 
   /** Alle Bild-IDs, die dieser Renderer braucht. */
@@ -119,8 +125,9 @@ export class Renderer {
     return this.frames.get(id, x, y, w, h);
   }
 
-  private pool(name: string): SpritePool {
-    return this.pools[name]!;
+  /** Sprite-Ebene; der Konstruktor legt sie für jeden Namen an. */
+  private pool(name: PoolName): SpritePool {
+    return this.pools.get(name)!;
   }
 
   private text(s: string, x: number, y: number): void {
@@ -146,16 +153,40 @@ export class Renderer {
     this.particles.consume(w.effects);
     w.effects.length = 0;
     this.particles.step();
-    if (w.shake > 0 && !this.calm())
+    if (w.shake > 0 && !this.opts.calm())
       this.shakeSeed = (Math.imul(this.shakeSeed, 1103515245) + 12345) | 0;
     this.ticks++;
   }
 
   render(): void {
+    for (const p of this.poolList) p.begin();
+    this.drawBackground();
+    this.drawObjects();
+    this.drawZones();
+    this.drawBoss();
+    this.drawShots();
+    this.drawExplosions();
+    this.particles.draw();
+
+    // Bildschirmwackeln bei großen Abschüssen (Amplitude geschätzt, reine Darstellung)
+    if (this.world.shake > 0 && !this.opts.calm()) {
+      this.field.position.set(((this.shakeSeed >> 8) % 3) - 1, ((this.shakeSeed >> 12) % 3) - 1);
+    } else {
+      this.field.position.set(0, 0);
+    }
+
+    // HUD und Texte im Spielfeld; mit dem HTML-HUD zeigt beides die Shell
+    if (!this.opts.modernHud()) {
+      this.drawHud();
+      this.drawFieldTexts();
+    }
+
+    for (const p of this.poolList) p.end();
+  }
+
+  private drawBackground(): void {
     const w = this.world;
     const lvl = w.level;
-    for (const p of this.poolList) p.begin();
-
     // Hintergrund: Bild mit Umbruch oder Sternenfeld
     if (!lvl.starfield) {
       const off = fxFloor(w.bgOffset);
@@ -170,7 +201,12 @@ export class Renderer {
           pool.put(Texture.WHITE, fxFloor(w.starX[i]!), w.starY[i]!, tint).setSize(1, 1);
       }
     }
+  }
 
+  /** Landschaftsobjekte, Deko, Schiff, Extras, Kacheln, Meteore und Gegner. */
+  private drawObjects(): void {
+    const w = this.world;
+    const lvl = w.level;
     for (let i = 0; i < w.objects.capacity; i++) {
       if (!w.objects.active[i]) continue;
       const o = lvl.objects[w.objType[i]!]!;
@@ -225,7 +261,10 @@ export class Renderer {
       const t = this.tex(this.feinde, e.l, e.t + w.enFrame[i]! * e.h, e.w, e.h);
       this.pool("enemies").put(t, roundHalfEven(w.enX[i]!), roundHalfEven(w.enY[i]!));
     }
+  }
 
+  private drawZones(): void {
+    const w = this.world;
     // Bremsbänder (Level 7) und Windzonen (Level 8): Darstellung geschätzt
     for (let i = 0; i < w.bands.capacity; i++) {
       if (!w.bands.active[i]) continue;
@@ -246,7 +285,11 @@ export class Renderer {
         streak.alpha = 0.6;
       }
     }
+  }
 
+  private drawBoss(): void {
+    const w = this.world;
+    const lvl = w.level;
     // Boss: bis zu drei Teile aus dem Gegner-Atlas, dazu tödliche Strahlen (Farbe geschätzt)
     for (let p = 0; p < 3; p++) {
       const type = w.bossType[p]!;
@@ -261,6 +304,11 @@ export class Renderer {
         .put(Texture.WHITE, w.bossBeamX[b]!, w.bossBeamY[b]!, 0xaaddff)
         .setSize(w.bossBeamW[b]!, w.bossBeamH[b]!);
     }
+  }
+
+  /** Schüsse, Laser, Gegnerschüsse, Options und Beam. */
+  private drawShots(): void {
+    const w = this.world;
     for (let i = 0; i < w.shots.capacity; i++) {
       if (!w.shots.active[i]) continue;
       let t: Texture;
@@ -305,6 +353,10 @@ export class Renderer {
       const b = BEAM_KINDS[w.beam]!;
       this.pool("beam").put(this.tex("image/ss", b.sx, b.sy, b.w, b.h), w.beamX, w.beamY);
     }
+  }
+
+  private drawExplosions(): void {
+    const w = this.world;
     for (let i = 0; i < w.explosions.capacity; i++) {
       if (!w.explosions.active[i]) continue;
       const f = w.expFrame[i]! - 1;
@@ -317,37 +369,26 @@ export class Renderer {
       );
       this.pool("explosions").put(t, w.expX[i]!, w.expY[i]!);
     }
+  }
 
-    this.particles.draw();
-
-    // Bildschirmwackeln bei großen Abschüssen (Amplitude geschätzt, reine Darstellung)
-    if (w.shake > 0 && !this.calm()) {
-      this.field.position.set(((this.shakeSeed >> 8) % 3) - 1, ((this.shakeSeed >> 12) % 3) - 1);
-    } else {
-      this.field.position.set(0, 0);
+  /** Scan-Meldungen und Skripttext in der 8-px-Schrift. */
+  private drawFieldTexts(): void {
+    const w = this.world;
+    for (const m of levelMessages(w)) {
+      if (m.at) this.text(m.text, m.at.x, m.at.y);
     }
-
-    // HUD und Texte im Spielfeld; mit dem HTML-HUD zeigt beides die Shell
-    const modern = this.modernHud();
-    if (!modern) this.drawHud(w);
-    if (!modern) {
-      for (const m of levelMessages(w)) {
-        if (m.at) this.text(m.text, m.at.x, m.at.y);
-      }
-      const script = this.scriptLine(w.scriptText);
-      if (script) {
-        const lines = wrap(script, 76);
-        lines.forEach((line, k) =>
-          this.text(line, Math.floor((SCREEN_W - line.length * GLYPH_W) / 2), 20 + 14 * k),
-        );
-      }
+    const script = this.opts.scriptLine(w.scriptText);
+    if (script) {
+      const lines = wrap(script, 76);
+      lines.forEach((line, k) =>
+        this.text(line, Math.floor((SCREEN_W - line.length * GLYPH_W) / 2), 20 + 14 * k),
+      );
     }
-
-    for (const p of this.poolList) p.end();
   }
 
   /** Konsole mit Tempo, Pod, Options, Bombe, Waffe, Beam-Ladung, Punkten und Schiffen. */
-  private drawHud(w: World): void {
+  private drawHud(): void {
+    const w = this.world;
     const hud = this.pool("hud");
     hud.put(this.tex("image/konsole", 0, 0, SCREEN_W, 70), 0, HUD_Y);
     const g = Math.max(0, Math.min(80, w.gauge));
