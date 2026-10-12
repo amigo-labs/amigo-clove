@@ -101,6 +101,7 @@ export type {
   RenderResolution,
   ScaleMode,
 } from "./shell/GameModule";
+export { DISPLAY_EVENT, LAYOUT_EVENT } from "./shell/GameModule";
 export {
   PAUSE_TEXTS,
   SETTINGS_PAGES,

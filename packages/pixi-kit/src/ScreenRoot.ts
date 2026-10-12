@@ -1,4 +1,4 @@
-import type { RenderResolution, ScaleMode } from "@clove/core";
+import { DISPLAY_EVENT, LAYOUT_EVENT, type RenderResolution, type ScaleMode } from "@clove/core";
 import { Application, RenderTexture, Sprite, TextureSource } from "pixi.js";
 import { canvasFactor, scaleFor } from "./scale";
 import { XbrPresent } from "./xbr";
@@ -37,14 +37,8 @@ export interface ScreenOptions {
   readonly resolution?: () => RenderResolution;
 }
 
-/** Fensterereignis: die Darstellung (Skalierung) hat sich geändert, neu einpassen. */
-export const DISPLAY_EVENT = "clove:display";
-/** Canvas-Ereignis nach jedem Einpassen (Größe oder sichtbarer Ausschnitt geändert). */
-export const LAYOUT_EVENT = "clove:layout";
-
 interface View {
   height: number | null;
-  readonly logicalHeight: number;
   fit(): void;
 }
 
@@ -60,12 +54,6 @@ export function setView(canvas: HTMLCanvasElement, height: number | null): void 
   if (!view || view.height === height) return;
   view.height = height;
   view.fit();
-}
-
-/** Aktuell sichtbare logische Höhe des Canvas. */
-export function viewHeight(canvas: HTMLCanvasElement): number {
-  const view = views.get(canvas);
-  return view ? (view.height ?? view.logicalHeight) : canvas.height;
 }
 
 /** Ganzzahliger Faktor ab 1 (ohne Rundungsrauschen). */
@@ -116,7 +104,6 @@ export async function createScreen(options: ScreenOptions): Promise<Application>
 
   const view: View = {
     height: null,
-    logicalHeight: options.height,
     fit() {
       const mode = options.scale?.() ?? "integer";
       const want = options.resolution?.() ?? "original";

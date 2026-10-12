@@ -1,6 +1,7 @@
 import { AudioBus } from "@clove/audio";
 import {
   AssetStore,
+  DISPLAY_EVENT,
   bindKeys,
   navigationKeys,
   resolveBindings,
@@ -29,7 +30,7 @@ import { h } from "./dom";
 import { NAV_BINDINGS, createPadState, padKeys } from "./gamepad";
 import { HudView } from "./hud";
 import { createKeyState } from "./keys";
-import { DISPLAY_EVENT, createStage, toggleFullscreen, type Stage } from "./overlay";
+import { createStage, toggleFullscreen, type Stage } from "./overlay";
 import { registerServiceWorker } from "./offline";
 import { runPage, type PageContext } from "./pages/context";
 import { keyLabel } from "./pages/keys";
