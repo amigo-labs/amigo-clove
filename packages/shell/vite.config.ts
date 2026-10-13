@@ -12,7 +12,7 @@ import { APP_CACHE_PREFIX, ASSET_CACHE } from "./src/cacheNames.ts";
  * der Bundler nicht umbenennen.
  */
 function chiptuneWorklet(): Plugin {
-  const require = createRequire(join(fileURLToPath(import.meta.url), "../../audio/package.json"));
+  const require = createRequire(import.meta.url);
   const dir = dirname(require.resolve("chiptune3/chiptune3.worklet.js"));
   const files = ["chiptune3.worklet.js", "libopenmpt.worklet.js"];
   const prefix = "/vendor/chiptune3/";
