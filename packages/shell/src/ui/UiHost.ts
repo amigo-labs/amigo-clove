@@ -202,6 +202,12 @@ export class UiHost implements GameUi {
     cur.resolve(reply);
   }
 
+  /** Auswahlton, dann die Antwort. */
+  private pick(s: UiScreen, id: string, values?: UiValues): void {
+    s.sounds?.select?.();
+    this.reply(id, values);
+  }
+
   private reply(id: string, values?: UiValues): void {
     this.close(values ? { id, values } : { id });
   }
@@ -400,8 +406,7 @@ export class UiHost implements GameUi {
     };
     const buttons = s.items.map((item) => {
       const b = this.itemButton(item, () => {
-        s.sounds?.select?.();
-        this.reply(item.id);
+        this.pick(s, item.id);
       });
       b.addEventListener("focus", () => showPreview(item));
       return b;
@@ -606,8 +611,7 @@ export class UiHost implements GameUi {
     draw();
     const actions = s.actions.map((a) =>
       this.itemButton(a, () => {
-        s.sounds?.select?.();
-        this.reply(a.id, { ...values });
+        this.pick(s, a.id, { ...values });
       }),
     );
     const el = this.panel(
@@ -709,8 +713,7 @@ export class UiHost implements GameUi {
     const submit = () => {
       const values: Record<string, string> = {};
       s.fields.forEach((f, i) => (values[f.id] = inputs[i]!.value));
-      s.sounds?.select?.();
-      this.reply("ok", values);
+      this.pick(s, "ok", values);
     };
     const ok = this.itemButton({ id: "ok", label: s.ok }, submit);
     const el = this.panel(
@@ -747,8 +750,7 @@ export class UiHost implements GameUi {
   private confirm(s: UiConfirm): View {
     const buttons = s.items.map((item) =>
       this.itemButton(item, () => {
-        s.sounds?.select?.();
-        this.reply(item.id);
+        this.pick(s, item.id);
       }),
     );
     const count = h("div", { class: "ui-countdown", "aria-live": "polite" });
