@@ -1,6 +1,6 @@
 import { DISPLAY_EVENT, LAYOUT_EVENT, type RenderResolution, type ScaleMode } from "@clove/core";
 import { Application, RenderTexture, Sprite, TextureSource } from "pixi.js";
-import { canvasFactor, scaleFor } from "./scale";
+import { canvasFactor, scaleFor, whole } from "./scale";
 import { XbrPresent } from "./xbr";
 
 /**
@@ -55,9 +55,6 @@ export function setView(canvas: HTMLCanvasElement, height: number | null): void 
   view.height = height;
   view.fit();
 }
-
-/** Ganzzahliger Faktor ab 1 (ohne Rundungsrauschen). */
-const whole = (f: number) => f > 1 - 1e-6 && Math.abs(f - Math.round(f)) < 1e-6;
 
 export async function createScreen(options: ScreenOptions): Promise<Application> {
   TextureSource.defaultOptions.scaleMode = "nearest";

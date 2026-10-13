@@ -1,5 +1,5 @@
 import type { AtlasJson, AtlasSprite } from "@clove/core";
-import type { TextureRegistry } from "@clove/pixi-kit";
+import { RectCache, type TextureRegistry } from "@clove/pixi-kit";
 import {
   Container,
   Graphics,
@@ -146,17 +146,6 @@ const TARGET_STRIPS = new Map<string, RenderTarget>([
 /** Zusatzbilder des HUD werden addiert (`interface*_spec*`). */
 const ADDITIVE = { additive: true } as const;
 
-const fits = (v: number) => Number.isInteger(v) && v >= 0 && v < 4096;
-
-/**
- * Ausschnitt (x, y, w, h; -1 = bis zum Rand) als eine Zahl, damit die Suche je
- * Sprite keinen Schlüssel-String baut; `NaN` für Werte außerhalb von 12 Bit.
- */
-function packRect(x: number, y: number, w: number, h: number): number {
-  if (!fits(x) || !fits(y) || !fits(w + 1) || !fits(h + 1)) return Number.NaN;
-  return ((x * 4096 + y) * 4096 + w + 1) * 4096 + h + 1;
-}
-
 /** Optionen der Gegnerschüsse, je Schuss neu gesetzt. */
 const SHOT = scratchOptions();
 
@@ -186,9 +175,8 @@ export class Renderer {
   private readonly batchList: SpriteBatch[] = [];
   private readonly fxBatches: [(typeof FX_SLOTS)[number], SpriteBatch][];
   private readonly layers = new Map<string, Container>();
-  /** Texturen je Sprite und Ausschnitt (`packRect`), seltene Ausschnitte unter einem String. */
-  private readonly frames = new Map<string, Map<number, Texture>>();
-  private readonly oddFrames = new Map<string, Texture>();
+  /** Texturen je Sprite und Ausschnitt. */
+  private readonly frames = new RectCache<Texture>();
   /** Streifen-Texturen je Schlüssel (sie ändern sich nicht, solange der Renderer lebt). */
   private readonly strips = new Map<string, StripTexture>();
   private readonly compositor: Compositor;
@@ -253,9 +241,7 @@ export class Renderer {
 
   /** Textur eines Atlas-Sprites, optional mit Ausschnitt (x, y, w, h im BMP). */
   private texture(key: string, rx = 0, ry = 0, rw = -1, rh = -1): Texture | undefined {
-    const packed = packRect(rx, ry, rw, rh);
-    const odd = Number.isNaN(packed) ? `${key}|${rx},${ry},${rw},${rh}` : undefined;
-    let t = odd === undefined ? this.frames.get(key)?.get(packed) : this.oddFrames.get(odd);
+    let t = this.frames.get(key, rx, ry, rw, rh);
     if (t) return t;
     const found = this.sprite(key);
     if (!found) return undefined;
@@ -268,12 +254,7 @@ export class Renderer {
       source: this.textures.get(page).source,
       frame: new Rectangle(s.x + rx, s.y + ry, w, h),
     });
-    if (odd !== undefined) this.oddFrames.set(odd, t);
-    else {
-      let byRect = this.frames.get(key);
-      if (!byRect) this.frames.set(key, (byRect = new Map()));
-      byRect.set(packed, t);
-    }
+    this.frames.set(key, rx, ry, rw, rh, t);
     return t;
   }
 
@@ -770,10 +751,8 @@ export class Renderer {
   }
 
   destroy(): void {
-    for (const byRect of this.frames.values()) for (const t of byRect.values()) t.destroy(false);
-    for (const t of this.oddFrames.values()) t.destroy(false);
+    for (const t of this.frames.values()) t.destroy(false);
     this.frames.clear();
-    this.oddFrames.clear();
     this.strips.clear();
     for (const c of this.layers.values()) c.destroy({ children: true });
     this.hint.destroy({ children: true });
