@@ -47,7 +47,7 @@ export class GameScreen implements Screen<GameResult> {
     this.images = Renderer.imageIds(world);
     this.input = new DoveInput(env.host.keys, () => env.host.pointer);
     this.focus = new WindowFocus(env.host.canvas);
-    this.renderer = new Renderer(env.textures, world, {
+    this.renderer = new Renderer(env.frames, world, {
       calm: () => env.host.reducedMotion === true,
       modernHud: () => this.modernHud(),
       scriptLine: (i) => {
