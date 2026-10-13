@@ -1,7 +1,7 @@
 import type { DrawList, Effects } from "./effects";
 import { DeathState, type Enemies, type Enemy } from "./enemies";
 import type { EnemyShot } from "./enemyFire";
-import type { Player, PlayerInput } from "./player";
+import { HIT_RIGHT, shipSprite, type Player, type PlayerInput } from "./player";
 import { COS_DEG, PI, SIN_DEG, cint, degIndex, f32, idiv, vbInt, type VbRnd } from "./vb";
 import type { Force, Particle } from "./weapons";
 
@@ -114,8 +114,6 @@ export interface NovaWorld {
 
 /** Nova-Treffer: pauschal auf die Gesamt-HP (`E.C`), die Teile bleiben. */
 const NOVA_DAMAGE = 10000;
-/** Rechter Rand der Hitbox (`A.6C`), für alle Schiffstypen 64. */
-const HIT_RIGHT = 64;
 
 /** Ein Tick `SpielNova`. */
 export function stepNova(w: NovaWorld, st: NovaState): void {
@@ -333,14 +331,10 @@ function seekTarget(w: NovaWorld, st: NovaState): void {
   }
 }
 
-function shipKey(p: Player): string {
-  return `dove${p.shipType}${p.tilt + 1}${p.animFrame + 1}`;
-}
-
 /** `SchiffNeu(po)`: das Schiff des Auslösers über den Bildbruch. */
 function shipOnTop(w: NovaWorld, st: NovaState): void {
   const p = w.players[st.player];
-  if (p) w.out.quad(shipKey(p), p.x, p.y, p.x + 64, p.y + 64);
+  if (p) w.out.quad(shipSprite(p.shipType, p.tilt, p.animFrame), p.x, p.y, p.x + 64, p.y + 64);
 }
 
 /**
@@ -863,7 +857,7 @@ function flyThrough(w: NovaWorld, st: NovaState): void {
     const r = w.rnd.next();
     p.x = f32(p.x - r * 50);
     const x0 = (W[1]! - 1) * 100;
-    const key = shipKey(p);
+    const key = shipSprite(p.shipType, p.tilt, p.animFrame);
     for (let k = 0; k <= 10; k++) {
       w.fx.addBig(x0 + k * 10, f32(p.y + k / 2), -2, 0, 0.3, 0.7, 1, 64 - k, 0, 10 - k, 3, 32);
       // additiv genau dann, wenn die Nova-Taste des letzten Spielers gehalten wird (sic)

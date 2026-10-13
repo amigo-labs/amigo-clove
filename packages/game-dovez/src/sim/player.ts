@@ -12,6 +12,11 @@ export const HIT_LEFT = 0;
 export const HIT_TOP = 17;
 export const HIT_RIGHT = 64;
 export const HIT_BOTTOM = 54;
+/** Atlas-Schlüssel des Schiffsbilds (`dove{Typ}{Neigung+1}{Bild+1}`). */
+export function shipSprite(shipType: number, tilt: number, frame: number): string {
+  return `dove${shipType}${tilt + 1}${frame + 1}`;
+}
+
 /** Box, in der Gegnerschüsse treffen (streng überlappend). */
 export const SHOT_HIT = { left: 5, top: 20, right: 60, bottom: 45 } as const;
 const START_X = 100;
