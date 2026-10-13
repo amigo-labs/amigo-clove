@@ -1,5 +1,4 @@
 import { fxFloor } from "@clove/core";
-import type { TextureRegistry } from "@clove/pixi-kit";
 import { Container, Texture } from "pixi.js";
 import {
   BEAM_KINDS,
@@ -21,7 +20,7 @@ import { BAND_SIZE, DECO_RECT } from "../sim/scripts";
 import { levelMessages } from "../levelMessages";
 import type { World } from "../sim/world";
 import { GLYPH_W, glyph } from "./font";
-import { FrameCache } from "./FrameCache";
+import type { FrameCache } from "./FrameCache";
 import { Particles } from "./Particles";
 import { SpritePool } from "./SpritePool";
 
@@ -71,7 +70,6 @@ interface RendererOptions {
 export class Renderer {
   readonly root = new Container();
   private readonly field = new Container();
-  private readonly frames: FrameCache;
   private readonly pools = new Map<PoolName, SpritePool>();
   private readonly poolList: SpritePool[];
   private readonly particles: Particles;
@@ -82,11 +80,11 @@ export class Renderer {
   private ticks = 0;
 
   constructor(
-    textures: TextureRegistry,
+    /** Teiltexturen des Spiels, über alle Level geteilt (`FlowEnv.frames`). */
+    private readonly frames: FrameCache,
     private readonly world: World,
     private readonly opts: RendererOptions,
   ) {
-    this.frames = new FrameCache(textures);
     const n = world.level.number;
     this.feinde = `image/feinde${n}`;
     this.landschaft = `image/landschaft${n}`;
@@ -416,7 +414,6 @@ export class Renderer {
   destroy(): void {
     this.particles.destroy();
     this.root.destroy({ children: true });
-    this.frames.clear();
   }
 }
 
