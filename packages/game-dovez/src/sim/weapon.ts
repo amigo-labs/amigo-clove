@@ -22,7 +22,7 @@ export interface ShotTrace {
   readonly height: number;
 }
 
-export interface WeaponSimOptions {
+interface WeaponSimOptions {
   readonly origin: { readonly x: number; readonly y: number };
   readonly player: { readonly x: number; readonly y: number };
   readonly ticks: number;

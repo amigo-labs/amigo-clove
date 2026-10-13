@@ -14,7 +14,7 @@ import type { FlowEnv, Screen } from "../screen";
  * Pause (1) oder alle Leben verloren (→ Continue; `score` ist der Stand vor
  * dem Rücksetzen durch die Simulation).
  */
-export type GameResult =
+type GameResult =
   | { readonly kind: "complete" }
   | { readonly kind: "abort" }
   | { readonly kind: "gameover"; readonly score: number };
@@ -47,13 +47,10 @@ export class GameScreen implements Screen<GameResult> {
     this.images = Renderer.imageIds(world);
     this.input = new DoveInput(env.host.keys, () => env.host.pointer);
     this.focus = new WindowFocus(env.host.canvas);
-    this.renderer = new Renderer(
-      env.textures,
-      world,
-      env.german,
-      () => env.host.reducedMotion === true,
-      () => this.modernHud(),
-      (i) => {
+    this.renderer = new Renderer(env.frames, world, {
+      calm: () => env.host.reducedMotion === true,
+      modernHud: () => this.modernHud(),
+      scriptLine: (i) => {
         const keys = env.host.boundKeys;
         return scriptText(
           i,
@@ -63,7 +60,7 @@ export class GameScreen implements Screen<GameResult> {
             : undefined,
         );
       },
-    );
+    });
     this.root.addChild(this.renderer.root);
   }
 

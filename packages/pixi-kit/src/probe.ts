@@ -4,7 +4,7 @@
  * Seite lädt, und liest es nach jedem Anzeigebild aus. Ohne Messung ist jede
  * Messstelle ein Vergleich mit `undefined`.
  */
-export interface FrameProbe {
+interface FrameProbe {
   /** Simulation (Eingabe lesen und Ticks), ms seit dem letzten Auslesen. */
   sim: number;
   /** Szene aufbauen, bei DoveZ samt Zeichnen in den Backbuffer. */

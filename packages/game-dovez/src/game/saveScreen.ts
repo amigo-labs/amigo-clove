@@ -24,7 +24,7 @@ const rank = (place: number, suffix: string) =>
   place < 11 ? ` (HIGHSCORE: ${place}${suffix}` : "";
 
 /** Texte des Speicherbildschirms in einer Sprache (`SaveGame` `0x541010`). */
-export interface SaveStrings {
+interface SaveStrings {
   /** „<Level> geschafft!“ */
   cleared(level: string): string;
   ask: string;
@@ -70,7 +70,7 @@ export function saveStrings(lang: Lang): SaveStrings {
   }
 }
 
-export interface SaveTexts {
+interface SaveTexts {
   readonly lang: Lang;
   readonly level: string;
   readonly scores: readonly number[];
@@ -82,10 +82,10 @@ export interface SaveTexts {
 }
 
 /** Antwort-ID des Platzes `n` (1…21). */
-export const slotId = (n: number): string => `slot${n}`;
+const slotId = (n: number): string => `slot${n}`;
 
 /** Gewählter Platz aus der Antwort (`undefined`: nicht speichern). */
-export function chosenSlot(id: string): number | undefined {
+function chosenSlot(id: string): number | undefined {
   const n = Number(/^slot(\d+)$/.exec(id)?.[1]);
   return n >= 1 && n <= SAVE_SLOTS ? n : undefined;
 }
@@ -123,7 +123,7 @@ export function saveMenu(d: SaveTexts): UiMenu {
 }
 
 /** „Gespeichert“ steht so lange wie die Abblende danach im Original (80 Durchläufe à 16 ms). */
-export const SAVED_MS = 1300;
+const SAVED_MS = 1300;
 
 /**
  * Speicherbildschirm bis zur Wahl: auf einem Platz wird `file()` als

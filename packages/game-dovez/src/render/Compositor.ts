@@ -14,7 +14,7 @@ import { StripMesh, type StripTexture } from "./StripMesh";
  */
 
 /** Erfassen mit aufgelöstem Überblit-Bild (`a_kreis3`). */
-export type PlanCapture = Capture & { readonly tex?: StripTexture | undefined };
+type PlanCapture = Capture & { readonly tex?: StripTexture | undefined };
 export type PlanItem = Container | PlanCapture | Copy;
 
 const W = 800;

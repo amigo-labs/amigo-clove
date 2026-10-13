@@ -20,7 +20,7 @@ import type { Segment } from "./effects";
 export type RenderTarget = "blur" | "still" | "lens";
 
 /** Schlüssel einer Textur: Atlas-Sprite oder `@blur`/`@still`/`@lens`/`@noise` (Rauschen mit Kachelwiederholung). */
-export type TexKey = string;
+type TexKey = string;
 
 /** TL-Vertex: Position, Texturkoordinate (0…1 über das Bild), Farbe 0…1 (geklemmt wie `0x577E70`). */
 export interface Vtx {
@@ -57,7 +57,7 @@ export interface Copy {
   readonly rects: readonly (readonly [number, number, number, number, number, number])[];
 }
 
-export type EnvCmd = Strip | Capture | Copy;
+type EnvCmd = Strip | Capture | Copy;
 
 /** Texturgrößen der Render-Ziele (für Quellrechtecke in Pixeln). */
 const TARGET_SIZE: Record<string, readonly [number, number]> = {
@@ -69,10 +69,12 @@ const TARGET_SIZE: Record<string, readonly [number, number]> = {
 const NO_SIZE = [1, 1] as const;
 
 type MutableVtx = { -readonly [K in keyof Vtx]: Vtx[K] };
+/** Die vier Ecken eines Vierecks als Dreiecksstreifen. */
+type QuadVtx = [MutableVtx, MutableVtx, MutableVtx, MutableVtx];
 interface PooledStrip {
   readonly op: "strip";
   key: TexKey;
-  readonly v: MutableVtx[];
+  readonly v: QuadVtx;
   additive: boolean;
 }
 
@@ -115,7 +117,7 @@ export class EnvList {
   }
 
   /** Nächstes Viereck aus dem Vorrat, als Befehl angehängt; die Vertizes setzt der Aufrufer. */
-  private quad(key: TexKey, additive: boolean): MutableVtx[] {
+  private quad(key: TexKey, additive: boolean): QuadVtx {
     let s = this.quads[this.quadsUsed];
     if (!s) {
       s = { op: "strip", key, v: [vtx(), vtx(), vtx(), vtx()], additive };
@@ -162,10 +164,10 @@ export class EnvList {
       v1 = src[3] / size[1];
     }
     const q = this.quad(key, additive);
-    setVtx(q[0]!, x1, y2, u0, v1, r, g, b, a);
-    setVtx(q[1]!, x1, y1, u0, v0, r, g, b, a);
-    setVtx(q[2]!, x2, y2, u1, v1, r, g, b, a);
-    setVtx(q[3]!, x2, y1, u1, v0, r, g, b, a);
+    setVtx(q[0], x1, y2, u0, v1, r, g, b, a);
+    setVtx(q[1], x1, y1, u0, v0, r, g, b, a);
+    setVtx(q[2], x2, y2, u1, v1, r, g, b, a);
+    setVtx(q[3], x2, y1, u1, v0, r, g, b, a);
   }
 
   /**
@@ -186,10 +188,10 @@ export class EnvList {
     additive = false,
   ): void {
     const q = this.quad(key, additive);
-    setVtx(q[0]!, l, t, 0, 1, r, g, b, a);
-    setVtx(q[1]!, r_, t, 0, 0, r, g, b, a);
-    setVtx(q[2]!, l, b_, 1, 1, r, g, b, a);
-    setVtx(q[3]!, r_, b_, 1, 0, r, g, b, a);
+    setVtx(q[0], l, t, 0, 1, r, g, b, a);
+    setVtx(q[1], r_, t, 0, 0, r, g, b, a);
+    setVtx(q[2], l, b_, 1, 1, r, g, b, a);
+    setVtx(q[3], r_, b_, 1, 0, r, g, b, a);
   }
 
   /** `Linie` (Balken quer zur Richtung, Farbverlauf entlang), aus einer Effekt-Zeichenliste. */
@@ -203,10 +205,10 @@ export class EnvList {
     const c1 = s.c1;
     const c2 = s.c2;
     const q = this.quad("balken", s.additive);
-    setVtx(q[0]!, s.x1 + nx, s.y1 + ny, 0, 1, c1[0], c1[1], c1[2], c1[3]);
-    setVtx(q[1]!, s.x1 - nx, s.y1 - ny, 0, 0, c1[0], c1[1], c1[2], c1[3]);
-    setVtx(q[2]!, s.x2 + nx, s.y2 + ny, 1, 1, c2[0], c2[1], c2[2], c2[3]);
-    setVtx(q[3]!, s.x2 - nx, s.y2 - ny, 1, 0, c2[0], c2[1], c2[2], c2[3]);
+    setVtx(q[0], s.x1 + nx, s.y1 + ny, 0, 1, c1[0], c1[1], c1[2], c1[3]);
+    setVtx(q[1], s.x1 - nx, s.y1 - ny, 0, 0, c1[0], c1[1], c1[2], c1[3]);
+    setVtx(q[2], s.x2 + nx, s.y2 + ny, 1, 1, c2[0], c2[1], c2[2], c2[3]);
+    setVtx(q[3], s.x2 - nx, s.y2 - ny, 1, 0, c2[0], c2[1], c2[2], c2[3]);
   }
 
   capture(

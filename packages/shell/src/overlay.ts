@@ -1,10 +1,7 @@
+import { DISPLAY_EVENT, LAYOUT_EVENT } from "@clove/core";
 import { h, logicalSize } from "./dom";
 import type { ShellText } from "./texts";
 
-/** Fensterereignis: eine Darstellungs-Einstellung hat sich geändert (siehe `@clove/pixi-kit`). */
-export const DISPLAY_EVENT = "clove:display";
-/** Canvas-Ereignis des Pixi-Kits nach jedem Einpassen. */
-const LAYOUT_EVENT = "clove:layout";
 /** So lange bleibt der Vollbild-Knopf nach der letzten Zeigerbewegung sichtbar. */
 const IDLE_MS = 2500;
 
@@ -30,12 +27,12 @@ export interface Stage {
   dispose(): void;
 }
 
-export interface StageOptions {
+interface StageOptions {
   readonly t: ShellText;
   readonly scanlines: () => boolean;
 }
 
-export function fullscreenSupported(): boolean {
+function fullscreenSupported(): boolean {
   return typeof document.documentElement.requestFullscreen === "function";
 }
 

@@ -28,7 +28,7 @@ import {
   type UiGateState,
 } from "./model";
 
-export interface UiHostOptions {
+interface UiHostOptions {
   /** Hierhin zeichnet der UiHost: die Overlay-Schicht der Bühne bzw. eine Seite. */
   readonly mount: HTMLElement;
   /** Bekommt `data-ui="over"|"page"`, solange ein Bildschirm offen ist (Bühne: Canvas abblenden). */
@@ -62,6 +62,12 @@ type Resolve = (reply: UiReply) => void;
 const FIRST_FOCUS = "button:not([disabled]), input, [data-field], [tabindex='0']";
 
 type KeyField = Extract<UiField, { kind: "key" }>;
+
+/** `data-field` des fokussierten Elements (Formularfeld), sonst `undefined`. */
+const focusedField = (): string | undefined =>
+  document.activeElement instanceof HTMLElement
+    ? document.activeElement.dataset["field"]
+    : undefined;
 
 /** Codes eines Tastenfelds aus seinem Wert in `UiValues`. */
 function keyCodes(v: string | number | undefined): string[] {
@@ -196,6 +202,12 @@ export class UiHost implements GameUi {
     cur.resolve(reply);
   }
 
+  /** Auswahlton, dann die Antwort. */
+  private pick(s: UiScreen, id: string, values?: UiValues): void {
+    s.sounds?.select?.();
+    this.reply(id, values);
+  }
+
   private reply(id: string, values?: UiValues): void {
     this.close(values ? { id, values } : { id });
   }
@@ -208,8 +220,7 @@ export class UiHost implements GameUi {
       e.stopPropagation();
       return;
     }
-    const target = e.target as HTMLElement | null;
-    const typing = target instanceof HTMLInputElement && target.type === "text";
+    const typing = e.target instanceof HTMLInputElement && e.target.type === "text";
     // belegte Spieltasten (WASD, Feuer) bedienen mit, nur nicht beim Tippen
     const action = NAV_CODES[e.code] ?? (typing ? undefined : this.o.navKeys?.().get(e.code));
     if (typing && (action === "left" || action === "right" || e.code === "Space")) return;
@@ -229,8 +240,7 @@ export class UiHost implements GameUi {
     const cur = this.open;
     if (!cur) return;
     const items = cur.view.focusables();
-    const active = document.activeElement as HTMLElement | null;
-    const focused = active && items.includes(active) ? active : undefined;
+    const focused = items.find((el) => el === document.activeElement);
     if (cur.view.handle?.(action, focused)) return;
     if (action === "back") {
       if (cur.screen.back) this.reply(cur.screen.back);
@@ -396,8 +406,7 @@ export class UiHost implements GameUi {
     };
     const buttons = s.items.map((item) => {
       const b = this.itemButton(item, () => {
-        s.sounds?.select?.();
-        this.reply(item.id);
+        this.pick(s, item.id);
       });
       b.addEventListener("focus", () => showPreview(item));
       return b;
@@ -439,7 +448,7 @@ export class UiHost implements GameUi {
     const changed = (id: string) => {
       const next = s.onChange?.({ ...values }, id);
       if (next) {
-        const focusedId = (document.activeElement as HTMLElement | null)?.dataset["field"];
+        const focusedId = focusedField();
         fields = next;
         sync();
         draw();
@@ -602,8 +611,7 @@ export class UiHost implements GameUi {
     draw();
     const actions = s.actions.map((a) =>
       this.itemButton(a, () => {
-        s.sounds?.select?.();
-        this.reply(a.id, { ...values });
+        this.pick(s, a.id, { ...values });
       }),
     );
     const el = this.panel(
@@ -612,8 +620,7 @@ export class UiHost implements GameUi {
       box,
       h("div", { class: "ui-actions" }, ...actions),
     );
-    const fieldOf = (el2: HTMLElement | undefined) =>
-      fields.find((f) => f.id === el2?.dataset["field"]);
+    const fieldOf = (id: string | undefined) => fields.find((f) => f.id === id);
     return {
       el,
       focusables: () => [
@@ -621,7 +628,7 @@ export class UiHost implements GameUi {
         ...actions.filter((a) => !a.disabled),
       ],
       handle: (action, focused) => {
-        const f = fieldOf(focused);
+        const f = fieldOf(focused?.dataset["field"]);
         if (!f || (action !== "left" && action !== "right")) return false;
         const d = action === "left" ? -1 : 1;
         if (f.kind === "choice") cycle(f, d);
@@ -631,7 +638,7 @@ export class UiHost implements GameUi {
       key: (e) => {
         if (!capture) {
           // Rücktaste auf einem Tastenfeld entfernt dessen letzte Taste
-          const f = fieldOf(document.activeElement as HTMLElement | undefined);
+          const f = fieldOf(focusedField());
           if (f?.kind !== "key" || (e.code !== "Backspace" && e.code !== "Delete")) return false;
           removeKey(f);
           return true;
@@ -706,8 +713,7 @@ export class UiHost implements GameUi {
     const submit = () => {
       const values: Record<string, string> = {};
       s.fields.forEach((f, i) => (values[f.id] = inputs[i]!.value));
-      s.sounds?.select?.();
-      this.reply("ok", values);
+      this.pick(s, "ok", values);
     };
     const ok = this.itemButton({ id: "ok", label: s.ok }, submit);
     const el = this.panel(
@@ -744,8 +750,7 @@ export class UiHost implements GameUi {
   private confirm(s: UiConfirm): View {
     const buttons = s.items.map((item) =>
       this.itemButton(item, () => {
-        s.sounds?.select?.();
-        this.reply(item.id);
+        this.pick(s, item.id);
       }),
     );
     const count = h("div", { class: "ui-countdown", "aria-live": "polite" });

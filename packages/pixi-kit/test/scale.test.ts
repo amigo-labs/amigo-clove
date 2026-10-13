@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { canvasFactor, scaleFor } from "../src/scale";
+import { canvasFactor, scaleFor, whole } from "../src/scale";
 
 describe("Skalierung", () => {
   test("ganzzahlig rundet ab, darunter bruchteilig", () => {
@@ -26,5 +26,15 @@ describe("Skalierung", () => {
     expect(canvasFactor(2.0000000001)).toBe(2);
     expect(canvasFactor(2.25 * 1.5)).toBe(4);
     expect(canvasFactor(6)).toBe(4);
+  });
+
+  test("ganzzahliger Faktor ab 1, Rundungsrauschen zählt als ganz", () => {
+    expect(whole(1)).toBe(true);
+    expect(whole(3)).toBe(true);
+    expect(whole(2.0000000001)).toBe(true);
+    expect(whole(0.9999999999)).toBe(true);
+    expect(whole(0.5)).toBe(false);
+    expect(whole(1.25)).toBe(false);
+    expect(whole(2.25 * 1.5)).toBe(false);
   });
 });

@@ -143,7 +143,7 @@ export function configFrom(config: Config, v: UiValues): Config {
 }
 
 /** Titel der Spielregeln (die Optionen des Originals). */
-export function rulesTitle(german: boolean): string {
+function rulesTitle(german: boolean): string {
   return german ? "Spielregeln" : "Game rules";
 }
 

@@ -4,7 +4,7 @@
  */
 import type { IntroKey, IntroObject } from "@clove/formats";
 
-export interface IntroSpriteState {
+interface IntroSpriteState {
   readonly x: number;
   readonly y: number;
   /** Prozent; 100 = 1:1 (BltFast), sonst gestreckt (Blt). */

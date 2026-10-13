@@ -12,7 +12,7 @@
 import { encodeInput, type Replay } from "@clove/core";
 import { join } from "node:path";
 import { runReplay } from "../src/replay";
-import { Input, withTarget } from "../src/sim/step";
+import { Input, withTarget } from "../src/sim/input";
 import { level } from "../test/helpers";
 
 export const BOT_TICKS = 12_000;

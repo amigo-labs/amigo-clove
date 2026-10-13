@@ -111,7 +111,7 @@ export interface WeaponWorld {
 }
 
 /** Zustand von `SpielSchieß` über die Ticks (Statics `G.39C`, `G.3A8`). */
-export interface FireState {
+interface FireState {
   /** Bildtakt des Schiffs, gemeinsam für alle Spieler. */
   frameTick: number;
   /** Saat der Blitze. */

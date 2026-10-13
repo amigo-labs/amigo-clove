@@ -50,7 +50,7 @@ export type MenuResult =
   | { readonly kind: "exit" };
 
 /** Töne des Menüs (`LoadMenuSound`): `plingding` beim Bewegen, `dude` beim Bestätigen. */
-export type MenuSound = "dude" | "plingding";
+type MenuSound = "dude" | "plingding";
 
 export interface HtmlMenuOptions {
   readonly ui: GameUi;
@@ -80,7 +80,7 @@ export interface HtmlMenuOptions {
 }
 
 /** Probeimpuls der Vibrationszeilen: 20 Durchläufe à 18 ms. */
-export const PULSE_MS = 360;
+const PULSE_MS = 360;
 
 type Page =
   | "main"
@@ -243,10 +243,10 @@ class HtmlMenu {
   private async main(): Promise<Page | MenuResult> {
     const m = this.t.main(this.bonusOn);
     const n = m.entries.length;
-    const ids = m.entries.map(
-      (_, i) => MAIN_IDS[i] ?? (i === n - 1 ? "exit" : this.o.lang === "ru" ? "bonus" : "score"),
-    );
-    const items = m.entries.map((label, i) => ({ id: ids[i]!, label }));
+    const items = m.entries.map((label, i) => ({
+      id: MAIN_IDS[i] ?? (i === n - 1 ? "exit" : this.o.lang === "ru" ? "bonus" : "score"),
+      label,
+    }));
     const r = await this.ask("main", {
       kind: "menu",
       title: m.title,
@@ -412,11 +412,7 @@ class HtmlMenu {
         autoArrange: on("arrange", cur.autoArrange),
         realistic: on("inertia", cur.realistic),
       };
-      if (
-        next.qNormal !== cur.qNormal ||
-        next.autoArrange !== cur.autoArrange ||
-        next.realistic !== cur.realistic
-      )
+      if ((["qNormal", "autoArrange", "realistic"] as const).some((k) => next[k] !== cur[k]))
         this.setConfig(next);
     };
     const r = await this.form("game", {
@@ -490,10 +486,10 @@ class HtmlMenu {
         s[1] !== c.vibrationStrength[1]
       )
         this.setConfig({ ...c, vibration: on, vibrationStrength: s });
-      const pad = /^(?:vibration|strength)(\d)$/.exec(changed ?? "")?.[1];
+      const [, kind, pad] = /^(vibration|strength)(\d)$/.exec(changed ?? "") ?? [];
       if (pad !== undefined) {
         const p = Number(pad);
-        this.pulse(p, changed!.startsWith("strength") ? s[p]! / 10000 : 1);
+        this.pulse(p, kind === "strength" ? s[p]! / 10000 : 1);
       }
     };
     const r = await this.form("vibration", {

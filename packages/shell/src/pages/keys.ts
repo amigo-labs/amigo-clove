@@ -36,7 +36,7 @@ function groupLabel(t: ShellText, layout: KeyLayout, a: KeyAction): string {
 }
 
 /** Felder des Editors zur Arbeitsbelegung: Vorlage, Tasten je Aktion, Hinweise. */
-export function keyFields(
+function keyFields(
   t: ShellText,
   locale: "de" | "en" | "ru",
   layout: KeyLayout,
@@ -86,7 +86,7 @@ export function keyFields(
 }
 
 /** Arbeitsbelegung nach einer Änderung im Editor. */
-export function applyKeyChange(
+function applyKeyChange(
   layout: KeyLayout,
   keys: KeyBindings,
   changed: string,

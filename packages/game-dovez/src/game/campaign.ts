@@ -29,7 +29,7 @@ export type CampaignAction =
   | { readonly kind: "end" };
 
 /** Name des Epilog-Levels (`[0x5880C4] = "Epilog"`). */
-export const EPILOG = "Epilog";
+const EPILOG = "Epilog";
 /** `Me.115C = 10000`: nach dem einen Level (Einzellevel, Epilog) ist Schluss. */
 const END = 10000;
 

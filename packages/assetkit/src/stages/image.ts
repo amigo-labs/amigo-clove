@@ -10,7 +10,7 @@ import sharp from "sharp";
 /** Bei jeder Änderung an der Bildstufe erhöhen — invalidiert den Cache. */
 export const IMAGE_CONVERTER_VERSION = 1;
 
-export interface ImageOptions {
+interface ImageOptions {
   readonly colorKeyed: boolean;
   /** libwebp-Aufwand 0–6; eingefroren, eine Änderung schreibt alle Bilder neu. */
   readonly effort: number;
@@ -22,7 +22,7 @@ export interface ImageOptions {
 
 export const LIBWEBP_VERSION: string = sharp.versions.webp ?? "unknown";
 
-export interface ImageResult {
+interface ImageResult {
   readonly bytes: Uint8Array;
   readonly width: number;
   readonly height: number;

@@ -26,9 +26,6 @@
     "packages/audio": {
       "name": "@clove/audio",
       "version": "0.0.0",
-      "dependencies": {
-        "chiptune3": "0.8.9",
-      },
     },
     "packages/core": {
       "name": "@clove/core",
@@ -78,6 +75,7 @@
         "@clove/game-dovez": "workspace:*",
       },
       "devDependencies": {
+        "chiptune3": "0.8.9",
         "playwright-core": "1.56.1",
         "sharp": "0.35.4",
         "vite": "8.3.1",

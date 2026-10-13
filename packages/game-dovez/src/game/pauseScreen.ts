@@ -18,8 +18,8 @@ import { type Lang, levelRu } from "./lang";
  */
 
 /** Umbruchbreite (px, Arial 18) und Zeilen des Funkprotokolls. */
-export const LOG_WIDTH = 530;
-export const LOG_ROWS = 7;
+const LOG_WIDTH = 530;
+const LOG_ROWS = 7;
 
 /** VB `Trim`: nur Leerzeichen. */
 function vbTrim(s: string): string {
@@ -97,7 +97,7 @@ let measureCtx: OffscreenCanvasRenderingContext2D | null | undefined;
  * Breite eines Textes in Arial 18 wie im Original (`OffscreenCanvas`, sonst
  * geschätzt mit 9 px je Zeichen, etwa in Tests ohne Browser).
  */
-export function logTextWidth(s: string): number {
+function logTextWidth(s: string): number {
   if (measureCtx === undefined) {
     try {
       measureCtx =
@@ -140,7 +140,7 @@ export function pauseScreen(o: {
 }
 
 /** Was die Pause vom Spiel braucht (Highscore bei „EXIT“). */
-export interface PauseProfile {
+interface PauseProfile {
   readonly names: readonly string[];
   readonly ids: readonly number[];
   readonly highscores: readonly HighscoreEntry[];

@@ -15,7 +15,7 @@ interface Pixels {
  * gespeichert). Der Port legt die Kacheln als WebP beim Host ab.
  */
 
-export const MOSAIC_TILES = 16;
+const MOSAIC_TILES = 16;
 const TILE_W = 200;
 const TILE_H = 150;
 const tileKey = (i: number) => `loading/${i}`;

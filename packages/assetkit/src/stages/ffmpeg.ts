@@ -17,7 +17,7 @@ function probeVersion(): string {
   }
 }
 
-export const FFMPEG_VERSION = probeVersion();
+const FFMPEG_VERSION = probeVersion();
 
 function requireFfmpeg(): void {
   if (FFMPEG_VERSION === "missing") {
@@ -50,7 +50,7 @@ async function run(args: readonly string[], input?: Uint8Array): Promise<Uint8Ar
 /** Keine Encoder-Tags, feste Ogg-Seriennummer: auf derselben Maschine bitgenau. */
 const BITEXACT = ["-map_metadata", "-1", "-fflags", "+bitexact", "-flags:a", "+bitexact"];
 
-export interface OpusOptions {
+interface OpusOptions {
   /** kbit/s. */
   readonly bitrate: number;
   /** Auf einen Kanal mischen (Sprache). */
@@ -79,13 +79,13 @@ export function encodeOpus(wav: Uint8Array, o: OpusOptions): Promise<Uint8Array>
   );
 }
 
-export interface VideoOptions {
+interface VideoOptions {
   /** VP9-Qualität (CRF, konstante Qualität ohne Bitratenziel). */
   readonly crf: number;
   readonly audioBitrate: number;
 }
 
-export interface VideoResult {
+interface VideoResult {
   readonly bytes: Uint8Array;
   readonly width: number;
   readonly height: number;

@@ -1,6 +1,6 @@
 import type { DrawList, Effects, LineSink } from "./effects";
 import type { EnvList } from "./envDraw";
-import type { Player, PlayerInput } from "./player";
+import { HIT_BOTTOM, HIT_LEFT, HIT_RIGHT, HIT_TOP, type Player, type PlayerInput } from "./player";
 import { drawTrail, type ShotLayer } from "./playerShots";
 import { COS_DEG, SIN_DEG, cint, degIndex, f32, idiv, vbInt, winkel, type VbRnd } from "./vb";
 
@@ -79,7 +79,7 @@ interface Suck {
 }
 
 /** Modul-Globale von `SpielBeam` (`Me.1288+0x5BC…0x620`), für beide Spieler gemeinsam. */
-export interface BeamShared {
+interface BeamShared {
   qHeld: boolean[];
   auraOn: boolean;
   auraR: number;
@@ -153,10 +153,6 @@ export interface BeamWorld {
   vibrate?(strength: number, ticks: number, player: number): void;
 }
 
-const HIT_LEFT = 0;
-const HIT_TOP = 17;
-const HIT_RIGHT = 64;
-const HIT_BOTTOM = 54;
 const MID_Y = HIT_TOP + Math.trunc((HIT_BOTTOM - HIT_TOP) / 2);
 
 /** Ein Tick `SpielBeam` für alle Spieler. */
