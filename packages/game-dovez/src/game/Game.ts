@@ -449,22 +449,23 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
     return result;
   };
 
+  /** Das Osterei (`0x546C30`), auch ohne Menü zur Sichtprüfung. */
+  const love = () => play(new LoveScene(host, app, textures, standart, new LoveLogic(rnd)));
+
   const menuFlow = async () => {
-    let first = true;
+    if (disposed) return;
+    if (opts.intro) {
+      await logos();
+      if (opts.videos)
+        await playVideo(host, languageVideo("intro", lang), lang, false, screens.signal);
+    }
     for (;;) {
-      if (disposed) return;
-      if (first && opts.intro) {
-        await logos();
-        if (opts.videos)
-          await playVideo(host, languageVideo("intro", lang), lang, false, screens.signal);
-      }
-      first = false;
       if (disposed) return;
       const r = await menu();
       if (disposed || r.kind === "exit") return;
       if (r.kind === "love") {
         // „lov“ im Hauptmenü (`0x546C30`): Osterei, danach wie „Exit“ zurück zur Shell
-        await play(new LoveScene(host, app, textures, standart, new LoveLogic(rnd)));
+        await love();
         await play(new FadeScene(app, targets, new FadeLogic(0, rnd)));
         return;
       }
@@ -493,8 +494,7 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
       return;
     }
     if (opts.screen === "love") {
-      // Sichtprüfung des Osterei ohne Menü
-      await play(new LoveScene(host, app, textures, standart, new LoveLogic(rnd)));
+      await love();
       return;
     }
     const saved =

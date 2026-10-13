@@ -412,11 +412,7 @@ class HtmlMenu {
         autoArrange: on("arrange", cur.autoArrange),
         realistic: on("inertia", cur.realistic),
       };
-      if (
-        next.qNormal !== cur.qNormal ||
-        next.autoArrange !== cur.autoArrange ||
-        next.realistic !== cur.realistic
-      )
+      if ((["qNormal", "autoArrange", "realistic"] as const).some((k) => next[k] !== cur[k]))
         this.setConfig(next);
     };
     const r = await this.form("game", {

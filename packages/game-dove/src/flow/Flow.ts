@@ -359,12 +359,6 @@ export class Flow {
     return yes;
   }
 
-  private simOptions(): SimOptions {
-    const o = this.opts.override;
-    const config = { ...this.config, ...o };
-    return simOptionsFor(config, this.opts.invincible);
-  }
-
   private levelMusic(level: number): string {
     return DoveAudio.levelMusic(level, this.opts.seed);
   }
@@ -375,7 +369,7 @@ export class Flow {
    */
   private async playGame(first: number, debug?: DebugStart): Promise<void> {
     const env = this.env;
-    const sim = this.simOptions();
+    const sim = simOptionsFor({ ...this.config, ...this.opts.override }, this.opts.invincible);
     if (first === 1 && !debug && !this.opts.nointro) {
       const intro = await env.host.assets.json<DoveIntro>("data/intro");
       this.music("music/intro");
@@ -394,10 +388,7 @@ export class Flow {
     // `Spiel` blendet vor dem Levelstart die laufende Musik aus (Titel, Intro).
     await this.env.audio?.fadeOutMusic();
     this.music(this.levelMusic(first));
-    if (!debug && (await this.getReady(world)) === "abort") {
-      await this.enterHighscore(world.score);
-      return;
-    }
+    if (!debug && !(await this.getReady(world))) return;
     let game = this.own(new GameScreen(env, world, this.opts.record));
     try {
       for (;;) {
@@ -420,10 +411,7 @@ export class Flow {
           this.release(game);
           game = this.own(new GameScreen(env, world, this.opts.record));
           this.music(this.levelMusic(level + 1));
-          if ((await this.getReady(world)) === "abort") {
-            await this.enterHighscore(world.score);
-            return;
-          }
+          if (!(await this.getReady(world))) return;
         } else if (r.kind === "abort") {
           await this.enterHighscore(world.score);
           return;
@@ -447,15 +435,20 @@ export class Flow {
     }
   }
 
-  /** Get Ready vor jedem Level (`effect getready` wie im Original); ESC bricht ab. */
-  private async getReady(world: World): Promise<"start" | "abort"> {
+  /**
+   * Get Ready vor jedem Level (`effect getready` wie im Original). ESC bricht ab:
+   * dann gleich in die Highscore-Liste und `false`.
+   */
+  private async getReady(world: World): Promise<boolean> {
     const { audio, german } = this.env;
     audio?.effect("getready");
     const n = world.level.number;
     const r = await this.env.host.ui.show(
       getReadyNotice(this.sprite, n, world.score, world.lives, german),
     );
-    return r.id === "back" ? "abort" : "start";
+    if (r.id !== "back") return true;
+    await this.enterHighscore(world.score);
+    return false;
   }
 
   /** `HighScore`: nur wenn die Punkte in die Liste kommen; Name eingeben, speichern. */
