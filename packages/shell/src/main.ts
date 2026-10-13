@@ -355,6 +355,53 @@ async function messagePage(text: string, signal: AbortSignal, game?: string): Pr
 let launcherChoice: string | undefined;
 let settingsChoice: string | undefined;
 
+/** Manifest, Spielmodul und Vorab-Bundles laden, mit Ladebalken bis `loading` endet. */
+async function loadGame(
+  id: string,
+  game: GameInfo,
+  loading: AbortSignal,
+): Promise<{ assets: AssetStore; module: GameModule }> {
+  let fraction = 0;
+  void showPage(loading, id).show(
+    {
+      kind: "notice",
+      title: game.title,
+      lines: [t("loadingBar")],
+      progress: () => fraction,
+      until: "progress",
+    },
+    loading,
+  );
+  const assets = await AssetStore.load(`${import.meta.env.BASE_URL}${id}/manifest.json`, (u) =>
+    fetch(u),
+  );
+  const module = await game.load();
+  await assets.preload(module.preload ?? [], (loaded, total) => {
+    // ganz voll erst mit dem Spiel: „progress“ schlösse den Hinweis sonst vorher
+    fraction = total ? Math.min(0.999, loaded / total) : 0;
+  });
+  return { assets, module };
+}
+
+/** Die HTML-Bildschirme der Shell für ein laufendes Spiel, mit dessen Einstellungsseiten. */
+function gameUiFor(ui: UiHost, id: string): GameUi {
+  const pages = pageContext(undefined);
+  return {
+    show: (screen2, signal) => ui.show(screen2, signal),
+    brand: (b) => ui.brand(b),
+    caption: (text) => ui.caption(text),
+    settings: (page, signal) =>
+      runPage(() =>
+        settingsPage(
+          ui,
+          { ...pages, signal },
+          page,
+          pages.games.find((g) => g.id === id),
+        ),
+      ),
+  };
+}
+
 async function startGame(
   id: string,
   params: Readonly<Record<string, string>>,
@@ -365,27 +412,8 @@ async function startGame(
   document.title = `${game.title} — amigo-clove`;
   document.body.dataset["loading"] = id;
   const loading = new AbortController();
-  const loadingUi = showPage(loading.signal, id);
-  let fraction = 0;
-  void loadingUi.show(
-    {
-      kind: "notice",
-      title: game.title,
-      lines: [t("loadingBar")],
-      progress: () => fraction,
-      until: "progress",
-    },
-    loading.signal,
-  );
   try {
-    const assets = await AssetStore.load(`${import.meta.env.BASE_URL}${id}/manifest.json`, (u) =>
-      fetch(u),
-    );
-    const module = await game.load();
-    await assets.preload(module.preload ?? [], (loaded, total) => {
-      // ganz voll erst mit dem Spiel: „progress“ schlösse den Hinweis sonst vorher
-      fraction = total ? Math.min(0.999, loaded / total) : 0;
-    });
+    const { assets, module } = await loadGame(id, game, loading.signal);
     loading.abort();
     if (gen !== generation) return;
     const canvas = document.createElement("canvas");
@@ -416,26 +444,11 @@ async function startGame(
       navKeys: () => navKeysFor(id),
     });
     s.onDispose(() => ui.dispose());
-    const pages = pageContext(undefined);
-    const gameUi: GameUi = {
-      show: (screen2, signal) => ui.show(screen2, signal),
-      brand: (b) => ui.brand(b),
-      caption: (text) => ui.caption(text),
-      settings: (page, signal) =>
-        runPage(() =>
-          settingsPage(
-            ui,
-            { ...pages, signal },
-            page,
-            pages.games.find((g) => g.id === id),
-          ),
-        ),
-    };
     const instance = await module.boot(
       {
         canvas,
         assets,
-        ui: gameUi,
+        ui: gameUiFor(ui, id),
         boundKeys: (action) =>
           (bindingsFor(id)?.[action] ?? []).map((code) => ({ code, name: keyLabel(t, code) })),
         keys: gateKeys(keysFor(id, module, touch), () => ui.state()),
