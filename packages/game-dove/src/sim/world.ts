@@ -1,5 +1,11 @@
 import { hashArrays } from "@clove/core";
-import { BG_SPEED_DEFAULT, LIVES_START, SHIP_SPEED_DEFAULT, STAR_COUNT } from "./constants";
+import {
+  BG_SPEED_DEFAULT,
+  LIVES_START,
+  METEOR_SLOTS,
+  SHIP_SPEED_DEFAULT,
+  STAR_COUNT,
+} from "./constants";
 import type { LevelData } from "./level";
 import { VbRnd } from "./VbRnd";
 
@@ -264,7 +270,7 @@ export class World {
   readonly enAux = new Int32Array(101);
 
   // Meteore (Me.214, 11 Slots)
-  readonly meteors = new Pool(11);
+  readonly meteors = new Pool(METEOR_SLOTS);
   readonly metX = new Int32Array(11);
   readonly metY = new Int32Array(11);
   readonly metVX = new Int32Array(11);
