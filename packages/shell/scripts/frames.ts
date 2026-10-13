@@ -9,7 +9,8 @@
  * neu (nur bei gewollter Bildänderung), `--save=<Ordner>` legt die PNGs ab,
  * `--only=<Teil des Namens>`.
  */
-import { chromium, type Page } from "playwright-core";
+import type { Page } from "playwright-core";
+import { launchBrowser, spawnPreview, waitForPreview } from "./preview";
 
 const PORT = 4176;
 const ORIGIN = `http://localhost:${PORT}`;
@@ -198,26 +199,10 @@ async function shoot(page: Page, shot: Shot): Promise<Buffer> {
   return page.screenshot({ clip: box, timeout: 300_000 });
 }
 
-const server = Bun.spawn(["bunx", "vite", "preview", "--port", String(PORT), "--strictPort"], {
-  cwd: `${import.meta.dir}/..`,
-  stdout: "ignore",
-  stderr: "inherit",
-});
+const server = spawnPreview(PORT);
 try {
-  for (let i = 0; ; i++) {
-    if (i > 100) throw new Error("vite preview startet nicht");
-    if (
-      await fetch(ORIGIN).then(
-        (r) => r.ok,
-        () => false,
-      )
-    )
-      break;
-    await Bun.sleep(100);
-  }
-  const browser = await chromium.launch({
-    args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"],
-  });
+  await waitForPreview(PORT);
+  const browser = await launchBrowser();
   const expected = (await Bun.file(FILE).exists())
     ? ((await Bun.file(FILE).json()) as Record<string, string>)
     : {};

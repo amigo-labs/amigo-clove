@@ -13,7 +13,8 @@
  * (Vergleich mit einer früheren Messung), `--resolution=xbr|hd` (Einstellung
  * „Auflösung“ statt Original).
  */
-import { chromium, type Page } from "playwright-core";
+import type { Page } from "playwright-core";
+import { launchBrowser, spawnPreview, waitForPreview } from "./preview";
 
 const PORT = 4174;
 const ORIGIN = `http://localhost:${PORT}`;
@@ -297,30 +298,10 @@ function print(results: readonly Result[], base: readonly Result[] | undefined):
   }
 }
 
-const server = Bun.spawn(["bunx", "vite", "preview", "--port", String(PORT), "--strictPort"], {
-  cwd: `${import.meta.dir}/..`,
-  stdout: "ignore",
-  stderr: "inherit",
-});
+const server = spawnPreview(PORT);
 try {
-  for (let i = 0; ; i++) {
-    if (i > 100) throw new Error("vite preview startet nicht");
-    if (
-      await fetch(ORIGIN).then(
-        (r) => r.ok,
-        () => false,
-      )
-    )
-      break;
-    await Bun.sleep(100);
-  }
-  const browser = await chromium.launch({
-    args: [
-      "--use-angle=swiftshader",
-      "--enable-unsafe-swiftshader",
-      "--enable-precise-memory-info",
-    ],
-  });
+  await waitForPreview(PORT);
+  const browser = await launchBrowser("--enable-precise-memory-info");
   const results: Result[] = [];
   for (const scene of SCENES) {
     if (ONLY && !scene.name.includes(ONLY)) continue;
