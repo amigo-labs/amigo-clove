@@ -8,6 +8,7 @@ import {
   type RouteHost,
 } from "./route";
 import type { Effects } from "./effects";
+import { HIT_BOTTOM, HIT_LEFT, HIT_RIGHT, HIT_TOP } from "./player";
 import { spanHit, type Surface } from "./surfaces";
 import { COS_DEG, SIN_DEG, cint, degIndex, f32, idiv, vbInt, winkelInGrad } from "./vb";
 
@@ -26,9 +27,9 @@ import { COS_DEG, SIN_DEG, cint, degIndex, f32, idiv, vbInt, winkelInGrad } from
  */
 
 export const ENEMY_CAPACITY = 101;
-/** Mitte der Spieler-Hitbox (0, 17, 64, 54) relativ zur Schiffsecke. */
-const PLAYER_HIT_CX = 32;
-const PLAYER_HIT_CY = 17 + 18;
+/** Mitte der Spieler-Hitbox relativ zur Schiffsecke (32, 35). */
+const PLAYER_HIT_CX = HIT_LEFT + (HIT_RIGHT - HIT_LEFT) / 2;
+const PLAYER_HIT_CY = HIT_TOP + Math.trunc((HIT_BOTTOM - HIT_TOP) / 2);
 
 export const DeathState = {
   /** Während der Super-Nova nova-immun bzw. beim Start inaktiv: weder bewegt noch gezeichnet. */
@@ -44,7 +45,7 @@ export const DeathState = {
   chain: 7,
 } as const;
 
-interface PartState {
+export interface PartState {
   readonly def: DovezPart;
   visible: boolean;
   frame: number;

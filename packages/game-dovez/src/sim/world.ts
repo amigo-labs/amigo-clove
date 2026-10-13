@@ -5,7 +5,7 @@ import { Environment, type EnvSaved, type EnvWorld } from "./environment";
 import type { FrameState } from "./doAni";
 import { doAni } from "./doAni";
 import { EVENT_LAYER, LayerState, SCREEN_W, TERRAIN_LAYER, TILE_CAPACITY } from "./layers";
-import { Enemies, type BossHooks, type Enemy, type EnemyWorld } from "./enemies";
+import { Enemies, type BossHooks, type Enemy, type EnemyWorld, type PartState } from "./enemies";
 import { EnemyFire, type ShotWorld } from "./enemyFire";
 import {
   DEATH_TICKS,
@@ -14,6 +14,7 @@ import {
   SHOT_HIT,
   SPAWN_INVULNERABLE,
   killPlayer,
+  shipSprite,
   updatePlayer,
   type PlayerInput,
   type PlayerWorld,
@@ -734,6 +735,11 @@ export class World {
 
   /** Ziele der Suchwaffen: sichtbare, ungepanzerte Teile mit Kontur lebender, nicht fester Gegner. */
   private shotTargets(): ShotTarget[] {
+    return this.targets((p) => p.visible);
+  }
+
+  /** Ungepanzerte Teile mit Kontur lebender, nicht fester Gegner, die `include` zulässt. */
+  private targets(include: (p: PartState) => boolean): ShotTarget[] {
     const out: ShotTarget[] = [];
     const en = this.enemies;
     for (let i = 0; i <= en.high; i++) {
@@ -741,7 +747,7 @@ export class World {
       if (!e?.alive || e.inState || e.def.solid !== 0) continue;
       for (const p of e.parts) {
         const s = en.surface(p);
-        if (!p.visible || p.def.armored !== 0 || !s || s.topRow < 0) continue;
+        if (!include(p) || p.def.armored !== 0 || !s || s.topRow < 0) continue;
         const [x, y] = en.partPos(e, p);
         out.push({ x, y, w: s.rect.w, h: s.rect.h });
       }
@@ -778,19 +784,7 @@ export class World {
 
   /** Ziele der Drohnen: wie die der Suchwaffen, aber auch unsichtbare Teile (`0x4E1703` prüft nur Panzerung und Kontur). */
   private droneTargets(): ShotTarget[] {
-    const out: ShotTarget[] = [];
-    const en = this.enemies;
-    for (let i = 0; i <= en.high; i++) {
-      const e = en.items[i];
-      if (!e?.alive || e.inState || e.def.solid !== 0) continue;
-      for (const p of e.parts) {
-        const s = en.surface(p);
-        if (p.def.armored !== 0 || !s || s.topRow < 0) continue;
-        const [x, y] = en.partPos(e, p);
-        out.push({ x, y, w: s.rect.w, h: s.rect.h });
-      }
-    }
-    return out;
+    return this.targets(() => true);
   }
 
   private droneWorld(): DroneWorld {
@@ -946,7 +940,7 @@ export class World {
       // in der Beam-Kraftphase entfällt der Tempoabzug unter Wasser
       underwater: (p) =>
         !this.beams[p.index]?.power &&
-        (this.level.waterHeight === 550 || PLAYFIELD_H - this.level.waterHeight < p.y + 17),
+        (this.level.waterHeight === PLAYFIELD_H || PLAYFIELD_H - this.level.waterHeight < p.y + 17),
       terrain: (x1, y1, x2, y2) => this.hitsTerrain(x1, y1, x2, y2),
       kill: (p) => this.killPlayer(p),
       exhaust: (p, dx) => this.exhaust(p, dx),
@@ -1002,12 +996,15 @@ export class World {
     const rnd = this.rnd;
     for (const p of this.players) {
       if (!p.alive) continue;
-      const key = (tilt: number, frame: number) => `dove${p.shipType}${tilt + 1}${frame + 1}`;
       if (this.afterimages) {
         for (let k = 0; k <= 10; k++) {
           const x = cint(p.histX[k] ?? p.x);
           const y = cint(p.histY[k] ?? p.y);
-          const img = key(p.histTilt[k] ?? p.tilt, p.histFrame[k] ?? p.animFrame);
+          const img = shipSprite(
+            p.shipType,
+            p.histTilt[k] ?? p.tilt,
+            p.histFrame[k] ?? p.animFrame,
+          );
           out.quad(img, x, y, x + 64, y + 64, 1, 1, 1, f32(1 / (12 - k)));
         }
       }
@@ -1037,7 +1034,7 @@ export class World {
         out.quad("a_kreis2", x - 15, y - 5, x + 79, y + 69, 0.6, 1, 0.6, 0.4, true);
         shieldBolt();
       }
-      const img = key(p.tilt, p.animFrame);
+      const img = shipSprite(p.shipType, p.tilt, p.animFrame);
       const sx = cint(x);
       const sy = cint(y);
       out.quad(img, sx, sy, sx + 64, sy + 64, 1, 1, 1, 1, false, p.rotation);
@@ -1226,15 +1223,15 @@ export class World {
   /** `SaveCheckpoint(p)` (`0x51EA00`): ein Schnappschuss, jeder neue ersetzt den alten. */
   private save(p: number): void {
     if (!this.players.some((q) => q.alive)) return;
-    this.shared ??= collectShared([
+    const shared = (this.shared ??= collectShared([
       this.level,
       this.surfaces,
       this.anims.anims,
       this.rnd,
       this.fx.lists,
-    ]);
+    ]));
     const memo = new Map<object, unknown>();
-    const c = <T>(v: T): T => deepClone(v, this.shared!, memo);
+    const c = <T>(v: T): T => deepClone(v, shared, memo);
     const players = c(this.players);
     const me = this.players[p];
     for (const q of players) {
