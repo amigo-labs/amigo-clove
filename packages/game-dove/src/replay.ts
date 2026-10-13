@@ -1,5 +1,6 @@
 import { HASH_INTERVAL, decodeInput, type Replay } from "@clove/core";
-import { step, startLevel } from "./sim/step";
+import { startLevel } from "./sim/levelStart";
+import { step } from "./sim/step";
 import { DEFAULT_OPTIONS, World, type SimOptions } from "./sim/world";
 import type { LevelData } from "./sim/level";
 

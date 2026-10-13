@@ -1,7 +1,7 @@
 import { PointerSteer, type KeyState, type PointerState } from "@clove/core";
 import { KEY_ACTIONS, type KeyActionId } from "./keys";
 import { SHIP_HIT } from "./sim/constants";
-import { Input, withTarget } from "./sim/step";
+import { Input, withTarget } from "./sim/input";
 
 const BITS: Readonly<Record<KeyActionId, number>> = {
   up: Input.Up,

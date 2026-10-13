@@ -6,7 +6,7 @@ import { DoveAudio } from "../audio/DoveAudio";
 import { loadLevel } from "../data/loadLevel";
 import { spriteSheet } from "../hud";
 import { TICK_MS } from "../sim/constants";
-import { continueInNextLevel, restartAtCheckpoint, startLevel } from "../sim/step";
+import { continueInNextLevel, restartAtCheckpoint, startLevel } from "../sim/levelStart";
 import { World, type SimOptions } from "../sim/world";
 import {
   type HighscoreEntry,
