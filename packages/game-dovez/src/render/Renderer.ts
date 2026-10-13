@@ -423,7 +423,8 @@ export class Renderer {
   private drawTiles(l: number): void {
     const w = this.world;
     const layer = w.layers[l]!;
-    // `ORDER` hat keine Zeichenstelle für Ebene 4
+    // Ebene 4 ist die Ereignisebene ohne Kacheln (`EVENT_LAYER`); von ihr zeichnet
+    // `SpielLoop` nur die Animationen (`anim4`), also hat sie keine Kachel-Zeichenstelle
     const b = this.batches.get(`layer${l}`);
     if (!b) return;
     for (let i = 0; i <= layer.highWater; i++) {
