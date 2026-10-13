@@ -19,7 +19,7 @@ export const STEP_PASSES = 28;
 export const DIGIT_MS = STEP_PASSES * CONTINUE_MS;
 
 /** Spieler, wie `Continue` ihn für den Highscore-Eintrag liest. */
-export interface ContinuePlayer {
+interface ContinuePlayer {
   readonly name: string;
   readonly score: number;
   readonly id: number;
@@ -67,7 +67,7 @@ export function rankTexts(
 }
 
 /** Was „Continue“ an der Welt ändert (Felder von `World`). */
-export interface ContinueTarget {
+interface ContinueTarget {
   lives: number;
   score: number[];
   extraLifeAt: number;
@@ -90,7 +90,7 @@ export function applyContinue(w: ContinueTarget): void {
 }
 
 /** „Ja“/„Nein“ der Abfrage (im Original nur Feuer bzw. Ablauf). */
-export function continueItems(lang: Lang): readonly [string, string] {
+function continueItems(lang: Lang): readonly [string, string] {
   return [pick(lang, "Ja", "Yes", "Да"), pick(lang, "Nein", "No", "Нет")];
 }
 
@@ -113,7 +113,7 @@ export function continueConfirm(lines: readonly string[], lang: Lang): UiConfirm
 }
 
 /** Was Continue vom Spiel braucht: Spieler, Highscoreliste und deren Speicher. */
-export interface ContinueProfile {
+interface ContinueProfile {
   readonly names: readonly string[];
   readonly ids: readonly number[];
   readonly highscores: readonly HighscoreEntry[];

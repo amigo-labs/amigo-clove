@@ -1,8 +1,6 @@
 import { fxFromInt, fxMul } from "@clove/core";
 import {
-  BG_SPEED_DEFAULT,
   BOSS_TICK,
-  CHECKPOINT_PREROLL,
   DEATH_END,
   DEATH_STEP,
   END_TICK,
@@ -11,6 +9,7 @@ import {
   EXPLOSION_FRAMES,
   EXTRA_ANIM_TICKS,
   EXTRA_ART,
+  EXTRA_SIZE,
   FALLER_DROP,
   FIELD_H,
   FLAME_BOOST_END,
@@ -20,7 +19,6 @@ import {
   HOVER_LEAVE_TICKS,
   HOVER_STOP_X,
   INVULN_DONE,
-  INVULN_START,
   LIVES_START,
   METEOR_SIZE,
   SCREEN_W,
@@ -29,20 +27,18 @@ import {
   SHIP_MAX_Y,
   SHIP_MIN_X,
   SHIP_MIN_Y,
-  SHIP_SPEED_DEFAULT,
   SHIP_SPEED_MAX,
   SHIP_SPEED_MIN,
   SHIP_SPEED_STEP,
-  SHIP_START_X,
-  SHIP_START_Y,
   SHIP_WALL,
-  STAR_COUNT,
   STAR_GROUPS,
 } from "./constants";
 import { hitTest, wallHit, wallHitFx } from "./collision";
+import { BUTTONS, Input, targetOf } from "./input";
+import { restartAtCheckpoint } from "./levelStart";
 import { ShotKind, addEnemyShot, addEnemyShotForced, updateEnemyShots } from "./enemyShots";
 import { Sound, crashEnemy, handlers, killPlayer, sound } from "./actions";
-import { SPAWN_KIND, type LevelData } from "./level";
+import { SPAWN_KIND } from "./level";
 import { BOSSES } from "./bosses";
 import { scriptAfterEvents, scriptEvents, scriptKeyboard, scriptTick } from "./scripts";
 import {
@@ -60,7 +56,6 @@ import {
   fireVolley,
   loseEquipment,
   pickupExtra,
-  resetWeaponsOnRestart,
   touchesExtra,
   updateBeam,
   updateLaser,
@@ -69,153 +64,12 @@ import {
   updateShots,
 } from "./weapons";
 import { divRoundHalfEven, idiv, roundHalfEven } from "./math";
-import { World } from "./world";
-
-/** Eingabe eines Ticks als Bitmaske. */
-export const Input = {
-  Up: 1,
-  Down: 2,
-  Left: 4,
-  Right: 8,
-  Fire: 16,
-  Faster: 32,
-  Slower: 64,
-  /** `A`: Beam laden. */
-  Beam: 128,
-  /** `D`: Waffenausrichtung vorn/hinten umkehren. */
-  Swap: 256,
-  /**
-   * Erweiterung (Maus/Touch): Bits 10–19 und 20–28 tragen ein Ziel für den
-   * Bezugspunkt des Schiffs; es ersetzt die Richtungstasten. Ohne dieses Bit
-   * läuft alles wie im Original.
-   */
-  Target: 512,
-} as const;
-
-/** Tastenbits (ohne Ziel); nur sie zählen für Kanten und den Weltzustand. */
-const BUTTONS = 0x1ff;
-
-/** Eingabe mit Zeigerziel; Koordinaten werden auf den Bildschirm begrenzt. */
-export function withTarget(buttons: number, x: number, y: number): number {
-  const tx = Math.max(0, Math.min(SCREEN_W - 1, Math.round(x)));
-  const ty = Math.max(0, Math.min(479, Math.round(y)));
-  return (buttons & BUTTONS) | Input.Target | (tx << 10) | (ty << 20);
-}
-
-/** Ziel einer Eingabe oder `undefined`. */
-export function targetOf(input: number): { x: number; y: number } | undefined {
-  if (!(input & Input.Target)) return undefined;
-  return { x: (input >>> 10) & 0x3ff, y: (input >>> 20) & 0x1ff };
-}
+import type { World } from "./world";
 
 const FX_640 = fxFromInt(SCREEN_W);
 
-// ---------------------------------------------------------------- Level-Start
-
-function initStars(w: World): void {
-  for (let i = 0; i < STAR_COUNT; i++) {
-    w.starX[i] = fxFromInt(w.rnd.below(SCREEN_W));
-    w.starY[i] = w.rnd.below(FIELD_H);
-  }
-}
-
-/** Levelstart bzw. Neustart am Checkpoint (`F4 = Me.530`, Vorlauf der Landschaft). */
-export function restartAtCheckpoint(w: World): void {
-  for (const pool of [
-    w.tiles,
-    w.objects,
-    w.extras,
-    w.enemies,
-    w.meteors,
-    w.shots,
-    w.eshots,
-    w.explosions,
-  ]) {
-    pool.clear();
-  }
-  w.tick = w.checkpoint;
-  w.bossMode = false;
-  w.levelDone = false;
-  w.autopilot = 0;
-  w.exit = 0;
-  w.boss = undefined;
-  w.bossState = 0;
-  w.bossScored = 0;
-  w.bossType.fill(-1);
-  w.bossVisible.fill(0);
-  w.bossC.fill(0);
-  w.bossBeamW.fill(0);
-  w.scriptC.fill(0);
-  w.scriptText = 0;
-  w.deco.clear();
-  w.bands.clear();
-  w.winds.clear();
-  w.bgSpeed = BG_SPEED_DEFAULT;
-  w.bgOffset = 0;
-  w.shake = 0;
-  w.px = SHIP_START_X;
-  w.py = SHIP_START_Y;
-  w.prevX = w.px;
-  w.prevY = w.py;
-  w.tilt = 0;
-  w.invuln = INVULN_START;
-  w.dead = 0;
-  w.deathCounter = 0;
-  resetWeaponsOnRestart(w);
-  if (w.speed < SHIP_SPEED_MIN) w.speed = SHIP_SPEED_DEFAULT;
-  if (w.level.starfield) initStars(w);
-
-  // Vorlauf (`0x46FBxx`): Tiles und Objekte der letzten 1280 Ticks vorab platzieren.
-  const { events, lineStart } = w.level;
-  for (let t = Math.max(0, w.tick - CHECKPOINT_PREROLL); t < w.tick; t++) {
-    for (let e = lineStart[t] as number; e < (lineStart[t + 1] as number); e++) {
-      const kind = events.kind[e] as number;
-      if (kind === 0) {
-        spawnTile(w, events.a[e] as number, events.b[e] as number, SCREEN_W + t - w.tick);
-      } else if (kind === 4) {
-        spawnObject(
-          w,
-          events.a[e] as number,
-          events.b[e] as number,
-          fxFromInt(SCREEN_W + idiv(t - w.tick, 2)),
-        );
-      }
-    }
-  }
-}
-
-/**
- * Levelwechsel (`0x48EDAF`): Punkte, Leben, Tempo und Ausrüstung bleiben, der
- * Checkpoint beginnt bei 0. Der Zufall läuft weiter wie im Original (global).
- */
-export function continueInNextLevel(prev: World, level: LevelData): World {
-  const w = new World(level, prev.options, 0);
-  w.rnd.seed = prev.rnd.seed;
-  w.halfToggle = prev.halfToggle;
-  w.score = prev.score;
-  w.shownScore = prev.shownScore;
-  w.lives = prev.lives;
-  w.speed = prev.speed;
-  w.gauge = prev.gauge;
-  w.colour = prev.colour;
-  w.stage = prev.stage;
-  w.optionCount = prev.optionCount;
-  w.bomb = prev.bomb;
-  w.checkpoint = 0;
-  restartAtCheckpoint(w);
-  return w;
-}
-
-export function startLevel(w: World): void {
-  w.checkpoint = 0;
-  w.lives = LIVES_START;
-  w.score = 0;
-  w.shownScore = 0;
-  w.speed = SHIP_SPEED_DEFAULT;
-  w.gauge = SHIP_SPEED_DEFAULT * 10;
-  loseEquipment(w);
-  restartAtCheckpoint(w);
-}
+/** Feuerbälle der Gegner starten so weit links vom Gegner (`x − 35`, `docs/measurements/dove-enemies.md`). */
+const FIREBALL_OFFSET_X = 35;
 
 // ---------------------------------------------------------------- Events (0x43D6B0)
 
@@ -357,6 +211,12 @@ function keyboard(w: World, input: number): void {
   if (fire) fireVolley(w);
 }
 
+/** Autopilot am Levelende: Pause in Ticks, Ziel-y, Fluggeschwindigkeit, Ausgang rechts. */
+const AUTOPILOT_WAIT = 30;
+const AUTOPILOT_Y = 195;
+const AUTOPILOT_SPEED = 9;
+const AUTOPILOT_EXIT_X = 710;
+
 /**
  * Levelende (`0x4716CF`): geladener Beam geht los, 255 Ticks unverwundbar,
  * 30 Ticks Pause, dann auf y = 195 steuern und mit 9 px/Tick hinausfliegen.
@@ -367,26 +227,26 @@ function autopilotTick(w: World): void {
     releaseBeam(w);
     w.invuln = 0;
   }
-  if (w.autopilot < 30) {
+  if (w.autopilot < AUTOPILOT_WAIT) {
     w.autopilot++;
     return;
   }
-  if (w.autopilot === 30) {
+  if (w.autopilot === AUTOPILOT_WAIT) {
     const y = w.py;
-    if (y < 195) {
+    if (y < AUTOPILOT_Y) {
       w.py += y < 110 ? 6 : y < 170 ? 4 : y < 190 ? 2 : 1;
       w.tilt = 2;
-    } else if (y > 195) {
+    } else if (y > AUTOPILOT_Y) {
       w.py -= y > 300 ? 6 : y > 220 ? 4 : y > 200 ? 2 : 1;
       w.tilt = 1;
     } else {
       sound(w, Sound.Antrieb, w.rnd.below(101) - 50);
-      w.autopilot = 31;
+      w.autopilot = AUTOPILOT_WAIT + 1;
     }
     return;
   }
-  w.px += 9;
-  if (w.px > 710) w.exit = 3;
+  w.px += AUTOPILOT_SPEED;
+  if (w.px > AUTOPILOT_EXIT_X) w.exit = 3;
 }
 
 // ---------------------------------------------------------------- Welt bewegen
@@ -440,7 +300,7 @@ function scroll(w: World): void {
       w.extraAnim[i] = anim;
     }
     const y = w.extraY[i] as number;
-    if (x > SCREEN_W - 1 || x < -25 || y < -25 || y > FIELD_H) {
+    if (x > SCREEN_W - 1 || x < -EXTRA_SIZE || y < -EXTRA_SIZE || y > FIELD_H) {
       w.extras.free(i);
     } else if (touchesExtra(w, x, y)) {
       w.extras.free(i);
@@ -568,7 +428,7 @@ function updateEnemies(w: World): void {
         const st = (w.enShotTimer[i] as number) + 1;
         w.enShotTimer[i] = st >= HOVER_FIRE_TICKS ? 0 : st;
         if (st >= HOVER_FIRE_TICKS) {
-          const fx0 = roundHalfEven(w.enX[i] as number) - 35;
+          const fx0 = roundHalfEven(w.enX[i] as number) - FIREBALL_OFFSET_X;
           const fy = roundHalfEven(w.enY[i] as number);
           addEnemyShotForced(w, ShotKind.Fireball, fx0, fy);
           addEnemyShotForced(w, ShotKind.Fireball, fx0, fy + def.h);
@@ -606,7 +466,7 @@ function updateEnemies(w: World): void {
         addEnemyShot(
           w,
           ShotKind.Fireball,
-          roundHalfEven(w.enX[i] as number) - 35,
+          roundHalfEven(w.enX[i] as number) - FIREBALL_OFFSET_X,
           roundHalfEven(w.enY[i] as number),
         );
       }

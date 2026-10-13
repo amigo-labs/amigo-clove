@@ -1,13 +1,7 @@
-export {
-  DISPLAY_EVENT,
-  LAYOUT_EVENT,
-  createScreen,
-  setView,
-  viewHeight,
-  type ScreenOptions,
-} from "./ScreenRoot";
-export { type FrameProbe, probeEnd, probeStart } from "./probe";
-export { canvasFactor, scaleFor } from "./scale";
+export { createScreen, setView, type ScreenOptions } from "./ScreenRoot";
+export { probeEnd, probeStart } from "./probe";
+export { RectCache } from "./RectCache";
+export { stageChanges } from "./stageChanges";
 export { followResolution } from "./targets";
-export { TextureRegistry, type TextureUploader } from "./TextureRegistry";
+export { TextureRegistry } from "./TextureRegistry";
 export { WindowFocus } from "./WindowFocus";

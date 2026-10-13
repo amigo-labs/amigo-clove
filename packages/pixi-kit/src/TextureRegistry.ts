@@ -1,10 +1,5 @@
 import type { AssetStore } from "@clove/core";
-import { Assets, Rectangle, Texture, type TextureSource } from "pixi.js";
-
-/** Der Teil des Pixi-Renderers, der eine Textur auf die GPU bringt. */
-export interface TextureUploader {
-  readonly texture: { initSource(source: TextureSource): void };
-}
+import { Assets, Rectangle, Texture, type Renderer } from "pixi.js";
 
 /**
  * Lädt Bild-Assets per ID und schneidet Teilrechtecke daraus.
@@ -20,7 +15,7 @@ export class TextureRegistry {
 
   constructor(
     private readonly assets: AssetStore,
-    private readonly gpu?: TextureUploader,
+    private readonly gpu?: Pick<Renderer, "texture">,
   ) {}
 
   async load(ids: readonly string[]): Promise<void> {

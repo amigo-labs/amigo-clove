@@ -20,7 +20,7 @@ export const ATLAS_CONVERTER_VERSION = 1;
 export const ATLAS_PAGE_SIZE = 2048;
 export const ATLAS_PADDING = 1;
 
-export interface AtlasSpriteSource {
+interface AtlasSpriteSource {
   /** Schlüssel im Atlas: Dateiname klein, ohne `.bmp`. */
   readonly name: string;
   readonly bmp: Uint8Array;
@@ -28,7 +28,7 @@ export interface AtlasSpriteSource {
   readonly maskOffset?: MaskOffset;
 }
 
-export interface AtlasOptions {
+interface AtlasOptions {
   readonly effort: number;
   readonly libwebp: string;
 }
@@ -41,7 +41,7 @@ export function planAtlas(
   return packRects(sorted, ATLAS_PAGE_SIZE, ATLAS_PADDING);
 }
 
-export interface AtlasResult {
+interface AtlasResult {
   readonly pages: readonly Uint8Array[];
   readonly sprites: Record<string, AtlasSprite>;
   readonly warnings: readonly string[];

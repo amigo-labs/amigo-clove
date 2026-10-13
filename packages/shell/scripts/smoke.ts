@@ -12,28 +12,13 @@
  *    vollständig aus dem Service-Worker-Cache.
  * Aufruf: `bun run smoke` (baut vorher mit Vite).
  */
-import { chromium, type Page } from "playwright-core";
+import type { Page } from "playwright-core";
 import sharp from "sharp";
+import { launchBrowser, spawnPreview, waitForPreview } from "./preview";
 
 const PORT = 4173;
 const ORIGIN = `http://localhost:${PORT}`;
-const server = Bun.spawn(["bunx", "vite", "preview", "--port", String(PORT), "--strictPort"], {
-  cwd: `${import.meta.dir}/..`,
-  stdout: "ignore",
-  stderr: "inherit",
-});
-
-async function waitForServer(): Promise<void> {
-  for (let i = 0; i < 100; i++) {
-    try {
-      if ((await fetch(`http://localhost:${PORT}/`)).ok) return;
-    } catch {
-      // noch nicht bereit
-    }
-    await Bun.sleep(100);
-  }
-  throw new Error("vite preview startet nicht");
-}
+const server = spawnPreview(PORT);
 
 /** Anteil der Pixel im Rechteck, die nicht (fast) schwarz sind. */
 async function litShare(png: Buffer, x: number, y: number, w: number, h: number): Promise<number> {
@@ -237,10 +222,8 @@ async function playDoveZMenu(page: Page, label: string): Promise<number> {
 }
 
 try {
-  await waitForServer();
-  const browser = await chromium.launch({
-    args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"],
-  });
+  await waitForPreview(PORT);
+  const browser = await launchBrowser();
 
   // 1. Kalter Start ohne Cache direkt ins Spiel
   const cold = await browser.newPage({ viewport: { width: 640, height: 480 } });

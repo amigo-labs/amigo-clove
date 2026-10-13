@@ -1,5 +1,5 @@
 import type { AtlasJson, AtlasSprite } from "@clove/core";
-import type { TextureRegistry } from "@clove/pixi-kit";
+import { RectCache, type TextureRegistry } from "@clove/pixi-kit";
 import {
   Container,
   Graphics,
@@ -12,7 +12,7 @@ import {
 import { DRAW_SLOTS, type DrawList, type Quad } from "../sim/effects";
 import { RADIO_LIFT, TICKER_Y } from "../game/hud";
 import { type Lang, hintPrefix } from "../game/lang";
-import type { EnvSlot } from "../sim/envDraw";
+import type { EnvSlot, RenderTarget } from "../sim/envDraw";
 import { DeathState, type Enemy } from "../sim/enemies";
 import { LAYER_COUNT } from "../sim/layers";
 import type { Surface } from "../sim/surfaces";
@@ -130,19 +130,21 @@ const ORDER = [
   "env:overlay",
 ] as const;
 
-/** Effekt-Zeichenlisten mit ihrer Ebene (das Funkbild zeichnet das HUD). */
-const FX_BATCHES = DRAW_SLOTS.filter((s) => s !== "radio").map((s) => [s, `fx:${s}`] as const);
+/** Zeichenstellen mit eigener Sprite-Ebene (die übrigen liefert der `Compositor`). */
+type BatchName = Exclude<(typeof ORDER)[number], `env:${string}` | "hint" | "nova:blits">;
 
-const fits = (v: number) => Number.isInteger(v) && v >= 0 && v < 4096;
+/** Effekt-Zeichenlisten (das Funkbild zeichnet das HUD); ihre Ebene heißt `fx:<Liste>`. */
+const FX_SLOTS = DRAW_SLOTS.filter((s) => s !== "radio");
 
-/**
- * Ausschnitt (x, y, w, h; -1 = bis zum Rand) als eine Zahl, damit die Suche je
- * Sprite keinen Schlüssel-String baut; `NaN` für Werte außerhalb von 12 Bit.
- */
-function packRect(x: number, y: number, w: number, h: number): number {
-  if (!fits(x) || !fits(y) || !fits(w + 1) || !fits(h + 1)) return Number.NaN;
-  return ((x * 4096 + y) * 4096 + w + 1) * 4096 + h + 1;
-}
+/** Streifen-Schlüssel, die ein Render-Ziel des `Compositor` meinen. */
+const TARGET_STRIPS = new Map<string, RenderTarget>([
+  ["@blur", "blur"],
+  ["@still", "still"],
+  ["@lens", "lens"],
+]);
+
+/** Zusatzbilder des HUD werden addiert (`interface*_spec*`). */
+const ADDITIVE = { additive: true } as const;
 
 /** Optionen der Gegnerschüsse, je Schuss neu gesetzt. */
 const SHOT = scratchOptions();
@@ -153,7 +155,7 @@ const HIT_FLASH = { red: 1, green: 0.5, blue: 0.5 } as const;
 /** Deckkraft von Vollbildblitzen bei bewegungsarmer Darstellung. */
 const CALM_FLASH = 0.3;
 
-export interface RendererOptions {
+interface RendererOptions {
   /** Bewegungsarme Darstellung (Einstellung der Shell): kein Wackeln, abgeschwächte Blitze. */
   readonly calm?: () => boolean;
   /**
@@ -171,10 +173,10 @@ export class Renderer {
   readonly root = new Container();
   private readonly batches = new Map<string, SpriteBatch>();
   private readonly batchList: SpriteBatch[] = [];
+  private readonly fxBatches: [(typeof FX_SLOTS)[number], SpriteBatch][];
   private readonly layers = new Map<string, Container>();
-  /** Texturen je Sprite und Ausschnitt (`packRect`), seltene Ausschnitte unter einem String. */
-  private readonly frames = new Map<string, Map<number, Texture>>();
-  private readonly oddFrames = new Map<string, Texture>();
+  /** Texturen je Sprite und Ausschnitt. */
+  private readonly frames = new RectCache<Texture>();
   /** Streifen-Texturen je Schlüssel (sie ändern sich nicht, solange der Renderer lebt). */
   private readonly strips = new Map<string, StripTexture>();
   private readonly compositor: Compositor;
@@ -215,6 +217,7 @@ export class Renderer {
       this.batches.set(name, b);
       this.batchList.push(b);
     }
+    this.fxBatches = FX_SLOTS.map((s) => [s, this.batch(`fx:${s}`)]);
     this.root.addChild(this.fade);
     this.root.addChild(this.hudLayer);
     this.hud = new SpriteBatch(this.hudLayer);
@@ -238,9 +241,7 @@ export class Renderer {
 
   /** Textur eines Atlas-Sprites, optional mit Ausschnitt (x, y, w, h im BMP). */
   private texture(key: string, rx = 0, ry = 0, rw = -1, rh = -1): Texture | undefined {
-    const packed = packRect(rx, ry, rw, rh);
-    const odd = Number.isNaN(packed) ? `${key}|${rx},${ry},${rw},${rh}` : undefined;
-    let t = odd === undefined ? this.frames.get(key)?.get(packed) : this.oddFrames.get(odd);
+    let t = this.frames.get(key, rx, ry, rw, rh);
     if (t) return t;
     const found = this.sprite(key);
     if (!found) return undefined;
@@ -253,12 +254,7 @@ export class Renderer {
       source: this.textures.get(page).source,
       frame: new Rectangle(s.x + rx, s.y + ry, w, h),
     });
-    if (odd !== undefined) this.oddFrames.set(odd, t);
-    else {
-      let byRect = this.frames.get(key);
-      if (!byRect) this.frames.set(key, (byRect = new Map()));
-      byRect.set(packed, t);
-    }
+    this.frames.set(key, rx, ry, rw, rh, t);
     return t;
   }
 
@@ -271,7 +267,8 @@ export class Renderer {
     return this.opts.calm?.() === true;
   }
 
-  private batch(name: string): SpriteBatch {
+  /** Sprite-Ebene einer Zeichenstelle; der Konstruktor legt sie für jede an. */
+  private batch(name: BatchName): SpriteBatch {
     return this.batches.get(name)!;
   }
 
@@ -288,7 +285,7 @@ export class Renderer {
     this.drawSpecials();
     this.drawEnemies();
     this.drawEnemyShots();
-    for (const [slot, batch] of FX_BATCHES) this.drawList(this.batch(batch), w.fx.lists[slot]);
+    for (const [slot, batch] of this.fxBatches) this.drawList(batch, w.fx.lists[slot]);
     this.drawHint();
     const calm = this.calm();
     this.screen.position.set(calm ? 0 : -w.fx.shakeX, calm ? 0 : -w.fx.shakeY);
@@ -369,10 +366,8 @@ export class Renderer {
   }
 
   private newStripTexture(key: string): StripTexture | undefined {
-    if (key === "@blur" || key === "@still" || key === "@lens")
-      return this.compositor.targetTexture(
-        key === "@blur" ? "blur" : key === "@lens" ? "lens" : "still",
-      );
+    const target = TARGET_STRIPS.get(key);
+    if (target) return this.compositor.targetTexture(target);
     const wrap = key === "@noise";
     const t = this.texture(wrap ? "noise" : key);
     if (!t) return undefined;
@@ -428,7 +423,9 @@ export class Renderer {
   private drawTiles(l: number): void {
     const w = this.world;
     const layer = w.layers[l]!;
-    const b = this.batch(`layer${l}`);
+    // Ebene 4 ist die Ereignisebene ohne Kacheln (`EVENT_LAYER`); von ihr zeichnet
+    // `SpielLoop` nur die Animationen (`anim4`), also hat sie keine Kachel-Zeichenstelle
+    const b = this.batches.get(`layer${l}`);
     if (!b) return;
     for (let i = 0; i <= layer.highWater; i++) {
       const t = layer.tiles[i]!;
@@ -441,7 +438,7 @@ export class Renderer {
 
   private drawAnims(l: number): void {
     const w = this.world;
-    const b = this.batch(`anim${l}`);
+    const b = this.batches.get(`anim${l}`);
     if (!b) return;
     for (const inst of w.anims.items) {
       if (!inst.active || inst.layer !== l) continue;
@@ -580,18 +577,15 @@ export class Renderer {
   }
 
   /** Atlas-Bild mit Farbschlüssel an (x, y), optional nur der Ausschnitt (rx, ry, rw, rh). */
-  private hudPut(
-    key: string,
-    x: number,
-    y: number,
-    rx = 0,
-    ry = 0,
-    rw = -1,
-    rh = -1,
-    additive = false,
-  ): void {
+  private hudPut(key: string, x: number, y: number, rx = 0, ry = 0, rw = -1, rh = -1): void {
     const t = this.texture(key, rx, ry, rw, rh);
-    if (t) this.hud.put(t, x, y, { additive });
+    if (t) this.hud.put(t, x, y);
+  }
+
+  /** Atlas-Bild an (x, y), addiert. */
+  private hudAdd(key: string, x: number, y: number): void {
+    const t = this.texture(key);
+    if (t) this.hud.put(t, x, y, ADDITIVE);
   }
 
   /** Ziffern `n0`–`n9` von rechts nach links; Ziffer k (0 = letzte) bei x + 4·Länge − 8k. */
@@ -620,76 +614,78 @@ export class Renderer {
     this.hudPut(`${i}_grund`, 0, 525);
     const lives = Math.min(Math.max(w.lives, 0), 9);
     this.hudPut(`leben${lives}`, 122, 555);
-    if (!two) this.hudPut(`${i}_spec1`, 122, 562, 0, 0, -1, -1, true);
-    if (w.lifePulse > 0) {
-      const g = 2 * (25 - idiv(w.lifePulse, 2));
-      const glow = this.texture("a_kreis2");
-      if (glow) {
-        this.hud.put(glow, 122 - 2 * g + (15 + 4 * g) / 2 - 32, 555 - g + (35 + 2 * g) / 2 - 32, {
-          scaleX: (15 + 4 * g) / 64,
-          scaleY: (35 + 2 * g) / 64,
-          alpha: (w.lifePulse * 0.5) / 50,
-          additive: true,
-        });
-      }
-      const digit = this.texture(`leben${lives}`);
-      if (digit && w.lifePulse > 25) {
-        const g2 = w.lifePulse - 25;
-        this.hud.put(
-          digit,
-          122 - g2 + (15 + 2 * g2) / 2 - 7.5,
-          555 - g2 + (35 + 2 * g2) / 2 - 17.5,
-          {
-            scaleX: (15 + 2 * g2) / 15,
-            scaleY: (35 + 2 * g2) / 35,
-          },
-        );
-      }
+    if (!two) this.hudAdd(`${i}_spec1`, 122, 562);
+    if (w.lifePulse > 0) this.drawLifePulse(w.lifePulse, lives);
+    w.players.forEach((p, n) => this.drawPlayerHud(p, n, i, two));
+  }
+
+  /** Anzeigen eines Spielers in `SpielDisplay`; `i` ist der Bildsatz (`interface0`–`interface3`). */
+  private drawPlayerHud(p: World["players"][number], n: number, i: string, two: boolean): void {
+    const w = this.world;
+    const L = two ? HUD_2P[n]! : HUD_1P;
+    this.hudNumber(w.shownScore[n] ?? 0, L.score[0], L.score[1]);
+    const energy = this.sprite(`${i}_energy`)?.s;
+    if (energy) {
+      const right = Math.max(0, Math.min(energy.w, idiv(p.energy * energy.w, p.maxEnergy)));
+      if (right > 0) this.hudPut(`${i}_energy`, L.energy[0], L.energy[1], 0, 0, right, energy.h);
     }
-    w.players.forEach((p, n) => {
-      const L = two ? HUD_2P[n]! : HUD_1P;
-      this.hudNumber(w.shownScore[n] ?? 0, L.score[0], L.score[1]);
-      const energy = this.sprite(`${i}_energy`)?.s;
-      if (energy) {
-        const right = Math.max(0, Math.min(energy.w, idiv(p.energy * energy.w, p.maxEnergy)));
-        if (right > 0) this.hudPut(`${i}_energy`, L.energy[0], L.energy[1], 0, 0, right, energy.h);
-      }
-      // Beam: gewählter Typ als Grund (nur im Wechselmodus), darüber die Ladung
-      const b = w.beams[n];
-      if (b) {
-        if (w.qToggles) this.hudPut(`${i}_beama${b.selected}`, L.beam[0], L.beam[1]);
-        const bar = this.sprite(`${i}_beam${b.type}`)?.s;
-        const bw = bar ? idiv(bar.w * b.charge, 165) : 0;
-        if (bar && bw > 0) this.hudPut(`${i}_beam${b.type}`, L.beam[0], L.beam[1], 0, 0, bw, bar.h);
-      }
-      if (!two) {
-        this.hudPut(`${i}_spec0`, 175, 559, 0, 0, -1, -1, true);
-        this.hudPut(`${i}_spec0`, 195, 582, 0, 0, -1, -1, true);
-      }
-      const gauge = this.sprite(`${i}_s`)?.s;
-      if (gauge) {
-        const top = Math.max(0, Math.min(gauge.h, gauge.h - idiv((p.speed - 4) * gauge.h, 6)));
-        if (top < gauge.h)
-          this.hudPut(`${i}_s`, L.speed[0], L.speed[1] + top, 0, top, gauge.w, gauge.h - top);
-      }
-      const power = this.sprite(`${i}_p`)?.s;
-      if (power && p.shotPower >= 2) {
-        const right = idiv(power.w, 4 - Math.min(p.shotPower, 3));
-        this.hudPut(`${i}_p`, L.power[0], L.power[1], 0, 0, right, power.h);
-      }
-      if (p.extraWeapon > 0) {
-        this.hudPut(
-          two ? `interface3_extra${p.extraWeapon - 1}` : `interface_extra${p.extraWeapon - 1}`,
-          L.extra[0],
-          L.extra[1],
-        );
-      }
-      if (!two) {
-        this.hudPut(`${i}_spec2`, 648, 567, 0, 0, -1, -1, true);
-        if (p.shipType === 0) this.drawParticleSlots(p.selected);
-        if (p.shipType === 1 && w.force.present) this.drawForceIcon();
-      }
-    });
+    // Beam: gewählter Typ als Grund (nur im Wechselmodus), darüber die Ladung
+    const b = w.beams[n];
+    if (b) {
+      if (w.qToggles) this.hudPut(`${i}_beama${b.selected}`, L.beam[0], L.beam[1]);
+      const bar = this.sprite(`${i}_beam${b.type}`)?.s;
+      const bw = bar ? idiv(bar.w * b.charge, 165) : 0;
+      if (bar && bw > 0) this.hudPut(`${i}_beam${b.type}`, L.beam[0], L.beam[1], 0, 0, bw, bar.h);
+    }
+    if (!two) {
+      this.hudAdd(`${i}_spec0`, 175, 559);
+      this.hudAdd(`${i}_spec0`, 195, 582);
+    }
+    const gauge = this.sprite(`${i}_s`)?.s;
+    if (gauge) {
+      const top = Math.max(0, Math.min(gauge.h, gauge.h - idiv((p.speed - 4) * gauge.h, 6)));
+      if (top < gauge.h)
+        this.hudPut(`${i}_s`, L.speed[0], L.speed[1] + top, 0, top, gauge.w, gauge.h - top);
+    }
+    const power = this.sprite(`${i}_p`)?.s;
+    if (power && p.shotPower >= 2) {
+      const right = idiv(power.w, 4 - Math.min(p.shotPower, 3));
+      this.hudPut(`${i}_p`, L.power[0], L.power[1], 0, 0, right, power.h);
+    }
+    if (p.extraWeapon > 0) {
+      this.hudPut(
+        two ? `interface3_extra${p.extraWeapon - 1}` : `interface_extra${p.extraWeapon - 1}`,
+        L.extra[0],
+        L.extra[1],
+      );
+    }
+    if (!two) {
+      this.hudAdd(`${i}_spec2`, 648, 567);
+      if (p.shipType === 0) this.drawParticleSlots(p.selected);
+      if (p.shipType === 1 && w.force.present) this.drawForceIcon();
+    }
+  }
+
+  /** Pulsieren der Lebensziffer (`lifePulse` 50 → 0): Lichtkreis, ab 25 die Ziffer vergrößert. */
+  private drawLifePulse(pulse: number, lives: number): void {
+    const g = 2 * (25 - idiv(pulse, 2));
+    const glow = this.texture("a_kreis2");
+    if (glow) {
+      this.hud.put(glow, 122 - 2 * g + (15 + 4 * g) / 2 - 32, 555 - g + (35 + 2 * g) / 2 - 32, {
+        scaleX: (15 + 4 * g) / 64,
+        scaleY: (35 + 2 * g) / 64,
+        alpha: (pulse * 0.5) / 50,
+        additive: true,
+      });
+    }
+    const digit = this.texture(`leben${lives}`);
+    if (digit && pulse > 25) {
+      const g2 = pulse - 25;
+      this.hud.put(digit, 122 - g2 + (15 + 2 * g2) / 2 - 7.5, 555 - g2 + (35 + 2 * g2) / 2 - 17.5, {
+        scaleX: (15 + 2 * g2) / 15,
+        scaleY: (35 + 2 * g2) / 35,
+      });
+    }
   }
 
   /** Waffenfeld des D-Tonator: inaktiv `d0s`, gewählt `d{i+1}s`, Stufe als `extra{Sorte}`, Schild dreimal `extra0`. */
@@ -756,10 +752,8 @@ export class Renderer {
   }
 
   destroy(): void {
-    for (const byRect of this.frames.values()) for (const t of byRect.values()) t.destroy(false);
-    for (const t of this.oddFrames.values()) t.destroy(false);
+    for (const t of this.frames.values()) t.destroy(false);
     this.frames.clear();
-    this.oddFrames.clear();
     this.strips.clear();
     for (const c of this.layers.values()) c.destroy({ children: true });
     this.hint.destroy({ children: true });

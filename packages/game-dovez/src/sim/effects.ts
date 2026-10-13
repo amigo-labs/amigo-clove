@@ -18,10 +18,10 @@ import { COS_DEG, SIN_DEG, cint, degIndex, f32, idiv, vbInt, winkelInGrad, type 
  * abspielt.
  */
 
-export const SPARK_SLOTS = 1501;
-export const BIG_SLOTS = 4001;
-export const POPUP_SLOTS = 101;
-export const BUBBLE_SLOTS = 201;
+const SPARK_SLOTS = 1501;
+const BIG_SLOTS = 4001;
+const POPUP_SLOTS = 101;
+const BUBBLE_SLOTS = 201;
 
 /** Ein gestrecktes Rechteck (`SetUpRect`/`SetUpGeom` + `Render`). */
 export interface Quad {
@@ -150,7 +150,7 @@ export const DRAW_SLOTS = [
   /** Funkfenster im HUD (zeichnet der Renderer mit dem HUD). */
   "radio",
 ] as const;
-export type DrawSlot = (typeof DRAW_SLOTS)[number];
+type DrawSlot = (typeof DRAW_SLOTS)[number];
 
 interface Spark {
   active: boolean;

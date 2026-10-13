@@ -4,7 +4,7 @@
  * in Originalgröße — Konturen bleiben so pixelgenau ablesbar.
  */
 
-export interface Cell {
+interface Cell {
   readonly name: string;
   /** Linke obere Ecke der Zelle. */
   readonly x: number;

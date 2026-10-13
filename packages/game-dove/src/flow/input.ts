@@ -1,17 +1,16 @@
 import type { KeyState } from "@clove/core";
 
-/** Tastengruppen der Menüs wie im Original (`GetKeyboardState`-Codes → `KeyboardEvent.code`). */
-export const KEYS = {
-  up: ["ArrowUp", "Numpad8"],
-  down: ["ArrowDown", "Numpad2", "Numpad5"],
-  left: ["ArrowLeft", "Numpad4"],
-  right: ["ArrowRight", "Numpad6"],
+/**
+ * Tastengruppen der Zwischenbildschirme wie im Original (`GetKeyboardState`-Codes →
+ * `KeyboardEvent.code`); die Menüs sind HTML und bedient die Shell.
+ */
+const KEYS = {
   /** Bestätigen: Enter, S, A, Leertaste. */
   confirm: ["Enter", "NumpadEnter", "KeyS", "KeyA", "Space"],
   escape: ["Escape"],
 } as const;
 
-export type KeyGroup = keyof typeof KEYS;
+type KeyGroup = keyof typeof KEYS;
 
 const ALL = [...new Set(Object.values(KEYS).flat())];
 
@@ -47,9 +46,5 @@ export class KeyEdges {
 
   hit(g: KeyGroup): boolean {
     return KEYS[g].some((c) => this.now.has(c) && !this.prev.has(c));
-  }
-
-  isDown(code: string): boolean {
-    return this.now.has(code);
   }
 }

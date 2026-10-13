@@ -7,7 +7,7 @@ import { introSpriteAt } from "../intro";
 import type { FlowEnv, Screen } from "../screen";
 
 /** `background1.spr` → `image/background1`. */
-export function introImageId(file: string): string {
+function introImageId(file: string): string {
   return `image/${file.replace(/\.spr$/i, "").toLowerCase()}`;
 }
 

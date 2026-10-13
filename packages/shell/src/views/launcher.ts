@@ -2,7 +2,7 @@ import type { ControlsSheet, GameUi, UiItem } from "@clove/core";
 import { offlineStatus, offlineSupported } from "../offline";
 import type { ShellText } from "../texts";
 
-export interface GameCard {
+interface GameCard {
   readonly id: string;
   readonly title: string;
   readonly subtitle: string;

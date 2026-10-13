@@ -16,7 +16,7 @@ export class SchemaError extends Error {
 }
 
 /** Skalartypen: VB `Integer` (i16), `Long` (i32), `Single` (f32), String mit Länge, String fester Länge. */
-export type Scalar = "i16" | "i32" | "f32" | "str" | `fixed${number}`;
+type Scalar = "i16" | "i32" | "f32" | "str" | `fixed${number}`;
 
 export type Field =
   | { readonly name: string; readonly type: Scalar }
@@ -53,7 +53,7 @@ type Intersect<U> = (U extends unknown ? (u: U) => void : never) extends (i: inf
   : never;
 type Flatten<T> = { readonly [K in keyof T]: T[K] };
 
-export type Value = number | string | Row[];
+type Value = number | string | Row[];
 export type Row = { [name: string]: Value };
 
 class Reader {

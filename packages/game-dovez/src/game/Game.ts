@@ -3,7 +3,7 @@ import { LoveScene } from "./loveScene";
 import type { AtlasJson, GameHost, GameInstance, UiImage, UiScreen } from "@clove/core";
 import { StreamPlayer } from "@clove/audio";
 import { dovezSlug, type PlayStep } from "@clove/formats";
-import { TextureRegistry, createScreen, setView } from "@clove/pixi-kit";
+import { TextureRegistry, createScreen, setView, stageChanges } from "@clove/pixi-kit";
 import { Renderer } from "../render/Renderer";
 import { VbRnd } from "../sim/vb";
 import type { Carry } from "../sim/world";
@@ -48,7 +48,7 @@ export const SCREEN_HEIGHT = 600;
 /** Spielfeld ohne HUD-Leiste. */
 const FIELD_H = 550;
 
-export interface GameOptions {
+interface GameOptions {
   /** Einzellevel (Slug) ohne Menü. */
   readonly level?: string | undefined;
   readonly from: number;
@@ -126,9 +126,10 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
     resolution: () => host.resolution?.() ?? "original",
   });
   const textures = new TextureRegistry(host.assets, app.renderer);
-  const globals = (await Promise.all(
-    ["atlas/spiel", "atlas/standart"].map((id) => host.assets.json<AtlasJson>(id)),
-  )) as [AtlasJson, AtlasJson];
+  const globals = await Promise.all([
+    host.assets.json<AtlasJson>("atlas/spiel"),
+    host.assets.json<AtlasJson>("atlas/standart"),
+  ]);
   await textures.load(Renderer.pageIds(globals.map((json) => ({ json }))));
   const standart = globals[1];
   /** Das DoveZ-Logo (`Standart.d2p`, wie auf dem Mosaik-Ladebild) für Menü und Speicherbildschirm. */
@@ -180,9 +181,7 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
   const play = (s: Scene): Promise<void> => run(s, () => s.destroy());
 
   /** Szene auf- oder abgebaut (Kinder der Stage): das nächste Bild zeichnen, auch ohne Schritt. */
-  let stale = true;
-  const mark = () => (stale = true);
-  app.stage.on("childAdded", mark).on("childRemoved", mark);
+  const takeStale = stageChanges(app.stage);
 
   const frame = () => {
     if (disposed) return;
@@ -193,8 +192,8 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
     // ohne neues Bild der Szene (auch ganz ohne Szene, unter HTML-Bildschirmen)
     // behält der Canvas das letzte
     const drew = s !== undefined && !s.idle;
+    const stale = takeStale();
     if (!drew && !stale && scene === s) return;
-    stale = false;
     app.render();
   };
   app.ticker.add(frame);
@@ -246,15 +245,14 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
         if (take) sprite = { sprite: take };
       }
       // ohne Ladebild (Einzellevel, Epilog): das Mosaik, ohne Tastendruck
-      const isMosaic = a.loading === undefined || sprite === undefined;
-      const image = isMosaic ? await mosaic.image() : sprite;
+      const image = sprite ?? (await mosaic.image());
       let loaded = 0;
       let ready = false;
       const shown = show(
         loadingNotice({
           lang,
           image,
-          mosaic: isMosaic,
+          mosaic: sprite === undefined,
           progress: () => (ready ? 1 : Math.min(loaded, 0.99)),
         }),
       );
@@ -451,22 +449,23 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
     return result;
   };
 
+  /** Das Osterei (`0x546C30`), auch ohne Menü zur Sichtprüfung. */
+  const love = () => play(new LoveScene(host, app, textures, standart, new LoveLogic(rnd)));
+
   const menuFlow = async () => {
-    let first = true;
+    if (disposed) return;
+    if (opts.intro) {
+      await logos();
+      if (opts.videos)
+        await playVideo(host, languageVideo("intro", lang), lang, false, screens.signal);
+    }
     for (;;) {
-      if (disposed) return;
-      if (first && opts.intro) {
-        await logos();
-        if (opts.videos)
-          await playVideo(host, languageVideo("intro", lang), lang, false, screens.signal);
-      }
-      first = false;
       if (disposed) return;
       const r = await menu();
       if (disposed || r.kind === "exit") return;
       if (r.kind === "love") {
         // „lov“ im Hauptmenü (`0x546C30`): Osterei, danach wie „Exit“ zurück zur Shell
-        await play(new LoveScene(host, app, textures, standart, new LoveLogic(rnd)));
+        await love();
         await play(new FadeScene(app, targets, new FadeLogic(0, rnd)));
         return;
       }
@@ -495,8 +494,7 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
       return;
     }
     if (opts.screen === "love") {
-      // Sichtprüfung des Osterei ohne Menü
-      await play(new LoveScene(host, app, textures, standart, new LoveLogic(rnd)));
+      await love();
       return;
     }
     const saved =

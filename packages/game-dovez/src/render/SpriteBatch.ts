@@ -1,6 +1,6 @@
 import { type Container, Sprite, type Texture } from "pixi.js";
 
-export interface DrawOptions {
+interface DrawOptions {
   /** Farbe 0…1 je Kanal (D3D-Sprites), Vorgabe weiß. */
   readonly red?: number;
   readonly green?: number;

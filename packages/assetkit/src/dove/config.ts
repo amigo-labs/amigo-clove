@@ -23,10 +23,10 @@ import {
 import { MUSIC_CONVERTER_VERSION, convertMusic } from "../stages/music";
 
 export const DOVE_DATA = "original-dove/Data";
-export const DOVE_LEVEL_COUNT = 12;
+const DOVE_LEVEL_COUNT = 12;
 
 /** Eingefroren: eine Änderung schreibt jedes Bild neu (Spec R2 — Repo-Größe). */
-export const WEBP_EFFORT = 6;
+const WEBP_EFFORT = 6;
 
 /** Immer geladen: HUD, Spielerschiff, Explosionen, Fonts, Easteregg, alle SFX. */
 const CORE_IMAGES = ["ss", "konsole", "explosion", "text", "text2", "metroid"];

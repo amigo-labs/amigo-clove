@@ -76,6 +76,11 @@ export type ScaleMode = "integer" | "fit" | "smooth";
  */
 export type RenderResolution = "original" | "xbr" | "hd";
 
+/** Fensterereignis der Shell: die Darstellung hat sich geändert, neu einpassen. */
+export const DISPLAY_EVENT = "clove:display";
+/** Canvas-Ereignis des Pixi-Kits nach jedem Einpassen (Größe oder sichtbarer Ausschnitt geändert). */
+export const LAYOUT_EVENT = "clove:layout";
+
 /** Eine belegte Taste: `KeyboardEvent.code` und ihr Anzeigename. */
 export interface BoundKey {
   readonly code: string;

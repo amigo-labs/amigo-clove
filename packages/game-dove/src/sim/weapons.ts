@@ -53,7 +53,7 @@ import { cosDeg, sinDeg } from "./trig";
 import type { World } from "./world";
 
 /** Schusstypen der Spielerschuss-Schleife (`0x47C89D`, Sprungtabelle `0x4903E1`). */
-export const ShotType = { Base: 0, Bomb: 1, Green: 2, Red: 3 } as const;
+const ShotType = { Base: 0, Bomb: 1, Green: 2, Red: 3 } as const;
 
 /** `AddSchuss` speichert (x − vx, y − vy); die Schleife bewegt im selben Tick. */
 function addShot(

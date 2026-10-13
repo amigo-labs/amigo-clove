@@ -1,12 +1,4 @@
-import {
-  GlProgram,
-  Mesh,
-  MeshGeometry,
-  Shader,
-  type Texture,
-  type TextureSource,
-  UniformGroup,
-} from "pixi.js";
+import { GlProgram, Mesh, MeshGeometry, Shader, type Texture, UniformGroup } from "pixi.js";
 
 /**
  * Kantenglättung für Pixelgrafik: vergrößert ein Bild in Originalauflösung auf
@@ -166,10 +158,9 @@ export class XbrPresent {
       uSize: { value: new Float32Array([width, height]), type: "vec2<f32>" },
       uStep: { value: 1, type: "f32" },
     });
-    const source: TextureSource = texture.source;
     const shader = new Shader({
       glProgram: program,
-      resources: { uTexture: source, xbrUniforms: this.uniforms },
+      resources: { uTexture: texture.source, xbrUniforms: this.uniforms },
     });
     this.mesh = new Mesh({ geometry, shader, texture });
   }
