@@ -9,6 +9,6 @@
   "dependencies": {
     "@clove/core": "workspace:*",
     "@clove/formats": "workspace:*",
-    "sharp": "0.35.4"
+    "sharp": "0.35.5"
   }
 }
