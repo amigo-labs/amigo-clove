@@ -1,5 +1,5 @@
 import { FixedStepLoop, isSettingsPage } from "@clove/core";
-import { probeEnd, probeStart, setView } from "@clove/pixi-kit";
+import { probeEnd, probeStart, setView, stageChanges } from "@clove/pixi-kit";
 import type { DoveIntro } from "@clove/formats";
 import type { Container } from "pixi.js";
 import { DoveAudio } from "../audio/DoveAudio";
@@ -96,7 +96,7 @@ export class Flow {
   private highscores: HighscoreEntry[];
   private readonly sprite: SpriteOf;
   /** Bildschirm hinzugekommen oder entfernt: das nächste Bild zeichnen, auch ohne Tick. */
-  private stale = true;
+  private readonly takeStale: () => boolean;
 
   constructor(
     private readonly env: FlowEnv,
@@ -107,8 +107,7 @@ export class Flow {
     this.config = parseConfig(storage.get(CONFIG_KEY));
     this.highscores = parseHighscores(storage.get(HIGHSCORE_KEY)) ?? defaultHighscores(env.rnd);
     this.sprite = (id, r) => spriteSheet(env.host.assets, id)(r);
-    const mark = () => (this.stale = true);
-    stage.on("childAdded", mark).on("childRemoved", mark);
+    this.takeStale = stageChanges(stage);
     // die Marke im Kopf aller Seiten, wie in DoveZ
     env.host.ui.brand?.({ name: "DOVE", logo: logo(this.sprite) });
   }
@@ -143,12 +142,6 @@ export class Flow {
     screen.render();
     probeEnd("draw", draw);
     return true;
-  }
-
-  private takeStale(): boolean {
-    const stale = this.stale;
-    this.stale = false;
-    return stale;
   }
 
   /** Die Welt des laufenden Levels (auch in der Pause), sonst `undefined`. */

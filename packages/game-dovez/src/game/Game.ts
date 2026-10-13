@@ -3,7 +3,7 @@ import { LoveScene } from "./loveScene";
 import type { AtlasJson, GameHost, GameInstance, UiImage, UiScreen } from "@clove/core";
 import { StreamPlayer } from "@clove/audio";
 import { dovezSlug, type PlayStep } from "@clove/formats";
-import { TextureRegistry, createScreen, setView } from "@clove/pixi-kit";
+import { TextureRegistry, createScreen, setView, stageChanges } from "@clove/pixi-kit";
 import { Renderer } from "../render/Renderer";
 import { VbRnd } from "../sim/vb";
 import type { Carry } from "../sim/world";
@@ -181,9 +181,7 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
   const play = (s: Scene): Promise<void> => run(s, () => s.destroy());
 
   /** Szene auf- oder abgebaut (Kinder der Stage): das nächste Bild zeichnen, auch ohne Schritt. */
-  let stale = true;
-  const mark = () => (stale = true);
-  app.stage.on("childAdded", mark).on("childRemoved", mark);
+  const takeStale = stageChanges(app.stage);
 
   const frame = () => {
     if (disposed) return;
@@ -194,8 +192,8 @@ export async function bootGame(host: GameHost, opts: GameOptions): Promise<GameI
     // ohne neues Bild der Szene (auch ganz ohne Szene, unter HTML-Bildschirmen)
     // behält der Canvas das letzte
     const drew = s !== undefined && !s.idle;
+    const stale = takeStale();
     if (!drew && !stale && scene === s) return;
-    stale = false;
     app.render();
   };
   app.ticker.add(frame);
