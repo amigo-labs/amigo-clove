@@ -129,6 +129,7 @@ export class Flow {
       this.env.keys.sample();
       const r = screen.update();
       if (r !== undefined) {
+        probeEnd("sim", sim, i + 1);
         this.finish(r);
         return this.takeStale();
       }
