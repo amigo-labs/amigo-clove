@@ -271,11 +271,11 @@ export class World {
 
   // Meteore (Me.214, 11 Slots)
   readonly meteors = new Pool(METEOR_SLOTS);
-  readonly metX = new Int32Array(11);
-  readonly metY = new Int32Array(11);
-  readonly metVX = new Int32Array(11);
-  readonly metVY = new Int32Array(11);
-  readonly metHP = new Int32Array(11);
+  readonly metX = new Int32Array(METEOR_SLOTS);
+  readonly metY = new Int32Array(METEOR_SLOTS);
+  readonly metVX = new Int32Array(METEOR_SLOTS);
+  readonly metVY = new Int32Array(METEOR_SLOTS);
+  readonly metHP = new Int32Array(METEOR_SLOTS);
 
   // Spielerschüsse (Original: 1000 Slots; 256 reichen auch für geteilte grüne Bälle)
   readonly shots = new Pool(256);
