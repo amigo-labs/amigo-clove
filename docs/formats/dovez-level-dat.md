@@ -1,69 +1,70 @@
-# DoveZ `<Level>.dat` — das Level-Skript
+# DoveZ `<Level>.dat` — the level script
 
-Stand: M7. Parser und Serializer: `packages/formats/src/dovez/LevelDat.ts`
-(schemagetrieben, `binarySchema.ts`), geprüft von
-`packages/formats/test/dovezLevelDat.test.ts` gegen **alle 27** Level. Der
-Routen-Interpreter liegt in `packages/game-dovez/src/sim/route.ts`, die
-Gegnerwaffen in `sim/weapon.ts`, die Debug-Seite unter `#/dovez/debug/level`.
+Status: M7. Parser and serializer: `packages/formats/src/dovez/LevelDat.ts`
+(schema-driven, `binarySchema.ts`), checked by
+`packages/formats/test/dovezLevelDat.test.ts` against **all 27** levels. The
+route interpreter lives in `packages/game-dovez/src/sim/route.ts`, the enemy
+weapons in `sim/weapon.ts`, the debug page at `#/dovez/debug/level`.
 
-## Ergebnis
+## Result
 
-- **Die Grammatik ist vollständig und stammt aus dem Programm, nicht aus den
-  Daten.** `LadeDaten` (`0x4C72C0`) liest die Datei mit einer festen Folge von
-  `Get #`-Aufrufen; deren Feldgrößen, `ReDim`s und Schleifen ergeben das Schema
-  unten. Alle 27 Dateien parsen restlos, `serialize(parse(b)) === b`.
-- **Kein Byte hat eine offene Bedeutung.** Von 622 806 Byte sind 555 431 in
-  benannten Feldern, 63 204 Struktur (Zähler, Stringlängen) und 4171 in Feldern,
-  die das Programm nachweislich nie liest (`unused*`: Gruppen-Editor-ID,
-  Funk-Sprecher und -Flag). Die Metrik der Spec (`opaque` unter 5 %) ist damit
-  0 %; der Test verlangt 0 Byte `unknown*`.
-- „Benannt“ heißt: Die Bedeutung ist **aus dem Maschinencode gelesen** (Adressen
-  unten) und an den Daten aller Level gegengeprüft. Gegen das laufende Original
-  ist nichts geprüft; Einträge mit Konfidenz *M* oder *L* bestätigt erst M8.
-- Die Spec vermutete eine offene „Spawn-Timeline“ mit variabler Recordlänge und
-  „24 Nullfelder im Gegner-Record“. Beides löst sich auf: Es gibt sieben
-  Zeitleisten-Ebenen mit festen 5×i32-Einträgen, und die „Nullfelder“ sind
-  16 Gegner-Flags, die in den meisten Typen 0 sind.
+- **The grammar is complete and comes from the program, not from the data.**
+  `LadeDaten` (`0x4C72C0`) reads the file with a fixed sequence of `Get #` calls;
+  their field sizes, `ReDim`s and loops yield the schema below. All 27 files
+  parse completely, `serialize(parse(b)) === b`.
+- **No byte has an open meaning.** Of 622 806 bytes, 555 431 are in named fields,
+  63 204 are structure (counters, string lengths) and 4171 are in fields the
+  program demonstrably never reads (`unused*`: group editor ID, radio speaker and
+  flag). The spec's metric (`opaque` under 5 %) is thus 0 %; the test requires
+  0 bytes `unknown*`.
+- "Named" means: the meaning is **read from the machine code** (addresses below)
+  and cross-checked against the data of all levels. Nothing is checked against
+  the running original; entries with confidence *M* or *L* are confirmed only by
+  M8.
+- The spec suspected an open "spawn timeline" with variable record length and
+  "24 null fields in the enemy record". Both resolve: there are seven timeline
+  layers with fixed 5×i32 entries, and the "null fields" are 16 enemy flags that
+  are 0 in most types.
 
-## Herkunft: `DoveZ.exe`
+## Origin: `DoveZ.exe`
 
-`DoveZ.exe` ist **UPX-gepackt** (`upx -d`, UPX 4.2), darunter natives VB6.
-Disassembliert mit `objdump -d -M intel`, Image-Base `0x400000`, Dateioffset =
-VA − `0x400000`. Die Namen der Form-Methoden stehen im VB-Objektkopf
-(`VB5!` bei `0x409154`); sie sind bis etwa `LadeDaten` in Slot-Reihenfolge, danach
-verschoben (Funktionen daher nach Inhalt identifizieren). Methodenaufrufe laufen
-über die vtable ab `0x40ACC8` (`call [ecx+Offset]`).
+`DoveZ.exe` is **UPX-packed** (`upx -d`, UPX 4.2), underneath it native VB6.
+Disassembled with `objdump -d -M intel`, image base `0x400000`, file offset =
+VA − `0x400000`. The names of the form methods are in the VB object header
+(`VB5!` at `0x409154`); they are in slot order up to roughly `LadeDaten`, shifted
+after that (so identify functions by content). Method calls go through the vtable
+from `0x40ACC8` (`call [ecx+Offset]`).
 
-| Funktion | Adresse | Rolle |
+| Function | Address | Role |
 |---|---|---|
-| `LadeDaten` | `0x4C72C0` | liest das Skript (Grammatik) |
-| `GetAsciiStrFromFile` | `0x4C7010` | String fester Länge lesen (vtable `0x778`) |
-| `DoRoute` | `0x4ACC70` | Routen-Interpreter, Sprungtabelle `0x4B5458` |
-| `Var` | `0x4AC970` | Argumente auflösen |
-| `SpielMoveEnemy` | `0x4B5850` | Gegner bewegen, feuern, sterben |
-| `AddEnemy` | `0x575FF0` | Gegner-Instanz anlegen |
-| Zeitleisten-Spieler | `0x50C9F0` | einmal je Tick, alle 7 Ebenen |
-| `AddGegnerSchussErzeuger` / `SpielGegnerSchussErzeugen` | `0x4AA6A0` / `0x4AA0D0` | Waffen-Emitter |
-| `AddGegnerS` / `SpielMoveGegnerS` | `0x4AA8F0` / `0x4AAFE0` | Gegnerschüsse |
-| `AddAnima` / `SpielMoveAnimation` | `0x4A88E0` / `0x4A8BB0` | Effekt-Animationen |
+| `LadeDaten` | `0x4C72C0` | reads the script (grammar) |
+| `GetAsciiStrFromFile` | `0x4C7010` | read a fixed-length string (vtable `0x778`) |
+| `DoRoute` | `0x4ACC70` | route interpreter, jump table `0x4B5458` |
+| `Var` | `0x4AC970` | resolve arguments |
+| `SpielMoveEnemy` | `0x4B5850` | move, fire, kill enemy |
+| `AddEnemy` | `0x575FF0` | create enemy instance |
+| timeline player | `0x50C9F0` | once per tick, all 7 layers |
+| `AddGegnerSchussErzeuger` / `SpielGegnerSchussErzeugen` | `0x4AA6A0` / `0x4AA0D0` | weapon emitters |
+| `AddGegnerS` / `SpielMoveGegnerS` | `0x4AA8F0` / `0x4AAFE0` | enemy shots |
+| `AddAnima` / `SpielMoveAnimation` | `0x4A88E0` / `0x4A8BB0` | effect animations |
 
-`0x5882A4` ist **Anzahl der Spieler − 1** (Menü „Zwei Spieler?“, `0x54ED5D`),
-nicht die Schwierigkeit, wie die Spec annahm.
+`0x5882A4` is **number of players − 1** (menu "Zwei Spieler?", `0x54ED5D`), not
+the difficulty as the spec assumed.
 
-## Grammatik
+## Grammar
 
-VB6 schreibt Obergrenzen (`ReDim a(0 To n)`), also Anzahl − 1 (−1 = leer), und
-bisweilen vor anderen Feldern als die Elemente selbst. `str` = i32 Länge + CP1252.
-`Get` mit 4 Byte unterscheidet Long und Single nicht; die Typen unten kommen aus
-der Verwendung (`fld`/`fstp` gegen `mov`/`fild`).
+VB6 writes upper bounds (`ReDim a(0 To n)`), i.e. count − 1 (−1 = empty), and
+sometimes before fields other than the elements themselves. `str` = i32 length +
+CP1252. `Get` with 4 bytes does not distinguish Long and Single; the types below
+come from the usage (`fld`/`fstp` vs. `mov`/`fild`).
 
 ```
-"DOVE2 - V. 0.15"                 15 Byte
-str   background                  Dateiname oder Zahl als Text
+"DOVE2 - V. 0.15"                 15 bytes
+str   background                  file name or number as text
 i32   nGroups-1,  Group[]
 i32   nEnemies-1, Enemy[]
 i32   nRoutes-1,  Route[]
-      Layer[7]                    feste Anzahl, kein Zähler
+      Layer[7]                    fixed count, no counter
 i32   nAnims-1,   Anim[]
 i32   nWeapons-1, Weapon[]
 i32   nShots-1,   Shot[]
@@ -76,214 +77,216 @@ f32 × 6  waterTop RGB, waterBottom RGB
 EOF
 ```
 
-Die Feldreihenfolge jedes Records steht im Schema (`LevelDat.ts`); die Tabellen
-unten nennen Feld, Typ, Laufzeit-Offset (Belegstelle) und Bedeutung.
-Konfidenz: **H** aus dem Code gelesen und zu den Daten passend, **M** Mechanik
-gelesen, Spielwirkung gefolgert, **L** Vermutung.
+The field order of each record is in the schema (`LevelDat.ts`); the tables below
+give field, type, runtime offset (evidence site) and meaning. Confidence:
+**H** read from the code and matching the data, **M** mechanics read, game effect
+inferred, **L** conjecture.
 
-### Sprite-Gruppe (`0x5880AC`, 0x18 Byte)
+### Sprite group (`0x5880AC`, 0x18 bytes)
 
-| Feld | Typ | Laufzeit | Bedeutung | K |
+| Field | Type | Runtime | Meaning | C |
 |---|---|---|---|---|
-| `unusedEditorId` | i32 | — | gelesen und verworfen; Gruppen werden über ihre Position referenziert | H |
-| `name` | str | +0x0 | Editor-Name | H |
-| `d3d` | i16 | +0x4 | ≠ 0: Direct3D-Quad (Farbe, Alpha, Drehung, additiv); 0: DirectDraw-Blit mit Colorkey, Aufblitz-Kopien `<bmp>_i` | H |
-| `frames` | Liste | +0x8 | Bilder | H |
-| └ `bmp` | str | +0x0 | BMP im Paket; `"-"` beendet die Folge, das vorige Bild bleibt stehen | H |
-| └ `srcX…srcH` | i32 ×4 | — | Quellrechteck für `LoadSurface` | M |
-| └ `delay` | i32 | +0x8 | Ticks je Bild (`DoAni` `0x4B5520`) | H |
+| `unusedEditorId` | i32 | — | read and discarded; groups are referenced by their position | H |
+| `name` | str | +0x0 | editor name | H |
+| `d3d` | i16 | +0x4 | ≠ 0: Direct3D quad (color, alpha, rotation, additive); 0: DirectDraw blit with color key, flash copies `<bmp>_i` | H |
+| `frames` | list | +0x8 | images | H |
+| └ `bmp` | str | +0x0 | BMP in the package; `"-"` ends the sequence, the previous image stays shown | H |
+| └ `srcX…srcH` | i32 ×4 | — | source rectangle for `LoadSurface` | M |
+| └ `delay` | i32 | +0x8 | ticks per image (`DoAni` `0x4B5520`) | H |
 
-### Gegnertyp (`0x5880B4`, 0x60 Byte)
+### Enemy type (`0x5880B4`, 0x60 bytes)
 
-| Feld | Typ | Laufzeit | Bedeutung | K |
+| Field | Type | Runtime | Meaning | C |
 |---|---|---|---|---|
-| `hitPoints` | i32 | +0xC (Single) | × (1 + 0,5 · zwei Spieler); ganzzahlig (+0x1C) zugleich die Punkte, > 1499 großer Explosionston | H |
-| `name` | str | +0x8 | Editor-Name | H |
-| `speed` | f32 | +0x10 | px/Tick; Routen bewegen mit cos/sin · speed | H |
-| `collidesWithTerrain` | i32 | +0x20 | > 0: Teile gegen Landschaft testen, Treffer zerstört | H |
-| `ramsEnemies` | i32 | +0x24 | > 0: rammt andere Gegner (Rechteck um Wert − 1 eingerückt) | H |
-| `directionalFrames` | i32 | +0x28 | > 0: eins von 8 Bildern nach Bewegungsrichtung | H |
-| `wreckGroup` | i32 | +0x2C | 1-basierte Gruppe für Trümmer beim Tod | H |
-| `deathShockwave` | i32 | +0x30 | Druckwelle beim Tod, schiebt und schädigt Spieler | H |
-| `armorPassThrough` | i32 | +0x34 | durchschlagende Schüsse passieren gepanzerte Teile | L |
-| `novaImmune` | i32 | +0x38 | nicht von der Super-Nova erfasst | H |
-| `spawnSpec` | i32 | +0x3C | Teile mit Waffe −1 spucken Typ `v mod 1000` auf Route `v \ 1000` | H |
-| `solid` | i32 | +0x40 | wirkt wie Landschaft | H |
-| `deathSpawn` | i32 | +0x44 | beim Tod `(v mod 10) + 1` Gegner Typ `(v mod 1000) \ 10`, Route `v \ 1000` | H |
-| `hitFlash` | i32 | +0x48 | 0 kein Aufblitzen, 1 getroffenes Teil, 2 alle Teile | H |
-| `explosionSpec` | i32 | +0x4C | Fässer/Minen: Gegnerschaden · 10000 + Radius · 10 + (Spielerschaden / 10 + 1) | H |
-| `boss` | i32 | +0x50 | Boss (setzt `0x5882A8`, Boss-Tod) | H |
-| `partDebris` | i32 | +0x54 | zerstörte Teile fliegen als Trümmer weg | M |
-| `noComboReset` | i32 | +0x58 | Entkommen setzt den Kombo-Multiplikator nicht zurück | M |
-| `bigDeath` | i32 | +0x5C | lange Kettenexplosion | H |
-| `parts` | Liste | +0x0 | Teile | H |
+| `hitPoints` | i32 | +0xC (Single) | × (1 + 0.5 · two players); the integer form (+0x1C) is at the same time the points, > 1499 a large explosion sound | H |
+| `name` | str | +0x8 | editor name | H |
+| `speed` | f32 | +0x10 | px/tick; routes move with cos/sin · speed | H |
+| `collidesWithTerrain` | i32 | +0x20 | > 0: test parts against landscape, a hit destroys | H |
+| `ramsEnemies` | i32 | +0x24 | > 0: rams other enemies (rectangle inset by value − 1) | H |
+| `directionalFrames` | i32 | +0x28 | > 0: one of 8 images by movement direction | H |
+| `wreckGroup` | i32 | +0x2C | 1-based group for debris on death | H |
+| `deathShockwave` | i32 | +0x30 | shockwave on death, pushes and damages the player | H |
+| `armorPassThrough` | i32 | +0x34 | piercing shots pass through armored parts | L |
+| `novaImmune` | i32 | +0x38 | not caught by the super nova | H |
+| `spawnSpec` | i32 | +0x3C | parts with weapon −1 spit out type `v mod 1000` on route `v \ 1000` | H |
+| `solid` | i32 | +0x40 | acts like landscape | H |
+| `deathSpawn` | i32 | +0x44 | on death `(v mod 10) + 1` enemies of type `(v mod 1000) \ 10`, route `v \ 1000` | H |
+| `hitFlash` | i32 | +0x48 | 0 no flash, 1 the hit part, 2 all parts | H |
+| `explosionSpec` | i32 | +0x4C | barrels/mines: enemy damage · 10000 + radius · 10 + (player damage / 10 + 1) | H |
+| `boss` | i32 | +0x50 | boss (sets `0x5882A8`, boss death) | H |
+| `partDebris` | i32 | +0x54 | destroyed parts fly off as debris | M |
+| `noComboReset` | i32 | +0x58 | escaping does not reset the combo multiplier | M |
+| `bigDeath` | i32 | +0x5C | long chain explosion | H |
+| `parts` | list | +0x0 | parts | H |
 
-Beim Laden berechnet: +0x14/+0x18 Breite/Höhe = max(Teil-Offset + Bildgröße).
+Computed at load time: +0x14/+0x18 width/height = max(part offset + image size).
 
-### Gegnerteil (0x88 Byte)
+### Enemy part (0x88 bytes)
 
-| Feld | Typ | Laufzeit | Bedeutung | K |
+| Field | Type | Runtime | Meaning | C |
 |---|---|---|---|---|
-| `alpha`, `blue`, `green`, `red` | f32 | +0x1C, +0x18, +0x14, +0x10 | Farbe/Alpha für D3D-Gruppen (Vorgabe 1) | H |
-| `vital` | i16 | +0x2C | Zerstörung tötet den ganzen Gegner | H |
-| `damagesBody` | i16 | +0x24 | Treffer ziehen vom Gegner ab; sonst eigene `hitPoints` | H |
-| `hitPoints` | i32 | +0x28 (Single) | eigene Lebenspunkte; ganzzahlig Punkte fürs Teil | H |
-| `group` | i32 | +0x38 | Sprite-Gruppe | H |
-| `route` | i32 | +0xC | eigene Route, −1000 keine | H |
-| `hasRoute` | i16 | +0x8 | ≠ 0: Route jeden Tick relativ zum Gegner ausführen | H |
-| `weapon` | i32 | +0x30 | Gegnerwaffe; −1: `spawnSpec` ausspucken | H |
-| `fireMode` | i32 | +0x34 | 0 nie, 1–3 zufällig je Tick (p = 0,002/0,005/0,02, +0,005 je weiterem Spieler), 4–6 alle 25/50/100 Ticks, 7 einmal | H |
-| `armored` | i16 | +0x2E | Treffer ohne Schaden | H |
-| `rotation` | f32 | +0x20 | Grad; gezielte Waffen überschreiben sie jeden Tick | H |
-| `x`, `y` | i32 | +0x0, +0x4 (Single) | Versatz zum Gegner | H |
+| `alpha`, `blue`, `green`, `red` | f32 | +0x1C, +0x18, +0x14, +0x10 | color/alpha for D3D groups (default 1) | H |
+| `vital` | i16 | +0x2C | destruction kills the whole enemy | H |
+| `damagesBody` | i16 | +0x24 | hits subtract from the enemy; otherwise its own `hitPoints` | H |
+| `hitPoints` | i32 | +0x28 (Single) | own hit points; the integer form the points for the part | H |
+| `group` | i32 | +0x38 | sprite group | H |
+| `route` | i32 | +0xC | own route, −1000 none | H |
+| `hasRoute` | i16 | +0x8 | ≠ 0: run the route every tick relative to the enemy | H |
+| `weapon` | i32 | +0x30 | enemy weapon; −1: spit out `spawnSpec` | H |
+| `fireMode` | i32 | +0x34 | 0 never, 1–3 random per tick (p = 0.002/0.005/0.02, +0.005 per further player), 4–6 every 25/50/100 ticks, 7 once | H |
+| `armored` | i16 | +0x2E | hits without damage | H |
+| `rotation` | f32 | +0x20 | degrees; aimed weapons overwrite it every tick | H |
+| `x`, `y` | i32 | +0x0, +0x4 (Single) | offset to the enemy | H |
 
-Eigenheit des Originals: Der Landschaftstest addiert `red` (+0x10) auf x
-(`0x4C21AC`), vermutlich ein Tippfehler — der Port übernimmt ihn in M8.
+Quirk of the original: the landscape test adds `red` (+0x10) to x (`0x4C21AC`),
+presumably a typo — the port carries it over in M8.
 
-### Route (`0x5880BC`, 0xC Byte)
+### Route (`0x5880BC`, 0xC bytes)
 
-`name`, dann Befehle `op` (i32) mit Argumenten `{a, b}` (je f32). Jedes Argument
-ist **`Var(a) + Var(b)`**; Beträge ab 32748 sind Variablen, ein negatives
-Vorzeichen negiert:
+`name`, then commands `op` (i32) with arguments `{a, b}` (each f32). Each argument
+is **`Var(a) + Var(b)`**; magnitudes from 32748 on are variables, a negative sign
+negates:
 
-| Code | Wert | Code | Wert |
+| Code | Value | Code | Value |
 |---|---|---|---|
-| < 32748 | Literal | 32762 / 32763 | Zielspieler y / x |
-| 32748…32755 | Lokale L7…L0 | 32764 / 32765 | 550 / 800 |
-| 32756 | Level-Tick | 32766 / 32767 | −Höhe / −Breite |
-| 32757 | Tempo | 32768 | Lebenspunkte |
-| 32758 / 32759 | y / x | 32769 | Spieler − 1 |
-| 32760 | Spawn-y (Schüsse: laufende Nummer) | 32770…32783 | Register R0…R13 (mit den Teilen geteilt) |
-| 32761 | Spawn-Tick | 32784 | Spielerfeld `+0xA8` (Tutorial: Steuerungsschema) |
+| < 32748 | literal | 32762 / 32763 | target player y / x |
+| 32748…32755 | locals L7…L0 | 32764 / 32765 | 550 / 800 |
+| 32756 | level tick | 32766 / 32767 | −height / −width |
+| 32757 | speed | 32768 | hit points |
+| 32758 / 32759 | y / x | 32769 | players − 1 |
+| 32760 | spawn y (shots: running number) | 32770…32783 | registers R0…R13 (shared with the parts) |
+| 32761 | spawn tick | 32784 | player field `+0xA8` (tutorial: control scheme) |
 
-Ein Tick führt Befehle aus, bis einer nachgibt: **SetPos, MoveTo\*, Step, Wait**
-und Goto ohne Label. Die Route endet (Objekt entfernen) am Ende der Liste, bei
-MoveToAndDie am Ziel, bei Routenindex < 0 und nach 10 000 Befehlen ohne
-Nachgeben. Zuweisungen an X/Y landen in Scratch-Feldern und wirken nicht; an die
-Spielerposition wirken sie (der Zeppelin zieht den Spieler heran).
+A tick runs commands until one yields: **SetPos, MoveTo\*, Step, Wait** and Goto
+without label. The route ends (remove the object) at the end of the list, at
+MoveToAndDie on reaching the target, at a route index < 0 and after 10 000
+commands without yielding. Assignments to X/Y land in scratch fields and have no
+effect; to the player position they do take effect (the zeppelin pulls the player
+in).
 
-| Op | Name | Argumente | Wirkung | K |
+| Op | Name | Arguments | Effect | C |
 |---|---|---|---|---|
-| 0 | SetPos | x, y | setzen, gibt nach | H |
-| 1 | MoveToAndDie | x, y | wie MoveTo, am Ziel Ende | H |
-| 2 | MoveTo | x, y | mit Tempo hin; zielt neu, wenn das Ziel die Spielerposition nutzt; rastet ein | H |
-| 3 | MoveToAccel | x, y, a | wie MoveTo, Tempo += a je Tick, Ende bei Tempo ≤ 0 | H |
-| 4 | Step | dx, dy | einen Tick verschieben | H |
-| 5 | Wait | n | n Ticks | H |
-| 6 | SetSpeed | v | Tempo | H |
-| 7 | SetPartFrame | Teil, Bild | Bild festhalten (< 0: animieren) | H |
-| 8 | Fire | Teil, Waffe | Waffe am Teil anhängen; −1: `spawnSpec` spucken | H |
-| 9 / 10 | Set / Random | Ziel, v / n | zuweisen / `Int(Rnd · n + 1)` | H |
-| 11 / 12 | Label / Goto | id | Sprung zum ersten Label mit dieser id (Suche zur Laufzeit) | H |
+| 0 | SetPos | x, y | set, yields | H |
+| 1 | MoveToAndDie | x, y | like MoveTo, ends at the target | H |
+| 2 | MoveTo | x, y | move there at speed; re-aims when the target uses the player position; snaps in | H |
+| 3 | MoveToAccel | x, y, a | like MoveTo, speed += a per tick, ends at speed ≤ 0 | H |
+| 4 | Step | dx, dy | shift by one tick | H |
+| 5 | Wait | n | n ticks | H |
+| 6 | SetSpeed | v | speed | H |
+| 7 | SetPartFrame | part, image | hold the image (< 0: animate) | H |
+| 8 | Fire | part, weapon | attach weapon to the part; −1: spit out `spawnSpec` | H |
+| 9 / 10 | Set / Random | target, v / n | assign / `Int(Rnd · n + 1)` | H |
+| 11 / 12 | Label / Goto | id | jump to the first label with this id (searched at runtime) | H |
 | 13 / 14 / 15 | If / Else / EndIf | a, cmp, b | cmp −2 `<`, −1 `<=`, 0 `==`, 1 `>=`, 2 `>` | H |
-| 16 | IfHitsLandscape | dx, dy | Block, falls die verschobene Box Landschaft trifft | H |
-| 17 / 18 | SetGlobal / GetGlobal | i, v | von allen Objekten geteilte Ganzzahlen | H |
-| 19 / 39 | SpawnAnimL4 / SpawnAnim | Anim, x, y (, Ebene) | Effekt-Animation | M |
-| 20 / 21 / 28 / 40 | Div / Mul / SetInt / Distance | Ziel, … | Arithmetik | H |
-| 22 | PolarVec | dx, dy, Grad | cos/sin(Grad) · Tempo | H |
-| 23 | AngleDeg | Ziel, dx, dy | Richtung von (−dx, −dy) in Grad | H |
-| 24 / 25 | SetLayerSpeed / SetLayerScroll | Ebene, v | Scrollgeschwindigkeit | M |
-| 26 | AddLens | x, y, Größe, Stärke, Flag | Lupeneffekt | M |
-| 27 | SetPartProp | Teil, Eigenschaft, v | Farbe/Alpha/Drehung eines Teils | M |
-| 29 / 30 | PlaySound / StopSound | Ton (, Schleife) | | M |
-| 31 | SetRumble | n | Erschütterung | L |
-| 32 | Nop | | Trenner | H |
-| 33 / 34 | SpawnBigParticle / Lightning | 12 | Partikel / Blitz (34 unbenutzt) | M |
-| 35 / 36 | For / Next | Var, von, bis, Schritt | Schleife | H |
-| 37 / 38 | AddBubble / AddFunction | | Blasen / Funkspruch | M |
-| 41 / 42 | AddFade / SetSpecial | | Abdunkeln / Tutorial-Hinweise | L |
-| 43 | SetTarget | Spieler | Zielspieler | H |
-| 44 | IfPartDestroyed | Teil | Block, falls das Teil zerstört ist | H |
+| 16 | IfHitsLandscape | dx, dy | block if the shifted box hits landscape | H |
+| 17 / 18 | SetGlobal / GetGlobal | i, v | integers shared by all objects | H |
+| 19 / 39 | SpawnAnimL4 / SpawnAnim | anim, x, y (, layer) | effect animation | M |
+| 20 / 21 / 28 / 40 | Div / Mul / SetInt / Distance | target, … | arithmetic | H |
+| 22 | PolarVec | dx, dy, degrees | cos/sin(degrees) · speed | H |
+| 23 | AngleDeg | target, dx, dy | direction of (−dx, −dy) in degrees | H |
+| 24 / 25 | SetLayerSpeed / SetLayerScroll | layer, v | scroll speed | M |
+| 26 | AddLens | x, y, size, strength, flag | magnifier effect | M |
+| 27 | SetPartProp | part, property, v | color/alpha/rotation of a part | M |
+| 29 / 30 | PlaySound / StopSound | sound (, loop) | | M |
+| 31 | SetRumble | n | shake | L |
+| 32 | Nop | | separator | H |
+| 33 / 34 | SpawnBigParticle / Lightning | 12 | particle / lightning (34 unused) | M |
+| 35 / 36 | For / Next | var, from, to, step | loop | H |
+| 37 / 38 | AddBubble / AddFunction | | bubbles / radio message | M |
+| 41 / 42 | AddFade / SetSpecial | | darken / tutorial hints | L |
+| 43 | SetTarget | player | target player | H |
+| 44 | IfPartDestroyed | part | block if the part is destroyed | H |
 
-Blocksprünge zählen die Verschachtelung (If-Familie 13/16/44 mit Else/EndIf,
-For/Next getrennt). Die Argumentzahl je Opcode ist in allen Daten fest; einzige
-Ausnahme ist Step mit 48 Mal einem dritten, nie gelesenen Argument.
+Block jumps count the nesting (If family 13/16/44 with Else/EndIf, For/Next
+separate). The argument count per opcode is fixed in all data; the only exception
+is Step with a third, never-read argument 48 times.
 
-`DoRoute` hat drei Aufrufer: Gegner (Modus 0), Gegnerteile (1, x/y relativ zum
-Gegner) und Gegnerschüsse (2). Der Port rechnet in Single (`Math.fround`) wie das
-Original; alle 519 Routen laufen Tick für Tick bitgleich zu einem unabhängigen
-Referenzsimulator aus der Analyse (Prüfsumme im Test).
+`DoRoute` has three callers: enemies (mode 0), enemy parts (1, x/y relative to the
+enemy) and enemy shots (2). The port computes in Single (`Math.fround`) like the
+original; all 519 routes run tick by tick bit-identical to an independent
+reference simulator from the analysis (checksum in the test).
 
-### Zeitleiste: 7 Ebenen (`0x5880D8 + i · 0x14`)
+### Timeline: 7 layers (`0x5880D8 + i · 0x14`)
 
-Je Ebene `scrollSpeed` (f32, px/Tick; Routen ändern ihn) und Einträge
-`tick, kind, p1, p2, p3`. Der Spieler (`0x50C9F0`) überspringt Einträge mit
-kleinerem Tick und führt die mit gleichem aus; alle Ebenen sind sortiert.
-Gespawnt wird am rechten Rand (x = 800). Zeichenreihenfolge 0, 1, 2, 5, 4, 3, 6;
-Ebene 3 ist die Landschaft, Ebene 4 die Ereignisse.
+Per layer `scrollSpeed` (f32, px/tick; routes change it) and entries
+`tick, kind, p1, p2, p3`. The player (`0x50C9F0`) skips entries with a smaller
+tick and runs those with the same one; all layers are sorted. Spawning happens at
+the right edge (x = 800). Draw order 0, 1, 2, 5, 4, 3, 6; layer 3 is the
+landscape, layer 4 the events.
 
-| Ebenen | kind | Wirkung | p1 | p2 | p3 | K |
+| Layers | kind | Effect | p1 | p2 | p3 | C |
 |---|---|---|---|---|---|---|
-| 0–3, 5, 6 | 0 | Kachel/Hintergrundobjekt | Gruppe | Slot/Zeichenreihenfolge | y | H (p2: L) |
-| 0–3, 5, 6 | 1 | Effekt-Animation | (Editor-Vorschau) | Anim | y | H |
-| 3 | 2, 4, 5, 6 | Spezialobjekt, Untertyp kind − 2 | Parameter | Parameter | y | M |
-| 3 | 3 / 7 | Checkpoint nur mit einem / zwei Spielern | Größe | — | y | H |
-| 4 | 0 | Gegner | Typ | Route | y | H |
-| 4 | 1 | Ton: p2 0 spielen, 1 Schleife, 2 stoppen | Ton | Modus | — | M |
-| 4 | 2 | Funkspruch | Funk-Index | — | — | H |
+| 0–3, 5, 6 | 0 | tile/background object | group | slot/draw order | y | H (p2: L) |
+| 0–3, 5, 6 | 1 | effect animation | (editor preview) | anim | y | H |
+| 3 | 2, 4, 5, 6 | special object, subtype kind − 2 | parameter | parameter | y | M |
+| 3 | 3 / 7 | checkpoint only with one / two players | size | — | y | H |
+| 4 | 0 | enemy | type | route | y | H |
+| 4 | 1 | sound: p2 0 play, 1 loop, 2 stop | sound | mode | — | M |
+| 4 | 2 | radio message | radio index | — | — | H |
 
-118 Einträge haben negative Ticks; sie feuern nur, falls ein Level vor Tick 0
-beginnt (`Me.584` startet mit `Me.560`, im Port die URL-Option `from=` mit
-negativem Wert; `world.test.ts` „Start vor Tick 0“). Im Spiel bleibt `Me.560`
-0, sie werden nur vom Vorlauf `SpielPastTicks` gelegt.
+118 entries have negative ticks; they fire only if a level begins before tick 0
+(`Me.584` starts with `Me.560`, in the port the URL option `from=` with a
+negative value; `world.test.ts` "Start before tick 0"). In the game `Me.560`
+stays 0, they are placed only by the preroll `SpielPastTicks`.
 
-### Effekt-Animation (`0x588124`, 0x20 Byte)
+### Effect animation (`0x588124`, 0x20 bytes)
 
-Mehrspurige Keyframe-Effekte, rein optisch (Warnschilder, Blitze, Rauch, Nebel,
-Eis, Wandstücke). `duration` (Ticks), `loop`, `scrollWithLayer` (sonst
-bildschirmfest), `notes` (in keinem Level belegt, zur Laufzeit ungelesen), Spuren
-mit `group` und Keyframes: `time`, `x`, `y`, `red…alpha` (0…1), `rotation` (Grad),
-`scaleX/Y`, `frame` (−1: animieren), `motion` des Segments, das hier endet
-(0 halten, 1 linear, 2 konstantes Tempo mit Einrasten, 3 beschleunigt),
-`speed`, `visible`, `additive`. Key 0 ist ein Vorlauf-Wächter (meist Kopie des
-letzten Keys); beim Laden kommt ein Wächter am Ende dazu. Alle **H**; Details
-und die Laufzeitstrukturen in der Analyse-Notiz (siehe unten).
+Multi-track keyframe effects, purely visual (warning signs, lightning, smoke,
+fog, ice, wall pieces). `duration` (ticks), `loop`, `scrollWithLayer` (otherwise
+screen-fixed), `notes` (occupied in no level, unread at runtime), tracks with
+`group` and keyframes: `time`, `x`, `y`, `red…alpha` (0…1), `rotation`
+(degrees), `scaleX/Y`, `frame` (−1: animate), `motion` of the segment that ends
+here (0 hold, 1 linear, 2 constant speed with snap-in, 3 accelerate), `speed`,
+`visible`, `additive`. Key 0 is a preroll guard (mostly a copy of the last key);
+on load a guard is added at the end. All **H**; details and the runtime
+structures in the analysis note (see below).
 
-### Gegnerwaffe (`0x5880A4`) und Schusstyp (`0x58809C`)
+### Enemy weapon (`0x5880A4`) and shot type (`0x58809C`)
 
-Waffe: `name`, `turret` (Geschützturm: das Teil dreht sich zum Spieler, die Mündung sitzt am gedrehten Rand), Salven.
-Eine Salve feuert `repeat + 1` Schüsse ab `startDelay`, alle `interval` Ticks
-(0: alle im selben Tick — Ringe). Der Emitter zählt Schüsse über alle Salven;
-die Nummer ist `Var` 32760 der Schussroute (Ringe: Winkel = Nummer · 18).
+Weapon: `name`, `turret` (gun turret: the part rotates toward the player, the
+muzzle sits at the rotated edge), salvos. A salvo fires `repeat + 1` shots from
+`startDelay`, every `interval` ticks (0: all in the same tick — rings). The
+emitter counts shots across all salvos; the number is `Var` 32760 of the shot
+route (rings: angle = number · 18).
 
-| Salvenfeld | Bedeutung | K |
+| Salvo field | Meaning | C |
 |---|---|---|
-| `onRouteEnd`, `spawnWeapon` | 1: am Routenende Waffe `spawnWeapon` an der Schussmitte zünden (Splitter) | H |
-| `cullOffscreen` | Routenschüsse außerhalb (−w−50…850, −h−50…600) entfernen | H |
-| `damage` | Schaden je Treffer (f32) | H |
-| `route` | Schussroute, −1 geradeaus | H |
-| `unblockable` | nicht von Force und Drohnen abgefangen | M |
-| `shotType` | Schusstyp | H |
-| `speed` | Tempo (f32) | H |
-| `aimed` | einmal auf Spieler + (28, 31) zielen | H |
-| `offsetX/Y` | Versatz zur Mündung (f32) | H |
-| `piercing` | fliegt nach Spielertreffer weiter | H |
+| `onRouteEnd`, `spawnWeapon` | 1: at the route end detonate weapon `spawnWeapon` at the shot's center (splinters) | H |
+| `cullOffscreen` | remove route shots outside (−w−50…850, −h−50…600) | H |
+| `damage` | damage per hit (f32) | H |
+| `route` | shot route, −1 straight ahead | H |
+| `unblockable` | not intercepted by force and drones | M |
+| `shotType` | shot type | H |
+| `speed` | speed (f32) | H |
+| `aimed` | aim once at player + (28, 31) | H |
+| `offsetX/Y` | offset to the muzzle (f32) | H |
+| `piercing` | flies on after hitting the player | H |
 
-Schusstyp: `kind` (0 eingebaute blinkende 16×16-Kugel, 1 Sprite-Gruppe `group`),
-`red/green/blue` (M), `rotate` (in Flugrichtung drehen), `trail` (0, 1 Nachbilder,
-2 Glühen), Trefferbox `hitLeft…hitBottom`, `fadeIn`, `sound`, `ignoreWalls`,
-`additive`.
+Shot type: `kind` (0 built-in blinking 16×16 ball, 1 sprite group `group`),
+`red/green/blue` (M), `rotate` (rotate into flight direction), `trail` (0, 1
+afterimages, 2 glow), hitbox `hitLeft…hitBottom`, `fadeIn`, `sound`,
+`ignoreWalls`, `additive`.
 
-### Sound, Funk, Levelwerte
+### Sound, radio, level values
 
-- **Sound:** `file` in `Sound.d2p`, `extraVoices` gleichzeitige Kopien. H
-- **Funk:** Text unter `[id]` in `<radioPrefix><Sprache>.txt` (siehe
-  `dovez-container.md`), `maxPlays` (0 unbegrenzt). `unusedSpeaker` wird zur
-  Laufzeit überschrieben, `unusedFlag` von keiner der drei Stellen gelesen, die
-  das Funk-Array benutzen. H
-- **Levelwerte:** `levelLength` (99999 in Bosslevels, 150 Ticks vorher wird der
-  Abschluss eingeleitet), `waterHeight` (vom unteren Rand, 550 = alles Wasser),
-  `weatherParticles` (regenartige Partikel, L), `gravity` (Trümmer, Partikel,
-  manche Schüsse), Wasserfarben oben/unten (M).
+- **Sound:** `file` in `Sound.d2p`, `extraVoices` simultaneous copies. H
+- **Radio:** text under `[id]` in `<radioPrefix><language>.txt` (see
+  `dovez-container.md`), `maxPlays` (0 unlimited). `unusedSpeaker` is overwritten
+  at runtime, `unusedFlag` is read by none of the three sites that use the radio
+  array. H
+- **Level values:** `levelLength` (99999 in boss levels, 150 ticks earlier the
+  completion is triggered), `waterHeight` (from the bottom edge, 550 = all water),
+  `weatherParticles` (rain-like particles, L), `gravity` (debris, particles, some
+  shots), water colors top/bottom (M).
 
-## Werkzeuge
+## Tools
 
-- **Round-Trip:** `bun test packages/formats/test/dovezLevelDat.test.ts`
-  (loggt die Byte-Aufteilung).
-- **Debug-Seite `#/dovez/debug/level`:** ←/→ Level, ↑/↓ Route bzw. Waffe,
-  M Routen ↔ Waffen, D Befehlsliste. Routen starten mit Typ, Spawn-y und Tempo
-  des ersten Zeitleisten-Spawns, als Teilroute relativ zum Gegner oder als
-  Schussroute am Emitter (600, 275); der Spieler steht bei (100, 275), es gibt
-  keine Landschaft und keine Treffer. Sprünge (SetPos) sind gestrichelt.
-- **Laufzeitstrukturen** (Gegner-, Schuss-, Emitter- und Animations-Instanzen,
-  Todeszustände) für M8: [`../measurements/dovez-runtime.md`](../measurements/dovez-runtime.md).
+- **Round-trip:** `bun test packages/formats/test/dovezLevelDat.test.ts`
+  (logs the byte split).
+- **Debug page `#/dovez/debug/level`:** ←/→ level, ↑/↓ route or weapon,
+  M routes ↔ weapons, D command list. Routes start with the type, spawn y and
+  speed of the first timeline spawn, as a part route relative to the enemy or as
+  a shot route at the emitter (600, 275); the player stands at (100, 275), there
+  is no landscape and no hits. Jumps (SetPos) are dashed.
+- **Runtime structures** (enemy, shot, emitter and animation instances, death
+  states) for M8: [`../measurements/dovez-runtime.md`](../measurements/dovez-runtime.md).

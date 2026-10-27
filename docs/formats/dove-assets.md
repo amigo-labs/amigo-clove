@@ -1,155 +1,150 @@
-# DOVE — generierte Assets (`assets/dove/`)
+# DOVE — generated assets (`assets/dove/`)
 
-Stand: M2. Erzeugt von `@clove/assetkit` (`bun run assets:build`), gelesen von
-der Engine ab M3. Die Originale in `original-dove/` bleiben unangetastet; alles
-unter `assets/dove/` ist abgeleitet und wird **nie von Hand** geändert.
+Status: M2. Produced by `@clove/assetkit` (`bun run assets:build`), read by the
+engine from M3 on. The originals in `original-dove/` stay untouched; everything
+under `assets/dove/` is derived and is **never** edited by hand.
 
-## Befehle
+## Commands
 
-| Befehl | Wirkung |
+| Command | Effect |
 |---|---|
-| `bun run assets:build [--only=level1,core] [--force]` | konvertiert, was sich geändert hat; ein zweiter Lauf schreibt null Bytes |
-| `bun run assets:verify` | **CI-Gate, konvertiert nichts:** Größe und SHA-256 jeder Datei gegen das Manifest, keine verwaisten Dateien; Quellhashes, Optionen, Konverterversion und Bundles jedes geplanten Jobs gegen das Manifest (`stale`) |
-| `bun run assets:check` | lokal, gründlich: frischer Build ohne Cache in einen Temp-Ordner, byteweiser Vergleich mit dem committeten Baum (Opus/Video übernommen) |
+| `bun run assets:build [--only=level1,core] [--force]` | converts whatever changed; a second run writes zero bytes |
+| `bun run assets:verify` | **CI gate, converts nothing:** size and SHA-256 of every file against the manifest, no orphaned files; source hashes, options, converter version and bundles of every planned job against the manifest (`stale`) |
+| `bun run assets:check` | local, thorough: a fresh build without cache into a temp folder, byte-for-byte comparison with the committed tree (Opus/video carried over) |
 
-Assets werden **einmal lokal** gebaut und committet; CI prüft nur Hashes (unter
-1 s für DOVE, wenige Sekunden für DoveZ) und baut nie neu.
-| `bun run assets:report` | Größen je Bundle und Asset-Art |
+Assets are built **once locally** and committed; CI only checks hashes (under
+1 s for DOVE, a few seconds for DoveZ) and never rebuilds.
+| `bun run assets:report` | sizes per bundle and asset kind |
 
-## Inhalt (10,8 MB)
+## Contents (10.8 MB)
 
-| Art | Quelle | Ziel | Anzahl | Größe |
+| Kind | Source | Target | Count | Size |
 |---|---|---|---:|---:|
-| `image` | `Data/Grafik/*.spr` (BMP) | WebP lossless | 60 | 6,2 MB |
-| `sound` | `Data/Sound/*.wav` | PCM16-WAV, Originalabtastrate | 20 | 0,6 MB |
-| `music` | `Data/Musik/*.xm`, `s4.IT` | unverändert | 19 | 3,7 MB |
-| `level` + `levelData` | `LevelN.dat` | JSON + Binär-Sidecar | 12 + 12 | 0,2 MB |
+| `image` | `Data/Grafik/*.spr` (BMP) | WebP lossless | 60 | 6.2 MB |
+| `sound` | `Data/Sound/*.wav` | PCM16 WAV, original sample rate | 20 | 0.6 MB |
+| `music` | `Data/Musik/*.xm`, `s4.IT` | unchanged | 19 | 3.7 MB |
+| `level` + `levelData` | `LevelN.dat` | JSON + binary sidecar | 12 + 12 | 0.2 MB |
 | `data` | `Grafik/METROID.dat` | JSON | 1 | < 1 KB |
 
-Nicht konvertiert: `intro.dat` (eigenes Schema, folgt mit dem Intro).
-`Data/1–5.dat` sind keine Laufzeitdaten, sondern die Kachel-Permutationen der
-verwürfelten Endbilder `B1–B5` — die Pipeline setzt die Bilder damit zusammen
-(siehe „Bilder“).
+Not converted: `intro.dat` (its own schema, follows with the intro).
+`Data/1–5.dat` are not runtime data but the tile permutations of the scrambled
+ending images `B1–B5` — the pipeline uses them to reassemble the images (see
+"Images").
 
-## Dateinamen und Manifest
+## File names and manifest
 
-Jede Datei heißt `<id>.<sha256[0:8]>.<ext>`, z. B.
-`image/feinde1.df65ce38.webp`. Ein geändertes Asset ist also eine neue Datei;
-die alte löscht der nächste Build (verwaist).
+Every file is named `<id>.<sha256[0:8]>.<ext>`, e.g.
+`image/feinde1.df65ce38.webp`. A changed asset is therefore a new file; the next
+build deletes the old one (orphaned).
 
-`manifest.json` (Typen: `packages/core/src/asset/Manifest.ts`) listet nach `id`
-sortiert je Asset:
+`manifest.json` (types: `packages/core/src/asset/Manifest.ts`) lists, sorted by
+`id`, per asset:
 
-| Feld | Bedeutung |
+| Field | Meaning |
 |---|---|
-| `id` | stabile ID, z. B. `image/feinde1`, `sound/explosion`, `level/level1` |
-| `bundles` | Bundles, die das Asset enthalten (Mehrfachzugehörigkeit erlaubt) |
-| `kind`, `file`, `bytes`, `sha256` | Art, Dateiname relativ zum Manifest, Größe, Hash |
-| `sources` | Quellpfade relativ zum Repo-Root mit SHA-256 |
-| `optionsHash`, `converterVersion` | Rest des Cache-Schlüssels |
-| je Art | `image`: `width`, `height`, `colorKeyed` · `sound`: `sampleRate`, `channels`, `frames` · `music`: `format` · `level`: `data` (ID des Sidecars) |
+| `id` | stable ID, e.g. `image/feinde1`, `sound/explosion`, `level/level1` |
+| `bundles` | bundles that contain the asset (membership in several is allowed) |
+| `kind`, `file`, `bytes`, `sha256` | kind, file name relative to the manifest, size, hash |
+| `sources` | source paths relative to the repo root, with SHA-256 |
+| `optionsHash`, `converterVersion` | rest of the cache key |
+| per kind | `image`: `width`, `height`, `colorKeyed` · `sound`: `sampleRate`, `channels`, `frames` · `music`: `format` · `level`: `data` (ID of the sidecar) |
 
-Der Cache braucht kein eigenes Verzeichnis: Ein Job wird übersprungen, wenn
-Quellhashes, `optionsHash` und `converterVersion` im bestehenden Manifest
-übereinstimmen und die Ausgabedatei mit dem erwarteten Hash vorliegt. Die
-libwebp-Version ist Teil der Bildoptionen — ein sharp-Update invalidiert alle
-Bilder, und `assets:verify` meldet es („Optionen geändert“), bevor es unbemerkt ins Repo gerät.
+The cache needs no directory of its own: a job is skipped when source hashes,
+`optionsHash` and `converterVersion` match the existing manifest and the output
+file is present with the expected hash. The libwebp version is part of the image
+options — a sharp update invalidates every image, and `assets:verify` reports it
+("options changed") before it slips unnoticed into the repo.
 
 ### Bundles
 
-| Bundle | Inhalt |
+| Bundle | Contents |
 |---|---|
-| `core` | `ss`, `konsole`, `Explosion`, `text`, `text2`, `metroid`, alle 20 Sounds |
-| `screens` | `titel`, `intro`, `intro2`, `loading`, `logo`, `logo2`, Levelvorschauen `0–10` und `Extralevel`, Vorhang `B1–B5` |
-| `music` | alle 19 Module |
-| `levelN` | `feindeN`, `landschaftN`, der im Level genannte Hintergrund, `level/levelN`, `levelData/levelN`; Level 1 zusätzlich `metroid` und `data/metroid` |
+| `core` | `ss`, `konsole`, `Explosion`, `text`, `text2`, `metroid`, all 20 sounds |
+| `screens` | `titel`, `intro`, `intro2`, `loading`, `logo`, `logo2`, level previews `0–10` and `Extralevel`, curtain `B1–B5` |
+| `music` | all 19 modules |
+| `levelN` | `feindeN`, `landschaftN`, the background named in the level, `level/levelN`, `levelData/levelN`; level 1 additionally `metroid` and `data/metroid` |
 
-`background1` gehört zu sechs Level-Bundles (0, 1, 4, 6, 9, 10), liegt aber
-nur einmal im Baum. Jede Grafik muss in `packages/assetkit/src/dove/config.ts`
-einem Bundle zugeordnet sein; eine unbekannte Datei bricht den Build ab.
+`background1` belongs to six level bundles (0, 1, 4, 6, 9, 10) but sits in the
+tree only once. Every graphic must be assigned to a bundle in
+`packages/assetkit/src/dove/config.ts`; an unknown file aborts the build.
 
-## Bilder
+## Images
 
-BMP → `decodeBmp` → Colorkey → WebP lossless mit `exact` (libwebp darf die
-RGB-Werte transparenter Pixel sonst verändern) und eingefrorenem `effort: 6`.
-Ein Test dekodiert jede erzeugte WebP und vergleicht sie **pixelgenau** mit dem
-gekeyten BMP.
+BMP → `decodeBmp` → color key → WebP lossless with `exact` (otherwise libwebp
+may alter the RGB values of transparent pixels) and a frozen `effort: 6`. A test
+decodes every produced WebP and compares it **pixel-for-pixel** with the keyed
+BMP.
 
-**Colorkey:** reines Schwarz → Alpha 0, sonst 255 (`bmp/colorKey.ts`, dieselbe
-Definition wie die Konturableitung). **Opak** bleiben die Vollbilder,
-die nie über etwas anderem liegen: `titel`, `intro`, `intro2`, `loading`,
-`0–10`, `Extralevel`, `B1–B5`, `background*`. Bei den meisten ist die Wahl
-ohnehin belanglos (0 % reines Schwarz).
+**Color key:** pure black → alpha 0, otherwise 255 (`bmp/colorKey.ts`, the same
+definition as the contour derivation). The full-screen images that never lie on
+top of anything else stay **opaque**: `titel`, `intro`, `intro2`, `loading`,
+`0–10`, `Extralevel`, `B1–B5`, `background*`. For most of them the choice is
+irrelevant anyway (0 % pure black).
 
-**Endbilder B1–B5** (640×450) liegen im Original kachelweise verwürfelt vor.
-`Data/N.dat` enthält 2880 `Int32` (LE), eine Permutation: Zielkachel `i` ←
-Quellkachel `p[i]`, Kacheln 10×10 px, 64 pro Zeile (`ShowOutro` `0x4A0D00`).
-Die Pipeline entwürfelt vor dem Encodieren (`descrambleTiles` in
-`@clove/formats`); `Data/N.dat` ist zweite Quelle des Jobs, der Rücktest
-entwürfelt ebenso.
+**Ending images B1–B5** (640×450) are stored tile-scrambled in the original.
+`Data/N.dat` holds 2880 `Int32` (LE), a permutation: target tile `i` ← source
+tile `p[i]`, tiles 10×10 px, 64 per row (`ShowOutro` `0x4A0D00`). The pipeline
+unscrambles before encoding (`descrambleTiles` in `@clove/formats`); `Data/N.dat`
+is the job's second source, and the round-trip test unscrambles likewise.
 
-Palettiert mit auseinanderfallendem Index- und RGB-Keying ist nur
-`Explosion.spr` (Schwarz auf Index 255, Index 0 nicht schwarz). Der Build meldet
-das als Warnung und keyt auf RGB — die Kreuzvalidierung aus M1 bestätigt
-RGB-Keying.
+The only palettized sprite whose index and RGB keying diverge is
+`Explosion.spr` (black on index 255, index 0 not black). The build reports this
+as a warning and keys on RGB — the cross-validation from M1 confirms RGB keying.
 
 ## Sounds
 
-`decodeWav` (`packages/formats/src/wav/Wav.ts`) dekodiert MS-ADPCM und PCM 8 bit
-nach PCM16; geschrieben wird eine kanonische 44-Byte-Header-WAV. Die
-Abtastraten (8000, 11025, 22050 Hz) bleiben; `decodeAudioData` resampelt im
-Browser ohnehin.
+`decodeWav` (`packages/formats/src/wav/Wav.ts`) decodes MS-ADPCM and 8-bit PCM to
+PCM16; a canonical 44-byte-header WAV is written. The sample rates (8000, 11025,
+22050 Hz) are kept; `decodeAudioData` resamples in the browser anyway.
 
-Befund: **15× MS-ADPCM, 5× PCM 8 bit**, alle mono (die Spec nannte 14/6).
-Der `fact`-Chunk der ADPCM-Dateien ist meist veraltet — die Dateien wurden nach
-dem Kodieren gekürzt, `data` enthält nur ganze Blöcke, `fact` nennt mehr
-Samples. Maßgeblich ist `data`; `fact` kürzt nur, verlängert nie.
-`domination.wav` ist leer (0 Samples) und wird als leere WAV übernommen.
+Finding: **15× MS-ADPCM, 5× 8-bit PCM**, all mono (the spec said 14/6). The
+`fact` chunk of the ADPCM files is mostly stale — the files were truncated after
+encoding, `data` holds only whole blocks, `fact` names more samples. `data` is
+authoritative; `fact` only shortens, never lengthens. `domination.wav` is empty
+(0 samples) and is carried over as an empty WAV.
 
-## Level: JSON + Sidecar
+## Level: JSON + sidecar
 
-Typen und Builder: `packages/formats/src/dove/LevelAsset.ts`
-(`buildLevelAsset`, `readLevelAsset`), Version 2 seit M3.
+Types and builder: `packages/formats/src/dove/LevelAsset.ts`
+(`buildLevelAsset`, `readLevelAsset`), version 2 since M3.
 
 ### `level/levelN.*.json`
 
 ```
 version             2
-background          z. B. "background1"
+background          e.g. "background1"
 length              32000
 tiles[]             { name, rect: [l,t,r,b] }
 backgroundObjects[] { name, rect: [l,t,r,b] }
 enemies[]           { name, rect, params[5], frameHeaders[[f0,f1]…], contour }
 patterns[]          { name, flags[2], values[2], waypoints[[x,y]…], end }
-events              { tick[], kind[], a[], b[] }   parallel, in Dateireihenfolge
+events              { tick[], kind[], a[], b[] }   parallel, in file order
 sidecar             { contourBytes }
 ```
 
-Der Event-Stream ist schon in der Ladeform: vier flache Arrays. `kind` ist der
-Opcode (`0–4`, siehe `EventOp`), `y§`-Tokens haben `kind = -1` mit `a = y`. Die
-Reihenfolge innerhalb eines Ticks bleibt erhalten, denn `;1 T P!` mit P ≤ 0
-bindet das **erste folgende** `y§` derselben Zeile
-(`docs/measurements/dove-events.md`).
+The event stream is already in load form: four flat arrays. `kind` is the opcode
+(`0–4`, see `EventOp`), `y§` tokens have `kind = -1` with `a = y`. The order
+within a tick is preserved, because `;1 T P!` with P ≤ 0 binds the **first
+following** `y§` of the same line (`docs/measurements/dove-events.md`).
 
 ### `levelData/levelN.*.bin` (little endian)
 
-Gegnerkonturen: `Int16`-Paare `left, right`, je Frame **alle `h + 1` Zeilen**
-(`h = b − t`) wie im Original, Frames hintereinander; `enemies[i].contour` ist
-der Index des ersten `Int16`. Die letzte Zeile ragt ins nächste Frame, wird
-aber von der Kollision gelesen — `f1` zeigt in 73 von 319 Frames genau auf
-sie. Das ist die **gespeicherte** Kontur, die Kollisionswahrheit des Originals.
+Enemy contours: `Int16` pairs `left, right`, per frame **all `h + 1` rows**
+(`h = b − t`) as in the original, frames one after another; `enemies[i].contour`
+is the index of the first `Int16`. The last row reaches into the next frame but
+is read by the collision — `f1` points exactly at it in 73 of 319 frames. This
+is the **stored** contour, the original's collision truth.
 
-### Keine Terrain-Masken (Korrektur M3)
+### No terrain masks (correction M3)
 
-M2 erzeugte pro Tile eine 1-Bit-Maske, weil die Spec eine pixelweise
-Wandkollision annahm. Die EXE-Analyse zeigt: Das Original testet Wände per
-**inklusivem AABB gegen die Tile-Rechtecke** (Breite `r − l`, Höhe `b − t`,
-RECTs rechts/unten exklusiv). Die Masken sind seit Level-Asset-Version 2
-entfernt; die Pipeline erzeugt damit keine spiellogik-relevanten Daten mehr,
-sie konvertiert nur.
+M2 produced a 1-bit mask per tile because the spec assumed per-pixel wall
+collision. The EXE analysis shows: the original tests walls by **inclusive AABB
+against the tile rectangles** (width `r − l`, height `b − t`, RECTs
+right/bottom-exclusive). The masks have been removed since level-asset version 2;
+the pipeline no longer produces any game-logic-relevant data, it only converts.
 
-## `data/metroid` — Meteor-Kontur
+## `data/metroid` — meteor contour
 
-`Grafik/METROID.dat`: 60 Paare `left, right` (plus Terminator `0, 0`) für den
-60×60-Meteor aus `metroid.spr`, den das Level-1-Skript zwischen Tick 980 und
-1500 spawnt. JSON `{ "spans": [left, right, …] }`, Parser `parseContourDat`.
+`Grafik/METROID.dat`: 60 pairs `left, right` (plus terminator `0, 0`) for the
+60×60 meteor from `metroid.spr`, which the level-1 script spawns between tick 980
+and 1500. JSON `{ "spans": [left, right, …] }`, parser `parseContourDat`.

@@ -1,66 +1,68 @@
-# DoveZ — generierte Assets (`assets/dovez/`)
+# DoveZ — generated assets (`assets/dovez/`)
 
-Stand: M6. Erzeugt von `@clove/assetkit` (`bun run assets:build --game=dovez`,
-Tabelle in `packages/assetkit/src/dovez/config.ts`), angezeigt von der
-Debug-Seite `#/dovez/debug/assets`. Formatbefunde zu den Quellen:
-[`dovez-container.md`](dovez-container.md). Befehle, Dateinamen, Manifest und
-Cache wie bei DOVE: [`dove-assets.md`](dove-assets.md).
+Status: M6. Produced by `@clove/assetkit` (`bun run assets:build --game=dovez`,
+table in `packages/assetkit/src/dovez/config.ts`), shown by the debug page
+`#/dovez/debug/assets`. Format findings on the sources:
+[`dovez-container.md`](dovez-container.md). Commands, file names, manifest and
+cache as for DOVE: [`dove-assets.md`](dove-assets.md).
 
-Zum **Bauen** zusätzlich zu Bun: **ffmpeg** mit libopus und libvpx (Ubuntu
-24.04: `apt install ffmpeg`). CI braucht es nicht: `assets:verify` konvertiert
-nichts, und `assets:check` kodiert Opus/Video nie neu (siehe „Ton, Musik, Video“).
+To **build**, in addition to Bun: **ffmpeg** with libopus and libvpx (Ubuntu
+24.04: `apt install ffmpeg`). CI does not need it: `assets:verify` converts
+nothing, and `assets:check` never re-encodes Opus/video (see "Sound, music,
+video").
 
-## Inhalt (147 MB, 425 Dateien)
+## Contents (147 MB, 425 files)
 
-| Art | Quelle | Ziel | Anzahl | Größe |
+| Kind | Source | Target | Count | Size |
 |---|---|---|---:|---:|
-| `atlas` + `image` | 3153 BMPs + 79 Masken aus 33 Paketen | je Paket ein Atlas (JSON) + WebP-lossless-Seiten | 33 + 44 | 58,3 MB |
-| `binary` | 2587 `.r`, 27 `.dat` | Kontur-Sidecar je Paket, Level-Skript unverändert | 27 + 27 | 1,9 MB |
-| `data` | Funktexte D/E, `Play.txt` | JSON | 16 + 1 | < 0,1 MB |
-| `sound` | 84 Effekte (`Sound.d2p`), 159 Funksprüche (`.dfp`) | Ogg Opus 64 kbit/s bzw. 48 kbit/s mono | 243 | 4,6 MB |
-| `music` | `Data/Sound/*.ogg` | unverändert (Vorbis, gestreamt) | 20 | 61,7 MB |
-| `video` | 12 AVIs aus `Video.d2p`, `Data/Video/Intro{D,E}.avi` | WebM, VP9 CRF 44 + Opus 48 kbit/s | 14 | 19,9 MB |
+| `atlas` + `image` | 3153 BMPs + 79 masks from 33 packages | one atlas per package (JSON) + WebP-lossless pages | 33 + 44 | 58.3 MB |
+| `binary` | 2587 `.r`, 27 `.dat` | contour sidecar per package, level script unchanged | 27 + 27 | 1.9 MB |
+| `data` | radio texts D/E, `Play.txt` | JSON | 16 + 1 | < 0.1 MB |
+| `sound` | 84 effects (`Sound.d2p`), 159 radio messages (`.dfp`) | Ogg Opus 64 kbit/s and 48 kbit/s mono respectively | 243 | 4.6 MB |
+| `music` | `Data/Sound/*.ogg` | unchanged (Vorbis, streamed) | 20 | 61.7 MB |
+| `video` | 12 AVIs from `Video.d2p`, `Data/Video/Intro{D,E}.avi` | WebM, VP9 CRF 44 + Opus 48 kbit/s | 14 | 19.9 MB |
 
-Die 257 MB BMP werden zu 58,3 MB Atlasseiten (Spec-Schätzung ~52 MB), die
-107 MB WAV zu 4,6 MB Opus, die 193 MB DivX-Videos zu 19,9 MB WebM (Spec ~25 MB).
-Videoprobe `SkyFight.avi` (6,8 MB): CRF 34 → 1,18 MB (SSIM 0,974), CRF 40 →
-0,71 MB (0,965), **CRF 44 → 0,52 MB (0,957)**, CRF 48 → 0,38 MB (0,949, Texturen
-verschwimmen sichtbar). CRF 44 glättet vor allem das Rauschen des DivX-Originals.
+The 257 MB of BMP become 58.3 MB of atlas pages (spec estimate ~52 MB), the
+107 MB of WAV become 4.6 MB of Opus, the 193 MB of DivX videos become 19.9 MB of
+WebM (spec ~25 MB). Video sample `SkyFight.avi` (6.8 MB): CRF 34 → 1.18 MB
+(SSIM 0.974), CRF 40 → 0.71 MB (0.965), **CRF 44 → 0.52 MB (0.957)**, CRF 48 →
+0.38 MB (0.949, textures visibly blur). CRF 44 mainly smooths the noise of the
+DivX original.
 
-## IDs und Bundles
+## IDs and bundles
 
-Namen aus Dateinamen über `dovezSlug` (`@clove/formats`): klein, Endung weg,
-Leerzeichen → `_`, sonst alles außer `a–z0–9_-` → `-`. Leerzeichen und
-Bindestrich bleiben unterscheidbar, weil `Sound.d2p` sowohl `D phy green.wav`
-als auch `d-phy green.wav` enthält. Die Engine bildet IDs mit derselben Funktion.
+Names from file names via `dovezSlug` (`@clove/formats`): lowercase, drop the
+extension, spaces → `_`, everything else outside `a–z0–9_-` → `-`. Space and
+hyphen stay distinguishable, because `Sound.d2p` contains both `D phy green.wav`
+and `d-phy green.wav`. The engine forms IDs with the same function.
 
-| Bundle | Inhalt |
+| Bundle | Contents |
 |---|---|
-| `core` (2,2 MB) | Atlanten `spiel`, `standart`, `pause`; 84 Effekte `sound/<name>`; `data/play` |
-| `menu` (3,2 MB) | Atlanten `menu`, `logo` (inkl. `credits` 500×3000 auf eigener Seite) |
-| `loading` (0,2 MB) | Atlas `loading` (Ladebilder `take0–9`) |
-| `level/<slug>` (0,1–6,5 MB) | `atlas/<slug>`, Seiten `image/<slug>/<n>`, `contours/<slug>`, `leveldat/<slug>`, bei 16 Levels `radio/<slug>` |
-| `voice/<slug>` (0,02–0,6 MB) | Funksprüche `voice/<slug>/<wav>`, nur Englisch (die einzigen Aufnahmen) |
-| `music` | `music/<name>`, 20 Stücke, nie vorgeladen |
-| `video/<slug>` | ein Video je Bundle, gestreamt, nie vorgeladen |
+| `core` (2.2 MB) | atlases `spiel`, `standart`, `pause`; 84 effects `sound/<name>`; `data/play` |
+| `menu` (3.2 MB) | atlases `menu`, `logo` (incl. `credits` 500×3000 on its own page) |
+| `loading` (0.2 MB) | atlas `loading` (loading screens `take0–9`) |
+| `level/<slug>` (0.1–6.5 MB) | `atlas/<slug>`, pages `image/<slug>/<n>`, `contours/<slug>`, `leveldat/<slug>`, and for 16 levels `radio/<slug>` |
+| `voice/<slug>` (0.02–0.6 MB) | radio messages `voice/<slug>/<wav>`, English only (the only recordings) |
+| `music` | `music/<name>`, 20 pieces, never preloaded |
+| `video/<slug>` | one video per bundle, streamed, never preloaded |
 
-Ein Spieler lädt damit beim Start ~2 MB (`core`) und je Level bis 7 MB
-(Level + Stimmen); Musik und Video kommen gestreamt dazu.
+With this a player loads ~2 MB at startup (`core`) and up to 7 MB per level
+(level + voices); music and video are added streamed.
 
-## Atlanten
+## Atlases
 
-Ein Job je Paket: alle Sprites (ohne die Masken selbst) nach Name sortiert,
-MaxRects Best-Short-Side-Fit (`packages/assetkit/src/atlas/maxrects.ts`),
-Seiten 2048×2048 mit 1 px Abstand, auf die belegte Fläche zugeschnitten.
-Sprites über 2048 bekommen eine eigene Seite in ihrer Größe (nur `credits`,
-500×3000). Nach Name statt nach Fläche, wie in der Spec: gemessen gleich dicht
-(75,3 % gegen 76,8 % Füllgrad, 44 gegen 43 Seiten).
+One job per package: all sprites (without the masks themselves) sorted by name,
+MaxRects best-short-side-fit (`packages/assetkit/src/atlas/maxrects.ts`), pages
+2048×2048 with 1 px spacing, cropped to the occupied area. Sprites over 2048 get
+their own page at their size (only `credits`, 500×3000). By name instead of by
+area, as in the spec: measured equally dense (75.3 % against 76.8 % fill rate,
+44 against 43 pages).
 
-Das Layout wird bei der Planung aus den BMP-Köpfen berechnet (die IDs der
-Seiten stehen damit vor der Konvertierung fest); weichen die dekodierten Maße
-davon ab, bricht der Build ab.
+The layout is computed at planning time from the BMP headers (so the page IDs
+are fixed before the conversion); if the decoded dimensions differ from them, the
+build aborts.
 
-`atlas/<slug>` (Typ `AtlasJson` in `@clove/core`):
+`atlas/<slug>` (type `AtlasJson` in `@clove/core`):
 
 ```json
 {
@@ -71,43 +73,41 @@ davon ab, bricht der Build ab.
 }
 ```
 
-Sprite-Schlüssel sind die Dateinamen klein ohne `.bmp` (Level-Skripte
-referenzieren BMP-Namen). **Überblendung:** `key` — reines Schwarz wird
-durchsichtig, wie bei DOVE, auch für Vollbilder (über Schwarz gezeichnet ist
-das dasselbe wie opak); `alpha` — Alpha aus der Maske `XA.bmp` (außer den vier
-`interface*_energyA`, die eigene Bilder sind, siehe `dovez-container.md`). Ein Test
-dekodiert jede Seite und vergleicht jedes Sprite pixelgenau mit dem gekeyten
-bzw. maskierten BMP.
+Sprite keys are the file names lowercase without `.bmp` (level scripts reference
+BMP names). **Blending:** `key` — pure black becomes transparent, as for DOVE,
+also for full-screen images (drawn over black this is the same as opaque);
+`alpha` — alpha from the mask `XA.bmp` (except the four `interface*_energyA`,
+which are their own images, see `dovez-container.md`). A test decodes every page
+and compares every sprite pixel-for-pixel with the keyed or masked BMP.
 
-Palettierte Sprites, bei denen Index- und RGB-Keying auseinanderfallen, meldet
-der Build als Warnung (nur `rauch1–7` in `Level5-3 Rumbler`); verwendet wird
-RGB-Keying.
+Palettized sprites whose index and RGB keying diverge are reported by the build
+as a warning (only `rauch1–7` in `Level5-3 Rumbler`); RGB keying is used.
 
-## Konturen
+## Contours
 
-`contours/<slug>`: alle `.r` des Pakets nach Name, als Int16 (LE)
-hintereinander, je Kontur `width, height, top, bottom` und `height` Paare
-`left, right` (leer `-1, -1`). `AtlasJson.contours` gibt den Offset in
-Int16-Werten an. Die Werte sind die der `.r`-Dateien, nicht aus den Pixeln
-neu berechnet — das Original kollidiert mit der Datei.
+`contours/<slug>`: all `.r` of the package by name, as Int16 (LE) one after
+another, per contour `width, height, top, bottom` and `height` pairs
+`left, right` (empty `-1, -1`). `AtlasJson.contours` gives the offset in Int16
+values. The values are those of the `.r` files, not recomputed from the pixels —
+the original collides with the file.
 
-## Ton, Musik, Video
+## Sound, music, video
 
-Opus über ffmpeg mit `-fflags +bitexact`, ohne Metadaten. Manifest-Felder
-`sampleRate`, `channels`, `frames` beschreiben die Quelle; `format: "opus"`.
+Opus via ffmpeg with `-fflags +bitexact`, without metadata. Manifest fields
+`sampleRate`, `channels`, `frames` describe the source; `format: "opus"`.
 
-**Opus und VP9 sind nicht maschinenübergreifend bitgenau.** Auf derselben
-Maschine ist Opus reproduzierbar, aber libopus (wie libvpx) wählt SIMD-Pfade
-zur Laufzeit: Der erste CI-Lauf auf einem anderen Runner kodierte alle 243
-Opus-Dateien mit anderen Bytes. Beide Jobarten sind deshalb **vom Hash-Gate
-ausgenommen** (`volatile` im Job): `assets:check` übernimmt ihre Ausgaben aus
-dem committeten Baum, sofern Quelle, Optionen und Konverterversion passen, statt
-neu zu kodieren — geänderte Quellen meldet es als veraltet. Ein normaler Build
-kodiert sie nur bei Änderungen, `--force-encode` erzwingt es (~7 min, fast nur
-Video). Die ffmpeg-Version gehört folglich nicht zum Cache-Schlüssel.
+**Opus and VP9 are not bit-exact across machines.** On the same machine Opus is
+reproducible, but libopus (like libvpx) chooses SIMD paths at runtime: the first
+CI run on a different runner encoded all 243 Opus files with different bytes.
+Both job kinds are therefore **exempt from the hash gate** (`volatile` in the
+job): `assets:check` carries over their outputs from the committed tree, provided
+source, options and converter version match, instead of re-encoding — it reports
+changed sources as stale. A normal build encodes them only on changes,
+`--force-encode` forces it (~7 min, almost all video). The ffmpeg version is
+consequently not part of the cache key.
 
-## Laufzeiten (4 Kerne)
+## Run times (4 cores)
 
-Voller Build ~7 min, davon der Großteil Video — einmalig lokal. `assets:verify`
-(CI) beider Spiele wenige Sekunden, `assets:check` 48 s, beide ohne ffmpeg;
-ein zweiter Build schreibt null Bytes (3 s).
+Full build ~7 min, most of it video — a one-time local run. `assets:verify`
+(CI) for both games a few seconds, `assets:check` 48 s, both without ffmpeg; a
+second build writes zero bytes (3 s).

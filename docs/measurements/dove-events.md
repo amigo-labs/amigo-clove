@@ -1,70 +1,69 @@
-# DOVE — Event-Stream, Scrolling und Levelskripte
+# DOVE — Event stream, scrolling, and level scripts
 
-Status: **statisch bestimmt aus `DOVE.exe`** (M3-Vorarbeit), `objdump -d -M intel`,
-Image-Base `0x400000`. Ergänzt [`tick-rate.md`](tick-rate.md). Konfidenz *hoch*,
-wo nicht anders vermerkt.
+Status: **determined statically from `DOVE.exe`** (M3 groundwork), `objdump -d -M intel`,
+image base `0x400000`. Supplements [`tick-rate.md`](tick-rate.md). Confidence *high*,
+unless noted otherwise.
 
-## Die Event-Methode `0x43D6B0` (ein Aufruf pro Tick)
+## The event method `0x43D6B0` (one call per tick)
 
-1. Ist `Me.[0x39A]` (Bossmodus) gesetzt, wird nur das Levelskript von Level 5
-   ausgeführt und `F4 += 1` — keine Events mehr.
-2. `Select Case Me.[0x39C]` (Levelnummer, Sprungtabelle `0x445400`): Levelskripte.
-3. Token-Schleife (`0x441CDF`): `line = Me.98(F4)`; sucht mit `InStr` das nächste
-   `;`, verzweigt über das Zeichen danach, setzt fort hinter dem `!` des Tokens.
+1. If `Me.[0x39A]` (boss mode) is set, only the level 5 level script runs and
+   `F4 += 1` — no further events.
+2. `Select Case Me.[0x39C]` (level number, jump table `0x445400`): level scripts.
+3. Token loop (`0x441CDF`): `line = Me.98(F4)`; uses `InStr` to find the next
+   `;`, branches on the following character, continues after the token's `!`.
 4. `Me.F4 = Me.F4 + 1` (`0x4451B9`).
 
-### Korrektur: `;1` spawnt sofort, `y§` allein tut nichts
+### Correction: `;1` spawns immediately, `y§` alone does nothing
 
-Die Schleife sucht **nur `;`**. Ein `§` wird ausschließlich als *erstes `§` nach
-einem `;1 T P!` mit P ≤ 0* gelesen (`InStr(pos+1, line, "§")`, `0x4427E0`) und
-liefert dort die Y-Position. Folgen:
+The loop searches **only for `;`**. A `§` is read only as the *first `§` after a
+`;1 T P!` with P ≤ 0* (`InStr(pos+1, line, "§")`, `0x4427E0`) and there yields the
+Y position. Consequences:
 
-- `;1 T P!` **spawnt** den Gegner vom Typ `T` sofort — es „setzt“ keinen Typ.
-- `P > 0`: Pattern-Gegner, Startpunkt aus dem Pattern (kein `§` nötig).
-- `P ≤ 0`: Y aus dem ersten `§` hinter dem Token (auch hinter weiteren Tokens).
-- Alleinstehende `y§`, weitere `§` nach dem ersten und `§` vor einem `;` werden
-  **nie** ausgewertet. Über alle 12 Level: 1455 gebundene Spawns, 650
-  Pattern-Spawns, **2460 verwaiste `§`**. Ob das Absicht des Autors war, ist
-  offen; der Port folgt dem Code.
+- `;1 T P!` **spawns** the enemy of type `T` immediately — it does not "set" a type.
+- `P > 0`: pattern enemy, start point from the pattern (no `§` needed).
+- `P ≤ 0`: Y from the first `§` after the token (even after further tokens).
+- Standalone `y§`, further `§` after the first, and `§` before a `;` are **never**
+  evaluated. Across all 12 levels: 1455 bound spawns, 650 pattern spawns,
+  **2460 orphaned `§`**. Whether the author intended this is open; the port
+  follows the code.
 
-## `;0 tile y!` — Landschaft
+## `;0 tile y!` — terrain
 
-- `M78C(x = 640, y, vx = −1, vy = 0, l, t, r, b)` (`0x442183`), Pool `Me.58C`,
-  100 Slots, erster freier ab Hinweis `Me.598`.
-- Pro Tick `x += vx; y += vy`, alles `Integer` (`0x47720B`): **1 px/Tick,
-  konstant** — Q/W und die Hintergrundgeschwindigkeit wirken nicht darauf;
-  Tiles scrollen auch im Bosskampf weiter.
-- Entfernt bei `x < −(r−l)`, `x > 640`, `y > 410`, `y < −(b−t)` (`0x477259`).
-- Gezeichnet per BltFast mit Quell-RECT `{l, t, r, b}` an `(x, y)`, `y` =
-  Oberkante, geclippt auf das **640×410**-Spielfeld (`0x4774C5`). DirectDraw-RECTs
-  sind rechts/unten exklusiv: **sichtbare Größe `(r−l)×(b−t)`**.
-- Die Event-Methode läuft vor der Landschaftsschleife: ein neues Tile wird
-  erstmals bei x = 639 gezeichnet.
+- `M78C(x = 640, y, vx = −1, vy = 0, l, t, r, b)` (`0x442183`), pool `Me.58C`,
+  100 slots, first free one from hint `Me.598`.
+- Per tick `x += vx; y += vy`, all `Integer` (`0x47720B`): **1 px/tick,
+  constant** — Q/W and the background speed do not affect it; tiles keep
+  scrolling even during the boss fight.
+- Removed at `x < −(r−l)`, `x > 640`, `y > 410`, `y < −(b−t)` (`0x477259`).
+- Drawn via BltFast with source RECT `{l, t, r, b}` at `(x, y)`, `y` =
+  top edge, clipped to the **640×410** playfield (`0x4774C5`). DirectDraw RECTs
+  are exclusive on the right/bottom: **visible size `(r−l)×(b−t)`**.
+- The event method runs before the terrain loop: a new tile is first drawn at
+  x = 639.
 
-## `;4 obj y!` — Hintergrundobjekte
+## `;4 obj y!` — background objects
 
-- `M794(x = 640.0, y, l, t, r, b)`, Pool `Me.5FC`, 10 Slots, x als `Double`:
+- `M794(x = 640.0, y, l, t, r, b)`, pool `Me.5FC`, 10 slots, x as `Double`:
   `x = 640 + 0.5 − frac(Me.188)` (`0x43C1E0`).
-- Pro Tick `x −= Me.198` (`0x4737D1`) — die Hintergrundgeschwindigkeit,
-  Standard **0,5 px/Tick** (Parallaxe). Gezeichnet an `FpI4(x)` (Runden
-  half-even). Entfernen wie bei Tiles. Quelle vermutlich dieselbe Surface wie die
-  Tiles (*mittel*).
+- Per tick `x −= Me.198` (`0x4737D1`) — the background speed, default
+  **0.5 px/tick** (parallax). Drawn at `FpI4(x)` (half-even rounding). Removal as
+  for tiles. Source is presumably the same surface as the tiles (*medium*).
 
-## Gegner-Spawn
+## Enemy spawn
 
-Gegnerdefinition `Me.42C` (1-basiert). Der Lader liest die Frames
-`For k = 0 To p0` — **p0 = Framezahl − 1**. Weitere Zuordnung: p2 → HP,
-p4 → Geschwindigkeit, p1 → +18, p3 → +8404 (Semantik offen).
+Enemy definition `Me.42C` (1-based). The loader reads the frames
+`For k = 0 To p0` — **p0 = frame count − 1**. Further mapping: p2 → HP,
+p4 → speed, p1 → +18, p3 → +8404 (semantics open).
 
-Pool `Me.44C`, 100 Slots: x, y, vx, vy als `Double`, HP = p2, Bewegungscode,
-Typ, Wegpunktindex.
+Pool `Me.44C`, 100 slots: x, y, vx, vy as `Double`, HP = p2, movement code,
+type, waypoint index.
 
-- **P > 0** (`M7B0`, `0x43D090`): Start am Wegpunkt „−1“, Geschwindigkeit
-  Richtung Wegpunkt 0 mit Betrag p4 auf der dominanten Achse, die andere Achse
-  skaliert mit dy/|dx| bzw. dx/|dy|. Der Lader deutet `v0`/`v1` des Patterns als
-  Eintritts-/Austrittsseite: 0 → x 640, 1 → y 410, 2 → x −100, 3 → y −100;
-  eine Koordinate −100 bedeutet −Breite bzw. −Höhe.
-- **P ≤ 0**, `v` = Wert vor dem gebundenen `§`:
+- **P > 0** (`M7B0`, `0x43D090`): start at waypoint "−1", velocity toward
+  waypoint 0 with magnitude p4 on the dominant axis, the other axis scaled by
+  dy/|dx| or dx/|dy|, respectively. The loader reads the pattern's `v0`/`v1` as
+  the entry/exit side: 0 → x 640, 1 → y 410, 2 → x −100, 3 → y −100;
+  a coordinate of −100 means −width or −height, respectively.
+- **P ≤ 0**, `v` = value before the bound `§`:
 
 | P | x | y | vx | vy | Code |
 |---|---|---|---|---|---|
@@ -77,59 +76,59 @@ Typ, Wegpunktindex.
 | −6 | 640 | v | 0 | −p4 | −5 |
 | −7 | 640 | v | −p4 | 0 | −6 |
 
-64/41 bildet den Editorbereich 0…410 auf 0…640 ab.
+64/41 maps the editor range 0…410 to 0…640.
 
-## `;2 art y!` — Extras
+## `;2 art y!` — extras
 
-`M7A4(art, y)`, Pool `Me.230`, 13 Slots. Spawn x = 640, vx = −1. `art` → Atlas-x
-in `ss.spr` / höchster Frameindex: −2 → 175/1, −1 → 325/7, 0 → 300/5,
-1 → 100/3, 2 → 125/3, 3 → 150/3. Pro Tick x −= 1, Frame alle 6 Ticks weiter.
-Entfernt bei x > 639, x < −25, y < −25, y > 410. Aufnahmebreite 20 px.
+`M7A4(art, y)`, pool `Me.230`, 13 slots. Spawn x = 640, vx = −1. `art` → atlas x
+in `ss.spr` / highest frame index: −2 → 175/1, −1 → 325/7, 0 → 300/5,
+1 → 100/3, 2 → 125/3, 3 → 150/3. Per tick x −= 1, frame advances every 6 ticks.
+Removed at x > 639, x < −25, y < −25, y > 410. Pickup width 20 px.
 
-## `;3 0 0!` — Checkpoint
+## `;3 0 0!` — checkpoint
 
-`If Me.644 = 0 Then Me.530 = Me.F4` (`0x44491F`) — nicht gespeichert, solange
-das Schiff zerstört ist. Levelstart: `F4 = Me.530`; `Me.530 = 0` bei neuem Level.
-Beim Start ab Checkpoint werden für `i = max(0, F4−1280) … F4−1` die `;0`-Tiles
-an x = 640 + i − F4 und `;4`-Objekte an x = 640 + (i − F4) \ 2 vorab platziert.
+`If Me.644 = 0 Then Me.530 = Me.F4` (`0x44491F`) — not saved while the ship is
+destroyed. Level start: `F4 = Me.530`; `Me.530 = 0` on a new level.
+When starting from a checkpoint, the `;0` tiles for `i = max(0, F4−1280) … F4−1`
+are pre-placed at x = 640 + i − F4 and the `;4` objects at x = 640 + (i − F4) \ 2.
 
-## Hintergrund und Sterne
+## Background and stars
 
-- Pro Tick `Me.188 += Me.198` (`0x472F81`). Hintergrundbild (alle 640 breit):
-  Umbruch bei `Me.188 > 640`, zwei BltFasts ab `Int(Me.188)` — nahtlos,
-  **0,5 px/Tick**, ganzzahliger Versatz.
-- `background1` wird **nicht gezeichnet**: stattdessen 251 Ein-Pixel-Sterne,
-  zufällig platziert, Geschwindigkeit × `Me.198`:
-  0–62: ×1,5 (Palette 255) · 63–125: ×1 (192) · 126–186: ×0,5 (128) ·
-  187–250: ×0,25 (64). Bei x ≤ 0 Umbruch um +640 mit neuem y = `Int(Rnd·410)`.
-  Sterne 0–62 liegen vermutlich vor den Hintergrundobjekten (*mittel*).
+- Per tick `Me.188 += Me.198` (`0x472F81`). Background image (640 wide each):
+  wrap at `Me.188 > 640`, two BltFasts from `Int(Me.188)` — seamless,
+  **0.5 px/tick**, integer offset.
+- `background1` is **not drawn**: instead 251 one-pixel stars, placed randomly,
+  speed × `Me.198`:
+  0–62: ×1.5 (palette 255) · 63–125: ×1 (192) · 126–186: ×0.5 (128) ·
+  187–250: ×0.25 (64). At x ≤ 0 wrap by +640 with a new y = `Int(Rnd·410)`.
+  Stars 0–62 presumably lie in front of the background objects (*medium*).
 
-## Levelskripte
+## Level scripts
 
-- **Level 1, Warp-Intro:** Hintergrundgeschwindigkeit `Me.198` = F4 − 50 für
-  Tick 51–70, 20 bis Tick 329, 350 − F4 für 330–349, ab 350 wieder 0,5; Sounds
-  bei Tick 50 und 329.
-- **Level 1, Meteore (980 ≤ F4 ≤ 1500):** `For i = 0 To 10`: freier Slot
-  `Me.214(i)` und `Rnd > 0.98` → Objekt 60×60 an x = 640, y = `Int(Rnd·350)`,
-  vx = −4, vy = `Int(Rnd·3) − 1`, dann **Rückkehr ohne `F4 += 1`** — der Tick steht
-  still, seine Events laufen im nächsten Tick ohne Spawn. Vermutlich
-  `metroid.spr` (*mittel*).
-- **Boss:** Musik wird über 100 Ticks ausgeblendet; am Boss-Tick
-  `Me.198 = 0`, `Me.39A = True`. Boss-Ticks: L1 6850, L2 7850, L3 8710, L4 8000,
-  L5 7500, L6 8000, L7 8100, L8 10300, L10 750. Level 9 endet bei 15600 (bzw.
-  8000 bei Punktefaktor < 1,1), Level 11 bei 7300.
-- Level 3, 5, 6, 8 enthalten weitere Skriptereignisse (Explosionen, in Level 5
-  ein wanderndes Tile) — *offen*.
+- **Level 1, warp intro:** background speed `Me.198` = F4 − 50 for tick 51–70,
+  20 until tick 329, 350 − F4 for 330–349, from 350 on 0.5 again; sounds at tick
+  50 and 329.
+- **Level 1, meteors (980 ≤ F4 ≤ 1500):** `For i = 0 To 10`: free slot `Me.214(i)`
+  and `Rnd > 0.98` → object 60×60 at x = 640, y = `Int(Rnd·350)`, vx = −4,
+  vy = `Int(Rnd·3) − 1`, then **return without `F4 += 1`** — the tick stalls,
+  its events run in the next tick without a spawn. Presumably `metroid.spr`
+  (*medium*).
+- **Boss:** music fades out over 100 ticks; at the boss tick `Me.198 = 0`,
+  `Me.39A = True`. Boss ticks: L1 6850, L2 7850, L3 8710, L4 8000, L5 7500,
+  L6 8000, L7 8100, L8 10300, L10 750. Level 9 ends at 15600 (or 8000 at a score
+  factor < 1.1), level 11 at 7300.
+- Levels 3, 5, 6, 8 contain further script events (explosions, in level 5 a
+  wandering tile) — *open*.
 
-## Zufall
+## Randomness
 
-`Rnd` ist das VB6-LCG `seed = (seed · 0x43FD43FD + 0xC39EC3) mod 2^24`,
-`Rnd = seed / 2^24`. Der Port verwendet dasselbe LCG mit gesätem Startwert
-(das Original säte per `Randomize` aus der Uhrzeit) — deterministisch und in
-der Verteilung originalgetreu.
+`Rnd` is the VB6 LCG `seed = (seed · 0x43FD43FD + 0xC39EC3) mod 2^24`,
+`Rnd = seed / 2^24`. The port uses the same LCG with a seeded start value
+(the original seeded via `Randomize` from the clock time) — deterministic and
+faithful in its distribution to the original.
 
-## Offen
+## Open
 
-- Bewegungscodes −1 … −6 und das Weiterschalten der Pattern-Wegpunkte.
-- Ob die Wandkollision das exklusive Rect nutzt wie das Blitten.
-- Reihenfolge der Sterne 0–62 beim Zeichnen.
+- Movement codes −1 … −6 and the advancing of the pattern waypoints.
+- Whether the wall collision uses the exclusive rect like the blitting.
+- Draw order of the stars 0–62.

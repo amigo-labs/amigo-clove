@@ -1,157 +1,156 @@
-# Playtest-Checkliste DOVE
+# Playtest checklist DOVE
 
-Was die automatischen Tests **nicht** beweisen können. Replays prüfen den Port
-gegen sich selbst, die Kreuzvalidierung prüft Assets gegen Daten — die Treue
-zum Original bei Timing, Gefühl und Darstellung braucht den Vergleich am
-laufenden Original (Referenzaufnahme mit OBS, 60 fps).
+What the automated tests **cannot** prove. Replays check the port
+against itself, cross-validation checks assets against data — fidelity
+to the original in timing, feel and rendering needs the comparison against the
+running original (reference recording with OBS, 60 fps).
 
-## Stand M3 — gegen das Original abgleichen
+## Status M3 — reconcile against the original
 
-- [ ] **Tickrate:** zwei Events mit bekanntem Tick im Video stoppen
-      (`docs/measurements/tick-rate.md`, „Gegenprobe“).
-- [ ] **Scrolltempo:** Landschaft 1 px/Tick, Hintergrundobjekte 0,5 px/Tick.
-- [ ] **Warp-Intro Level 1** (Tick 51–350): Sterne beschleunigen, halten, bremsen.
-- [ ] **Schiff:** Tempo 6 fühlt sich richtig an; Q/W-Stufen 2…8; Blinken nach Respawn.
-- [ ] **Dauerfeuer:** 6 Ticks Abstand, Schusshöhe Y+7.
-- [ ] **Gegnerbahnen:** Pattern-Gegner in Level 1 (Ufo, Kugel, Kreissäge, Walker)
-      folgen denselben Bahnen; Schleim verfolgt, Faller wackelt und stürzt.
-- [ ] **Kollision:** Treffer an den Rändern großer Sprites (Kontur statt Box).
-- [ ] **Meteore** (Tick 980–1500): Häufigkeit, Flugrichtung, Zeichenreihenfolge.
-- [ ] **Extras:** Sprite-Rechtecke (25×25 je Frame in `ss.spr`, *geschätzt*).
-- [ ] **HUD:** Score-Hochzählen, Tempoanzeige, Position der Texte.
+- [ ] **Tick rate:** time two events with a known tick in the video
+      (`docs/measurements/tick-rate.md`, "Gegenprobe").
+- [ ] **Scroll speed:** landscape 1 px/tick, background objects 0.5 px/tick.
+- [ ] **Warp intro Level 1** (tick 51–350): stars accelerate, hold, brake.
+- [ ] **Ship:** speed 6 feels right; Q/W steps 2…8; blinking after respawn.
+- [ ] **Continuous fire:** 6-tick spacing, shot height Y+7.
+- [ ] **Enemy paths:** pattern enemies in Level 1 (Ufo, ball, circular saw, Walker)
+      follow the same paths; the slime pursues, the faller wobbles and drops.
+- [ ] **Collision:** hits at the edges of large sprites (contour instead of box).
+- [ ] **Meteors** (tick 980–1500): frequency, flight direction, draw order.
+- [ ] **Extras:** sprite rectangles (25×25 per frame in `ss.spr`, *estimated*).
+- [ ] **HUD:** score count-up, speed display, position of the texts.
 
-## Bewusst angenähert (reine Darstellung, beeinflusst die Simulation nicht)
+## Deliberately approximated (pure rendering, does not affect the simulation)
 
-- Funkenpartikel: Anzahl aus der EXE, Bewegung/Farbe/Lebensdauer geschätzt.
-- Bildschirmwackeln: Dauer aus der EXE (5 Ticks), Amplitude geschätzt (±1 px).
-- Sterne 0–62 vor den Hintergrundobjekten (Reihenfolge *mittel*).
-- Laserfarben, Bremsbänder, Windzonen, Blasen (Level 3), Bossstrahlen und der
-  Beam-Blitz von Boss 7 als einfache Flächen/Streifen.
+- Spark particles: count from the EXE, motion/color/lifetime estimated.
+- Screen shake: duration from the EXE (5 ticks), amplitude estimated (±1 px).
+- Stars 0–62 in front of the background objects (order *medium*).
+- Laser colors, brake bands, wind zones, bubbles (Level 3), boss beams and the
+  beam flash of boss 7 as simple areas/strips.
 
-## Stand M4 — zusätzlich abgleichen
+## Status M4 — additionally reconcile
 
-- [ ] **Waffen:** blauer Laser (Farben geschätzt), grüne Bälle teilen sich,
-      roter Fächer; Ausrichtung mit D (80 Ticks); Beam-Stufen und Ladegeräusch.
-- [ ] **Options/Schild:** Umlaufbahn 40×30, Absorbieren gezielter Kugeln.
-- [ ] **Bosse:** je Level Bewegung, Angriffe, Trefferzonen (Einzeilentest).
-      Level 8: der Kern ist nur aus der offenen rechten Seite der Hülle
-      treffbar (der Sog zieht das Schiff hinein) — prüfen, ob das Original
-      genauso zu schlagen ist. Level 7: Sieg bei der 1. Niederlage (Faktor <
-      1,1) bzw. der 2. — laut Disassembly, die Doku nannte 2./3.
-- [ ] **Level 3:** fallende Decken auf den Tile-Slots 0/8 treffen die
-      richtigen Kacheln (Slotvergabe mit Hinweis).
-- [ ] **Level 6:** die Kachel bei Tick 4785 (Off-by-one des Originals).
-- [ ] **Level 7/8:** Bremsbänder (Lebensdauer geschätzt), Windzonen.
-- [ ] **Audio:** Lautstärken und Panoramen, Ausblenden vor dem Boss.
-- [ ] **Colorkey im 16-Bit-Modus:** Lief das Original in 16 Bit Farbtiefe,
-      keyte DirectDraw alles, was in RGB565 schwarz wird (r < 8, g < 4, b < 8),
-      nicht nur exaktes Schwarz. Der Port keyt exakt RGB(0,0,0) — fast
-      schwarze Ränder an Sprites (z. B. Menügrafik in titel.spr) vergleichen.
+- [ ] **Weapons:** blue laser (colors estimated), green balls split,
+      red fan; aiming with D (80 ticks); beam stages and charge sound.
+- [ ] **Options/shield:** orbit 40×30, absorbing aimed bullets.
+- [ ] **Bosses:** per level, movement, attacks, hit zones (single-row test).
+      Level 8: the core can only be hit from the open right side of the shell
+      (the suction pulls the ship in) — check whether the original can be
+      beaten the same way. Level 7: victory on the 1st defeat (factor <
+      1.1) or the 2nd — per the disassembly; the docs had said 2nd/3rd.
+- [ ] **Level 3:** the falling ceilings on tile slots 0/8 hit the
+      right tiles (slot assignment with a note).
+- [ ] **Level 6:** the tile at tick 4785 (off-by-one in the original).
+- [ ] **Level 7/8:** brake bands (lifetime estimated), wind zones.
+- [ ] **Audio:** volumes and pans, fade-out before the boss.
+- [ ] **Color key in 16-bit mode:** if the original ran at 16-bit color depth,
+      DirectDraw keyed everything that becomes black in RGB565 (r < 8, g < 4, b < 8),
+      not just exact black. The port keys exactly RGB(0,0,0) — compare near-black
+      edges on sprites (e.g. the menu graphic in titel.spr).
 
-- [ ] **Ablauf (Menüs als HTML):** NEO-ARTS-Logo als HTML („presents“ läuft wie
-      im Original auf), Intro im Original; Titel, Optionen (Spielregeln mit
-      Speichern, Punktefaktor, Freischalt-Hinweis; Tastenbelegung, Ton und
-      Darstellung der Shell), Levelauswahl,
-      Info mit Readme, Abschied, Get Ready, Pause, Continue und
-      Highscore-Eingabe als HTML mit Tastatur, Maus, Touch und Pad; Effekte
-      (Get Ready, Yes/No) und Musik wie im Original, Musik blendet vor dem
-      Levelstart aus.
-- [ ] **Abspann:** Dia-Timings und Name von Platz 1 im Jubeltext (Story-Zeilen als
-      HTML-Untertitel); danach die Credits (alle Beteiligten, je Rolle) als HTML
-      mit Musik `credits`.
-- [ ] **Tutorial mit eigener Belegung:** Vorlage „WASD + rechte Hand“ — die Texte
-      nennen die neuen Tasten (J, K, L, U/I), mit dem Original-HUD in der 8-px-Schrift.
+- [ ] **Flow (menus as HTML):** NEO-ARTS logo as HTML ("presents" animates in like
+      in the original), intro from the original; title, options (game rules with
+      saving, score factor, unlock hint; key bindings, sound and display of the shell), level select,
+      info with readme, farewell, Get Ready, Pause, Continue and
+      high score entry as HTML with keyboard, mouse, touch and pad; effects
+      (Get Ready, Yes/No) and music as in the original, music fades out before the
+      level start.
+- [ ] **End credits:** slide timings and the name in first place in the cheer text (story lines as
+      HTML subtitles); then the credits (everyone involved, per role) as HTML
+      with music `credits`.
+- [ ] **Tutorial with custom bindings:** template "WASD + rechte Hand" — the texts
+      name the new keys (J, K, L, U/I), with the original HUD in the 8-px font.
 
-## Stand M5 — Shell, auf echten Geräten prüfen
+## Status M5 — shell, test on real devices
 
-Der Smoke-Test deckt Chromium headless ab (Kaltstart, Sprachwechsel,
-Offline-Start bei beendetem Server). Von Hand:
+The smoke test covers Chromium headless (cold start, language switch,
+offline start with the server stopped). By hand:
 
-- [ ] **Gamepad:** Xbox- und PlayStation-Pad in Chrome und Firefox — Launcher,
-      Einstellungen und Menüs (hoch/runter, links/rechts verstellt, A, B),
-      DOVE-Belegung, Stick-Totzone.
-- [ ] **Tastenbelegung:** beide Vorlagen in beiden Spielen, eigene Tasten
-      (Aufnahme, Rücktaste, ✕ mit der Maus), Warnung bei doppelten Tasten,
-      „Übernehmen“ gesperrt ohne Taste; WASD navigiert auch die Menüs.
-- [ ] **Gesamtbild:** Launcher, Einstellungen und alle Bildschirme beider Spiele
-      nebeneinander (DOVE Gold, DoveZ Oliv), schmale Fenster und Touch.
-- [ ] **Ton nur mit Pad:** Browser zählen Pad-Tasten meist nicht als
-      Nutzergeste; ob der AudioContext ohne Tastatur/Klick anläuft, prüfen.
-- [ ] **Offline:** Firefox und Safari — „Spieldaten installieren“, Flugmodus,
-      Neustart des Browsers; `navigator.storage.persist()` wird gewährt?
-- [ ] **Update:** neuer Build ausgeliefert — alter Tab spielt weiter, nach dem
-      Schließen aller Tabs gilt die neue Version.
-- [ ] **Spielstände:** Export, Browserdaten löschen, Import — Optionen,
-      Freischaltungen und Highscores wieder da.
+- [ ] **Gamepad:** Xbox and PlayStation pad in Chrome and Firefox — launcher,
+      settings and menus (up/down, left/right adjustment, A, B),
+      DOVE binding, stick dead zone.
+- [ ] **Key bindings:** both templates in both games, custom keys
+      (record, backspace, ✕ with the mouse), warning on duplicate keys,
+      "Apply" disabled without a key; WASD also navigates the menus.
+- [ ] **Overall look:** launcher, settings and all screens of both games
+      side by side (DOVE gold, DoveZ olive), narrow windows and touch.
+- [ ] **Sound with pad only:** browsers usually do not count pad buttons as a
+      user gesture; check whether the AudioContext starts without keyboard/click.
+- [ ] **Offline:** Firefox and Safari — "Install game data", airplane mode,
+      restart of the browser; is `navigator.storage.persist()` granted?
+- [ ] **Update:** new build shipped — the old tab keeps playing, after
+      closing all tabs the new version applies.
+- [ ] **Save games:** export, clear browser data, import — options,
+      unlocks and high scores back again.
 
-## Stand M6 — DoveZ-Assets am Original prüfen
+## Status M6 — check DoveZ assets against the original
 
-- [ ] **`atlantis_saule2`:** Maske (200×540) größer als das Bild (190×520);
-      der Port nimmt den Ausschnitt oben links. Säule im Original mit dem Port
-      vergleichen — sitzt der Übergang versetzt (bester Versatz wäre 6 px)?
-- [ ] **Rauch in Rumbler (`rauch1–7`):** palettiert, Index- und RGB-Keying
-      fallen auseinander; der Port keyt auf RGB-Schwarz.
-- [ ] **Masken nicht grau** (19 von 83): Alpha = Mittelwert der Kanäle,
-      *geschätzt*.
-- [ ] **Videos:** VP9 CRF 44 gegen das DivX-Original (Artefakte bei schnellen
-      Schnitten, Ton synchron).
-- [ ] **Safari:** Ogg Opus per `decodeAudioData` und Ogg-Vorbis-Streaming.
+- [ ] **`atlantis_saule2`:** mask (200×540) larger than the image (190×520);
+      the port takes the top-left crop. Compare the column in the original with the
+      port — does the transition sit offset (best offset would be 6 px)?
+- [ ] **Smoke in Rumbler (`rauch1–7`):** palettized, index and RGB keying
+      diverge; the port keys on RGB black.
+- [ ] **Masks not gray** (19 of 83): alpha = mean of the channels,
+      *estimated*.
+- [ ] **Videos:** VP9 CRF 44 against the DivX original (artifacts on fast
+      cuts, audio in sync).
+- [ ] **Safari:** Ogg Opus via `decodeAudioData` and Ogg Vorbis streaming.
 
-## Stand M8 — DoveZ am Original abgleichen
+## Status M8 — reconcile DoveZ against the original
 
-Die Mechanik ist statisch aus `DoveZ.exe` hergeleitet (`docs/measurements/dovez-runtime.md`);
-nichts davon ist am laufenden Original gemessen. Was ein Vergleich am echten Spiel
-klären müsste:
+The mechanics are derived statically from `DoveZ.exe` (`docs/measurements/dovez-runtime.md`);
+none of it is measured against the running original. What a comparison against the real game
+would need to clarify:
 
-- [ ] **Takt:** 16 ms je Tick (`Wait(16 + Me.1C8)`); Steuerung und Scrolltempo fühlen
-      sich wie im Original an (Frames überspringen bei Last).
-- [ ] **Trägheit „Realistic“:** Ausgleiten nach dem Loslassen (×0,85 je Tick, ab 10
-      Ticks Tastendruck) — Reihenfolge im Tick und Länge des Ausgleitens.
-- [ ] **Tastenbelegung (Shell):** Die Tastenkonfiguration des Originals ist durch
-      die Belegung der Shell ersetzt (Optionen → Tastenbelegung); die Vorlage
-      „Original“ belegt Satz 0/1 wie das Einzelspiel und Satz 2 mit Ziffernblock
-      und Num 2 — am Original vergleichen, ob das Zweispielerspiel mit IJKL
-      vermisst wird.
-- [ ] **Super-Nova:** alle zehn Varianten (Dauer, Zeitpunkt der Kills, Rauschen),
-      Abschusszähler `B48[0].54`.
-- [ ] **Bosse:** Zustandsmaschinen und Finale (Zustand 4), Druckwelle als Spielwirkung.
-- [ ] **Beam und Kombo:** Ladezeit (0,9 je Tick), Kraftphase, Kombo-Wertung.
-- [ ] **Hintergründe, Wetter, Wasser, Overlays:** prozedurale Effekte (Partikelzahlen,
-      Farben, Blendmodi) gegen Aufnahmen.
-- [ ] **Videos und Ladebilder:** Ladebild bzw. Mosaik mit Fortschritt als HTML,
-      Zwischensequenzen als `<video>`, Credits als Text (aus dem Originalbild
-      abgeschrieben) mit 40 px/s (Original 1 px je 25 ms) — Namen und Reihenfolge
-      gegen das Bild prüfen.
-- [ ] **Menü (HTML):** alle Seiten (Neu → Spieler → Schiff → Namen, Laden, Optionen
-      mit Grundeinstellungen, Tastenbelegung/Ton/Darstellung der Shell, Vibration,
-      Bonus, Highscore), Menümusik und Klänge, Osterei durch Tippen von „lov“;
-      Speicherbildschirm, Continue (Esc zählt schneller) und Pause mit Funklog und
-      Tastenübersicht. Lautstärken: das Mischverhältnis des Originals bleibt fest,
-      die Pegel kommen aus der Shell.
-- [ ] **Level vor Tick 0** (`-Tick N` mit N < 0): die 118 Einträge mit negativem Tick.
-- [ ] **Vibration:** Stärke und Dauer je Quelle (siehe „Vibration“ in
-      `dovez-runtime.md`), Gamepad-Motoren der Browser statt DirectInput-Kräfte.
-## Stand M8 — DoveZ auf Russisch (`#/dovez?lang=ru`) am Original prüfen
+- [ ] **Timing:** 16 ms per tick (`Wait(16 + Me.1C8)`); controls and scroll speed feel
+      like the original (frames skip under load).
+- [ ] **Inertia "Realistic":** coasting after release (×0.85 per tick, from 10
+      ticks of key press) — order within the tick and length of the coasting.
+- [ ] **Key bindings (shell):** the original's key configuration is replaced by
+      the shell's binding (Options → Key bindings); the template
+      "Original" assigns set 0/1 like the single-player game and set 2 with the numpad
+      and Num 2 — compare against the original whether the two-player game with IJKL
+      is missed.
+- [ ] **Super-Nova:** all ten variants (duration, timing of the kills, noise),
+      kill counter `B48[0].54`.
+- [ ] **Bosses:** state machines and finale (state 4), shock wave as a gameplay effect.
+- [ ] **Beam and combo:** charge time (0.9 per tick), power phase, combo scoring.
+- [ ] **Backgrounds, weather, water, overlays:** procedural effects (particle counts,
+      colors, blend modes) against recordings.
+- [ ] **Videos and loading screens:** loading screen or mosaic with progress as HTML,
+      cutscenes as `<video>`, credits as text (transcribed from the original
+      image) at 40 px/s (original 1 px per 25 ms) — check names and order
+      against the image.
+- [ ] **Menu (HTML):** all pages (New → Player → Ship → Names, Load, Options
+      with basic settings, key bindings/sound/display of the shell, vibration,
+      bonus, high score), menu music and sounds, Easter egg by typing "lov";
+      save screen, Continue (Esc counts faster) and Pause with the radio log and
+      the key overview. Volumes: the original's mixing ratio stays fixed,
+      the levels come from the shell.
+- [ ] **Levels before tick 0** (`-Tick N` with N < 0): the 118 entries with a negative tick.
+- [ ] **Vibration:** strength and duration per source (see "Vibration" in
+      `dovez-runtime.md`), the browsers' gamepad motors instead of DirectInput forces.
+## Status M8 — check DoveZ in Russian (`#/dovez?lang=ru`) against the original
 
-- [ ] **Schrift:** kyrillische Texte in Arial (Original: GDI-Schrift mit
-      Zeichensatz `[0x5886DC]`) — Breite der langen Zeilen („Управление
-      режимом/Сменить Части“, „Нажмите любую клавишу для старта!“) und der
-      Tafeln im Menü gegen das Original.
-- [ ] **Hauptmenü:** ohne „Highscore“-Eintrag; nach einem Durchgang „Бонус“ (öffnet
-      im HTML-Menü die Bonusliste, im Original die Highscore-Seite).
-- [ ] **Speicherbildschirm:** „Уровень расчищен!“ ohne Levelnamen, Spielerzeile
-      ohne Highscore-Platz, „Сохранено“ nach dem Speichern.
-- [ ] **Pause:** „Пауза“, darunter „Уровень1-1 (Bruce)“; „Продолжить“/„Выйти из
-      игры“ (gemeinsame Texte beider Spiele statt „Выход“).
-- [ ] **Funk:** Untertitel im Laufband, kein Ton (RU-Aufnahmen fehlen);
-      [Harbor] in Level 3-1 vollständig.
-- [ ] **Videos:** `introR`/`OutroR`/`Outro2R` fehlen in den Originaldaten — das
-      Original übersprang sie; prüfen, ob eine russische Ausgabe sie mitbringt.
-- [ ] **Datum** der Spielstandbeschriftung `TT.MM.JJJJ` (Annahme).
+- [ ] **Font:** Cyrillic texts in Arial (original: GDI font with
+      character set `[0x5886DC]`) — width of the long lines ("Управление
+      режимом/Сменить Части", "Нажмите любую клавишу для старта!") and of the
+      panels in the menu against the original.
+- [ ] **Main menu:** without the "Highscore" entry; after one playthrough "Бонус" (opens
+      the bonus list in the HTML menu, the high score page in the original).
+- [ ] **Save screen:** "Уровень расчищен!" without the level name, player line
+      without a high score rank, "Сохранено" after saving.
+- [ ] **Pause:** "Пауза", below it "Уровень1-1 (Bruce)"; "Продолжить"/"Выйти из
+      игры" (shared texts of both games instead of "Выход").
+- [ ] **Radio:** subtitles in the ticker, no sound (RU recordings missing);
+      [Harbor] in Level 3-1 complete.
+- [ ] **Videos:** `introR`/`OutroR`/`Outro2R` missing from the original data — the
+      original skipped them; check whether a Russian release ships them.
+- [ ] **Date** of the save-game label `DD.MM.YYYY` (assumption).
 
-## Nicht testbar, nur dokumentieren
+## Not testable, document only
 
-- Audio-Äquivalenz: BASS 0.8 und libopenmpt mischen unterschiedlich.
-- Timerauflösung: Das Original lief auf groben Systemtimern mit 15,6 ms.
-- Zufall: Das Original säte `Rnd` aus der Uhr; der Port verwendet dasselbe
-  LCG mit fester Saat — gleiche Verteilung, andere Folge.
+- Audio equivalence: BASS 0.8 and libopenmpt mix differently.
+- Timer resolution: the original ran on coarse system timers at 15.6 ms.
+- Randomness: the original seeded `Rnd` from the clock; the port uses the same
+  LCG with a fixed seed — same distribution, different sequence.
