@@ -40,7 +40,6 @@ import {
   infoText,
   levelSelectMenu,
   logo,
-  neoArtsNotice,
   optionsForm,
   optionsMenu,
   titleMenu,
@@ -208,15 +207,13 @@ export class Flow {
     this.env.host.storage.set(CONFIG_KEY, serializeConfig(this.config));
   }
 
-  /** Hauptablauf ab dem Start (`Form_Load` → `ShowNEOARTS` → Titel). */
+  /** Hauptablauf ab dem Start (`Form_Load` → Titel). */
   async main(): Promise<void> {
     const env = this.env;
     if (this.opts.screen) {
       await this.showcase(this.opts.screen);
     } else if (this.opts.debug) {
       await this.playGame(this.opts.debug.level, this.opts.debug);
-    } else if (!this.opts.nointro) {
-      await env.host.ui.show(neoArtsNotice(this.sprite));
     }
     let item: MenuItem = MenuItem.Play;
     const ui = env.host.ui;
