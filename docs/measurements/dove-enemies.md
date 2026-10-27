@@ -1,73 +1,73 @@
-# DOVE — Gegner, Gegnerschüsse, Kollision
+# DOVE — Enemies, enemy shots, collision
 
-Status: **statisch bestimmt aus `DOVE.exe`** (M3). Konfidenz *hoch*, wo nicht
-anders vermerkt. Spawn-Tabelle und Pattern-Aufbau: [`dove-events.md`](dove-events.md).
+Status: **determined statically from `DOVE.exe`** (M3). Confidence *high* unless
+noted otherwise. Spawn table and pattern layout: [`dove-events.md`](dove-events.md).
 
-## Parameter p0…p4
+## Parameters p0…p4
 
-| | Bedeutung |
+| | Meaning |
 |---|---|
-| p0 | Framezahl − 1 (Lader liest `For k = 0 To p0`) |
-| p1 | Animationsverzögerung: Frame wechselt alle p1 + 1 Ticks |
-| p2 | Trefferpunkte **und** Punktwert (Kopie in +0x34); Bosse 20 (Skript), 100000 ≈ unzerstörbar |
-| p3 | Schusstyp: 0 keiner, 1/2/3 gezielt mit Wahrscheinlichkeit 0,002/0,005/0,02 pro Tick, 4 Feuerball alle 21 Ticks |
-| p4 | Geschwindigkeit in px/Tick; p4 = 1 schaltet den Wandcrash ab (Wandobjekte scrollen mit) |
+| p0 | frame count − 1 (loader reads `For k = 0 To p0`) |
+| p1 | animation delay: frame changes every p1 + 1 ticks |
+| p2 | hit points **and** point value (copy in +0x34); bosses 20 (script), 100000 ≈ indestructible |
+| p3 | shot type: 0 none, 1/2/3 aimed with probability 0.002/0.005/0.02 per tick, 4 fireball every 21 ticks |
+| p4 | speed in px/tick; p4 = 1 disables the wall crash (wall objects scroll along) |
 
-## Bewegung pro Tick (`0x477A99`–`0x47C16B`)
+## Movement per tick (`0x477A99`–`0x47C16B`)
 
 - **Animation:** `cnt += 1; if cnt > p1 { cnt = 0; frame += 1; if frame > p0 then frame = 0 }`.
-- **Pattern ≥ 0:** `x += vx; y += vy` — kein Scrollanteil.
-- **Wegpunkte:** eine Achse gilt als erreicht bei (v < 0 und CLng(pos) ≤ Ziel),
-  (v > 0 und ≥ Ziel) oder v = 0. Sind beide erreicht: nächster Wegpunkt; ist dessen
-  x = −1, wird x = 641 gesetzt (→ entfernt), sonst neu zielen von der aktuellen
-  Position: |dx| > |dy| → vx = ±p4, vy = dy/|dx|·p4, sonst umgekehrt. Koordinaten
-  sind absolute Bildschirmpositionen. `flag0`/`flag1` werden nach dem Laden nie
-  gelesen. Der Lader baut Start- und Endpunkt aus `v0`/`v1` (0 → x 640, 1 → y 410,
-  2 → x −100, 3 → y −100, die andere Koordinate vom ersten bzw. letzten Wegpunkt);
-  bei null Wegpunkten liefert `end` das Start-y.
-- **Wandcrash** (Pattern ≥ 0, p4 ≠ 1): AABB (x, y, r−l, f1−f0) gegen Tiles — y,
-  nicht y+f0. Treffer: Partikel, 3 Explosionen, entfernt, **keine** Punkte.
-- **Code −1…−4 („Schleim“, verfolgt):** jede Achse schreitet ±p4 in Richtung
-  Mittelpunkt ↔ (pX+20, pY+10), nur ohne Überschießen und wenn die neue Box
-  (Höhe b−t) keine Wand berührt.
-- **Code −5 (Datei −6, schwebt):** y += vy, vy kehrt um bei Wand oder Rand
-  (0 < y+vy, y+vy+h < 410); x −= p4 solange x > 400; vx dient als Zähler +1/Tick,
-  ab > 500 wieder x −= p4 und kein Feuer mehr (zieht ab). Wandkontakt tötet.
-  Feuert alle 31 Ticks zwei Feuerbälle an y und y+h (unabhängig von der Option).
-- **Code −6 (Datei −7, „Faller“):** x += vx; bei vy = 0 und x < pX+40 → vy = 1;
-  für 1 ≤ vy ≤ 15 wackelt x um ±2, vy += 1; ab vy = 16 y += 5/Tick. Wand → entfernt.
-- **Entfernen:** x < −(r−l), x > 640, y > 410 oder y < −(b−t).
+- **Pattern ≥ 0:** `x += vx; y += vy` — no scroll component.
+- **Waypoints:** an axis counts as reached when (v < 0 and CLng(pos) ≤ target),
+  (v > 0 and ≥ target) or v = 0. If both are reached: next waypoint; if its
+  x = −1, x = 641 is set (→ removed), otherwise re-aim from the current
+  position: |dx| > |dy| → vx = ±p4, vy = dy/|dx|·p4, otherwise the reverse.
+  Coordinates are absolute screen positions. `flag0`/`flag1` are never read after
+  loading. The loader builds the start and end point from `v0`/`v1` (0 → x 640,
+  1 → y 410, 2 → x −100, 3 → y −100, the other coordinate from the first or last
+  waypoint, respectively); with zero waypoints, `end` yields the start y.
+- **Wall crash** (pattern ≥ 0, p4 ≠ 1): AABB (x, y, r−l, f1−f0) against tiles — y,
+  not y+f0. On hit: particles, 3 explosions, removed, **no** score.
+- **Code −1…−4 ("Schleim", homing):** each axis steps ±p4 toward the midpoint ↔
+  (pX+20, pY+10), only without overshooting and if the new box (height b−t)
+  touches no wall.
+- **Code −5 (file −6, hovers):** y += vy, vy reverses at a wall or edge
+  (0 < y+vy, y+vy+h < 410); x −= p4 while x > 400; vx serves as a counter +1/tick,
+  past > 500 x −= p4 again and no more fire (it withdraws). Wall contact kills.
+  Fires two fireballs every 31 ticks at y and y+h (regardless of the option).
+- **Code −6 (file −7, "Faller"):** x += vx; at vy = 0 and x < pX+40 → vy = 1;
+  for 1 ≤ vy ≤ 15 x wobbles by ±2, vy += 1; from vy = 16 on y += 5/tick. Wall → removed.
+- **Removal:** x < −(r−l), x > 640, y > 410 or y < −(b−t).
 
-## Zeichnen
+## Drawing
 
-Quell-Rect (l, t + frame·(b−t), r, t + (frame+1)·(b−t)) aus `feindeN.spr`,
-geclippt auf 640×410, an `FpI4(x), FpI4(y)`.
+Source rect (l, t + frame·(b−t), r, t + (frame+1)·(b−t)) from `feindeN.spr`,
+clipped to 640×410, at `FpI4(x), FpI4(y)`.
 
-## Gegnerschüsse (`0x43C4A0`, 50 Slots)
+## Enemy shots (`0x43C4A0`, 50 slots)
 
-- p3 = 1…3 → Art 1 an (x + (r−l)/2 − 4, CLng(y + (b−t)\2) − 4): Kugel `ss.spr`
-  (21,85)–(28,92), gezielt auf (pX+20, pY+7) mit Tempo **3** auf der Hauptachse;
-  Geschwindigkeit als `Long` (Nebenachse gerundet).
-- p3 = 4 → Art 2 an (x − 35, y − 7): Feuerball `ss.spr` (0,136)–(34,150), vx = −5.
-- Option „Gegner schießen“ `Me.[0x634]`: 0 aus, 1 voll, 2 halb (jede zweite
-  Anforderung verworfen).
-- Punktefaktor `Me.[0x638]` (*mittel*): voll 1,25 / halb 1,0 / aus 0,75; −0,25 ohne
-  Wandkollision; ±0,25 mit/ohne Waffenverlust. Standard 1,0.
+- p3 = 1…3 → kind 1 at (x + (r−l)/2 − 4, CLng(y + (b−t)\2) − 4): bullet `ss.spr`
+  (21,85)–(28,92), aimed at (pX+20, pY+7) with speed **3** on the major axis;
+  velocity as `Long` (minor axis rounded).
+- p3 = 4 → kind 2 at (x − 35, y − 7): fireball `ss.spr` (0,136)–(34,150), vx = −5.
+- Option "Gegner schießen" `Me.[0x634]`: 0 off, 1 full, 2 half (every second
+  request discarded).
+- Score factor `Me.[0x638]` (*medium*): full 1.25 / half 1.0 / off 0.75; −0.25 without
+  wall collision; ±0.25 with/without weapon loss. Default 1.0.
 
-## Trefferprüfung `HitTest` (`0x448910`)
+## Hit test `HitTest` (`0x448910`)
 
-1. Bosse (levelabhängig) zuerst.
-2. Gegner in Slotreihenfolge: vertikaler Ausschluss gegen [ey+f0, ey+f1] des
-   aktuellen Frames; über die Zeilen `max(y−ey, f0) … min(y+h−ey, f1)` (gerundet)
-   minL = min(left), maxR = max(right), Start minL = r−l, maxR = 0, leere Zeilen
-   eingeschlossen; Treffer bei x ≤ ex+maxR und x+w ≥ ex+minL (inklusiv; die
-   Richtung der Vergleiche ist *mittel*).
-3. Wände: inklusives AABB gegen die Tiles, zuletzt.
+1. Bosses (level-dependent) first.
+2. Enemies in slot order: vertical rejection against [ey+f0, ey+f1] of the
+   current frame; across the rows `max(y−ey, f0) … min(y+h−ey, f1)` (rounded)
+   minL = min(left), maxR = max(right), start minL = r−l, maxR = 0, empty rows
+   included; hit when x ≤ ex+maxR and x+w ≥ ex+minL (inclusive; the direction of
+   the comparisons is *medium*).
+3. Walls: inclusive AABB against the tiles, last.
 
-Ergebnis −1 kein Treffer, 0 absorbiert, > 0 Überschuss (−HP).
+Result −1 no hit, 0 absorbed, > 0 surplus (−HP).
 
-## Tod
+## Death
 
-HP −= Schaden; bei HP ≤ 0: Punkte (außer im Bosskampf), 150 Partikel, eine
-Explosion am Mittelpunkt − 25 und eine an einem Zufallspunkt der Box − 25, Sound 1.
-`Explosion.spr`: 32 Frames à 50×50, 8 pro Zeile, ein Frame pro Tick.
+HP −= damage; at HP ≤ 0: score (except in a boss fight), 150 particles, one
+explosion at the midpoint − 25 and one at a random point of the box − 25, sound 1.
+`Explosion.spr`: 32 frames of 50×50, 8 per row, one frame per tick.

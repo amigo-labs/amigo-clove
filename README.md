@@ -1,211 +1,211 @@
 # amigo-clove
 
-Browser-Port der beiden deutschen Arcade-Shooter **DOVE** (1999–2003) und
-**DoveZ – The Second Wave** (2004–2019) von Markus „Kauto" Madeja /
-Intergenies — ein gemeinsamer Launcher, zwei Spiele, mit den Original-Assets.
+Browser port of the two German arcade shooters **DOVE** (1999–2003) and
+**DoveZ – The Second Wave** (2004–2019) by Markus „Kauto" Madeja /
+Intergenies — one shared launcher, two games, with the original assets.
 
-## Stand
+## Status
 
-Meilensteine **M0** (Workspace, Tooling, CI), **M1** (`@clove/formats`:
-BMP-Decoder, DOVE-Levelformat mit byte-identischem Round-Trip,
-Kontur-Kreuzvalidierung), **M2** (Asset-Pipeline DOVE: WebP, PCM16,
-Level-JSON mit Konturen, Manifest, Cache, CI-Gate), **M3** (erstes
-spielbares Level, deterministische Replays) und **M4** (DOVE vollständig:
-alle Waffen, Beam, Options, Schild, alle 12 Level mit Levelskripten, 9 Bosse,
-Soundeffekte und Musik, Menüs, Intro, Continue, Highscore, Abspann) sind
-umgesetzt. Die Mechanik ist statisch aus der EXE bestimmt
-([`docs/measurements/`](docs/measurements/)); der Abgleich am laufenden
-Original steht noch aus ([`docs/playtest-checklist.md`](docs/playtest-checklist.md)).
-**M5** (Shell) ebenso: Launcher, Einstellungen (Sprache, Lautstärken, Tastenbelegung,
-Gamepad), Spielstand-Export/-Import, Ladebildschirm mit Bundle-Vorladen und
-Offline-Betrieb per Service Worker. **M6** (DoveZ-Pakete und -Assets):
-Parser für Pakete, `.r`-Konturen, Masken, Funktexte und Kampagne,
-Asset-Pipeline mit Atlanten, Opus, Musik und Video, Debug-Seite
-`#/dovez/debug/assets`. **M7** (DoveZ-`.dat` vollständig dekodiert) ist
-fertig. **M8** (DoveZ-Engine) ist umgesetzt: `#/dovez` zeigt Logos, Intro und das
-Hauptmenü (Neu mit Schiff und Namen, Laden, Optionen mit Vibration,
-Bonus, Highscore) und spielt die Kampagne aus `Play.txt` mit Ladebildern,
-Zwischensequenzen, Speicherbildschirm und Spielständen, Outro, Abspann und
-Epilog; alle 27 Level mit Gegnern, Bossen, allen Waffen, Beam, Super-Nova, Coop,
-Continue/Pause, Hintergründen, Wetter, Vibration und Russisch. Jedes Level ist
-mit Bots bis zum Ende spielbar ([`docs/measurements/dovez-levels.md`](docs/measurements/dovez-levels.md)).
-Die Original-Tickrate (16 ms) ist aus der EXE hergeleitet:
+Milestones **M0** (workspace, tooling, CI), **M1** (`@clove/formats`:
+BMP decoder, DOVE level format with byte-identical round-trip,
+contour cross-validation), **M2** (DOVE asset pipeline: WebP, PCM16,
+level JSON with contours, manifest, cache, CI gate), **M3** (first
+playable level, deterministic replays) and **M4** (DOVE complete:
+all weapons, beam, options, shield, all 12 levels with level scripts, 9 bosses,
+sound effects and music, menus, intro, continue, highscore, credits) are
+done. The mechanics were derived statically from the EXE
+([`docs/measurements/`](docs/measurements/)); the comparison against the running
+original is still pending ([`docs/playtest-checklist.md`](docs/playtest-checklist.md)).
+**M5** (shell) likewise: launcher, settings (language, volumes, key bindings,
+gamepad), save export/import, loading screen with bundle preloading and
+offline operation via service worker. **M6** (DoveZ packages and assets):
+parsers for packages, `.r` contours, masks, radio texts and campaign,
+asset pipeline with atlases, Opus, music and video, debug page
+`#/dovez/debug/assets`. **M7** (DoveZ `.dat` fully decoded) is
+done. **M8** (DoveZ engine) is implemented: `#/dovez` shows logos, intro and the
+main menu (New with ship and name, Load, Options with vibration,
+Bonus, Highscore) and plays the campaign from `Play.txt` with loading screens,
+cutscenes, save screen and saves, outro, credits and
+epilogue; all 27 levels with enemies, bosses, all weapons, beam, Super-Nova, coop,
+continue/pause, backgrounds, weather, vibration and Russian. Every level is
+playable to the end with bots ([`docs/measurements/dovez-levels.md`](docs/measurements/dovez-levels.md)).
+The original tick rate (16 ms) was derived from the EXE:
 [`docs/measurements/tick-rate.md`](docs/measurements/tick-rate.md). **M9**
-(Politur) läuft: DoveZ ist im Launcher und offline installierbar, es gibt
-Sicherheits-Header, Größenbudget und Leistungstest; offen ist die schriftliche
-Freigabe der Rechteinhaber und der Abgleich am Original (das nicht spielbar vorliegt).
+(polish) is in progress: DoveZ is in the launcher and installable offline, there are
+security headers, a size budget and a performance test; still open are the written
+clearance from the rights holders and the comparison against the original (which is not available to play).
 
-- **Design-Spec:** [`docs/specs/2026-09-07-dove-dovez-browser-port.md`](docs/specs/2026-09-07-dove-dovez-browser-port.md)
-  — Formatbefunde, Architektur, Asset-Pipeline, Verifikationsstrategie,
-  Meilensteine und Risiken.
-- **DOVE-Levelformat:** [`docs/formats/dove-level-dat.md`](docs/formats/dove-level-dat.md)
-- **DOVE-Assets:** [`docs/formats/dove-assets.md`](docs/formats/dove-assets.md)
-- **DoveZ-Formate und -Assets:** [`docs/formats/dovez-container.md`](docs/formats/dovez-container.md),
+- **Design spec:** [`docs/specs/2026-09-07-dove-dovez-browser-port.md`](docs/specs/2026-09-07-dove-dovez-browser-port.md)
+  — format findings, architecture, asset pipeline, verification strategy,
+  milestones and risks.
+- **DOVE level format:** [`docs/formats/dove-level-dat.md`](docs/formats/dove-level-dat.md)
+- **DOVE assets:** [`docs/formats/dove-assets.md`](docs/formats/dove-assets.md)
+- **DoveZ formats and assets:** [`docs/formats/dovez-container.md`](docs/formats/dovez-container.md),
   [`docs/formats/dovez-assets.md`](docs/formats/dovez-assets.md)
 
-## Entwicklung
+## Development
 
-Voraussetzung: [Bun](https://bun.sh) ≥ 1.3.11; zum Bauen der DoveZ-Assets
-zusätzlich ffmpeg mit libopus und libvpx (Ubuntu 24.04: `apt install ffmpeg`).
+Prerequisite: [Bun](https://bun.sh) ≥ 1.3.11; to build the DoveZ assets
+additionally ffmpeg with libopus and libvpx (Ubuntu 24.04: `apt install ffmpeg`).
 
 ```sh
 bun install
 bun run check        # typecheck + lint + fmt:check + test
 bun run typecheck    # tsc (strict, noUncheckedIndexedAccess)
 bun run lint         # oxlint
-bun run fmt          # oxfmt (schreibt), fmt:check prüft nur
+bun run fmt          # oxfmt (writes), fmt:check only checks
 bun run test         # bun test
 
-bun run assets:build   # Originale → assets/dove/, assets/dovez/ (inkrementell; --game=…)
-bun run assets:verify  # CI-Gate ohne Konvertierung: Dateien ≡ Manifest ≡ Quellen/Optionen
-bun run assets:check   # lokal, gründlich: frischer Build ≡ committeter Baum
-bun run assets:report  # Größen je Bundle
-bun run smoke          # Browser-Smoke-Test: Kaltstart, Shell, Offline-Start
-bun run build          # statische Site nach packages/shell/dist/
-bun run budget         # Größenbudget der gebauten Site (nach build)
-bun run perf           # Simulationszeit je Tick, alle DoveZ-Level
-bun run perf:render    # Zeichnen im Browser je Szene: Bild-Callbacks, Draw-Calls, Uploads, Allokationen
-bun run frames         # Referenzbilder fester Szenen gegen packages/shell/scripts/frames.json
-bun run levels:report  # docs/measurements/dovez-levels.md neu erzeugen
+bun run assets:build   # originals → assets/dove/, assets/dovez/ (incremental; --game=…)
+bun run assets:verify  # CI gate without conversion: files ≡ manifest ≡ sources/options
+bun run assets:check   # local, thorough: fresh build ≡ committed tree
+bun run assets:report  # sizes per bundle
+bun run smoke          # browser smoke test: cold start, shell, offline start
+bun run build          # static site into packages/shell/dist/
+bun run budget         # size budget of the built site (after build)
+bun run perf           # simulation time per tick, all DoveZ levels
+bun run perf:render    # drawing in the browser per scene: frame callbacks, draw calls, uploads, allocations
+bun run frames         # reference frames of fixed scenes against packages/shell/scripts/frames.json
+bun run levels:report  # regenerate docs/measurements/dovez-levels.md
 
-bun run --cwd packages/shell dev   # Launcher unter http://localhost:5173
+bun run --cwd packages/shell dev   # launcher at http://localhost:5173
 ```
 
-`perf:render` und `frames` laufen in Chromium mit SwiftShader (WebGL auf der CPU):
-Zeiten dort nur relativ vergleichen; die Zählwerte je Bild (Draw-Calls,
-Render-Ziel-Wechsel, Uploads, Allokationen) gelten geräteunabhängig. `frames`
-hält jedes Anzeigebild auf genau einen Tick (Playwrights Uhr) und prüft, dass
-Optimierungen das Bild nicht ändern; `--write` nur bei gewollter Bildänderung.
-Die Hashes hängen an der Chromium-Version von playwright-core, deshalb läuft
-`frames` lokal und nicht in der CI.
+`perf:render` and `frames` run in Chromium with SwiftShader (WebGL on the CPU):
+compare times there only relatively; the per-frame counts (draw calls,
+render-target switches, uploads, allocations) hold regardless of device. `frames`
+pins each displayed frame to exactly one tick (Playwright's clock) and checks that
+optimizations do not change the image; `--write` only on an intended image change.
+The hashes depend on the Chromium version of playwright-core, which is why
+`frames` runs locally and not in CI.
 
-Der Launcher (`#/`) listet die Spiele (daneben die Tastenübersicht der gewählten
-Karte), `#/settings` enthält Sprache, Ton (Gesamt, Musik, Effekte, Sprache),
-Darstellung (HUD, Skalierung, Auflösung, Rasterlinien, Bewegung), Steuerung (Maus/Touch,
-Gamepad), die Tastenbelegung je Spiel, Spielstand-Export/-Import und
-„Spieldaten installieren“ (nur im Build, der Dev-Server registriert keinen
-Service Worker).
-DOVE starten: `http://localhost:5173/#/dove` (NEO-ARTS-Logo, Titelmenü).
+The launcher (`#/`) lists the games (with the key overview of the chosen
+mapping next to them), `#/settings` contains language, audio (master, music, effects, voice),
+display (HUD, scaling, resolution, grid lines, motion), controls (mouse/touch,
+gamepad), the key bindings per game, save export/import and
+„Install game data" (only in the build, the dev server registers no
+service worker).
+Start DOVE: `http://localhost:5173/#/dove` (NEO-ARTS logo, title menu).
 
-**Alles außerhalb der Level als HTML, für beide Spiele gleich:** Launcher,
-Einstellungen, Ladebildschirm, Titel- und Hauptmenü, Optionen, Levelauswahl,
-Info, Highscores, Namenseingabe, Laden/Speichern, Get Ready, Pause, Continue,
-Credits und das NEO-ARTS-Logo zeigt die Shell aus denselben HTML-Bausteinen
-(`GameHost.ui`, `packages/core/src/shell/ui.ts`; Designsystem als CSS-Tokens in
-`packages/shell/index.html`, DoveZ mit eigenem Akzent über `data-game`). Beide
-Spiele geben ihr Logo als Marke für den Kopf jeder Seite; gleichartige
-Bildschirme (Hauptmenü mit Highscores, Optionen, Pause, Continue über dem
-Level, Credits je Rolle) sind gleich aufgebaut. Die Spiele behalten Ablauf,
-Regeln und Speicherstände; im Canvas laufen nur noch die Level und die
-Original-Animationen (DoveZ-Logos, Story-Intro und Abspannbilder von DOVE mit
-HTML-Untertiteln, Osterei, Funkbild). Mit dem HTML-HUD sind auch die Texte im
-Spielfeld HTML: Tutorial- und Skripttexte, Boss-Meldungen, der DoveZ-
-Tastenhinweis und das Funk-Laufband. DoveZ-Videos spielt die Shell als
-`<video>`. Bedienung überall: Pfeiltasten (und die belegten Bewegungstasten),
-`Enter`/Leertaste bzw. die Feuertaste bestätigen, `Esc` zurück; dazu
-Maus/Touch und Gamepad (Steuerkreuz, A/Start bestätigen, B zurück).
+**Everything outside the levels as HTML, identical for both games:** launcher,
+settings, loading screen, title and main menu, options, level select,
+info, highscores, name entry, load/save, Get Ready, Pause, Continue,
+Credits and the NEO-ARTS logo are rendered by the shell from the same HTML building blocks
+(`GameHost.ui`, `packages/core/src/shell/ui.ts`; design system as CSS tokens in
+`packages/shell/index.html`, DoveZ with its own accent via `data-game`). Both
+games supply their logo as the brand for the header of each page; similar
+screens (main menu with highscores, options, pause, continue over the
+level, credits per role) are built the same way. The games retain flow,
+rules and saves; only the levels and the original animations run in the canvas
+(DoveZ logos, story intro and credits images from DOVE with
+HTML subtitles, easter egg, radio image). With the HTML HUD, the in-field texts
+are HTML too: tutorial and script texts, boss messages, the DoveZ
+key hint and the radio ticker. DoveZ videos are played by the shell as
+`<video>`. Controls everywhere: arrow keys (and the bound movement keys),
+`Enter`/Space or the fire key to confirm, `Esc` to go back; plus
+mouse/touch and gamepad (D-pad, A/Start to confirm, B to go back).
 
-**Tastenbelegung:** frei je Spiel und Aktion (bis zu drei Tasten), unter
-`#/settings` und in den Optionen beider Spiele, mit zwei Vorlagen:
+**Key bindings:** free per game and action (up to three keys), under
+`#/settings` and in the options of both games, with two templates:
 
-| Vorlage | Bewegen | Waffen DOVE | Waffen DoveZ |
+| Template | Move | Weapons DOVE | Weapons DoveZ |
 | --- | --- | --- | --- |
-| Pfeiltasten + linke Hand (Original, Vorgabe) | Pfeile, Ziffernblock | `S`/Leertaste Feuer, `A` Beam, `D` Extrawaffe drehen, `W`/`Q` Tempo | `S` `A` `D` `Q` `W` `E` |
-| WASD + rechte Hand | `W` `A` `S` `D` | `J`/Leertaste Feuer, `K` Beam, `L` drehen, `I`/`U` Tempo | `J` `K` `L` `U` `I` `O` |
+| Arrow keys + left hand (original, default) | Arrows, numpad | `S`/Space fire, `A` beam, `D` rotate extra weapon, `W`/`Q` speed | `S` `A` `D` `Q` `W` `E` |
+| WASD + right hand | `W` `A` `S` `D` | `J`/Space fire, `K` beam, `L` rotate, `I`/`U` speed | `J` `K` `L` `U` `I` `O` |
 
-DoveZ-Spieler 2 hat in beiden den Ziffernblock-Satz. Die Spiele fragen weiter
-ihre Originaltasten ab, die Shell übersetzt (`bindKeys`); Simulation und
-Replays bleiben gleich. Texte, die Tasten nennen („Du schießt mit S!“), nennen
-die belegte Taste. Die vollständige Belegung (Tastatur, Gamepad, Maus) zeigen
-der Launcher und das Pausemenü jedes Spiels.
+DoveZ player 2 has the numpad set in both. The games keep querying
+their original keys, the shell translates (`bindKeys`); simulation and
+replays stay the same. Texts that name keys („Du schießt mit S!") name
+the bound key. The full binding (keyboard, gamepad, mouse) is shown by
+the launcher and the pause menu of each game.
 
-Weitere Modernisierungen (abschaltbar; ohne sie läuft die Simulation bit-gleich
-wie im Original, siehe Spec „Optionale Modernisierungen“). Vorgabe ist das
-Original bis auf HUD, Skalierung und Zeiger; der Zeiger wirkt erst, wenn Maus
-oder Finger ihn benutzen:
+Further modernizations (can be turned off; without them the simulation runs bit-identical
+to the original, see spec „Optional modernizations"). The default is the
+original except for HUD, scaling and pointer; the pointer only takes effect once the mouse
+or finger uses it:
 
-- **Maus:** das Schiff folgt dem Zeiger, links Feuer, rechts Beam, Mitte
-  Extrawaffe drehen (DOVE) bzw. Super-Nova (DoveZ), Rad Tempo (DOVE) bzw.
-  Extrawaffe (DoveZ). Pfeiltasten übernehmen jederzeit.
-- **Touch:** Ziehen lenkt relativ und feuert, ein zweiter Finger lädt den
-  Beam; Steuerkreuz, OK und Pause erscheinen im Overlay.
-- **HUD:** Vorgabe ist das HTML-HUD der Shell neben bzw. unter dem Spielfeld
-  mit Boss-Lebensbalken; das Original-HUD lässt sich zurückholen.
-- **Darstellung:** Vollbild (`Alt+Enter` oder ⛶), Skalierung fensterfüllend
-  scharf (Vorgabe) oder weich bzw. ganzzahlig (1:1-Pixel), Rasterlinien.
-  Der Canvas hat Gerätepixel: das Bild wird ganzzahlig vergrößert, den Rest
-  filtert der Browser — keine ungleich breiten Pixel mehr. Auflösung
-  „Original“ (Vorgabe) zeichnet in der Auflösung des Spiels, „Kanten geglättet“
-  ebenso, vergrößert aber per xBR-Shader (rundet Treppen an schrägen Kanten ab),
-  „HD“ zeichnet in der Auflösung des Bildschirms (Drehungen, Überblendungen,
-  Linien und Schrift schärfer). DOVE sieht in HD gleich aus: es zeichnet nur
-  ungedrehte Sprites auf ganzen Pixeln. Pixi wünscht sich die schnelle GPU
-  (`high-performance`); zeichnet der Browser ohne Grafikkarte, weist die Seite
-  „Darstellung“ darauf hin.
-- **Komfort:** DOVE pausiert bei Fokusverlust; freie Tastenbelegung (siehe
-  oben); in DoveZ steuert das zweite Gamepad Spieler 2.
+- **Mouse:** the ship follows the pointer, left fires, right beam, middle
+  rotates the extra weapon (DOVE) or Super-Nova (DoveZ), wheel speed (DOVE) or
+  extra weapon (DoveZ). Arrow keys take over at any time.
+- **Touch:** dragging steers relatively and fires, a second finger charges the
+  beam; D-pad, OK and pause appear in the overlay.
+- **HUD:** the default is the shell's HTML HUD next to or below the playfield
+  with a boss health bar; the original HUD can be brought back.
+- **Display:** fullscreen (`Alt+Enter` or ⛶), scaling window-filling
+  sharp (default) or smooth or integer (1:1 pixels), grid lines.
+  The canvas has device pixels: the image is scaled up by an integer factor, the browser
+  filters the rest — no more unevenly wide pixels. Resolution
+  „Original" (default) draws at the game's resolution, „Smoothed edges"
+  likewise, but scales up via an xBR shader (rounds off the stair-stepping on diagonal edges),
+  „HD" draws at the screen's resolution (rotations, cross-fades,
+  lines and text sharper). DOVE looks the same in HD: it draws only
+  unrotated sprites on whole pixels. Pixi wants the fast GPU
+  (`high-performance`); if the browser draws without a graphics card, the
+  „Display" page points this out.
+- **Comfort:** DOVE pauses on focus loss; free key binding (see
+  above); in DoveZ the second gamepad controls player 2.
 
-URL-Optionen: `nosound` (ohne Ton), `nointro=1`, `seed`, `shots=0|1|2`, `walls=1`;
-direkt ins Level mit `level=<n>`, zum Testen `invincible=1`, `from=<Tick>`,
-`lives`, `score`, Ausrüstung `colour`/`stage`/`options`/`bomb=1`/`shield=1`
-und `screen=<Name>` (intro, getready, continue, highscore, outro, credits,
-options, levelselect, info, farewell) für Sichtprüfungen einzelner Bildschirme.
+URL options: `nosound` (no audio), `nointro=1`, `seed`, `shots=0|1|2`, `walls=1`;
+straight into the level with `level=<n>`, for testing `invincible=1`, `from=<tick>`,
+`lives`, `score`, equipment `colour`/`stage`/`options`/`bomb=1`/`shield=1`
+and `screen=<name>` (intro, getready, continue, highscore, outro, credits,
+options, levelselect, info, farewell) for visual checks of individual screens.
 
-### Site ausliefern
+### Serving the site
 
-`bun run build` erzeugt unter `packages/shell/dist/` eine rein statische Site
-mit relativen Pfaden — sie läuft unter jedem Unterpfad ohne Server-Rewrite
-(Hash-Routing). Für den Service Worker braucht es HTTPS (oder `localhost`).
-Spielassets sind content-gehasht und dürfen unbegrenzt gecacht werden
-(`Cache-Control: immutable`); `index.html`, `sw.js` und die
-`manifest.json`-Dateien nicht. Der Build schreibt diese Regeln als `_headers`.
+`bun run build` produces a purely static site under `packages/shell/dist/`
+with relative paths — it runs under any sub-path without server rewrite
+(hash routing). The service worker needs HTTPS (or `localhost`).
+Game assets are content-hashed and may be cached indefinitely
+(`Cache-Control: immutable`); `index.html`, `sw.js` and the
+`manifest.json` files are not. The build writes these rules as `_headers`.
 
-Öffentlich ausgeliefert wird über **Cloudflare Workers Builds** (nur statische
-Assets, kein Worker-Skript): `wrangler.jsonc` im Wurzelverzeichnis baut mit
-`bun install --frozen-lockfile && bun run build` und lädt
-`packages/shell/dist/` hoch; jeder PR bekommt eine Vorschau. Lokal prüfen:
-`npx wrangler dev` (liefert die Site samt `_headers` unter `localhost:8787`).
+Public delivery goes through **Cloudflare Workers Builds** (static assets
+only, no worker script): `wrangler.jsonc` in the root directory builds with
+`bun install --frozen-lockfile && bun run build` and uploads
+`packages/shell/dist/`; every PR gets a preview. Check locally:
+`npx wrangler dev` (serves the site including `_headers` at `localhost:8787`).
 
-## Verzeichnisse
+## Directories
 
-| Pfad              | Inhalt                                       |
+| Path              | Content                                      |
 | ----------------- | -------------------------------------------- |
-| `original-dove/`  | Original-Installation DOVE 1.10 — **nicht im Repo**, lokal ablegen (siehe unten) |
-| `original-dovez/` | Original-Installation DoveZ — **nicht im Repo**, lokal ablegen (siehe unten) |
-| `packages/formats/` | `@clove/formats` — reine Parser/Serializer, ohne I/O |
-| `packages/core/`  | `@clove/core` — mechanikfreie Bausteine: Takt, Q16.16, Rng, Hash, Replay, Assets, i18n, Spielstanddatei, `GameModule` |
-| `packages/pixi-kit/` | `@clove/pixi-kit` — Pixi-Adapter: ganzzahliges Scaling, Texturen |
-| `packages/game-dove/` | `@clove/game-dove` — DOVE: Simulation (`src/sim`, Pixi-frei), Renderer, Replays |
-| `packages/game-dovez/` | `@clove/game-dovez` — DoveZ (M8 im Aufbau): `#/dovez` Logos, Intro, Hauptmenü (HTML) und Kampagne (`nointro=1` gleich ins Menü, `video=0` ohne Videos); ohne Menü `step=<n>` ab Anweisung n, `load=<1…21>` Spielstand, `level=…&from=…` ein einzelnes Level; Esc Pause, ohne Leben Continue (`screen=continue\|pause\|save\|credits\|love` zur Sichtprüfung); Debug-Ansichten |
-| `packages/shell/` | `@clove/shell` — Launcher (Vite): Routing, Einstellungen, Gamepad, Spielstände, Service Worker |
-| `packages/assetkit/` | `@clove/assetkit` — Asset-Pipeline (Bun, sharp) |
-| `assets/dove/`, `assets/dovez/` | generierte Assets + `manifest.json`, nie von Hand ändern |
-| `tests/`          | repo-weite Architekturtests                  |
-| `docs/`           | Spezifikationen und Formatdokumentation      |
+| `original-dove/`  | Original installation DOVE 1.10 — **not in the repo**, place locally (see below) |
+| `original-dovez/` | Original installation DoveZ — **not in the repo**, place locally (see below) |
+| `packages/formats/` | `@clove/formats` — pure parsers/serializers, without I/O |
+| `packages/core/`  | `@clove/core` — mechanics-free building blocks: tick, Q16.16, Rng, Hash, Replay, Assets, i18n, save file, `GameModule` |
+| `packages/pixi-kit/` | `@clove/pixi-kit` — Pixi adapter: integer scaling, textures |
+| `packages/game-dove/` | `@clove/game-dove` — DOVE: simulation (`src/sim`, Pixi-free), renderer, replays |
+| `packages/game-dovez/` | `@clove/game-dovez` — DoveZ (M8 in progress): `#/dovez` logos, intro, main menu (HTML) and campaign (`nointro=1` straight to the menu, `video=0` without videos); without the menu `step=<n>` from instruction n, `load=<1…21>` save, `level=…&from=…` a single level; Esc pause, no lives means Continue (`screen=continue\|pause\|save\|credits\|love` for visual checks); debug views |
+| `packages/shell/` | `@clove/shell` — launcher (Vite): routing, settings, gamepad, saves, service worker |
+| `packages/assetkit/` | `@clove/assetkit` — asset pipeline (Bun, sharp) |
+| `assets/dove/`, `assets/dovez/` | generated assets + `manifest.json`, never edit by hand |
+| `tests/`          | repo-wide architecture tests                 |
+| `docs/`           | specifications and format documentation      |
 
-Die Originalinstallationen liegen **nicht im Repo** (sie sind in `.gitignore`).
-Sie sind read-only Referenz und reine Quelle der Asset-Pipeline: `assets/dove/`
-und `assets/dovez/` sind daraus erzeugt und committet. Wer die Assets neu baut
-(`assets:build`/`assets:check`) oder die byte-genauen Formatprüfungen laufen
-lassen will, legt die Originale lokal nach `original-dove/` bzw. `original-dovez/`
-ab. Ohne sie überspringt `assets:verify` den Quellenabgleich (die committeten
-Assets bleiben über ihr Manifest verifizierbar) und die auf die Originale
-angewiesenen Tests sind entfallen — `bun run check` und die CI laufen ohne die
-Originale durch.
+The original installations are **not in the repo** (they are in `.gitignore`).
+They are a read-only reference and the sole source of the asset pipeline: `assets/dove/`
+and `assets/dovez/` are generated from them and committed. Anyone who rebuilds the assets
+(`assets:build`/`assets:check`) or wants to run the byte-exact format checks
+places the originals locally in `original-dove/` or `original-dovez/`.
+Without them `assets:verify` skips the source comparison (the committed
+assets remain verifiable through their manifest) and the tests that rely on the
+originals have been removed — `bun run check` and CI run through without the
+originals.
 
-`.gitattributes` schließt die Verzeichnisse von jeder Zeilenenden-Konvertierung
-aus. Eine echte Installation gegen die erwarteten (CRLF-)Zeilenenden prüfen bzw.
-darauf bringen:
+`.gitattributes` excludes the directories from any line-ending conversion.
+To check a real installation against the expected (CRLF) line endings or
+bring it onto them:
 
 ```sh
-bun scripts/originals-crlf.ts verify  <DOVE-Ordner> <DoveZ-Ordner>
-bun scripts/originals-crlf.ts restore <DOVE-Ordner> <DoveZ-Ordner>
+bun scripts/originals-crlf.ts verify  <DOVE folder> <DoveZ folder>
+bun scripts/originals-crlf.ts restore <DOVE folder> <DoveZ folder>
 ```
 
-## Rechtliches
+## Legal
 
-Für beide Spiele liegt **keine** Freeware- oder Weitergabe-Erlaubnis vor; bei
-DoveZ ist Vervielfältigung ohne schriftliche Genehmigung ausdrücklich untersagt.
-Repository und Site sind seit dem 28.09.2026 auf Entscheidung des
-Repository-Inhabers **öffentlich**. Der rechtliche Befund (Abschnitt
-„Rechtlicher Befund" der Design-Spec) bleibt davon unberührt.
+For both games there is **no** freeware or distribution permission; for
+DoveZ, reproduction without written permission is explicitly prohibited.
+Repository and site have been **public** since 2026-09-28 by decision of the
+repository owner. The legal finding (section
+„Legal finding" of the design spec) is unaffected by this.

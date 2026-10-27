@@ -1,185 +1,185 @@
-# DOVE + DoveZ — All-in-One Browser-Port
+# DOVE + DoveZ — All-in-One Browser Port
 
-> Design-Spec. Stand: 2026-09-07, fortgeschrieben 2026-09-27.
-> Status: **M0 bis M8 umgesetzt (Abgleich am Original steht aus), M9 in Arbeit** (Stand je Meilenstein in der Tabelle unten).
-> Die Umsetzung hat einige Annahmen dieses Dokuments korrigiert; maßgeblich
-> sind jetzt [`docs/formats/dove-level-dat.md`](../formats/dove-level-dat.md),
-> [`docs/formats/dove-assets.md`](../formats/dove-assets.md) und für DoveZ
-> [`docs/formats/dovez-level-dat.md`](../formats/dovez-level-dat.md), für die
-> Mechanik `docs/measurements/dove-{events,player,enemies,weapons,bosses,audio,flow}.md` und
-> `dovez-runtime.md`. Korrigierte Stellen sind hier mit *(M1)* … *(M7)* markiert.
+> Design spec. As of 2026-09-07, updated 2026-09-27.
+> Status: **M0 through M8 implemented (comparison against the original pending), M9 in progress** (status per milestone in the table below).
+> Implementation has corrected several assumptions of this document; the
+> authoritative references are now [`docs/formats/dove-level-dat.md`](../formats/dove-level-dat.md),
+> [`docs/formats/dove-assets.md`](../formats/dove-assets.md) and for DoveZ
+> [`docs/formats/dovez-level-dat.md`](../formats/dovez-level-dat.md), for the
+> mechanics `docs/measurements/dove-{events,player,enemies,weapons,bosses,audio,flow}.md` and
+> `dovez-runtime.md`. Corrected passages are marked here with *(M1)* … *(M7)*.
 
 ## Context
 
-Im Repository `amigo-clove` liegen zwei deutsche Windows-Arcade-Shooter als
-unveränderte Original-Installationen:
+The repository `amigo-clove` contains two German Windows arcade shooters as
+unmodified original installations:
 
-- `original-dove/` — **DOVE 1.10** (1999–2003) von Markus „Kauto" Madeja.
-  2D-Sidescroll-Shmup im R-Type-Stil, 12 Level, ~1 MB Spieldaten.
+- `original-dove/` — **DOVE 1.10** (1999–2003) by Markus „Kauto" Madeja.
+  2D side-scrolling shmup in R-Type style, 12 levels, ~1 MB of game data.
   Visual Basic 6 + DirectDraw7 + BASS 0.8, 640×480.
-- `original-dovez/` — **DoveZ – The Second Wave** (2004, Updates bis 2019) von
-  Markus Madeja's Intergenies. Nachfolger, ~270 MB Spieldaten, 27 Level-Pakete,
-  zwei Spielerschiffe, lokaler Coop, DE/EN/RU. Visual Basic 6 + DirectX 7
+- `original-dovez/` — **DoveZ – The Second Wave** (2004, updates until 2019) by
+  Markus Madeja's Intergenies. Successor, ~270 MB of game data, 27 level packages,
+  two player ships, local coop, DE/EN/RU. Visual Basic 6 + DirectX 7
   (DxVBLib) + zlib + Ogg Vorbis, 800×600.
 
-Beides sind native Win32-Binaries, an Windows gebunden und auf modernen Systemen
-nur mit Nachhilfe lauffähig. Ziel ist ein **plattformunabhängiger
-Browser-Port**: ein gemeinsamer Launcher, aus dem heraus beide Spiele startbar
-sind — jedes mit eigener Engine und eigenem Look, aber mit den **Original-Assets**
-(Grafik, Sound, Level), die aus den Originaldateien extrahiert werden.
+Both are native Win32 binaries, tied to Windows and only runnable on modern systems
+with some coaxing. The goal is a **platform-independent
+browser port**: one shared launcher from which both games can be started
+— each with its own engine and its own look, but with the **original assets**
+(graphics, sound, levels) extracted from the original files.
 
-Beide Spiele wurden vollständig analysiert; die Formate sind entschlüsselt
-(DOVE restlos, DoveZ bis auf die Feldsemantik einer Sektion). Dieses Dokument
-hält den Befund und den Bauplan fest.
+Both games were fully analyzed; the formats are decoded (DOVE completely,
+DoveZ except for the field semantics of one section). This document
+records the findings and the build plan.
 
-### Vom Nutzer festgelegte Rahmenbedingungen
+### Constraints set by the user
 
-| Entscheidung | Wahl |
+| Decision | Choice |
 |---|---|
-| Zieltreue | **1:1-Port mit Original-Assets** |
-| All-in-One | **Ein Launcher, zwei Spiele** — gemeinsame Shell, getrennte Engines |
-| Renderer | **PixiJS** (WebGL-2D) |
-| Spiel-Logik | **TypeScript** |
-| Reihenfolge | **DOVE zuerst**, DoveZ als zweite Ausbaustufe |
-| Tracker-Musik | **`libopenmpt.js` zur Laufzeit** (~4 MB Module statt 60–100 MB OGG) |
-| DoveZ-Videos | **VP9/WebM** |
-| Asset-Ablage | **Normale Git-Blobs** (kein LFS) |
-| Repo-Sichtbarkeit | **privat** |
-| Referenzaufnahmen | verfügbar — die Originale laufen bereits auf der Maschine |
-| Lint + Format | **oxc** — `oxlint` und `oxfmt` |
+| Fidelity | **1:1 port with original assets** |
+| All-in-one | **One launcher, two games** — shared shell, separate engines |
+| Renderer | **PixiJS** (WebGL 2D) |
+| Game logic | **TypeScript** |
+| Order | **DOVE first**, DoveZ as the second stage |
+| Tracker music | **`libopenmpt.js` at runtime** (~4 MB of modules instead of 60–100 MB OGG) |
+| DoveZ videos | **VP9/WebM** |
+| Asset storage | **Normal Git blobs** (no LFS) |
+| Repo visibility | **private** |
+| Reference recordings | available — the originals already run on the machine |
+| Lint + format | **oxc** — `oxlint` and `oxfmt` |
 
 ---
 
-## Analyse-Ergebnis DOVE
+## DOVE analysis result
 
-Alle Formate sind offen — es ist **kein Cracking nötig**.
+All formats are open — **no cracking required**.
 
-| Asset | Tatsächliches Format | Port-Aufwand |
+| Asset | Actual format | Porting effort |
 |---|---|---|
-| `Data/Grafik/*.spr` (60 + `METROID.dat`, 29,8 MB) | **Unkomprimiertes Windows-BMP**, 24/8/4/1 bpp. Das Spiel konvertiert beim ersten Start ausgelieferte JPG/GIF nach BMP und benennt sie `.spr` | trivial → WebP |
-| `Data/Level0-11.dat` | **Reiner CRLF-ASCII** (VB6 `Write #`), CP1252. *(M1)* Von Git beim ersten Commit auf LF normalisiert, per `scripts/originals-crlf.ts` auf CRLF zurückgeführt | trivial → JSON |
-| `Data/intro.dat` | reiner ASCII, *(M1)* **eigenes** Schema (Kopf + Rect-Records) | trivial |
-| `Data/Musik/*.xm` (18) + `s4.IT` | FastTracker II / Impulse Tracker, 3,8 MB. *(M2)* 19 Module insgesamt, nicht 20 | `libopenmpt.js` |
-| `Data/Sound/*.wav` (209 KB) | *(M2)* 15× **MS-ADPCM**, 5× PCM 8 bit, alle mono; `fact`-Chunks meist veraltet | → PCM16 (*(M2)* 0,6 MB) |
-| `Data/1-5.dat` | 2880er-Permutation — *(M4)* nicht zur Laufzeit erzeugt, sondern der Schlüssel der kachelweise verwürfelten Endbilder `B1–B5` | Pipeline entwürfelt die Endbilder |
+| `Data/Grafik/*.spr` (60 + `METROID.dat`, 29,8 MB) | **Uncompressed Windows BMP**, 24/8/4/1 bpp. On first launch the game converts the shipped JPG/GIF to BMP and names them `.spr` | trivial → WebP |
+| `Data/Level0-11.dat` | **Pure CRLF ASCII** (VB6 `Write #`), CP1252. *(M1)* Normalized to LF by Git on the first commit, restored to CRLF via `scripts/originals-crlf.ts` | trivial → JSON |
+| `Data/intro.dat` | pure ASCII, *(M1)* **its own** schema (header + rect records) | trivial |
+| `Data/Musik/*.xm` (18) + `s4.IT` | FastTracker II / Impulse Tracker, 3,8 MB. *(M2)* 19 modules in total, not 20 | `libopenmpt.js` |
+| `Data/Sound/*.wav` (209 KB) | *(M2)* 15× **MS-ADPCM**, 5× PCM 8 bit, all mono; `fact` chunks mostly outdated | → PCM16 (*(M2)* 0,6 MB) |
+| `Data/1-5.dat` | 2880-entry permutation — *(M4)* not generated at runtime, but the key to the tile-wise scrambled ending images `B1–B5` | pipeline unscrambles the ending images |
 
-### Levelformat (vollständig dekodiert und verifiziert)
+### Level format (fully decoded and verified)
 
 ```
-Sektion 1: Landschafts-Tiles     je Record: "Name", l, t, r, b   (Rect in landschaftN.spr)
+Section 1: landscape tiles       per record: "Name", l, t, r, b   (rect in landschaftN.spr)
 "*"
-Sektion 2: Hintergrund-Objekte   gleiches Schema
+Section 2: background objects     same schema
 "*"
-Sektion 3: Gegner-Definitionen   siehe unten
+Section 3: enemy definitions      see below
 "*"
-Sektion 4: Bewegungs-Pattern     "Name", 2 VB-Booleans, 2 Ints,
-                                 Wegpunkte (x,y), Terminator "-1 <end>"
-                                 (M1: end meist 0, in 5 Patterns nicht)
+Section 4: movement pattern       "Name", 2 VB booleans, 2 ints,
+                                  waypoints (x,y), terminator "-1 <end>"
+                                  (M1: end mostly 0, not in 5 patterns)
 "*"
-32000                            Levellänge in Ticks (in allen 12 Leveln identisch)
-<32001 Event-Zeilen>             eine pro Tick (VB6 0 To 32000), überwiegend leer
-"backgroundN"                    Hintergrundbild
+32000                             level length in ticks (identical in all 12 levels)
+<32001 event lines>               one per tick (VB6 0 To 32000), mostly empty
+"backgroundN"                     background image
 ```
 
-**Gegner-Record — Korrektur gegenüber der ersten Annahme: 5 Parameter, nicht 7.**
+**Enemy record — correction versus the first assumption: 5 parameters, not 7.**
 
 ```
 name                       (quoted, CP1252)
-l, t, r, b                 (Atlas-Rect)
-p0, p1, p2, p3, p4         (5 Parameter)
-je Frame:  f0, f1          (2 Frame-Header-Werte)
-           (h+1) × (left, right)      wobei h = b - t
+l, t, r, b                 (atlas rect)
+p0, p1, p2, p3, p4         (5 parameters)
+per frame: f0, f1          (2 frame header values)
+           (h+1) × (left, right)      where h = b - t
 ```
 
-Die **Framezahl steht nirgends** in der Datei — sie ergibt sich aus
-`(recordLen - 5 - 5) / (2 + 2·(h+1))`. Diese Division geht bei **allen 145
-Gegner-Records in allen 12 Leveln** glatt auf; mit jeder anderen Parameterzahl
-scheitert sie. Ein Parser mit 7 Parametern läuft bei jedem mehrfach animierten
-Gegner aus dem Takt.
+The **frame count appears nowhere** in the file — it follows from
+`(recordLen - 5 - 5) / (2 + 2·(h+1))`. This division comes out exactly for **all 145
+enemy records across all 12 levels**; with any other parameter count it fails.
+A parser with 7 parameters falls out of step on every enemy with multiple
+animation frames.
 
-Weitere verifizierte Details:
-- **Colorkey ist beweisbar reines Schwarz (0,0,0).** Gegenprobe „Ufo" aus
-  `Level1.dat` (Rect 66,400–129,434) gegen `feinde1.spr`: die aus den Pixeln neu
-  berechneten Nicht-Schwarz-Spannen stimmen in Zeile 0–30 **exakt** mit den im
-  Level gespeicherten `(left,right)`-Paaren überein. Das bestätigt in einem Zug
-  Colorkey, BMP-Bottom-up-Flip, Rect-Interpretation und Kanten-Inklusivität.
-  *(M1)* Über **alle** Frames gilt das nicht exakt: Nur 68,8 % der 19959
-  Konturzeilen stimmen pixelgenau, die übrigen sind breiter (meist 1 px) —
-  aber **nie** schmaler. Die gespeicherte Kontur ist ausnahmslos eine Obermenge
-  der Pixelspanne; darauf prüft jetzt die Kreuzvalidierung.
-- **Leere Konturzeilen** sind mit `left > right` kodiert (z. B. `63 49` bei
-  Breite 64), nicht mit `-1`. Der Sentinel fällt aus jedem Span-Vergleich
-  automatisch heraus — kein Sonderfall nötig.
-- **Frames liegen vertikal gestapelt** mit Stride `h`. Die `(h+1)`-te Zeile
-  jedes Frames ist ein Off-by-one des Original-Tools und ragt ins nächste
-  Frame — ignorieren.
-- Der Event-Stream ist **extrem dünn**: 20 (Level 0) bis 819 (Level 9) belegte
-  Zeilen von 32000. Gesamt über alle Level: `;0`=771, `;1`=2105, `;2`=217,
-  `;3`=40, `;4`=49, Spawns=3915.
+Further verified details:
+- **The colorkey is provably pure black (0,0,0).** Cross-check of „Ufo" from
+  `Level1.dat` (rect 66,400–129,434) against `feinde1.spr`: the non-black spans
+  recomputed from the pixels match the `(left,right)` pairs stored in the level
+  **exactly** in rows 0–30. That confirms in one go the colorkey, the BMP
+  bottom-up flip, the rect interpretation and the edge inclusivity.
+  *(M1)* Across **all** frames this does not hold exactly: only 68,8 % of the 19959
+  contour rows match pixel-perfectly, the rest are wider (mostly 1 px) —
+  but **never** narrower. The stored contour is without exception a superset
+  of the pixel span; that is what the cross-validation now checks.
+- **Empty contour rows** are encoded with `left > right` (e.g. `63 49` at
+  width 64), not with `-1`. The sentinel drops out of every span comparison
+  automatically — no special case needed.
+- **Frames are stacked vertically** with stride `h`. The `(h+1)`-th row of
+  each frame is an off-by-one of the original tool and protrudes into the next
+  frame — ignore it.
+- The event stream is **extremely sparse**: 20 (level 0) to 819 (level 9) populated
+  rows out of 32000. Total across all levels: `;0`=771, `;1`=2105, `;2`=217,
+  `;3`=40, `;4`=49, spawns=3915.
 
-Event-Tokens pro Tick:
+Event tokens per tick:
 
-| Token | Bedeutung |
+| Token | Meaning |
 |---|---|
-| `;0 <tile> <y>!` | Landschafts-Tile platzieren (Wand) |
-| `;1 <gegner> <pattern>!` | aktuellen Gegnertyp + Bewegungspattern **setzen** |
-| `;2 <art> <y>!` | Extra spawnen, `art` ∈ {−2,−1,0,1,2,3} ≙ Schild, Bombe, Option, Rot, Grün, Blau |
-| `;3 0 0!` | *(M1)* 0–8× pro Level (40 gesamt) — vermutlich Checkpoint |
-| `;4 <obj> <y>!` | Hintergrundobjekt spawnen |
-| `<y>§` | Gegner-Spawn auf Y-Position (`§` = Byte `0xA7`) |
+| `;0 <tile> <y>!` | place landscape tile (wall) |
+| `;1 <gegner> <pattern>!` | **set** the current enemy type + movement pattern |
+| `;2 <art> <y>!` | spawn extra, `art` ∈ {−2,−1,0,1,2,3} ≙ shield, bomb, option, red, green, blue |
+| `;3 0 0!` | *(M1)* 0–8× per level (40 total) — presumably checkpoint |
+| `;4 <obj> <y>!` | spawn background object |
+| `<y>§` | enemy spawn at Y position (`§` = byte `0xA7`) |
 
-*(M1)* Tile-, Gegner- und Objektreferenzen sind **1-basiert**; Pattern `0` und
-`−1…−7` sind eingebaute Bewegungsarten, `1…n` verweisen auf Sektion 4.
+*(M1)* Tile, enemy and object references are **1-based**; pattern `0` and
+`−1…−7` are built-in movement types, `1…n` refer to section 4.
 
-~~Wichtige Semantik: `;1` spawnt nicht~~ *(M3, aus der EXE)*: `;1 T P!`
-**spawnt sofort**; bei P ≤ 0 liefert das erste folgende `y§` derselben Zeile die
-Y-Position. Alleinstehende `y§` wertet das Original nie aus — 2460 der 3915
-`§`-Tokens sind tote Daten (`docs/measurements/dove-events.md`).
+~~Important semantics: `;1` does not spawn~~ *(M3, from the EXE)*: `;1 T P!`
+**spawns immediately**; at P ≤ 0 the first following `y§` on the same line provides
+the Y position. The original never evaluates a standalone `y§` — 2460 of the 3915
+`§` tokens are dead data (`docs/measurements/dove-events.md`).
 
-### Spielmechanik
+### Game mechanics
 
-- **Waffen:** drei Farben — Rot (Streulaser), Grün (Reflektionsbälle),
-  Blau (Twinlaser). Gleiche Farbe mehrfach = Upgrade, andere Farbe = Reset.
-- **Beam:** Aufladeschuss, durchdringt Wände, neutralisiert gegnerische Schüsse.
-- **Ausrüstung:** Option (max. 2, umkreist das Schiff, unzerstörbar), Bombe, Schild.
-- **Steuerung:** Pfeiltasten, `S` Dauerfeuer, `A` Beam laden, `D` Extrawaffen-
-  Position vorne/hinten, `Q`/`W` bremsen/beschleunigen, `ESC` Pause.
-- **Optionen** (Gegner schießen Voll/Halb/Aus, Wandkollision An/Aus,
-  Ausrüstungsverlust An/Aus) ergeben einen **Punktefaktor**; >1 aktiviert den
-  Hard Mode, in dem Level freigespielt werden.
-- 12 Level: Tutorial, Lost In Space, Factory, Deep Blue See, Back in Space,
+- **Weapons:** three colors — red (spread laser), green (reflection balls),
+  blue (twin laser). Same color repeatedly = upgrade, different color = reset.
+- **Beam:** charge shot, penetrates walls, neutralizes enemy shots.
+- **Equipment:** option (max. 2, orbits the ship, indestructible), bomb, shield.
+- **Controls:** arrow keys, `S` continuous fire, `A` charge beam, `D` extra-weapon
+  position front/back, `Q`/`W` brake/accelerate, `ESC` pause.
+- **Options** (enemies fire full/half/off, wall collision on/off,
+  equipment loss on/off) produce a **score factor**; >1 activates the
+  hard mode in which levels are unlocked.
+- 12 levels: Tutorial, Lost In Space, Factory, Deep Blue See, Back in Space,
   Crystal Cave, Speed, The Unreal World, DOVE INSIDE, Final Level, Final Fight,
-  ExtraLevel. Endgegner-Handler existieren für Level 1–8 und 10.
+  ExtraLevel. Boss handlers exist for levels 1–8 and 10.
 
 ---
 
-## Analyse-Ergebnis DoveZ
+## DoveZ analysis result
 
-### Containerformat (`.dlp` / `.dfp` / `.d2p` — alle identisch)
+### Container format (`.dlp` / `.dfp` / `.d2p` — all identical)
 
-Kein Magic, kein Header, kein Directory. Eine sequentielle Kette von zlib-Blöcken:
+No magic, no header, no directory. A sequential chain of zlib blocks:
 
 ```
 Record := u32 uncompressedSize (LE)
           u32 compressedSize   (LE)
-          byte[compressedSize] zlib-Stream (RFC1950)
+          byte[compressedSize] zlib stream (RFC1950)
 
-Datei  := ( Record(Dateiname, CP1252) Record(Dateiinhalt) )*  bis EOF
+File   := ( Record(fileName, CP1252) Record(fileContent) )*  until EOF
 ```
 
-Alle 52 Container parsen restlos durch, kein Padding, keine Overlay-Reste. Zum
-Auflisten muss linear durchlaufen und jeder Namensblock entpackt werden. Im
-Browser direkt mit `DecompressionStream('deflate')` lesbar.
+All 52 containers parse through completely, no padding, no overlay remnants. To
+list them you must walk linearly and decompress every name block. Directly
+readable in the browser with `DecompressionStream('deflate')`.
 
-| Endung | Inhalt |
+| Extension | Content |
 |---|---|
-| `.dlp` | 1 Level-`.dat` + BMPs + `.r`-Konturen + Funktexte `<Level>D/E/R.txt` |
-| `.dfp` | ausschließlich WAVs — die Funkspruch-Sprachaufnahmen des Levels |
-| `.d2p` | globale Pakete: `Menu`, `Spiel`, `Standart`, `Loading`, `Logo`, `Pause`, `Sound`, `Video`, `Play` |
+| `.dlp` | 1 level `.dat` + BMPs + `.r` contours + radio texts `<Level>D/E/R.txt` |
+| `.dfp` | WAVs only — the radio voice recordings of the level |
+| `.d2p` | global packages: `Menu`, `Spiel`, `Standart`, `Loading`, `Logo`, `Pause`, `Sound`, `Video`, `Play` |
 
-Vollständiges Inventar (6150 Einträge entpackt):
+Complete inventory (6150 entries unpacked):
 
-| Typ | Anzahl | unkomprimiert |
+| Type | Count | uncompressed |
 |---|---:|---:|
 | `.bmp` | 3232 | 257,1 MB |
 | `.wav` | 243 | 107,1 MB |
@@ -188,658 +188,656 @@ Vollständiges Inventar (6150 Einträge entpackt):
 | `.dat` | 27 | 0,59 MB |
 | `.txt` | 49 | 0,04 MB |
 
-Plus lose: 20 Ogg Vorbis (61 MB), 2 Intro-AVIs (101 MB).
+Plus loose: 20 Ogg Vorbis (61 MB), 2 intro AVIs (101 MB).
 
-`Play.d2p` enthält `Play.txt` — 413 Byte, die die **komplette Kampagnenstruktur**
-definieren: `Load <Level>,<Screen.bmp>`, `Play <video.avi>`, `Save`, `credits`.
-Nicht im Skript und damit Bonus-Inhalt: `Level8-1 Jungle`,
+`Play.d2p` contains `Play.txt` — 413 bytes that define the **complete campaign
+structure**: `Load <Level>,<Screen.bmp>`, `Play <video.avi>`, `Save`, `credits`.
+Not in the script and therefore bonus content: `Level8-1 Jungle`,
 `Spacestation Bonus`, `Level Bleistift`, `Epilog`.
 
-### Weitere Formate
+### Further formats
 
-- **`.r`-Dateien:** ~~`u32 width, height, bboxLeft, bboxRight, -1, -1`, danach pro
-  Bildzeile `i32 left, right` (bottom-up)~~ *(M6, korrigiert)* `i32 width, height,
-  top, bottom` (erste/letzte belegte Zeile), dann `height` Paare `left, right`
-  **oben beginnend** (leer `-1, -1`), Abschluss `-1, -1`. 2525/2546 zeilengenau
-  zu den Pixeln. Strukturell dieselbe Datenstruktur wie DOVEs Konturzeilen.
+- **`.r` files:** ~~`u32 width, height, bboxLeft, bboxRight, -1, -1`, then per
+  image row `i32 left, right` (bottom-up)~~ *(M6, corrected)* `i32 width, height,
+  top, bottom` (first/last populated row), then `height` pairs `left, right`
+  **starting at the top** (empty `-1, -1`), terminated by `-1, -1`. 2525/2546 row-exact
+  to the pixels. Structurally the same data structure as DOVE's contour rows.
   Details: `docs/formats/dovez-container.md`.
-- **BMP-Tiefen: 1, 8, 16, 24 und 32 bpp.** 16 bpp (RGB555) und 32 bpp (XRGB mit
-  Müll-Alphabyte) brauchen eigene Decoder-Pfade.
-- **Alpha:** nur **83 Masken-Paare** *(M8: 79; die vier `interface*_energyA` sind eigene Bilder)* (`X.bmp` + `XA.bmp`) gegenüber 3026 reinen
-  Colorkey-Sprites. Genau eine Maske hat abweichende Maße:
-  `atlantis_saule2.bmp` (190×520) vs. `atlantis_saule2A.bmp` (200×540) — das ist
-  ein Pflicht-Override, kein Fall für stilles Skalieren.
-- **Funktexte:** INI-artig, `[Trigger]` + `Frame; <wav>; <ms>; <Untertitel>`,
-  optional ein zweiter Sprecher-Block. Section-Namen entsprechen den Funk-IDs im
-  Level-Skript. *(M6)* Viergruppen `Sprecher; WAV; ms; Text` über Zeilen hinweg,
-  Sprecher `Frame` oder `0`. **Aufnahmen gibt es nur auf Englisch** — D und E
-  verweisen auf dieselben `…E_*.wav`; `R.txt` (CP1251) verweist auf fehlende
-  `RU`-Dateien. Das Bundle heißt daher `voice/<level>`, nicht `voice/<lang>`.
-  *(M8: die Pipeline übernimmt D/E/R als `radio/<slug>` = `{ de, en, ru }`;
-  russisch nur Untertitel, siehe `docs/measurements/dovez-runtime.md`.)*
-- **Video:** DivX 5 (`dx50`, MPEG-4 ASP) + MP3, 800×600, 3,2 Mbit/s. Kein Browser
-  spielt MPEG-4 ASP — Transkodierung ist Pflicht.
+- **BMP depths: 1, 8, 16, 24 and 32 bpp.** 16 bpp (RGB555) and 32 bpp (XRGB with a
+  garbage alpha byte) need their own decoder paths.
+- **Alpha:** only **83 mask pairs** *(M8: 79; the four `interface*_energyA` are separate images)* (`X.bmp` + `XA.bmp`) versus 3026 pure
+  colorkey sprites. Exactly one mask has differing dimensions:
+  `atlantis_saule2.bmp` (190×520) vs. `atlantis_saule2A.bmp` (200×540) — that is
+  a mandatory override, not a case for silent scaling.
+- **Radio texts:** INI-like, `[Trigger]` + `Frame; <wav>; <ms>; <subtitle>`,
+  optionally a second speaker block. Section names correspond to the radio IDs in the
+  level script. *(M6)* Groups of four `speaker; WAV; ms; text` spanning rows,
+  speaker `Frame` or `0`. **Recordings exist in English only** — D and E
+  reference the same `…E_*.wav`; `R.txt` (CP1251) references missing
+  `RU` files. The bundle is therefore called `voice/<level>`, not `voice/<lang>`.
+  *(M8: the pipeline takes over D/E/R as `radio/<slug>` = `{ de, en, ru }`;
+  Russian is subtitles only, see `docs/measurements/dovez-runtime.md`.)*
+- **Video:** DivX 5 (`dx50`, MPEG-4 ASP) + MP3, 800×600, 3,2 Mbit/s. No browser
+  plays MPEG-4 ASP — transcoding is mandatory.
 
-### Level-Skript `<Level>.dat` — weitgehend dekodiert
+### Level script `<Level>.dat` — largely decoded
 
-> *(M7)* **Vollständig dekodiert**, und zwar aus `LadeDaten` in der
-> (UPX-gepackten) `DoveZ.exe` statt aus den Bytes. Einige Aussagen dieses
-> Abschnitts sind dadurch überholt: Die „Spawn-Timeline“ sind sieben
-> Zeitleisten-Ebenen mit festen 5×i32-Einträgen (keine variablen Records), die
-> „Nullfelder“ im Gegner-Record sind 16 Gegner-Flags, die Sektion
-> „Bewegungsmuster“ ist ein Bytecode mit 45 Befehlen, und die dort als
-> Gegnerteile bezeichneten 56-Byte-Records sind Teile (Sprite, Waffe, Route),
-> keine Schuss-Erzeuger. Maßgeblich: `docs/formats/dovez-level-dat.md`.
+> *(M7)* **Fully decoded**, specifically from `LadeDaten` in the
+> (UPX-packed) `DoveZ.exe` rather than from the bytes. Some statements in this
+> section are thereby outdated: the „spawn timeline" is seven
+> timeline layers with fixed 5×i32 entries (no variable records), the
+> „null fields" in the enemy record are 16 enemy flags, the section
+> „movement patterns" is a bytecode with 45 instructions, and the 56-byte records
+> referred to there as enemy parts are parts (sprite, weapon, route),
+> not shot emitters. Authoritative: `docs/formats/dovez-level-dat.md`.
 
-Magic ASCII `DOVE2 - V. 0.15`, VB6-Serialisierung. Strings sind `u32 len` +
-CP1252-Bytes.
+Magic ASCII `DOVE2 - V. 0.15`, VB6 serialization. Strings are `u32 len` +
+CP1252 bytes.
 
-**Der entscheidende Befund:** Das Format enthält **drei Skalartypen** —
-`Long` (i32), `Single` (f32, IEEE-754 LE) und `Integer`/`Boolean` (i16, VB6
-schreibt `True` als `-1`, also `FF FF`). Ein Parser, der alles als `i32` liest,
-zerlegt die Floats in Rauschen und kann die Semantik prinzipiell nicht finden.
-Das war der Blocker der bisherigen Analyse.
+**The decisive finding:** the format contains **three scalar types** —
+`Long` (i32), `Single` (f32, IEEE-754 LE) and `Integer`/`Boolean` (i16, VB6
+writes `True` as `-1`, i.e. `FF FF`). A parser that reads everything as `i32`
+breaks the floats into noise and cannot, in principle, find the semantics.
+That was the blocker of the analysis so far.
 
-**Zweiter Befund:** Alle Zähler folgen dem VB6-Idiom `ReDim arr(0 To n)`, sind
-also **`count - 1`**. Sektionen sind zählerpräfixiert, nicht terminiert.
+**Second finding:** all counters follow the VB6 idiom `ReDim arr(0 To n)`, so they
+are **`count - 1`**. Sections are counter-prefixed, not terminated.
 
-Korrigierte, an allen 27 Levels verifizierte Grammatik des Kopfteils:
+Corrected header grammar, verified against all 27 levels:
 
 ```
-Header  := "DOVE2 - V. 0.15"      (15 B, ohne Terminator)
-           str  hintergrund        // Dateiname ODER numerischer Index als Text
+Header  := "DOVE2 - V. 0.15"      (15 B, no terminator)
+           str  background         // file name OR numeric index as text
            i32  nGroups-1
-Group[] := i32  slotId             // Slot-/Referenz-ID, nicht Position
-           str  gruppenname
-           i16  flag               // 0000 = Gegner-Sprite, FFFF = Effekt/Hintergrund
+Group[] := i32  slotId             // slot/reference ID, not position
+           str  groupName
+           i16  flag               // 0000 = enemy sprite, FFFF = effect/background
            i32  nFrames-1
 Frame[] := str bmpName, i32 x, i32 y, i32 width, i32 height, i32 delayTicks
 ```
 
-`delayTicks` nimmt u. a. `1,2,3,5,9,10,15,56,60,120,155,170,9999,-1` an —
-`9999` bedeutet „hier stehenbleiben". Frame-Listen sind bereits ausgerollte
-Ping-Pong-Sequenzen. **27/27 Dateien parsen fehlerfrei bis zum exakten
-Sektionsende.**
+`delayTicks` takes values such as `1,2,3,5,9,10,15,56,60,120,155,170,9999,-1` —
+`9999` means „stay here". Frame lists are already unrolled
+ping-pong sequences. **27/27 files parse without error up to the exact end of the
+section.**
 
-**Die Sektions-Strides** sind über die Abstände der Klartext-Namen bestimmt:
+**The section strides** are determined via the spacing of the plain-text names:
 
-| Sektion | Stride | Deutung |
+| Section | Stride | Interpretation |
 |---|---|---|
-| Gegnertypen | `132 + k·56` | Basis-Record 132 B + k Sub-Records à 56 B (= Schuss-Erzeuger, vgl. `AddGegnerSchussErzeuger` in der EXE) |
-| Bewegungsmuster | `28 + k·8` | Header 28 B + k Wegpunkte à 8 B (Gegenstück zu DOVEs Wegpunkt-Patterns) |
-| Waffendefinitionen | 58 | fix |
-| Schusstypen | 54 | fix |
-| Sound-Zuordnung | 4 | ein `i32` je Sound |
-| Funkspruch-IDs | 10 | fix |
+| Enemy types | `132 + k·56` | base record 132 B + k sub-records of 56 B each (= shot emitters, cf. `AddGegnerSchussErzeuger` in the EXE) |
+| Movement patterns | `28 + k·8` | header 28 B + k waypoints of 8 B each (counterpart to DOVE's waypoint patterns) |
+| Weapon definitions | 58 | fixed |
+| Shot types | 54 | fixed |
+| Sound mapping | 4 | one `i32` per sound |
+| Radio message IDs | 10 | fixed |
 
-**Die Spawn-Timeline ist gefunden** — der zuvor unerklärte Block zwischen
-Funk-Triggern und Waffendefinitionen. 156 Records à **20 Byte**, terminiert
-durch `tick = -1`:
+**The spawn timeline has been found** — the previously unexplained block between
+radio triggers and weapon definitions. 156 records of **20 bytes** each, terminated
+by `tick = -1`:
 
 ```
 LevelSkriptEntry := i32 tick, i32 typeIdx, i32 param, i32 flag, i32 y
 ```
 
-Belege: Feld 1 steigt streng monoton (2387, 2431, 4247, …, 8385, dann `-1`);
-Feld 2 liegt in `[0,14]` bei genau 15 Gegnertypen; Feld 5 liegt in `[190,447]`.
-Die EXE führt passend die Prozeduren `LevelSkript` und `LTick`.
+Evidence: field 1 increases strictly monotonically (2387, 2431, 4247, …, 8385,
+then `-1`); field 2 lies in `[0,14]` with exactly 15 enemy types; field 5 lies in
+`[190,447]`. The EXE correspondingly runs the procedures `LevelSkript` and `LTick`.
 
-Ein enormer Vorteil für die weitere Dekodierung: **die Sektionsnamen sind
-deutschsprachig und selbsterklärend** — `Zeppelin(Taktik2)`, `Zecke stark`,
+A huge advantage for the further decoding: **the section names are
+in German and self-explanatory** — `Zeppelin(Taktik2)`, `Zecke stark`,
 `Zeckenwerfer Speed3`, `ironeagle (beschleunigung)`, `Schuss: links oben`,
-`Hinter der Wolke unten3`, `Einkreisen`. Der Autor hat die Gegner nach ihrem
-Verhalten benannt; das ist ein geschenktes Label-Set für die Differenzanalyse.
+`Hinter der Wolke unten3`, `Einkreisen`. The author named the enemies after their
+behavior; that is a free label set for the difference analysis.
 
-**Verbleibende Unklarheiten** *(M7: beide aufgelöst, siehe oben)*:
-1. In einem Timeline-Record fällt eine `1.0f` in eine Spalte — entweder ein
-   Offset-Versatz oder **variable Record-Längen** (verschiedene Kommandotypen
-   mit Extra-Payload, analog zu DOVEs fünf Befehlen). Größtes Einzelrisiko,
-   früh zu klären.
-2. Rund 24 Nullfelder im 132-Byte-Gegner-Record. Vermutung: Der Editor schreibt
-   schlicht die komplette Laufzeit-Struktur mit, die Felder sind irrelevant.
-   Dafür spricht die Fehlermeldung „*Level im Editor laden, neu abspeichern und
-   packen*" — der Editor war das Spiel mit anderem Frontend.
+**Remaining uncertainties** *(M7: both resolved, see above)*:
+1. In one timeline record a `1.0f` falls into a column — either an
+   offset shift or **variable record lengths** (different command types
+   with extra payload, analogous to DOVE's five commands). The single largest risk,
+   to be clarified early.
+2. About 24 null fields in the 132-byte enemy record. Conjecture: the editor writes
+   out the complete runtime structure, the fields are irrelevant.
+   The error message „*Level im Editor laden, neu abspeichern und
+   packen*" supports this — the editor was the game with a different frontend.
 
-**`DoveZ.exe` ist nativ kompiliertes VB6, kein P-Code** *(M7: zusätzlich
-UPX-gepackt; `upx -d` legt den Code frei)* (belegt durch
-`__vbaExceptHandler`, `_CIcos`, `__vbaRedim`). Ein VB-Decompiler liefert daher
-**keinen** Quelltext, nur kommentierte Pseudo-Assembly. Ghidra bleibt
-Rückfallebene für die letzten Felder, ist aber keine Abkürzung. Lohnend sind
-dort genau vier Funktionen: `LadeDaten` (Feldlayout), `SpielMoveEnemy`
-(Feldsemantik), `LevelSkript`/`SpielTick` (Timeline-Opcodes), `LadeR`.
+**`DoveZ.exe` is natively compiled VB6, not P-code** *(M7: additionally
+UPX-packed; `upx -d` exposes the code)* (shown by
+`__vbaExceptHandler`, `_CIcos`, `__vbaRedim`). A VB decompiler therefore yields
+**no** source, only commented pseudo-assembly. Ghidra remains the fallback for the
+last fields, but is no shortcut. Exactly four functions are worthwhile
+there: `LadeDaten` (field layout), `SpielMoveEnemy`
+(field semantics), `LevelSkript`/`SpielTick` (timeline opcodes), `LadeR`.
 
 ---
 
-## Architektur
+## Architecture
 
-### Repo-Layout
+### Repo layout
 
 ```
 amigo-clove/
 ├─ package.json                  # Bun workspaces
 ├─ tsconfig.base.json            # strict, noUncheckedIndexedAccess
-├─ .oxlintrc.json                # Lint (oxlint)
-├─ .oxfmtrc.json                 # Format (oxfmt)
-├─ original-dove/  original-dovez/     # unangetastet, read-only Referenz
+├─ .oxlintrc.json                # lint (oxlint)
+├─ .oxfmtrc.json                 # format (oxfmt)
+├─ original-dove/  original-dovez/     # untouched, read-only reference
 ├─ packages/
-│  ├─ core/       @clove/core      – mechanikfreie Bausteine, kein Pixi, kein DOM
-│  ├─ formats/    @clove/formats   – reine Parser/Serializer, isomorph, ohne Abhängigkeiten
-│  ├─ pixi-kit/   @clove/pixi-kit  – Pixi-Adapter (Scaling, Atlas, Debug-Overlay)
-│  ├─ assetkit/   @clove/assetkit  – CLI-Konverter (Node-only, ffmpeg/sharp)
-│  ├─ game-dove/  game-dovez/      – die beiden Engines
-│  └─ shell/      @clove/shell     – Launcher (Vite-App, einziges Deploy-Target)
-├─ assets/                        # generiert, committet, content-gehasht
-├─ tools/                         # Wegwerf-Analyseskripte (Python erlaubt)
+│  ├─ core/       @clove/core      – mechanics-free building blocks, no Pixi, no DOM
+│  ├─ formats/    @clove/formats   – pure parsers/serializers, isomorphic, no dependencies
+│  ├─ pixi-kit/   @clove/pixi-kit  – Pixi adapter (scaling, atlas, debug overlay)
+│  ├─ assetkit/   @clove/assetkit  – CLI converter (Node-only, ffmpeg/sharp)
+│  ├─ game-dove/  game-dovez/      – the two engines
+│  └─ shell/      @clove/shell     – launcher (Vite app, only deploy target)
+├─ assets/                        # generated, committed, content-hashed
+├─ tools/                         # throwaway analysis scripts (Python allowed)
 └─ docs/
-   ├─ specs/                      # dieses Dokument
+   ├─ specs/                      # this document
    ├─ formats/                    # dove-level-dat.md, dovez-dlp.md, dovez-level-dat.md
    ├─ determinism.md
    └─ playtest-checklist.md
 ```
 
-**Der wichtigste Schnitt ist `formats` getrennt von `assetkit`.** `formats`
-enthält ausschließlich `Uint8Array → Objekt` und zurück — ohne `node:fs`, ohne
-ffmpeg. Folgen: Round-Trip-Tests laufen ohne I/O in Millisekunden, und die
-Parser sind **im Browser lauffähig**, sodass ein Debug-Modus Originaldateien per
-Drag & Drop laden kann. Das ist beim DoveZ-Reverse-Engineering Gold wert.
+**The most important cut is `formats` separated from `assetkit`.** `formats`
+contains only `Uint8Array → object` and back — without `node:fs`, without
+ffmpeg. Consequences: round-trip tests run without I/O in milliseconds, and the
+parsers are **runnable in the browser**, so a debug mode can load original files via
+drag & drop. That is worth its weight in gold for the DoveZ reverse engineering.
 
-**`core` getrennt von `pixi-kit`:** Die Simulation darf Pixi nie sehen. Diese
-Grenze wird per Lint-Regel erzwungen, nicht per Konvention (oxlint
-`no-restricted-imports` als Override auf `sim/**`).
+**`core` separated from `pixi-kit`:** the simulation must never see Pixi. This
+boundary is enforced by a lint rule, not by convention (oxlint
+`no-restricted-imports` as an override on `sim/**`).
 
-### Was geteilt wird — und was ausdrücklich nicht
+### What is shared — and what explicitly is not
 
-Regel für `@clove/core`: *Ein Modul gehört nur dann hierher, wenn es nichts von
-Gegnern, Waffen, Leveln oder Punkten weiß.*
+Rule for `@clove/core`: *a module belongs here only if it knows nothing about
+enemies, weapons, levels or score.*
 
-**Geteilt:** `FixedStepLoop`, `fx.ts` (Q16.16-Festkomma), `Rng` (xorshift32),
-**`ContourMask`** (DOVEs `(left,right)`-Zeilenpaare und DoveZ' `.r`-Dateien sind
-strukturell dieselbe Datenstruktur — ein Span-Overlap-Test dient beiden),
-SoA-Pools, `BundleLoader`/`Manifest`, `AudioBus`/`SfxPool`/`ModulePlayer`,
-`InputSource`, `SaveStore`, `Replay`/`Hash`, `GameModule`, i18n. Dazu aus
-`pixi-kit`: `ScreenRoot` (ganzzahliges Scaling + Letterbox), `AtlasRegistry`,
+**Shared:** `FixedStepLoop`, `fx.ts` (Q16.16 fixed point), `Rng` (xorshift32),
+**`ContourMask`** (DOVE's `(left,right)` row pairs and DoveZ's `.r` files are
+structurally the same data structure — one span-overlap test serves both),
+SoA pools, `BundleLoader`/`Manifest`, `AudioBus`/`SfxPool`/`ModulePlayer`,
+`InputSource`, `SaveStore`, `Replay`/`Hash`, `GameModule`, i18n. Plus from
+`pixi-kit`: `ScreenRoot` (integer scaling + letterbox), `AtlasRegistry`,
 `BitmapFontLoader`, `DebugOverlay`.
 
-**Ausdrücklich nicht geteilt:** keine gemeinsame Entity-Basisklasse (DOVE ist
-tickbasiert mit fester Levellänge und erzwungenem Auto-Scroll, DoveZ
-routen-/taktikbasiert mit 5-Ebenen-Parallax und zwei Spielern), kein gemeinsames
-Waffensystem, kein gemeinsames Kollisions*regelwerk* (nur die Datenstruktur),
-kein gemeinsames Level-Schema, kein gemeinsames HUD (640×390+100 vs. 800×600).
-Video, Funksystem und Multiplayer-Splitinput existieren nur in DoveZ.
+**Explicitly not shared:** no common entity base class (DOVE is
+tick-based with a fixed level length and forced auto-scroll, DoveZ
+route-/tactics-based with 5-layer parallax and two players), no common
+weapon system, no common collision *ruleset* (only the data structure),
+no common level schema, no common HUD (640×390+100 vs. 800×600).
+Video, radio system and multiplayer split input exist only in DoveZ.
 
-> Faustregel für Reviews: **Wenn ein Modul in `core` ein `if (game === 'dove')`
-> bekommt, gehört es nicht nach `core`.**
+> Rule of thumb for reviews: **if a module in `core` gets an `if (game === 'dove')`,
+> it does not belong in `core`.**
 
-### Asset-Pipeline
+### Asset pipeline
 
-Ein CLI unter Bun: `assets:build`, `assets:check`, `assets:verify`,
-`assets:report`. Stufenkette aus reinen Funktionen `(bytes, options) => bytes`:
+A CLI under Bun: `assets:build`, `assets:check`, `assets:verify`,
+`assets:report`. A chain of stages of pure functions `(bytes, options) => bytes`:
 `unpack → image → atlas → audio → music → video → level → manifest`.
 
-| Quelle | Ziel | Begründung |
+| Source | Target | Rationale |
 |---|---|---|
-| BMP (beide Spiele) | **WebP lossless** | gemessen: DOVE 29,8 → 6,3 MB, DoveZ ~257 → ~52 MB. PNG wäre 1,5× größer. Verlustbehaftet ist bei einem 1:1-Port ausgeschlossen — die Pixel *sind* das Spiel. `--image-format=png` als Debug-Schalter |
-| MS-ADPCM + PCM8 (DOVE, 209 KB) | **PCM16-WAV** (~0,8 MB) | Browser dekodieren MS-ADPCM nicht. Bei der Größe wäre jede verlustbehaftete Kodierung Selbstverstümmelung |
-| DoveZ-WAVs (243, 107 MB) | **Opus** 48 kbit mono (Sprache) / 64 kbit (SFX) → ~6–9 MB | PCM ist bei 107 MB ausgeschlossen. Alle SFX werden vollständig in `AudioBuffer` dekodiert, die Opus-Latenz ist damit irrelevant |
-| XM/IT (3,8 MB) | **unverändert**, `libopenmpt.js` zur Laufzeit | Faktor 15 kleiner als Vorab-Render, nahtlose Loops nativ, Originaldateien bleiben unangetastet |
-| DoveZ-Musik (20 OGG, 61 MB) | **unverändert**, gestreamt | Vorbis ist browser-nativ; kein Grund für Generationsverlust. Streaming über `MediaElementAudioSourceNode` — `decodeAudioData` würde 61 MB zu ~600 MB PCM im RAM aufblasen |
-| DivX-AVI (14, 193 MB) | **VP9/WebM** (~25 MB) | MPEG-4 ASP spielt kein Browser |
-| Level-`.dat` | **JSON + Binär-Sidecars** | Konturen als `Int16Array`-Blob, nicht als JSON — das wären Millionen Zahlen. *(M2)* Layout: `docs/formats/dove-assets.md` |
+| BMP (both games) | **WebP lossless** | measured: DOVE 29,8 → 6,3 MB, DoveZ ~257 → ~52 MB. PNG would be 1,5× larger. Lossy is ruled out for a 1:1 port — the pixels *are* the game. `--image-format=png` as a debug switch |
+| MS-ADPCM + PCM8 (DOVE, 209 KB) | **PCM16 WAV** (~0,8 MB) | browsers do not decode MS-ADPCM. At this size any lossy encoding would be self-mutilation |
+| DoveZ WAVs (243, 107 MB) | **Opus** 48 kbit mono (voice) / 64 kbit (SFX) → ~6–9 MB | PCM is ruled out at 107 MB. All SFX are fully decoded into `AudioBuffer`, so the Opus latency is irrelevant |
+| XM/IT (3,8 MB) | **unchanged**, `libopenmpt.js` at runtime | a factor of 15 smaller than a pre-render, seamless loops natively, original files stay untouched |
+| DoveZ music (20 OGG, 61 MB) | **unchanged**, streamed | Vorbis is browser-native; no reason for a generation loss. Streaming via `MediaElementAudioSourceNode` — `decodeAudioData` would inflate 61 MB to ~600 MB PCM in RAM |
+| DivX AVI (14, 193 MB) | **VP9/WebM** (~25 MB) | no browser plays MPEG-4 ASP |
+| level `.dat` | **JSON + binary sidecars** | contours as an `Int16Array` blob, not as JSON — that would be millions of numbers. *(M2)* layout: `docs/formats/dove-assets.md` |
 
-**Atlas-Packing: für DOVE nein, für DoveZ ja.** Das folgt aus den Daten, nicht
-aus Inkonsistenz. DOVEs Level referenzieren *absolute Pixel-Rects* in
-`feindeN.spr`, und Animationsframes werden über den impliziten vertikalen Stride
-gefunden — ein Repack zerstörte beides. Pro Level werden ohnehin nur ~3 Atlanten
-geladen (~5 MB VRAM). DoveZ dagegen hat 3232 Einzeldateien, 45–238 pro Level;
-ohne Packing wären das hunderte GPU-Texturen. Packer: deterministisches
-MaxRects, Sortierung nach Name (nicht nach Fläche), 2048×2048, 1 px Rand.
+**Atlas packing: no for DOVE, yes for DoveZ.** That follows from the data, not
+from inconsistency. DOVE's levels reference *absolute pixel rects* in
+`feindeN.spr`, and animation frames are found via the implicit vertical stride
+— a repack would destroy both. Per level only ~3 atlases are loaded anyway
+(~5 MB VRAM). DoveZ, by contrast, has 3232 individual files, 45–238 per level;
+without packing that would be hundreds of GPU textures. Packer: deterministic
+MaxRects, sorted by name (not by area), 2048×2048, 1 px border.
 
-**Transparenz.** Default: RGB == (0,0,0) → `alpha = 0`. Sonderfälle: bei
-palettierten BMPs keyt DirectDraw auf den *Index*, nicht auf RGB — der Konverter
-prüft beides und meldet jede Datei, bei der Index 0 und aufgelöstes Schwarz
-auseinanderfallen. 16 bpp wird mit Bit-Replikation (`v<<3 | v>>2`) expandiert,
-32 bpp bekommt hart `alpha = 255` (das gespeicherte Byte ist Müll), dann greift
-der Colorkey. Kein Alpha-Bleeding, weil durchgängig `scaleMode: 'nearest'`.
+**Transparency.** Default: RGB == (0,0,0) → `alpha = 0`. Special cases: for
+paletted BMPs DirectDraw keys on the *index*, not on RGB — the converter
+checks both and reports every file where index 0 and the resolved black
+diverge. 16 bpp is expanded with bit replication (`v<<3 | v>>2`),
+32 bpp gets a hard `alpha = 255` (the stored byte is garbage), then the
+colorkey takes effect. No alpha bleeding, because `scaleMode: 'nearest'` throughout.
 
-**Reproduzierbarkeit.** Manifest mit SHA-256 aller Quellen und Ausgaben,
-Cache-Key `sha256(input) ⊕ sha256(options) ⊕ converterVersion`, content-gehashte
-Dateinamen. *(M6: CI läuft `assets:verify`, das nur hasht — Assets werden einmal
-lokal gebaut; `assets:check` bleibt als gründliche lokale Prüfung.)* `assets:check` baut in einen Temp-Ordner und schlägt
-fehl, sobald ein Output vom Committeten abweicht — das fängt handeditierte
-Assets. Video wird vom Hash-Gate ausgenommen (Encoder sind über Buildversionen
-nicht bit-identisch) und nur mit `--force-video` neu erzeugt. *(M6)* Ebenso Opus: libopus
-kodiert auf verschiedenen CPUs verschieden (SIMD zur Laufzeit gewählt); das Flag heißt
-`--force-encode`, siehe `docs/formats/dovez-assets.md`.
+**Reproducibility.** Manifest with SHA-256 of all sources and outputs,
+cache key `sha256(input) ⊕ sha256(options) ⊕ converterVersion`, content-hashed
+file names. *(M6: CI runs `assets:verify`, which only hashes — assets are built
+once locally; `assets:check` remains as the thorough local check.)* `assets:check` builds into a temp folder and fails
+as soon as an output diverges from the committed one — that catches hand-edited
+assets. Video is excluded from the hash gate (encoders are not bit-identical
+across build versions) and only regenerated with `--force-video`. *(M6)* Likewise Opus: libopus
+encodes differently on different CPUs (SIMD chosen at runtime); the flag is called
+`--force-encode`, see `docs/formats/dovez-assets.md`.
 
-~~**Eine Besonderheit:** Terrain-Kollisionsmasken~~ *(M3)* Entfällt: Das
-Original testet Wände per inklusivem AABB gegen die Tile-Rechtecke, nicht
-pixelweise (`docs/measurements/dove-events.md`). M2 hatte Masken erzeugt, seit
-Level-Asset-Version 2 sind sie entfernt — die Pipeline konvertiert nur noch.
+~~**One special feature:** terrain collision masks~~ *(M3)* No longer applies: the
+original tests walls via inclusive AABB against the tile rectangles, not
+pixel-wise (`docs/measurements/dove-events.md`). M2 had generated masks; since
+level asset version 2 they have been removed — the pipeline only converts now.
 
-Werkzeuge: alles TypeScript unter Bun. **Eigener BMP-Decoder** (weder sharp noch
-jimp behandeln 16 bpp und die Palettenfälle zuverlässig, und wir brauchen
-exakte Kontrolle über den Colorkey-Pfad), `sharp` zum Enkodieren, eigenes
-MaxRects, `ffmpeg` als externes Binary (nicht ffmpeg.wasm — viel zu langsam bei
-193 MB). Python nur in `tools/`, nie im Build-Pfad.
+Tools: all TypeScript under Bun. **Own BMP decoder** (neither sharp nor
+jimp handle 16 bpp and the palette cases reliably, and we need
+exact control over the colorkey path), `sharp` for encoding, own
+MaxRects, `ffmpeg` as an external binary (not ffmpeg.wasm — far too slow at
+193 MB). Python only in `tools/`, never in the build path.
 
-### Engine DOVE
+### DOVE engine
 
-**Fixed-Step, getrennt vom Rendering.** Akkumulator-Schleife mit Catch-up-Limit
-(max. 5 Ticks, danach Zeit verwerfen statt einer Ton-Salve), `document.hidden`
-pausiert statt vorzuspulen, Render-Interpolation standardmäßig **aus**
-(Pixel-Exaktheit vor Glätte).
+**Fixed step, separate from rendering.** Accumulator loop with a catch-up limit
+(max. 5 ticks, then discard time instead of a salvo of sound), `document.hidden`
+pauses instead of fast-forwarding, render interpolation **off** by default
+(pixel exactness over smoothness).
 
-**Original-Tickrate** *(M1)*: **`TICK_MS = 14`** (≈ 71,4 Hz), statisch aus der
-Hauptschleife von `DOVE.exe` bestimmt — `nextT = timeGetTime + 14`, ein
-Level-Tick (`Me.F4 += 1`) pro Schleifendurchlauf. Auf Rechnern mit grobem
-Systemtimer lief das Original effektiv mit 15,6 ms. Herleitung mit Adressen:
+**Original tick rate** *(M1)*: **`TICK_MS = 14`** (≈ 71,4 Hz), determined statically from the
+main loop of `DOVE.exe` — `nextT = timeGetTime + 14`, one
+level tick (`Me.F4 += 1`) per loop iteration. On machines with a coarse
+system timer the original effectively ran at 15,6 ms. Derivation with addresses:
 [`docs/measurements/tick-rate.md`](../measurements/tick-rate.md). `TICK_MS`
-bleibt eine einzelne Konstante.
+remains a single constant.
 
-**Event-Stream** nicht als `Map` mit Lookup pro Tick, sondern zur Ladezeit in
-vier flache Arrays entpackt (`eventTicks`, `eventKind`, `eventA`, `eventB`) mit
-einem einzigen Cursor. O(1) amortisiert, null Allokationen — und der komplette
-Stream-Zustand ist **eine Ganzzahl**, also trivial im Snapshot.
+**Event stream** not as a `Map` with a lookup per tick, but unpacked at load time into
+four flat arrays (`eventTicks`, `eventKind`, `eventA`, `eventB`) with
+a single cursor. O(1) amortized, zero allocations — and the complete
+stream state is **a single integer**, so trivial in a snapshot.
 
-**Entities als Struct-of-Arrays** mit festen Kapazitäten und LIFO-Freelist
-(128 Gegner, 512 Schüsse, 512 Gegnerschüsse, 1024 Partikel, …). Drei Gründe, und
-alle drei zählen: null GC in der Simulation; der gesamte Weltzustand sind wenige
-Typed Arrays, also ist `hash()` ein Durchlauf; deterministische
-Iterationsreihenfolge über den Index.
+**Entities as a struct-of-arrays** with fixed capacities and a LIFO freelist
+(128 enemies, 512 shots, 512 enemy shots, 1024 particles, …). Three reasons, and
+all three count: zero GC in the simulation; the entire world state is a few
+typed arrays, so `hash()` is a single pass; deterministic
+iteration order via the index.
 
-**Alle Größen sind Q16.16-Festkomma in `Int32Array`**, nie Float — Positionen,
-Geschwindigkeiten, Beam-Ladung, Scroll-Offset. Sinus/Kosinus aus einer
-1024-Einträge-Tabelle. Das ist die Voraussetzung dafür, dass der Tick-Hash über
-Browser, Bun und Node bit-stabil ist und Replays als Regressionsnetz taugen.
+**All quantities are Q16.16 fixed point in `Int32Array`**, never float — positions,
+velocities, beam charge, scroll offset. Sine/cosine from a
+1024-entry table. That is the prerequisite for the tick hash being
+bit-stable across browser, Bun and Node and for replays to serve as a regression net.
 
-**Kollision** *(M3, aus der EXE)*: ein einziger Test für Schuss↔Gegner und
-Spieler↔Gegner — vertikaler Ausschluss über die Frame-Zeilen `f0…f1`, dann
-min(left)/max(right) über die überlappenden Konturzeilen gegen das x-Intervall
-der Box (inklusiv). Kein Punkt-in-Kontur. Wände: inklusives AABB gegen die
-Tile-Rechtecke. Details: `docs/measurements/dove-enemies.md`.
+**Collision** *(M3, from the EXE)*: a single test for shot↔enemy and
+player↔enemy — vertical exclusion via the frame rows `f0…f1`, then
+min(left)/max(right) over the overlapping contour rows against the x interval
+of the box (inclusive). No point-in-contour. Walls: inclusive AABB against the
+tile rectangles. Details: `docs/measurements/dove-enemies.md`.
 
-*(M3)* Die Parameter sind aus der EXE belegt: p0 Framezahl − 1, p1
-Animationsverzögerung, p2 HP und Punkte, p3 Schusstyp, p4 Tempo
-(`docs/measurements/dove-enemies.md`). Die Regeln unten gelten weiter für
-künftige offene Felder:
+*(M3)* The parameters are documented from the EXE: p0 frame count − 1, p1
+animation delay, p2 HP and score, p3 shot type, p4 speed
+(`docs/measurements/dove-enemies.md`). The rules below still apply to
+future open fields:
 
-**Die unbelegten Gegner-Parameter** — drei Regeln:
-1. **Rohindizes verlassen nie `data/EnemyDef.ts`.** Dort stehen benannte
-   Accessoren mit dokumentierter Evidenz und Konfidenz
-   (`score = d => d.p[2]` — Werte {20,100,150,300} korrelieren mit Rolle;
-   `hp = d => d.p[4]` — Evidenz schwach, `TODO(verify)`). Umetikettieren ist
-   dann eine Einzeilenänderung.
-2. `tools/analyze-enemy-params.ts` kreuztabelliert alle 145 Records gegen
-   Spritegröße, Framezahl, Level und Patternzuordnung — Hypothesen werden
-   statistisch geprüft, nicht geraten.
-3. `assets/dove/overrides/enemies.json` nimmt handkorrigierte Playtest-Werte
-   auf, ohne die abgeleiteten Daten zu verunreinigen.
+**The undocumented enemy parameters** — three rules:
+1. **Raw indices never leave `data/EnemyDef.ts`.** There live named
+   accessors with documented evidence and confidence
+   (`score = d => d.p[2]` — values {20,100,150,300} correlate with role;
+   `hp = d => d.p[4]` — evidence weak, `TODO(verify)`). Relabeling is
+   then a one-line change.
+2. `tools/analyze-enemy-params.ts` cross-tabulates all 145 records against
+   sprite size, frame count, level and pattern assignment — hypotheses are
+   checked statistically, not guessed.
+3. `assets/dove/overrides/enemies.json` holds hand-corrected playtest values,
+   without polluting the derived data.
 
 **Rendering:** `antialias: false`, `roundPixels: true`, `scaleMode: 'nearest'`,
-feste Layerreihenfolge ohne `sortableChildren`. Bitmap-Fonts aus `text.spr` und
-`text2.spr` — niemals Pixi `Text` mit Canvas-Font, das wäre kein 1:1-Port.
-*(M3)* `text.spr`: 31×3 Glyphen à 8×12, Zuordnung aus `GetLetter` (A–Z,
-Ziffern, Satzzeichen, Umlaute); geschnitten zur Laufzeit als Teiltexturen.
+fixed layer order without `sortableChildren`. Bitmap fonts from `text.spr` and
+`text2.spr` — never Pixi `Text` with a canvas font, that would not be a 1:1 port.
+*(M3)* `text.spr`: 31×3 glyphs of 8×12 each, mapping from `GetLetter` (A–Z,
+digits, punctuation, umlauts); sliced at runtime as sub-textures.
 
-### Launcher-Shell
+### Launcher shell
 
-Vertrag `GameModule` in `@clove/core`: Die **Shell besitzt** Canvas,
-AudioContext, SaveStore, Input-Geräteschicht, Locale, Ladebildschirm und
-Routing, dazu *(nach M9)* alle HTML-Bildschirme außerhalb der Level
-(`GameHost.ui`, siehe „Menüs als HTML“). Das **Spiel besitzt** Ablauf, Regeln
-und Speicherstände sowie alles im Canvas ab `boot()` — Pixi-Application auf dem
-übergebenen Canvas, Level, Original-Animationen. Das Spiel fasst nie
-`location`, `document.title` oder die Erzeugung von Canvas und AudioContext an.
+Contract `GameModule` in `@clove/core`: the **shell owns** the canvas,
+AudioContext, SaveStore, input device layer, locale, loading screen and
+routing, plus *(after M9)* all HTML screens outside the levels
+(`GameHost.ui`, see „Menus as HTML"). The **game owns** flow, rules
+and saves as well as everything in the canvas from `boot()` on — the Pixi
+application on the passed canvas, levels, original animations. The game never touches
+`location`, `document.title` or the creation of the canvas and AudioContext.
 
-`dispose()` muss hart aufräumen; in Dev-Builds verifiziert die Shell das über
-einen Ressourcenzähler und wirft, wenn nach `dispose()` noch Texturen leben —
-sonst frisst wiederholtes Wechseln zwischen den Spielen den VRAM.
+`dispose()` must clean up hard; in dev builds the shell verifies this via
+a resource counter and throws if textures are still alive after `dispose()` —
+otherwise repeated switching between the games eats up the VRAM.
 
-Hash-Routing (`#/dove`, `#/dovez`, `#/settings`, `#/dovez/debug/assets`), kein
-Server-Rewrite nötig. Beide Spiele sind getrennte Vite-Chunks per dynamischem
-`import()`; Assets liegen nie im Bundle.
+Hash routing (`#/dove`, `#/dovez`, `#/settings`, `#/dovez/debug/assets`), no
+server rewrite needed. Both games are separate Vite chunks via dynamic
+`import()`; assets are never in the bundle.
 
-**Lazy Loading — das 270-MB-Problem.** Das Manifest gruppiert in Bundles:
+**Lazy loading — the 270 MB problem.** The manifest groups into bundles:
 
-| Spiel | Bundle | Größe |
+| Game | Bundle | Size |
 |---|---|---|
-| DOVE | `core` (ss, konsole, explosion, Fonts, SFX) | ~2 MB |
-| DOVE | `music` (20 Module) | 3,8 MB |
+| DOVE | `core` (ss, konsole, explosion, fonts, SFX) | ~2 MB |
+| DOVE | `music` (20 modules) | 3,8 MB |
 | DOVE | `level{N}` | 2–6 MB |
 | DoveZ | `core` | ~10 MB |
 | DoveZ | `level/<slug>` | 2–20 MB |
-| DoveZ | `voice/<lang>` *(M6: `voice/<level>`, nur Englisch, 0,02–0,6 MB)* | 2–3 MB je Level |
-| DoveZ | `video/<name>` / `music` | gestreamt, nie vorgeladen |
+| DoveZ | `voice/<lang>` *(M6: `voice/<level>`, English only, 0,02–0,6 MB)* | 2–3 MB per level |
+| DoveZ | `video/<name>` / `music` | streamed, never preloaded |
 
-Zwei Hebel schneiden DoveZ drastisch: **nur eine Sprache laden** (die 107 MB
-Sprachaufnahmen sind der größte Einzelposten; Untertitel-`.txt` sind winzig und
-werden immer alle geladen, Sprachumschaltung der Texte also ohne Nachladen) und
-**Video/Musik nie vorladen**. Effektiv lädt ein DoveZ-Spieler beim Start ~10 MB
-und pro Level 4–25 MB.
+Two levers cut DoveZ drastically: **load only one language** (the 107 MB
+voice recordings are the largest single item; subtitle `.txt` files are tiny and
+are always all loaded, so switching the language of the texts needs no reloading) and
+**never preload video/music**. Effectively a DoveZ player loads ~10 MB at start
+and 4–25 MB per level.
 
-Persistenz über die **Cache API**, nicht IndexedDB-Blobs — Assets sind
-unveränderlich und content-gehasht, also passt `caches` genau. Ein Service
-Worker macht daraus Offline-Fähigkeit und erlaubt einen expliziten
-„Spieldaten installieren"-Button mit `navigator.storage.persist()`. Bei ~130 MB
-ist das Voraussetzung für eine erträgliche zweite Sitzung, kein Luxus.
+Persistence via the **Cache API**, not IndexedDB blobs — assets are
+immutable and content-hashed, so `caches` fits exactly. A service
+worker turns that into offline capability and allows an explicit
+„Install game data" button with `navigator.storage.persist()`. At ~130 MB
+that is a prerequisite for a tolerable second session, not a luxury.
 
-Savegames in IndexedDB mit `localStorage`-Spiegel für die Settings, versionierte
-Datensätze mit Migrationskette, **Export/Import als JSON-Datei ist Pflicht** —
-Browser-Storage kann jederzeit gelöscht werden, und ein durchgespieltes DoveZ
-sind Stunden Arbeit. Der `Save`-Befehl aus `Play.txt` mappt 1:1 auf einen
-Schreibvorgang.
+Savegames in IndexedDB with a `localStorage` mirror for the settings, versioned
+records with a migration chain, **export/import as a JSON file is mandatory** —
+browser storage can be cleared at any time, and a played-through DoveZ
+is hours of work. The `Save` command from `Play.txt` maps 1:1 to a
+write.
 
-*(M5)* Umsetzung: `GameModule.preload` nennt die Bundles für den
-Ladebildschirm (DOVE: `core` und `screens`, 3,5 MB; Musik und Level lädt der
-Ablauf nach), `GameModule.gamepad` die Pad-Belegung nach dem W3C-„standard“-
-Mapping (Steuerkreuz und linker Stick sind immer die Pfeiltasten; Pads ohne
-Standardmapping werden ignoriert). Der Service Worker entsteht aus
-`packages/shell/src/sw.ts` als einzeln übersetztes klassisches Skript: App-
-Dateien je Build vorab in `clove-app-<version>`, Spielassets Cache-zuerst in
-einem gemeinsamen `clove-assets-v1` (content-gehasht, also nie veraltet;
-„Spieldaten installieren“ räumt Dateien älterer Stände ab), `manifest.json`
-Netz-zuerst. Abgleich mit `ignoreVary`, weil Server wie `vite preview`
-`Vary: Origin` senden und Modul-Skripte `Origin` mitschicken. Spielstände
-liegen für DOVE als `clove:<spiel>:<schlüssel>` in `localStorage`; die
-Exportdatei (`amigo-clove-save`, Version 1, Migrationskette) definiert
+*(M5)* Implementation: `GameModule.preload` names the bundles for the
+loading screen (DOVE: `core` and `screens`, 3,5 MB; the flow loads music and levels
+afterwards), `GameModule.gamepad` the pad binding per the W3C „standard"
+mapping (D-pad and left stick are always the arrow keys; pads without
+a standard mapping are ignored). The service worker is built from
+`packages/shell/src/sw.ts` as a separately compiled classic script: app
+files per build precached into `clove-app-<version>`, game assets cache-first in
+a shared `clove-assets-v1` (content-hashed, so never stale;
+„Install game data" clears files of older revisions), `manifest.json`
+network-first. Reconciliation with `ignoreVary`, because servers like `vite preview`
+send `Vary: Origin` and module scripts send `Origin` along. Saves for DOVE
+live as `clove:<game>:<key>` in `localStorage`; the
+export file (`amigo-clove-save`, version 1, migration chain) is defined by
 `@clove/core`.
 
-### Optionale Modernisierungen
+### Optional modernizations
 
-*(nach M9)* Zusätze gegenüber dem Original folgen drei Regeln: **abschaltbar**,
-**Vorgabe Original** (Ausnahmen: HUD, Skalierung, Zeiger und die Menüs als HTML, die die Original-Menüs ersetzen — der Zeiger wirkt erst, wenn Maus oder Finger ihn benutzen, Pfeiltasten übernehmen jederzeit) und **ohne Zusatz bit-gleiche
-Simulation**, also unveränderte Referenz-Replays und Level-Hashes.
+*(after M9)* Additions over the original follow three rules: **can be turned off**,
+**default original** (exceptions: HUD, scaling, pointer and the menus as HTML, which replace the original menus — the pointer only takes effect once the mouse or finger uses it, arrow keys take over at any time) and **bit-identical
+simulation without the addition**, i.e. unchanged reference replays and level hashes.
 
-- **Zeiger:** `GameHost.pointer` (Maus/Touch in logischen Canvas-Pixeln),
-  `PointerSteer` in `@clove/core` macht daraus pro Tick Ziel und Tasten. Das Ziel
-  ist Teil der Eingabe und damit der Simulation: DOVE trägt es in den Bits
-  10–28 der Eingabezahl (`Input.Target`, Replay-Format unverändert,
-  `decodeInput` liefert 32 Bit), DoveZ als `PlayerInput.target` (nur Spieler
-  1). Beide fahren geradlinig mit Schiffstempo (Chebyshev wie die Pfeiltasten);
-  `prevInput` bzw. der Tastenpfad ohne Ziel bleiben unverändert. Referenz-
-  Replay `level1-pointer` sichert den Zielpfad.
-- **HUD:** `GameInstance.hud()` liefert einen Schnappschuss dessen, was das
-  Original-HUD zeigt, plus Boss-Lebenspunkte; die Shell zeigt ihn als HTML.
-  Mit `hudMode = modern` zeichnen die Spiele ihr HUD nicht und begrenzen im
-  Level die sichtbare Höhe auf das Spielfeld (`setView`, 410 bzw. 550 px);
-  DoveZ rückt Funkbild und Laufband ins Feld. Die Bitmap-Font-Regel oben gilt
-  für alles im Canvas weiter.
-- **Darstellung:** `GameHost.scaleMode` (Vorgabe `fit` fensterfüllend scharf, `integer` 1:1-Pixel wie bisher,
-  `smooth`), Rasterlinien als CSS-Schicht, Vollbild über die ganze Seite.
-  Bei ganzzahligem Faktor Gerätepixel je Spielpixel vergrößert der Browser den
-  1×-Canvas per `pixelated` exakt; sonst hat der Canvas das m-Fache der
-  logischen Größe (m ganzzahlig, aufgerundet auf die Gerätepixel, höchstens 4;
-  `@clove/pixi-kit` trägt die logische Größe als `data-logical-width/-height`
-  ein). `GameHost.resolution` `original` zeichnet dann in 1× und vergrößert per
-  Nearest auf m, den Rest filtert der Browser (scharf-bilinear); `xbr` zeichnet
-  ebenso in 1× und vergrößert immer per xBR-Shader (Stufe 2, ein Durchgang,
-  21 Texel je Zielpixel) auf m; `hd` zeichnet mit Auflösung m. Die Render-Ziele
-  von DoveZ folgen der Auflösung, `blur`/`lens` bleiben 64 × 64. WebGL mit
-  `powerPreference: "high-performance"`; erkennt die Shell Software-Rendering
-  (Renderer-Name bzw. `failIfMajorPerformanceCaveat`), zeigt „Darstellung“ einen
-  Hinweis, das Bild bleibt gleich.
-- **Menüs als HTML** *(keine Option, ersetzt die Original-Menüs):* Alles
-  außerhalb der Level — Titel/Hauptmenü, Optionen, Levelauswahl, Info,
-  Highscores, Namenseingabe, Laden/Speichern, Ladebildschirm, Get Ready, Pause,
-  Continue, Credits, NEO-ARTS-Logo — beschreibt das Spiel als Daten (`UiScreen`
-  in `core/src/shell/ui.ts`: Menü, Formular, Text, Eingabe, Abfrage, Hinweis,
-  Video) und wartet mit `GameHost.ui.show()` auf die Antwort; die Shell
-  zeichnet generische HTML-Bausteine und kennt keine spielspezifischen Seiten.
-  Launcher, Einstellungen, Ladebildschirm und Fehlerseiten der Shell sind
-  dieselben Bausteine (`UiHost` auf einer Seite statt über dem Canvas).
-  Ablauf, Regeln (Punktefaktor, Freischaltungen, Kampagne) und
-  Speicherformate bleiben im Spiel und unverändert. Im Canvas bleiben die
-  Level und die Original-Animationen (DoveZ-Logos, Story-Intro und
-  Abspannbilder von DOVE, Osterei „LOV“, Funkbild); DoveZ-Videos spielt die
-  Shell als `<video>`. Solange ein Bildschirm offen ist, sieht das Spiel keine
-  Tasten und keinen Zeiger, danach gilt eine Taste erst nach dem Loslassen.
-  Level-Simulation, Replays und Level-Hashes sind davon nicht berührt.
-- **Ein Gesamtbild für beide Spiele:** ein Designsystem (CSS-Tokens in
-  `shell/index.html`; `data-game` setzt den Akzent, DOVE Gold, DoveZ das Oliv
-  seines Logos). `GameUi.brand` gibt das Spiel-Logo für den Kopf jeder
-  Seite, `UiMenu.logo` bleibt das große Logo der Hauptmenüs (beide mit den
-  Highscores daneben). Gleichartige Bildschirme sind gleich aufgebaut: Pause
-  („Pause“, das Level als `subtitle`, `PAUSE_TEXTS`, Tastenübersicht), Continue
-  über dem eingefrorenen Level, Credits als Abschnitte je Rolle (DoveZ aus dem
-  Originalbild abgeschrieben, Publisher-Logo und Teamfoto als Ausschnitte),
-  Optionen mit den gemeinsamen Seiten der Shell (`GameUi.settings`:
-  Tastenbelegung, Ton, Darstellung; Beschriftung `SETTINGS_PAGES`).
-- **Einblendungen im Level** *(mit `hudMode = modern`)*: `HudSnapshot.messages`
-  trägt die Texte im Spielfeld — DOVE-Skript- und Tutorialtexte, Scan-Meldungen
-  des Level-7-Bosses, DoveZ-Tastenhinweis „Drücke: …“ und das Funk-Laufband an
-  den Original-Positionen in Spielpixeln; die Shell zeichnet sie, das Spiel lässt
-  sie im Canvas weg. `GameUi.caption` zeigt die Story-Zeilen des
-  DOVE-Abspanns als Untertitel. Reine Darstellung, die Simulation bleibt gleich.
-- **Tastenbelegung** *(Vorgabe Original)*: Die Shell belegt je Spiel und Aktion
-  (`KeyAction`, mit `group`, `player`, `nav`) bis zu drei Tasten; Vorlagen
-  „Pfeiltasten + linke Hand (Original)“ und „WASD + rechte Hand“ (Waffen auf
-  J K L / U I O) in `keys.ts` beider Spiele. `bindKeys` (`core/src/input/
-  keyBindings.ts`) beantwortet die Frage des Spiels nach einem Originalcode mit
-  den belegten Tasten der Aktion; andere Codes (Esc, Enter, F-Tasten) gehen
-  durch, Pad und Touch speisen dahinter ein. DoveZ fragt nur die festen Tasten
-  `T1` (Spieler 1: Sätze 0 und 1, Spieler 2: Satz 2), die zweiten Tasten der
-  alten Tastenkonfiguration werden einmalig zur eigenen Belegung, ebenso die
-  zweiten Tasten von DOVE. `GameHost.boundKeys` liefert die belegten Tasten für
-  Hinweistexte; mit der Original-Belegung bleiben die Texte des Originals.
-  Die belegten Bewegungstasten und die Feuertaste bedienen auch die
-  HTML-Bildschirme. Replay-Format und Simulation sind unberührt.
-- **Ton:** Die Shell regelt Gesamt, Musik, Effekte und Sprache für beide
-  Spiele (`AudioHost.voice` für die DoveZ-Funkstimmen); DoveZ hält das
-  Mischverhältnis seiner Vorgaben fest, seine Lautstärkeseite entfällt.
-- **Komfort:** DOVE pausiert bei Fokusverlust wie DoveZ; `GameModule.pads`
-  belegt einzelne Pads (DoveZ: Pad 2 = Satz 2 für Spieler 2); Touch-Tasten
-  speisen gewöhnliche Tastencodes ein.
-
----
-
-## Verifikation
-
-Runner: **`bun test`** (nativ TS), `happy-dom` für DOM-nahe Tests, **Playwright**
-mit `--use-angle=swiftshader` für alles mit WebGL.
-
-**1. Round-Trip byte-identisch — der höchste Wert.**
-`serialize(parse(bytes)) === bytes` für alle 12 DOVE-Level. Das beweist, dass der
-Parser jedes Byte konsumiert und nichts erfunden hat. Für DoveZ wird der
-*dekomprimierte* Recordstrom verglichen, nicht der Container (zlib-Ausgabe hängt
-vom Kompressor ab).
-
-Und dann der eigentliche Trick für DoveZ: Der `.dat`-Parser modelliert
-`{ bekannte Felder } + { opake Restblobs }`. Der Round-Trip läuft damit **ab Tag 1
-grün über alle 27 Dateien**, obwohl die Semantik noch unbekannt ist. Im weiteren
-Verlauf wandern Bytes aus `opaque` in benannte Felder — der Test bricht dabei
-nie. Das macht RE-Fortschritt monoton und messbar (Metrik `opaqueBytes/total`,
-in CI geloggt). **Das ist die wichtigste einzelne Technik im ganzen Plan.**
-
-**2. Kreuzvalidierung Asset ↔ Daten — der Killer-Test.**
-Für jeden Gegner in jedem Level die `(left,right)`-Spannen aus dem *konvertierten
-Sprite* neu berechnen und gegen die im Level *gespeicherte* Kontur vergleichen.
-Ein einziger Test prüft damit gleichzeitig BMP-Decoder, Bottom-up-Flip,
-**Colorkey-Wahl**, Rect-Interpretation, Frame-Stride und WebP-Konvertierung.
-*(M1)* Weil die DOVE-Konturen nicht pixelgenau sind (siehe oben), ist die harte
-Bedingung „gespeichert ⊇ Pixel“ in allen 19959 Zeilen; der Exakt-Anteil
-(68,8 %) läuft als Metrik mit Untergrenze mit.
-145 Records × ~50 Zeilen ≈ 7000 Assertions in Sekunden. Für DoveZ dasselbe mit
-den 2587 `.r`-Dateien gegen 3232 Sprites. **Das ersetzt den Großteil des Bedarfs
-an Referenz-Screenshots.** Blockierend in CI.
-
-**3. Deterministische Replays.** Input-Aufzeichnung + Tick-Hash (xxhash32 über
-alle State-Arrays) alle 64 Ticks, headless in `bun test`, in Sekunden. Läuft in
-CI auf **Bun und Node** — eine Abweichung dort ist ein Frühwarnsignal für
-eingeschlichene Fließkommaarithmetik. Ehrlichkeitshinweis für `docs/`: Das
-verifiziert den Port gegen sich selbst und verhindert Regressionen; es beweist
-keine Treue zum Original. Genau deshalb braucht es Punkt 2 und 4 daneben.
-
-**4. Referenz-Screenshots — wertvoll, aber selektiv.** Das Original läuft bereits
-auf der Maschine: mit OBS aufzeichnen und eine Handvoll Frames greifen
-(Titelbild, Konsole mit jeder Waffenfarbe je Stufe, B1–B5-Vorhang, ein Boss),
-Vergleich per `pixelmatch` gegen unseren Render zum selben Tick. **Zielgröße
-~15 Bilder für DOVE, ~10 für DoveZ**, als Smoke-Test „sieht es richtig aus", nicht
-als Pixelbeweis. Ausdrücklich *nicht* geplant: Frame-für-Frame-Vergleich ganzer
-Level (die VB6-Timerauflösung ist nicht reproduzierbar).
-
-**5. Architekturtests.** Lint-Regel plus Grep über `sim/**` nach `pixi`,
-`window`, `document`, `Math.random`, `Date.now`, `performance.`. Determinismus
-zerfällt nicht an einem Tag, sondern über Monate durch kleine Bequemlichkeiten —
-nur ein automatisches Gate hält das auf.
-
-**Was nicht testbar ist**, gehört ehrlich benannt in `docs/playtest-checklist.md`:
-Audio-Äquivalenz (BASS 0.8 und libopenmpt mischen konstruktionsbedingt
-unterschiedlich — `interpolationfilter=1` kommt BASS am nächsten; dokumentieren,
-nicht bekämpfen), bit-genaues Video, und „Spielgefühl" (Beschleunigen,
-Beam-Ladekurve, Trägheit).
+- **Pointer:** `GameHost.pointer` (mouse/touch in logical canvas pixels),
+  `PointerSteer` in `@clove/core` turns that into target and keys per tick. The target
+  is part of the input and thus of the simulation: DOVE carries it in bits
+  10–28 of the input number (`Input.Target`, replay format unchanged,
+  `decodeInput` yields 32 bits), DoveZ as `PlayerInput.target` (player
+  1 only). Both move in a straight line at ship speed (Chebyshev like the arrow keys);
+  `prevInput` and the key path without a target stay unchanged. Reference
+  replay `level1-pointer` secures the target path.
+- **HUD:** `GameInstance.hud()` provides a snapshot of what the
+  original HUD shows, plus boss health points; the shell shows it as HTML.
+  With `hudMode = modern` the games do not draw their HUD and limit the
+  visible height in the level to the playfield (`setView`, 410 or 550 px);
+  DoveZ moves the radio image and ticker into the field. The bitmap font rule above
+  still applies to everything in the canvas.
+- **Display:** `GameHost.scaleMode` (default `fit` window-filling sharp, `integer` 1:1 pixels as before,
+  `smooth`), grid lines as a CSS layer, fullscreen over the whole page.
+  At an integer factor of device pixels per game pixel the browser scales the
+  1× canvas exactly via `pixelated`; otherwise the canvas is m times the
+  logical size (m integer, rounded up to the device pixels, at most 4;
+  `@clove/pixi-kit` records the logical size as `data-logical-width/-height`).
+  `GameHost.resolution` `original` then draws at 1× and scales up via
+  nearest to m, the browser filters the rest (sharp-bilinear); `xbr` likewise draws
+  at 1× and always scales up via the xBR shader (level 2, one pass,
+  21 texels per target pixel) to m; `hd` draws at resolution m. The render targets
+  of DoveZ follow the resolution, `blur`/`lens` stay 64 × 64. WebGL with
+  `powerPreference: "high-performance"`; if the shell detects software rendering
+  (renderer name or `failIfMajorPerformanceCaveat`), „Display" shows a
+  note, the image stays the same.
+- **Menus as HTML** *(not an option, replaces the original menus):* everything
+  outside the levels — title/main menu, options, level select, info,
+  highscores, name entry, load/save, loading screen, Get Ready, Pause,
+  Continue, Credits, NEO-ARTS logo — the game describes as data (`UiScreen`
+  in `core/src/shell/ui.ts`: menu, form, text, input, query, note,
+  video) and waits with `GameHost.ui.show()` for the answer; the shell
+  draws generic HTML building blocks and knows no game-specific pages.
+  Launcher, settings, loading screen and error pages of the shell are
+  the same building blocks (`UiHost` on a page instead of over the canvas).
+  Flow, rules (score factor, unlocks, campaign) and
+  save formats stay in the game and unchanged. In the canvas remain the
+  levels and the original animations (DoveZ logos, story intro and
+  credits images from DOVE, easter egg „LOV", radio image); DoveZ videos are played by the
+  shell as `<video>`. As long as a screen is open, the game sees no
+  keys and no pointer, and afterwards a key counts only after it is released.
+  Level simulation, replays and level hashes are not affected by this.
+- **One unified look for both games:** a design system (CSS tokens in
+  `shell/index.html`; `data-game` sets the accent, DOVE gold, DoveZ the olive
+  of its logo). `GameUi.brand` supplies the game logo for the header of each
+  page, `UiMenu.logo` remains the large logo of the main menus (both with the
+  highscores next to them). Similar screens are built the same way: Pause
+  („Pause", the level as `subtitle`, `PAUSE_TEXTS`, key overview), Continue
+  over the frozen level, Credits as sections per role (DoveZ transcribed from the
+  original image, publisher logo and team photo as crops),
+  Options with the shell's shared pages (`GameUi.settings`:
+  key binding, audio, display; labels `SETTINGS_PAGES`).
+- **In-level overlays** *(with `hudMode = modern`)*: `HudSnapshot.messages`
+  carries the texts in the playfield — DOVE script and tutorial texts, scan messages
+  of the level 7 boss, the DoveZ key hint „Drücke: …" and the radio ticker at
+  the original positions in game pixels; the shell draws them, the game leaves
+  them out of the canvas. `GameUi.caption` shows the story lines of the
+  DOVE credits as subtitles. Purely presentation, the simulation stays the same.
+- **Key binding** *(default original)*: the shell binds per game and action
+  (`KeyAction`, with `group`, `player`, `nav`) up to three keys; templates
+  „Arrow keys + left hand (original)" and „WASD + right hand" (weapons on
+  J K L / U I O) in `keys.ts` of both games. `bindKeys` (`core/src/input/
+  keyBindings.ts`) answers the game's query for an original code with
+  the bound keys of the action; other codes (Esc, Enter, F keys) pass
+  through, pad and touch feed in behind. DoveZ queries only the fixed keys
+  `T1` (player 1: sets 0 and 1, player 2: set 2), the second keys of the
+  old key configuration become the own binding once, likewise the
+  second keys of DOVE. `GameHost.boundKeys` provides the bound keys for
+  hint texts; with the original binding the texts of the original remain.
+  The bound movement keys and the fire key also operate the
+  HTML screens. Replay format and simulation are untouched.
+- **Audio:** the shell controls master, music, effects and voice for both
+  games (`AudioHost.voice` for the DoveZ radio voices); DoveZ keeps the
+  mix ratio of its defaults, its volume page is dropped.
+- **Comfort:** DOVE pauses on focus loss like DoveZ; `GameModule.pads`
+  binds individual pads (DoveZ: pad 2 = set 2 for player 2); touch keys
+  feed in ordinary key codes.
 
 ---
 
-## Meilensteine
+## Verification
 
-Jeder hat genau ein überprüfbares Ergebnis.
+Runner: **`bun test`** (native TS), `happy-dom` for DOM-near tests, **Playwright**
+with `--use-angle=swiftshader` for everything involving WebGL.
 
-| # | Inhalt | Aufwand | Ergebnis |
+**1. Byte-identical round-trip — the highest value.**
+`serialize(parse(bytes)) === bytes` for all 12 DOVE levels. That proves the
+parser consumes every byte and invented nothing. For DoveZ the
+*decompressed* record stream is compared, not the container (zlib output depends
+on the compressor).
+
+And then the actual trick for DoveZ: the `.dat` parser models
+`{ known fields } + { opaque remaining blobs }`. The round-trip thereby runs **green
+over all 27 files from day 1**, even though the semantics are still unknown. Over
+time, bytes migrate from `opaque` into named fields — the test never breaks
+in the process. That makes RE progress monotone and measurable (metric `opaqueBytes/total`,
+logged in CI). **This is the single most important technique in the whole plan.**
+
+**2. Cross-validation asset ↔ data — the killer test.**
+For every enemy in every level, recompute the `(left,right)` spans from the *converted
+sprite* and compare them against the contour *stored* in the level.
+A single test thereby checks the BMP decoder, the bottom-up flip,
+the **colorkey choice**, the rect interpretation, the frame stride and the WebP conversion
+all at once. *(M1)* Because the DOVE contours are not pixel-exact (see above), the hard
+condition is „stored ⊇ pixels" across all 19959 rows; the exact share
+(68,8 %) runs along as a metric with a lower bound.
+145 records × ~50 rows ≈ 7000 assertions in seconds. For DoveZ the same with
+the 2587 `.r` files against 3232 sprites. **This replaces the bulk of the need
+for reference screenshots.** Blocking in CI.
+
+**3. Deterministic replays.** Input recording + tick hash (xxhash32 over
+all state arrays) every 64 ticks, headless in `bun test`, in seconds. Runs in
+CI on **Bun and Node** — a divergence there is an early warning signal for
+floating-point arithmetic that has crept in. Honesty note for `docs/`: this
+verifies the port against itself and prevents regressions; it proves
+no fidelity to the original. That is exactly why it needs points 2 and 4 alongside it.
+
+**4. Reference screenshots — valuable, but selective.** The original already runs
+on the machine: record with OBS and grab a handful of frames
+(title image, console with each weapon color per stage, B1–B5 curtain, one boss),
+comparison via `pixelmatch` against our render at the same tick. **Target count
+~15 images for DOVE, ~10 for DoveZ**, as a smoke test „does it look right", not
+as pixel proof. Explicitly *not* planned: frame-by-frame comparison of whole
+levels (the VB6 timer resolution is not reproducible).
+
+**5. Architecture tests.** Lint rule plus grep over `sim/**` for `pixi`,
+`window`, `document`, `Math.random`, `Date.now`, `performance.`. Determinism
+does not fall apart in a day, but over months through small conveniences —
+only an automatic gate stops that.
+
+**What is not testable** belongs honestly named in `docs/playtest-checklist.md`:
+audio equivalence (BASS 0.8 and libopenmpt mix differently by design
+— `interpolationfilter=1` comes closest to BASS; document, not fight),
+bit-exact video, and „game feel" (accelerating, the beam charge curve, inertia).
+
+---
+
+## Milestones
+
+Each one has exactly one verifiable result.
+
+| # | Content | Effort | Result |
 |---|---|---|---|
-| **M0** | Bun-Workspace, tsconfig strict, oxlint + oxfmt, CI, gitattributes | 0,5–1 d | frischer Clone: `bun install && typecheck && lint && fmt:check && test` grün — *Stand: erledigt* |
-| **M1** | `@clove/formats`: BMP-Decoder (1/4/8/16/24/32 bpp), `LevelDat` parse **und** serialize, Frame-Ableitung. Messung der Original-Tickrate | 2–3 d | Round-Trip byte-identisch über 12 Level; Kreuzvalidierung 145/145 grün; `TICK_MS` ist eine **gemessene** Zahl — *Stand: erledigt; `TICK_MS = 14` statt gemessen aus der EXE hergeleitet, siehe `docs/measurements/tick-rate.md`* |
-| **M2** | Asset-Pipeline DOVE mit Manifest, Cache, `--check` | 2 d | ~11 MB Assets; zweiter Lauf schreibt null Bytes — *Stand: erledigt; 10,8 MB, siehe `docs/formats/dove-assets.md`* |
-| **M3** | ⭐ **Erstes spielbares Level.** Scope brutal geschnitten: keine Menüs, keine Musik, **eine** Waffe, kein Beam/Options/Bomben/Schild | 4–6 d | Level 1 läuft im Browser durch; aufgezeichnetes Replay reproduziert bit-identisch — *Stand: erledigt; Mechanik statisch aus der EXE, zwei Referenz-Replays, Browser-Smoke-Test in CI* |
-| **M4** | DOVE feature-complete: alle Waffen + Stufen, Beam, Options, Bomben, Schild, alle 12 Level, Vorhang, Highscore, Audio, die drei Optionen, Easteregg | 1,5–2 w | von Anfang bis Ende durchspielbar; Playtest-Checkliste abgehakt — *Stand: umgesetzt; alle Waffen, Beam, Options, Schild, 12 Level mit Skripten, 9 Bosse, Audio (Effekte + Module), Menüs, Intro, Continue, Highscore, Abspann. Offen: Playtest-Checkliste gegen das Original* |
-| **M5** | Shell echt: Menü, Routing, Settings, Gamepad, Save-Export, Cache-Bundles, Service Worker, i18n | 3–4 d | deploybare Site; DOVE aus kaltem Cache spielbar — *Stand: erledigt; statischer Build mit relativen Pfaden, Smoke-Test startet DOVE kalt und nach „Spieldaten installieren“ bei beendetem Server. Offen: Ressourcenzähler für `dispose()` in Dev-Builds, Savegames in IndexedDB (DOVE braucht nur Schlüssel/Wert in `localStorage`)* |
-| **M6** | DoveZ Container + Assets | 1 w | ~120 MB Assets; Debug-Seite rendert jedes Sprite mit überlagerter `.r`-Kontur — *Stand: erledigt; 147 MB (davon Musik 62 MB unverändert, Video 20 MB), 33 Atlanten auf 44 Seiten, `#/dovez/debug/assets`, siehe `docs/formats/dovez-assets.md`* |
-| **M7** | ⚠ **DoveZ `.dat` dekodieren** (Risikoblock) | 1–2 w | `opaque` unter 5 %; Debug-Ansicht zeichnet Routen und Schussmuster — *Stand: erledigt; Grammatik aus `LadeDaten`, 27/27 byte-identisch, **0 Byte offen** (benannt oder nachweislich ungelesen), Routen-Interpreter bitgleich zum Referenzsimulator, `#/dovez/debug/level`, siehe `docs/formats/dovez-level-dat.md`. Start-Tick vor 0 (`Me.560`) läuft im Port (`from=` negativ). Offen: Abgleich am Original* |
-| **M8** | DoveZ Engine: Parallax, beide Schiffe, Coop, Funksystem, Bosse, Video, Kampagne | 3–5 w | Kampagne durchspielbar — *Stand: umgesetzt (kein Original zum Abgleich); Mechanik statisch aus der EXE (`docs/measurements/dovez-runtime.md`, Takt 16 ms). Spielbar über `#/dovez`: Zeitleiste mit Vorlauf, Ebenen und Landschaft, Effekt-Animationen, Gegner mit Routen, Teilen und Waffen, Schiff mit Hauptschuss, Treffer, Kontakt, Power-ups, Levelausflug; Todeszustände mit Funken, Explosionen, Popups und Wackeln; Checkpoint-Tor mit Schnappschuss und Neustart; HUD; Ton, Funk mit Laufband, gestreamte Musik; alle 27 Level laufen kopflos durch. Dazu Zweitwaffen und alle Schusstypen, Partikel (D-Tonator) und Force (D-Phyton), Beam mit Kombo, Super-Nova, Boss-Finale (Zustand 4), Druckwelle als Spielwirkung, Schiffzeichnung aus SpielMoveDove, Continue/Pause mit Highscoreliste, Coop-Eingabe (`players=2`), prozedurale Hintergründe, Wetter, Wasser, Overlays und Spezialabläufe (Tutorial-Start). Kampagne nach `LevelSkript`: Ladebild mit Fortschritt bzw. Mosaik, Übergang der Spielerwerte von Level zu Level, Speicherbildschirm und 21 Spielstände (JSON beim Host), Zwischensequenzen als `<video>`-Textur, Outro, Abspann, `FadeOut`, Epilog ab dem zweiten Durchgang. Start-Logos (Glitch, Tunnel), Intro und Hauptmenü mit allen Seiten, Namenseingabe, Bonus und Optionen (Pegel, Force-Taste, Auto-Arrange). Trägheit („Realistic“) als Ausgleiten. Dazu Tastenkonfiguration mit Aufnahme, Trägheit „Realistic“, Abschusszähler, Osterei „LOV“, Debug-Schiff 2 mit Drohnen (`ship=2`), Vibration über Gamepad-Motoren, Russisch (Menü, Ende, Funktexte als Untertitel), bewegungsarme Darstellung. Alle 27 Level sind mit Bots bis zum Ende spielbar (`levels.test.ts`, Bosskämpfe in `boss-*.test.ts`, Regressionsreplays in `levelReplays.test.ts`, Levelbericht `docs/measurements/dovez-levels.md`). Offen: der Abgleich am Original (`docs/playtest-checklist.md`)*
-| **M9** | Politur, Performance, Barrierefreiheit, Deployment | 1 w | Release — *Stand: DoveZ im Launcher und offline installierbar (Smoke-Test), Content-Security-Policy und Sicherheits-Header, Web-App-Manifest mit Symbol, Einstellung „Bewegung“ (`prefers-reduced-motion`), Performance-Test (Simulation ≈ 0,2 ms je Tick bei 16 ms Takt) und Größenbudget in der CI. Offen: die schriftliche Freigabe der Rechteinhaber (Abschnitt „Rechtlicher Befund“), Messungen der Zeichenzeit auf echten Geräten*
+| **M0** | Bun workspace, tsconfig strict, oxlint + oxfmt, CI, gitattributes | 0,5–1 d | fresh clone: `bun install && typecheck && lint && fmt:check && test` green — *status: done* |
+| **M1** | `@clove/formats`: BMP decoder (1/4/8/16/24/32 bpp), `LevelDat` parse **and** serialize, frame derivation. Measurement of the original tick rate | 2–3 d | byte-identical round-trip over 12 levels; cross-validation 145/145 green; `TICK_MS` is a **measured** number — *status: done; `TICK_MS = 14` derived from the EXE instead of measured, see `docs/measurements/tick-rate.md`* |
+| **M2** | DOVE asset pipeline with manifest, cache, `--check` | 2 d | ~11 MB of assets; the second run writes zero bytes — *status: done; 10,8 MB, see `docs/formats/dove-assets.md`* |
+| **M3** | ⭐ **First playable level.** Scope cut brutally: no menus, no music, **one** weapon, no beam/options/bombs/shield | 4–6 d | level 1 plays through in the browser; a recorded replay reproduces bit-identically — *status: done; mechanics statically from the EXE, two reference replays, browser smoke test in CI* |
+| **M4** | DOVE feature-complete: all weapons + stages, beam, options, bombs, shield, all 12 levels, curtain, highscore, audio, the three options, easter egg | 1,5–2 w | playable from start to finish; playtest checklist ticked off — *status: implemented; all weapons, beam, options, shield, 12 levels with scripts, 9 bosses, audio (effects + modules), menus, intro, continue, highscore, credits. Open: playtest checklist against the original* |
+| **M5** | Shell for real: menu, routing, settings, gamepad, save export, cache bundles, service worker, i18n | 3–4 d | deployable site; DOVE playable from a cold cache — *status: done; static build with relative paths, smoke test starts DOVE cold and after „Install game data" with the server stopped. Open: resource counter for `dispose()` in dev builds, savegames in IndexedDB (DOVE needs only key/value in `localStorage`)* |
+| **M6** | DoveZ container + assets | 1 w | ~120 MB of assets; the debug page renders every sprite with the overlaid `.r` contour — *status: done; 147 MB (of which music 62 MB unchanged, video 20 MB), 33 atlases on 44 pages, `#/dovez/debug/assets`, see `docs/formats/dovez-assets.md`* |
+| **M7** | ⚠ **Decode DoveZ `.dat`** (risk block) | 1–2 w | `opaque` below 5 %; the debug view draws routes and shot patterns — *status: done; grammar from `LadeDaten`, 27/27 byte-identical, **0 bytes open** (named or provably unread), route interpreter bit-identical to the reference simulator, `#/dovez/debug/level`, see `docs/formats/dovez-level-dat.md`. A start tick before 0 (`Me.560`) runs in the port (`from=` negative). Open: comparison against the original* |
+| **M8** | DoveZ engine: parallax, both ships, coop, radio system, bosses, video, campaign | 3–5 w | campaign playable to the end — *status: implemented (no original to compare against); mechanics statically from the EXE (`docs/measurements/dovez-runtime.md`, tick 16 ms). Playable via `#/dovez`: timeline with lead-in, layers and landscape, effect animations, enemies with routes, parts and weapons, ship with main shot, hits, contact, power-ups, level excursion; death states with sparks, explosions, popups and shaking; checkpoint gate with snapshot and restart; HUD; audio, radio with ticker, streamed music; all 27 levels run through headless. Plus secondary weapons and all shot types, particles (D-Tonator) and force (D-Phyton), beam with combo, Super-Nova, boss finale (state 4), shockwave as a gameplay effect, ship drawing from SpielMoveDove, continue/pause with highscore list, coop input (`players=2`), procedural backgrounds, weather, water, overlays and special sequences (tutorial start). Campaign per `LevelSkript`: loading screen with progress or mosaic, transition of player values from level to level, save screen and 21 saves (JSON at the host), cutscenes as a `<video>` texture, outro, credits, `FadeOut`, epilogue from the second playthrough on. Start logos (glitch, tunnel), intro and main menu with all pages, name entry, bonus and options (volume levels, force key, auto-arrange). Inertia („Realistic") as coasting. Plus key configuration with recording, inertia „Realistic", kill counter, easter egg „LOV", debug ship 2 with drones (`ship=2`), vibration via gamepad motors, Russian (menu, ending, radio texts as subtitles), reduced-motion display. All 27 levels are playable to the end with bots (`levels.test.ts`, boss fights in `boss-*.test.ts`, regression replays in `levelReplays.test.ts`, level report `docs/measurements/dovez-levels.md`). Open: the comparison against the original (`docs/playtest-checklist.md`)*
+| **M9** | Polish, performance, accessibility, deployment | 1 w | release — *status: DoveZ in the launcher and installable offline (smoke test), Content Security Policy and security headers, web app manifest with icon, „Motion" setting (`prefers-reduced-motion`), performance test (simulation ≈ 0,2 ms per tick at a 16 ms tick) and size budget in CI. Open: the written clearance from the rights holders (section „Legal finding"), measurements of the draw time on real devices*
 
-**Kürzester Weg zum ersten spielbaren Level:** M0 → M1 (nur `LevelDat` +
-`BmpDecoder`) → M2 (`--only=level1`, ohne Audio) → M3. Realistisch **~2 Wochen**.
-Beschleuniger: in M1/M2 nur sechs Dateien konvertieren (`feinde1`, `landschaft1`,
-`background1`, `ss`, `konsole`, `text`) statt aller 61.
+**Shortest path to the first playable level:** M0 → M1 (only `LevelDat` +
+`BmpDecoder`) → M2 (`--only=level1`, without audio) → M3. Realistically **~2 weeks**.
+Accelerator: in M1/M2 convert only six files (`feinde1`, `landschaft1`,
+`background1`, `ss`, `konsole`, `text`) instead of all 61.
 
-Reihenfolge innerhalb M3: (a) Scaling + Atlas + Standbild, (b) scrollendes
-Terrain aus dem Eventstream, (c) Spielerschiff + Bewegung + Schuss, (d)
-Gegner-Spawn + Pattern + Konturkollision, (e) Explosion + Punkte + Font.
-
----
-
-## Risiken
-
-**R1 — DoveZ-`.dat`-Semantik.** *Wahrscheinlichkeit hoch, Wirkung sehr hoch
-(blockiert M8).* Gegenmaßnahmen: der Opake-Rest-Parser mit Round-Trip ab Tag 1
-macht Fortschritt monoton und messbar; **Debug-Viewer vor der Engine bauen** (eine
-Hypothese wie „diese drei i32 sind ein Wegpunkt" ist im Viewer in Sekunden
-bestätigt statt in einer laufenden Engine in Stunden); die 27 Dateien sind ein
-natürliches Differenzkorpus; die deutschen Sektionsnamen sind ein geschenktes
-Label-Set; Ghidra als Fluchtweg für `LadeDaten` und `SpielMoveEnemy`.
-**Harte Scope-Schranke, jetzt festgelegt statt später im Frust:** Ist `opaque`
-nach zwei Wochen noch über 30 %, wird DoveZ auf einen Level-/Galerie-Viewer
-reduziert und DOVE allein ausgeliefert. *(M7: nicht gezogen — `opaque` ist 0 %.
-Den Ausschlag gab nicht der Viewer, sondern die EXE: Nach dem Entpacken ergibt
-die Folge der `Get #`-Aufrufe in `LadeDaten` das Schema direkt, und die
-Verwendung der Laufzeit-Offsets in `DoRoute`, `SpielMoveEnemy` usw. liefert die
-Bedeutung. R1 ist damit auf das Restrisiko „Semantik stimmt im Detail nicht“
-geschrumpft, das M8 am Original prüft.)*
-
-**R2 — Repo-Größe.** *Wahrscheinlichkeit hoch, Wirkung mittel–hoch.* `.git` ist
-heute schon **439 MB**; ~130 MB abgeleitete Assets kommen dazu, und Blobs
-verschwinden nie. Da bewusst ohne LFS gearbeitet wird, sind die Gegenmaßnahmen
-Disziplin statt Technik: content-gehashte Dateinamen (ein geändertes Asset ist
-eine neue Datei, alte werden in einem bewussten Aufräum-Commit entfernt),
-eingefrorene Encoder-Optionen (Re-Encode nur mit `--force` plus Review), und
-`assets:verify` *(M6, vorher `assets:check`)* als CI-Gate gegen versehentliches Neuschreiben ganzer
-Asset-Bäume. **Beobachten:** Sollte die Historie unhandlich werden, sind LFS oder
-das Auslagern der Videos als Release-Attachment die naheliegenden Auswege — die
-Architektur trägt Letzteres ohne Änderung, weil Video ohnehin lazy gestreamt wird.
-
-**R3 — Determinismus.** *mittel / hoch (zerstört die Replays, und die sind das
-komplette Regressionsnetz).* Q16.16 durchgängig, gesäter xorshift32, SoA-Pools
-mit expliziter Freelist, Lint- und Grep-Gate über `sim/**`, Tick-Hash alle 64
-statt nur am Ende (lokalisiert eine Divergenz sofort statt „irgendwo in 32000
-Ticks"), Replay-Suite in CI auf Bun *und* Node.
-*(M7)* DoveZ rechnet im Original in `Single`; der Port bildet das mit
-`Math.fround` nach statt mit Q16.16 (Fixpunkt würde die Routen verfälschen).
-IEEE-Arithmetik ist überall gleich, `Math.cos/sin/atan` aber nicht garantiert
-bitgleich zwischen JS-Engines (JSC in Bun, V8 in Chrome). Die Routen nutzen sie
-in MoveTo und Winkel; für Replays braucht M8 eigene, deterministische
-Implementierungen oder einen Tabellenweg.
-
-**R4 — Audio.** *mittel–hoch / mittel.* Ein einziger AudioContext, von der Shell
-bei der ersten Nutzergeste erzeugt (`latencyHint: 'interactive'`) hinter einem
-„Klicken zum Starten"-Gate. SFX nur über vorab dekodierte `AudioBuffer`, nie
-`<audio>`. Voice-Limiting auf 8 Stimmen mit Cooldown pro Sound. libopenmpt im
-**AudioWorklet** (nicht `ScriptProcessor`), `WebAssembly.Module` per
-`postMessage` hineingereicht, 3 Quanten Vorlauf, Fallback auf vorgerenderte
-Tracks wenn Worklet oder WASM scheitern.
-*Der subtile Fehler, der garantiert passiert:* Bei einem Catch-up von 5 Ticks
-feuern fünf identische Sounds gleichzeitig. Deshalb sammelt die Schleife
-Sim-Events und dedupliziert **einmal pro Frame**, nicht pro Tick.
-
-**R5 — Colorkey-Mehrdeutigkeit.** *mittel / mittel.* Schwarze Pixel *innerhalb*
-eines Sprites werden transparent; bei palettierten Bildern keyt DirectDraw auf
-den Index; DoveZ hat 16 bpp und 32 bpp mit Müll-Alphabyte. Gegenmaßnahme ist die
-Kreuzvalidierung aus Punkt 2 der Verifikation — ein **automatisches,
-erschöpfendes Orakel** über 145 + 2587 Records. Wäre der Colorkey falsch, würden
-die Konturen nicht passen; sie passen nachweislich (für DOVE als Obermenge,
-siehe *(M1)* oben). Palettierte DOVE-Grafiken mit auseinanderfallendem Index-
-und RGB-Keying: `Explosion.spr` (Schwarz auf Index 255) und `background5.spr`
-(kein Schwarz) — beide unkritisch bei RGB-Keying, im Test festgeschrieben. `atlantis_saule2` ist ein
-**harter Buildfehler** mit Pflicht-Override — stilles Skalieren wäre der
-klassische Fehler, der ein Sprite subtil kaputtmacht und erst im Playtest auffällt.
-
-**Kleinere Punkte:** Original-Tickrate *(M1: aus der EXE bestimmt, 14 ms;
-Gegenprobe am Original optional)*; VB6-Rundungssemantik
-(`\`-Ganzzahldivision, `CInt` rundet banker's-style) als Kandidat notieren, falls
-Bewegungspfade sichtbar driften; Speicherquote bei ~130 MB DoveZ.
+Order within M3: (a) scaling + atlas + still image, (b) scrolling
+terrain from the event stream, (c) player ship + movement + shot, (d)
+enemy spawn + pattern + contour collision, (e) explosion + score + font.
 
 ---
 
-## Rechtlicher Befund
+## Risks
 
-**DOVE:** In `Readme.txt`, `Liesmich.txt` und `Help Guide.htm` steht *keinerlei*
-Lizenz- oder Weitergabe-Aussage. Die einzige Rechteangabe ist die
-Versionsressource der EXE: `LegalCopyright: Markus Madeja 1999, 2000, 2003`.
-Assets stammen zusätzlich von mehreren weiteren Urhebern (Kempf, Brinkmann,
-Kollmann, Pröbsting, Nonte/Toxeen u. a.). Faktisch „all rights reserved".
-Kontakt: `Kauto@gmx.de`, `www.kauto.de`.
+**R1 — DoveZ `.dat` semantics.** *Probability high, impact very high
+(blocks M8).* Countermeasures: the opaque-remainder parser with round-trip from day 1
+makes progress monotone and measurable; **build the debug viewer before the engine**
+(a hypothesis like „these three i32 are a waypoint" is confirmed in the viewer in
+seconds instead of in a running engine in hours); the 27 files are a
+natural difference corpus; the German section names are a free label set;
+Ghidra as an escape route for `LadeDaten` and `SpielMoveEnemy`.
+**Hard scope limit, fixed now instead of later in frustration:** if `opaque` is
+still above 30 % after two weeks, DoveZ is reduced to a level/gallery viewer
+and DOVE is shipped alone. *(M7: not invoked — `opaque` is 0 %.
+The decisive factor was not the viewer, but the EXE: after unpacking, the
+sequence of `Get #` calls in `LadeDaten` yields the schema directly, and the
+use of the runtime offsets in `DoRoute`, `SpielMoveEnemy` etc. provides the
+meaning. R1 has thereby shrunk to the residual risk „the semantics are wrong in
+detail", which M8 checks against the original.)*
 
-**DoveZ — deutlicher.** Wörtlich aus `Liesmich.txt`:
+**R2 — Repo size.** *Probability high, impact medium–high.* `.git` is
+already **439 MB** today; ~130 MB of derived assets come on top, and blobs
+never disappear. Since we deliberately work without LFS, the countermeasures are
+discipline instead of technology: content-hashed file names (a changed asset is
+a new file, old ones are removed in a deliberate cleanup commit),
+frozen encoder options (re-encode only with `--force` plus review), and
+`assets:verify` *(M6, previously `assets:check`)* as a CI gate against accidental rewriting of whole
+asset trees. **Watch:** should the history become unwieldy, LFS or
+offloading the videos as a release attachment are the obvious exits — the
+architecture supports the latter without change, because video is lazily streamed anyway.
+
+**R3 — Determinism.** *medium / high (destroys the replays, and those are the
+complete regression net).* Q16.16 throughout, a seeded xorshift32, SoA pools
+with an explicit freelist, a lint and grep gate over `sim/**`, a tick hash every 64
+instead of only at the end (localizes a divergence immediately instead of „somewhere in 32000
+ticks"), a replay suite in CI on Bun *and* Node.
+*(M7)* DoveZ computes in `Single` in the original; the port reproduces that with
+`Math.fround` instead of with Q16.16 (fixed point would falsify the routes).
+IEEE arithmetic is the same everywhere, but `Math.cos/sin/atan` are not guaranteed
+bit-identical between JS engines (JSC in Bun, V8 in Chrome). The routes use them
+in MoveTo and angles; for replays M8 needs its own, deterministic
+implementations or a table-based approach.
+
+**R4 — Audio.** *medium–high / medium.* A single AudioContext, created by the shell
+on the first user gesture (`latencyHint: 'interactive'`) behind a
+„click to start" gate. SFX only via pre-decoded `AudioBuffer`, never
+`<audio>`. Voice limiting to 8 voices with a cooldown per sound. libopenmpt in the
+**AudioWorklet** (not `ScriptProcessor`), the `WebAssembly.Module` passed in via
+`postMessage`, 3 quanta of lead, fallback to pre-rendered tracks if the worklet or
+WASM fail. *The subtle bug that is guaranteed to happen:* on a catch-up of 5 ticks
+five identical sounds fire simultaneously. That is why the loop collects
+sim events and deduplicates **once per frame**, not per tick.
+
+**R5 — Colorkey ambiguity.** *medium / medium.* Black pixels *inside*
+a sprite become transparent; for paletted images DirectDraw keys on
+the index; DoveZ has 16 bpp and 32 bpp with a garbage alpha byte. The countermeasure is the
+cross-validation from point 2 of the verification — an **automatic,
+exhaustive oracle** over 145 + 2587 records. If the colorkey were wrong,
+the contours would not match; they demonstrably match (for DOVE as a superset,
+see *(M1)* above). Paletted DOVE graphics with diverging index
+and RGB keying: `Explosion.spr` (black on index 255) and `background5.spr`
+(no black) — both uncritical with RGB keying, pinned down in the test. `atlantis_saule2` is a
+**hard build error** with a mandatory override — silent scaling would be the
+classic bug that subtly breaks a sprite and only shows up in playtesting.
+
+**Smaller points:** original tick rate *(M1: determined from the EXE, 14 ms;
+cross-check against the original optional)*; VB6 rounding semantics
+(`\` integer division, `CInt` rounds banker's-style) to note as a candidate if
+movement paths visibly drift; storage quota at ~130 MB DoveZ.
+
+---
+
+## Legal finding
+
+**DOVE:** `Readme.txt`, `Liesmich.txt` and `Help Guide.htm` contain *no*
+license or distribution statement whatsoever. The only rights notice is the
+version resource of the EXE: `LegalCopyright: Markus Madeja 1999, 2000, 2003`.
+Assets additionally come from several further authors (Kempf, Brinkmann,
+Kollmann, Pröbsting, Nonte/Toxeen among others). Effectively „all rights reserved".
+Contact: `Kauto@gmx.de`, `www.kauto.de`.
+
+**DoveZ — clearer.** Verbatim from `Liesmich.txt`:
 
 > „Sämtliche Rechte entsprechend der vorliegenden Software, Grafik, Musik, Sound
 > Effekte und Texte sind vorbehalten und dürfen in keiner Form ohne schriftliche
 > Genehmigung vervielfältigt, reproduziert oder verändert werden. […]
 > © All rights reserved, 2004, 2005, 2006"
 
-Es ist **explizit keine** Freeware- oder Weitergabe-Erlaubnis eingeräumt; das
-Gratis-Angebot von 2019 ändert daran nichts. Zudem existierte mindestens ein
-Publisher (magnussoft), was Rechte weiter verteilt.
+There is **explicitly no** freeware or distribution permission granted; the
+free offering of 2019 does not change that. In addition, at least one
+publisher (magnussoft) existed, which spreads rights further.
 
-Für die private Entwicklung im privaten Repo ist das unkritisch. **Eine
-Veröffentlichung setzt eine schriftliche Freigabe voraus** — zu klären vor M9,
-nicht danach. *(M8: Repository und Site sind seit dem 28.09.2026 auf Entscheidung
-des Repository-Inhabers öffentlich; Auslieferung über Cloudflare Workers Builds,
+For private development in a private repo this is uncritical. **A
+release requires written clearance** — to be clarified before M9,
+not after. *(M8: repository and site have been public since 2026-09-28 by decision
+of the repository owner; delivery via Cloudflare Workers Builds,
 `wrangler.jsonc`.)*
 
 ---
 
-## Kritische Dateien
+## Critical files
 
-**Referenz und Testkorpus (bestehend):**
-- `original-dove/Data/Level1.dat` — kanonisches Beispiel des DOVE-Levelformats;
-  Grundlage für Parser, Round-Trip und Konturvalidierung
-- `original-dove/Data/Grafik/feinde1.spr` — der Atlas für die
-  Kontur-Kreuzvalidierung; Referenz für Colorkey, Flip und Frame-Stride
-- `original-dove/Readme.txt` — einzige verfügbare Spezifikation der
-  DOVE-Mechanik
-- `original-dovez/Data/Level1-1 Skyfight.dlp` — vollständiges, kleines
-  DoveZ-Paket (223 Einträge, 4,68 MB); Erst-Target für Container-Parser,
-  Atlas-Packing und `.dat`-Dekodierung
-- `original-dovez/Data/Epilog.dlp` — kleinstes `.dat` (3812 B, 7 Gruppen);
-  minimaler Round-Trip-Testfall
-- `original-dovez/Data/Play.d2p` — die 413 Byte, die die gesamte
-  DoveZ-Kampagnenstruktur definieren
+**Reference and test corpus (existing):**
+- `original-dove/Data/Level1.dat` — canonical example of the DOVE level format;
+  basis for parser, round-trip and contour validation
+- `original-dove/Data/Grafik/feinde1.spr` — the atlas for the
+  contour cross-validation; reference for colorkey, flip and frame stride
+- `original-dove/Readme.txt` — the only available specification of the
+  DOVE mechanics
+- `original-dovez/Data/Level1-1 Skyfight.dlp` — complete, small
+  DoveZ package (223 entries, 4,68 MB); first target for the container parser,
+  atlas packing and `.dat` decoding
+- `original-dovez/Data/Epilog.dlp` — smallest `.dat` (3812 B, 7 groups);
+  minimal round-trip test case
+- `original-dovez/Data/Play.d2p` — the 413 bytes that define the entire
+  DoveZ campaign structure
 
-**Neu anzulegen (in Implementierungsreihenfolge):**
-- `packages/formats/src/dove/LevelDat.ts` — Parser **und** Serializer, Herzstück
-  des Round-Trip-Beweises
-- `packages/formats/src/bmp/BmpDecoder.ts` — 1/4/8/16/24/32 bpp, Paletten,
-  Bottom-up, Colorkey-Pfad
-- `packages/assetkit/src/cli.ts` — die reproduzierbare Pipeline
-- `packages/game-dove/src/sim/Sim.ts` — deterministische Fixed-Step-Simulation,
-  Pixi-frei
-- `packages/core/src/shell/GameModule.ts` — der Vertrag, der beide Engines trennt
+**To be created (in implementation order):**
+- `packages/formats/src/dove/LevelDat.ts` — parser **and** serializer, the heart
+  of the round-trip proof
+- `packages/formats/src/bmp/BmpDecoder.ts` — 1/4/8/16/24/32 bpp, palettes,
+  bottom-up, colorkey path
+- `packages/assetkit/src/cli.ts` — the reproducible pipeline
+- `packages/game-dove/src/sim/Sim.ts` — deterministic fixed-step simulation,
+  Pixi-free
+- `packages/core/src/shell/GameModule.ts` — the contract that separates both engines
