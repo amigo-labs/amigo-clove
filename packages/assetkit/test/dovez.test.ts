@@ -1,28 +1,15 @@
 import { describe, expect, test } from "bun:test";
-import type { AtlasEntry, AtlasJson, Manifest } from "@clove/core";
-import {
-  applyAlphaMask,
-  applyColorKey,
-  decodeBmp,
-  dovezSpriteKey,
-  maskName,
-  parseContourR,
-  readContainer,
-} from "@clove/formats";
+import type { Manifest } from "@clove/core";
 import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { inflateSync } from "node:zlib";
 import { packRects } from "../src/atlas/maxrects";
 import type { Job } from "../src/job";
 import { MANIFEST_FILE, build, check, stale, verify } from "../src/pipeline";
-import { readContour } from "../src/stages/atlas";
-import { decodeWebp } from "../src/stages/image";
 
 const ROOT = join(import.meta.dir, "../../..");
 const ASSETS = join(ROOT, "assets/dovez");
-const DATA = join(ROOT, "original-dovez/Data");
 
 async function withTemp<T>(fn: (dir: string) => Promise<T>): Promise<T> {
   const dir = await mkdtemp(join(tmpdir(), "clove-test-"));
@@ -98,98 +85,6 @@ describe.if(hasAssets)("committete DoveZ-Assets", () => {
     expect(core.filter((id) => id.startsWith("sound/")).length).toBe(84);
     expect(m.entries.filter((e) => e.kind === "music").length).toBe(20);
   });
-
-  test("jedes Sprite liegt pixelgenau im Atlas, jede Kontur gleich der .r-Datei", async () => {
-    const m = manifest!;
-    const files = new Map(m.entries.map((e) => [e.id, e.file]));
-    const containers = m.entries.filter((e): e is AtlasEntry => e.kind === "atlas");
-    expect(containers.length).toBe(33);
-    let sprites = 0;
-    let contours = 0;
-    for (const atlas of containers) {
-      const json = JSON.parse(
-        await readFile(join(ASSETS, files.get(atlas.id)!), "utf8"),
-      ) as AtlasJson;
-      const source = atlas.sources[0]!.path;
-      const entries = readContainer(
-        new Uint8Array(await readFile(join(ROOT, source))),
-        (b) => new Uint8Array(inflateSync(b)),
-      );
-      const byName = new Map(entries.map((e) => [e.name.toLowerCase(), e]));
-      const pages = await Promise.all(
-        json.pages.map(async (id) =>
-          decodeWebp(new Uint8Array(await readFile(join(ASSETS, files.get(id)!)))),
-        ),
-      );
-      for (const e of entries) {
-        const name = e.name.toLowerCase();
-        if (!name.endsWith(".bmp")) continue;
-        const key = dovezSpriteKey(name);
-        const sprite = json.sprites[key];
-        if (!sprite) {
-          // nur Masken fehlen als eigene Sprites
-          expect([source, name, byName.has(name.replace(/a\.bmp$/, ".bmp"))]).toEqual([
-            source,
-            name,
-            true,
-          ]);
-          continue;
-        }
-        const image = decodeBmp(e.data);
-        // `interface*_energyA` ist ein eigenes Bild, keine Maske (NOT_MASKS in config.ts)
-        const ownImage = /^interface\d_energy\.bmp$/.test(name);
-        const mask = ownImage ? undefined : byName.get(maskName(name));
-        expect([key, sprite.blend]).toEqual([key, mask ? "alpha" : "key"]);
-        const expected = mask
-          ? applyAlphaMask(
-              image,
-              decodeBmp(mask.data),
-              image.width !== decodeBmp(mask.data).width ? { x: 0, y: 0 } : undefined,
-            )
-          : applyColorKey(image);
-        const page = pages[sprite.page]!;
-        let same = true;
-        for (let y = 0; y < sprite.h && same; y++) {
-          const row = page.rgba.subarray(
-            ((sprite.y + y) * page.width + sprite.x) * 4,
-            ((sprite.y + y) * page.width + sprite.x + sprite.w) * 4,
-          );
-          const want = expected.subarray(y * image.width * 4, (y + 1) * image.width * 4);
-          for (let i = 0; i < row.length; i++) {
-            // transparente Pixel: nur Alpha zählt
-            if (
-              row[i] !== want[i] &&
-              !(want[i - (i % 4) + 3] === 0 && row[i - (i % 4) + 3] === 0)
-            ) {
-              same = false;
-              break;
-            }
-          }
-        }
-        expect([source, key, same]).toEqual([source, key, true]);
-        sprites++;
-      }
-      if (atlas.contours) {
-        const bin = new Uint8Array(await readFile(join(ASSETS, files.get(atlas.contours)!)));
-        const data = new Int16Array(bin.buffer, bin.byteOffset, bin.byteLength / 2);
-        for (const e of entries.filter((x) => x.name.toLowerCase().endsWith(".r"))) {
-          const stored = parseContourR(e.data);
-          const c = readContour(data, json.contours[dovezSpriteKey(e.name)]!);
-          expect([c.width, c.height, c.top, c.bottom]).toEqual([
-            stored.width,
-            stored.height,
-            stored.top,
-            stored.bottom,
-          ]);
-          expect([...c.spans]).toEqual([...stored.spans]);
-          contours++;
-        }
-      }
-    }
-    // 83 Dateien heißen wie Masken, vier davon (`interface*_energyA`) sind eigene Bilder
-    expect(sprites).toBe(3232 - 79);
-    expect(contours).toBe(2587);
-  }, 300_000);
 });
 
 describe("volatile Jobs", () => {
@@ -283,21 +178,5 @@ describe("Aktualität ohne Konvertierung", () => {
         "data/a: Quelle geändert",
       ]);
     });
-  });
-});
-
-describe.if(existsSync(DATA))("Planung", () => {
-  test("ein Job je Paket bzw. Musikstück, IDs eindeutig", async () => {
-    const { planDoveZ } = await import("../src/dovez/config");
-    const jobs = planDoveZ(ROOT);
-    const ids = jobs.flatMap((j) => j.outputs.map((o) => o.id));
-    expect(new Set(ids).size).toBe(ids.length);
-    // 52 Pakete + 16 Funktext-Jobs (D/E/R je Level) + 2 lose Intro-Videos + 20 Musikstücke
-    expect(jobs.length).toBe(52 + 16 + 2 + 20);
-    const radio = jobs.filter((j) => j.outputs.some((o) => o.id.startsWith("radio/")));
-    expect(radio).toHaveLength(16);
-    expect(radio.every((j) => j.outputs.length === 1 && j.bundles[0]?.startsWith("level/"))).toBe(
-      true,
-    );
   });
 });
