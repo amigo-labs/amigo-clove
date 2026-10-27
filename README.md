@@ -202,6 +202,12 @@ bun scripts/originals-crlf.ts verify  <DOVE-Ordner> <DoveZ-Ordner>
 bun scripts/originals-crlf.ts restore <DOVE-Ordner> <DoveZ-Ordner>
 ```
 
+## Danksagung
+
+DOVE und DoveZ stammen von **Markus „Kauto" Madeja**. Danke für die beiden
+Spiele, die diesen Port erst möglich machen. Wer sie mochte, kann ihn hier
+unterstützen: [ko-fi.com/kautode](https://ko-fi.com/kautode).
+
 ## Rechtliches
 
 Für beide Spiele liegt **keine** Freeware- oder Weitergabe-Erlaubnis vor; bei
