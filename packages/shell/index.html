@@ -66,6 +66,8 @@
         display: flex;
         align-items: center;
         justify-content: center;
+        /* Grundfläche hinter den Bildschirmen: kein Aufblitzen beim Einblenden */
+        background: var(--screen);
       }
       .stage {
         position: absolute;
@@ -551,6 +553,25 @@
       }
       [data-ui="over"] .ui-screen {
         background: rgb(0 0 0 / 0.55);
+      }
+      /* Seitenbildschirme (Launcher, Laden, Spielmenüs) blenden sanft ein, damit
+         der Weg Launcher → Laden → Titelmenü wie eine durchgehende Oberfläche wirkt.
+         In-Level-Overlays (Pause „over“) bleiben sofort. */
+      [data-ui="page"] .ui-screen {
+        animation: ui-screen-in 0.15s ease both;
+      }
+      @keyframes ui-screen-in {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        [data-ui="page"] .ui-screen {
+          animation: none;
+        }
       }
       .ui-panel {
         box-sizing: border-box;
