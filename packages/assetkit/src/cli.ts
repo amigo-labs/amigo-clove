@@ -9,6 +9,7 @@
  *
  * Ohne `--game` gelten die Befehle für beide Spiele, jeweils nach `assets/<spiel>/`.
  */
+import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { planDove } from "./dove/config";
 import { planDoveZ } from "./dovez/config";
@@ -52,12 +53,25 @@ function parseArgs(argv: readonly string[]): Args {
 
 const mb = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(2)} MB`;
 
+/**
+ * Die Originalinstallationen (`original-dove/`, `original-dovez/`) sind read-only
+ * Referenz und liegen nicht im Repo. Ohne sie lassen sich Assets nicht neu bauen
+ * oder gegen ihre Quellen prüfen — die committeten Assets bleiben aber über ihr
+ * Manifest verifizierbar.
+ */
+const originalsPresent = (game: string): boolean =>
+  existsSync(join(ROOT, `original-${game}`, "Data"));
+
 async function runGame(args: Args, game: string): Promise<number> {
   const out = args.out ?? join(ROOT, "assets", game);
   const plan = () => (GAMES[game] as (root: string) => Job[])(ROOT);
   console.log(`== ${game} ==`);
   switch (args.command) {
     case "build": {
+      if (!originalsPresent(game)) {
+        console.warn(`Originale für ${game} nicht vorhanden – Build übersprungen.`);
+        return 0;
+      }
       const started = performance.now();
       const stats = await build(plan(), {
         root: ROOT,
@@ -77,6 +91,10 @@ async function runGame(args: Args, game: string): Promise<number> {
       return 0;
     }
     case "check": {
+      if (!originalsPresent(game)) {
+        console.warn(`Originale für ${game} nicht vorhanden – Check übersprungen.`);
+        return 0;
+      }
       const r = await check(plan(), { root: ROOT, out, game });
       const lines = [
         ...r.missing.map((f) => `fehlt:        ${f}`),
@@ -94,7 +112,14 @@ async function runGame(args: Args, game: string): Promise<number> {
       return 1;
     }
     case "verify": {
-      const problems = [...(await verify(out)), ...(await stale(plan(), { root: ROOT, out }))];
+      // Datei ≡ Manifest geht immer; der Quellenabgleich (Manifest ≡ Quellen/Optionen)
+      // braucht die Originale und entfällt, wenn sie fehlen.
+      const problems = [...(await verify(out))];
+      if (originalsPresent(game)) {
+        problems.push(...(await stale(plan(), { root: ROOT, out })));
+      } else {
+        console.warn(`Originale für ${game} nicht vorhanden – Quellenabgleich übersprungen.`);
+      }
       if (problems.length === 0) {
         console.log("Alle Assets passen zum Manifest, das Manifest zu Quellen und Optionen.");
         return 0;

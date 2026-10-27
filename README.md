@@ -170,8 +170,8 @@ Assets, kein Worker-Skript): `wrangler.jsonc` im Wurzelverzeichnis baut mit
 
 | Pfad              | Inhalt                                       |
 | ----------------- | -------------------------------------------- |
-| `original-dove/`  | unveränderte Original-Installation DOVE 1.10 |
-| `original-dovez/` | unveränderte Original-Installation DoveZ     |
+| `original-dove/`  | Original-Installation DOVE 1.10 — **nicht im Repo**, lokal ablegen (siehe unten) |
+| `original-dovez/` | Original-Installation DoveZ — **nicht im Repo**, lokal ablegen (siehe unten) |
 | `packages/formats/` | `@clove/formats` — reine Parser/Serializer, ohne I/O |
 | `packages/core/`  | `@clove/core` — mechanikfreie Bausteine: Takt, Q16.16, Rng, Hash, Replay, Assets, i18n, Spielstanddatei, `GameModule` |
 | `packages/pixi-kit/` | `@clove/pixi-kit` — Pixi-Adapter: ganzzahliges Scaling, Texturen |
@@ -183,11 +183,19 @@ Assets, kein Worker-Skript): `wrangler.jsonc` im Wurzelverzeichnis baut mit
 | `tests/`          | repo-weite Architekturtests                  |
 | `docs/`           | Spezifikationen und Formatdokumentation      |
 
-Die Originalverzeichnisse sind **read-only Referenz** und werden nie verändert.
-`.gitattributes` schließt sie von jeder Zeilenenden-Konvertierung aus. Beim
-ersten Commit hatte Git 20 Textdateien bereits auf LF normalisiert; sie sind
-per `scripts/originals-crlf.ts reconstruct` auf CRLF zurückgeführt. Gegen eine
-echte Installation prüfen bzw. übernehmen:
+Die Originalinstallationen liegen **nicht im Repo** (sie sind in `.gitignore`).
+Sie sind read-only Referenz und reine Quelle der Asset-Pipeline: `assets/dove/`
+und `assets/dovez/` sind daraus erzeugt und committet. Wer die Assets neu baut
+(`assets:build`/`assets:check`) oder die byte-genauen Formatprüfungen laufen
+lassen will, legt die Originale lokal nach `original-dove/` bzw. `original-dovez/`
+ab. Ohne sie überspringt `assets:verify` den Quellenabgleich (die committeten
+Assets bleiben über ihr Manifest verifizierbar) und die auf die Originale
+angewiesenen Tests sind entfallen — `bun run check` und die CI laufen ohne die
+Originale durch.
+
+`.gitattributes` schließt die Verzeichnisse von jeder Zeilenenden-Konvertierung
+aus. Eine echte Installation gegen die erwarteten (CRLF-)Zeilenenden prüfen bzw.
+darauf bringen:
 
 ```sh
 bun scripts/originals-crlf.ts verify  <DOVE-Ordner> <DoveZ-Ordner>

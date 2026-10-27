@@ -1,29 +1,12 @@
 /**
- * Routen-Interpreter gegen die Routen aller 27 Level und gegen kleine,
- * handgeschriebene Programme.
+ * Routen-Interpreter gegen kleine, handgeschriebene Programme.
+ * Die Prüfungen gegen die Routen der Originallevel sind entfallen,
+ * da die Originale nicht mehr im Repo liegen.
  */
 import { describe, expect, test } from "bun:test";
-import { readdirSync } from "node:fs";
-import { join } from "node:path";
-import { inflateSync } from "node:zlib";
-import {
-  parseDovezLevelDat,
-  readContainer,
-  type DovezLevel,
-  type DovezRoute,
-} from "@clove/formats";
+import { type DovezRoute } from "@clove/formats";
 import { VAR, newRouteActor, stepRoute, type RouteEffect, type RouteHost } from "../src/sim/route";
 import { VbRnd, cint } from "../src/sim/vb";
-
-const DATA = join(import.meta.dir, "../../../original-dovez/Data");
-const levels = new Map<string, DovezLevel>();
-for (const file of readdirSync(DATA).filter((f) => f.endsWith(".dlp"))) {
-  const bytes = new Uint8Array(await Bun.file(join(DATA, file)).arrayBuffer());
-  const dat = readContainer(bytes, (b) => new Uint8Array(inflateSync(b))).find((e) =>
-    e.name.toLowerCase().endsWith(".dat"),
-  )!;
-  levels.set(file.replace(/\.dlp$/, ""), parseDovezLevelDat(dat.data));
-}
 
 function host(effects: RouteEffect[] = []): RouteHost & { tick: number } {
   return {
@@ -57,12 +40,6 @@ function run(route: DovezRoute, ticks: number, x = 800, y = 275, speed = 2): Run
   return { path, dead: false };
 }
 
-function named(level: string, name: string): DovezRoute {
-  const r = levels.get(level)!.routes.find((x) => x.name === name);
-  if (!r) throw new Error(`${level}: Route ${name} fehlt`);
-  return r;
-}
-
 /** Literal- und Variablenargumente wie im Level-Skript: Wert = Var(a) + Var(b). */
 const lit = (a: number, b = 0) => ({ a, b });
 const prog = (...ops: [number, ...{ a: number; b: number }[]][]): DovezRoute => ({
@@ -71,59 +48,6 @@ const prog = (...ops: [number, ...{ a: number; b: number }[]][]): DovezRoute => 
 });
 
 describe("Routen-Interpreter", () => {
-  test("alle 519 Routen laufen 3000 Ticks ohne Ausnahme", () => {
-    let n = 0;
-    let ended = 0;
-    for (const l of levels.values()) {
-      for (const r of l.routes) {
-        if (run(r, 3000).dead) ended++;
-        n++;
-      }
-    }
-    expect(n).toBe(519);
-    console.log(`Routen: ${ended}/${n} enden oder sterben binnen 3000 Ticks`);
-    expect(ended).toBeGreaterThan(350);
-  });
-
-  test("Referenzpfade: Prüfsumme aller Positionen (600 Ticks, bitgenau zum Python-Referenzsimulator)", () => {
-    // Abgeglichen mit dem Python-Simulator aus der Analyse (519/519 bitgleich);
-    // ändert sich die Zahl, hat sich die Semantik geändert.
-    const bits = new Uint32Array(new Float32Array(1).buffer);
-    const f = new Float32Array(bits.buffer);
-    let hash = 0x811c9dc5;
-    for (const name of [...levels.keys()].toSorted()) {
-      for (const r of levels.get(name)!.routes) {
-        for (const [x, y] of run(r, 600).path) {
-          for (const v of [x, y]) {
-            f[0] = v;
-            hash = Math.imul(hash ^ (bits[0] as number), 0x01000193) >>> 0;
-          }
-        }
-      }
-    }
-    expect(hash.toString(16)).toBe(ROUTE_HASH);
-  });
-
-  test("„Rechts nach Links“: vom rechten Rand bis −Breite, dann tot", () => {
-    const r = run(named("Level Bleistift", "Rechts nach Links"), 2000);
-    expect(r.path[0]).toEqual([800, 275]);
-    expect(r.dead).toBe(true);
-    expect(r.path.at(-1)).toEqual([-40, 275]);
-  });
-
-  test("„Zecken_von_oben“ kommt von oben, verlässt unten", () => {
-    const r = run(named("Level1-1 Skyfight", "Zecken_von_oben"), 2000);
-    expect(r.path[0]![1]).toBeLessThan(0);
-    expect(r.dead).toBe(true);
-    expect(r.path.at(-1)![1]).toBe(550);
-  });
-
-  test("„Einkreisen“ spiralt auf den Spieler zu", () => {
-    const r = run(named("Level1-1 Skyfight", "Einkreisen"), 2000);
-    const [x, y] = r.path.at(-1)!;
-    expect(Math.hypot(x - 100, y - 275)).toBeLessThan(20);
-  });
-
   test("MoveTo zielt einmal, rastet am Ziel ein; Wait wartet n Ticks", () => {
     const r = run(
       prog([0, lit(0), lit(0)], [2, lit(10), lit(0)], [5, lit(3)], [1, lit(10), lit(20)]),
@@ -187,5 +111,3 @@ describe("Routen-Interpreter", () => {
     expect([0.5, 1.5, 2.5, -0.5, -1.5, 2.4, 2.6].map(cint)).toEqual([0, 2, 2, -0, -2, 2, 3]);
   });
 });
-
-const ROUTE_HASH = "bd5cd484";

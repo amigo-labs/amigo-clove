@@ -1,18 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { readdirSync } from "node:fs";
-import { join } from "node:path";
 import {
   WAVE_FORMAT_ADPCM,
   WAVE_FORMAT_PCM,
   WavError,
   decodeWav,
   encodeWavPcm16,
-  readWavInfo,
 } from "../src/index";
-import { DOVE_DATA, readBytes } from "./fixtures";
-
-const SOUND = join(DOVE_DATA, "Sound");
-const SOUNDS = readdirSync(SOUND).toSorted();
 
 interface Chunk {
   id: string;
@@ -125,39 +118,5 @@ describe("PCM", () => {
     expect(back.sampleRate).toBe(11025);
     expect(back.channels).toBe(2);
     expect([...back.samples]).toEqual([...samples]);
-  });
-});
-
-describe("DOVE-Sounds", () => {
-  test("Inventar: 15× MS-ADPCM, 5× PCM 8 bit, alle mono (Spec sagte 14/6)", async () => {
-    const formats = { adpcm: 0, pcm8: 0 };
-    for (const name of SOUNDS) {
-      const info = readWavInfo(await readBytes(join(SOUND, name)));
-      expect(info.channels).toBe(1);
-      if (info.format === WAVE_FORMAT_ADPCM) formats.adpcm++;
-      else if (info.format === WAVE_FORMAT_PCM && info.bitsPerSample === 8) formats.pcm8++;
-    }
-    expect(SOUNDS.length).toBe(20);
-    expect(formats).toEqual({ adpcm: 15, pcm8: 5 });
-  });
-
-  test.each(SOUNDS)("%s dekodiert vollständig", async (name) => {
-    const bytes = await readBytes(join(SOUND, name));
-    const info = readWavInfo(bytes);
-    const audio = decodeWav(bytes);
-    expect(audio.sampleRate).toBe(info.sampleRate);
-    if (info.format === WAVE_FORMAT_ADPCM) {
-      // Die data-Chunks enthalten nur ganze Blöcke. Der fact-Chunk ist in den
-      // Originalen oft veraltet (Dateien wurden nach dem Kodieren gekürzt) und
-      // nennt mehr Samples, als vorhanden sind — nie weniger.
-      const perBlock = (info.blockAlign - 7) * 2 + 2;
-      expect(audio.samples.length % perBlock).toBe(0);
-      expect(audio.samples.length).toBeLessThanOrEqual(info.factSamples ?? Infinity);
-      expect(audio.samples.some((s) => s !== 0)).toBe(true);
-    }
-  });
-
-  test("domination.wav ist leer", async () => {
-    expect(decodeWav(await readBytes(join(SOUND, "domination.wav"))).samples.length).toBe(0);
   });
 });

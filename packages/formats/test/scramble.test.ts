@@ -1,15 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { join } from "node:path";
 import { ScrambleError, descrambleTiles, parsePermutation } from "../src/index";
-import { DOVE_DATA, readBytes } from "./fixtures";
 
 describe("Endbilder B1–B5", () => {
-  test.each([1, 2, 3, 4, 5])("Data/%i.dat ist eine Permutation von 0…2879", async (n) => {
-    const perm = parsePermutation(await readBytes(join(DOVE_DATA, `${n}.dat`)));
-    expect(perm.length).toBe(2880);
-    expect(new Set(perm).size).toBe(2880);
-  });
-
   test("Zielkachel i ← Quellkachel p[i]", () => {
     const rgba = new Uint8Array(640 * 450 * 4);
     // Quellkachel 5 markieren (x 50…59, y 0…9)

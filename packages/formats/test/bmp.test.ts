@@ -1,7 +1,5 @@
 import { describe, expect, test } from "bun:test";
 import { BmpError, applyColorKey, decodeBmp, paletteKeyReport } from "../src/index";
-import { doveSpriteNames, readBytes, DOVE_DATA } from "./fixtures";
-import { join } from "node:path";
 
 interface BuildOptions {
   width: number;
@@ -218,34 +216,5 @@ describe("decodeBmp — synthetische Bilder", () => {
     expect(() => decodeBmp(rle)).toThrow(/Kompression 1/);
     const cut = buildBmp({ width: 4, height: 4, bpp: 24, rows: [] }).subarray(0, 60);
     expect(() => decodeBmp(cut)).toThrow(/abgeschnitten/);
-  });
-});
-
-/**
- * Palettierte Grafiken, bei denen Index-0-Keying und RGB-Schwarz-Keying
- * auseinanderfallen. Beide sind unkritisch, solange RGB-Keying gilt:
- * `Explosion.spr` hat Schwarz auf Index 255 (Index 0 ist Gelb, 18 Pixel) — ein
- * Index-0-Key wäre sichtbar falsch; `background5.spr` enthält kein Schwarz und
- * wird ohnehin nicht gekeyt. Jede weitere Datei hier ist ein neuer Befund.
- */
-const KNOWN_PALETTE_KEY_AMBIGUITIES = ["Explosion.spr", "background5.spr"];
-
-describe("decodeBmp — alle DOVE-Grafiken", () => {
-  const names = doveSpriteNames();
-
-  test("60 Grafiken vorhanden (dazu METROID.dat, kein Bild)", () => {
-    expect(names).toHaveLength(60);
-  });
-
-  test.each(names)("%s dekodiert mit Header-Abmessungen", async (name) => {
-    const bytes = await readBytes(join(DOVE_DATA, "Grafik", name));
-    const img = decodeBmp(bytes);
-    const v = new DataView(bytes.buffer, bytes.byteOffset);
-    expect(img.width).toBe(v.getInt32(18, true));
-    expect(img.height).toBe(Math.abs(v.getInt32(22, true)));
-    expect(img.rgba.length).toBe(img.width * img.height * 4);
-    if (img.bitsPerPixel <= 8) {
-      expect(paletteKeyReport(img)?.ambiguous).toBe(KNOWN_PALETTE_KEY_AMBIGUITIES.includes(name));
-    }
   });
 });
